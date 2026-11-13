@@ -84,6 +84,7 @@
       <button class="wide" id="harvestAll">🧺 Собрать всё</button>
       <button class="wide alt" id="plantAll">🌱 Засеять всё</button>
       <button class="wide" id="nightBtn" style="display:none">🌙 Улучшения</button>
+      <button class="wide alt" id="helperBtn" style="display:none"></button>
     </div>
   </div>
 </div>
@@ -112,7 +113,7 @@ const UPGRADES = {
   ads:    { name: 'Реклама',           ico: '📣', desc: l => `+2 покупателя в день`,           cost: l => 30 + l*35,           max: 10 },
   fert:   { name: 'Удобрения',         ico: '🧪', desc: l => `Рост быстрее (+${l*20}% → +${(l+1)*20}%)`, cost: l => 50 + l*60, max: 5 },
   sign:   { name: 'Красивая вывеска',  ico: '🪧', desc: l => `Цены выше (+${l*10}% → +${(l+1)*10}%)`, cost: l => 60 + l*70, max: 6 },
-  helper: { name: 'Помощник',         ico: '🧑‍🌾', desc: l => `Сам собирает урожай и сажает ту же культуру заново (помощников: ${l} → ${l+1})`, cost: l => [120, 280, 520][l], max: 3 },
+  helper: { name: 'Помощник',         ico: '🧑‍🌾', desc: l => `Собирает урожай, по команде пересаживает (помощников: ${l} → ${l+1})`, cost: l => [120, 280, 520][l], max: 3 },
   bench:  { name: 'Скамейка',          ico: '🪑', desc: l => `Покупатели ждут дольше (+5 сек)`, cost: l => 25 + l*30, max: 5 },
 };
 
@@ -174,6 +175,7 @@ try { S = JSON.parse(localStorage.getItem(SAVE_KEY)) || newState(); } catch { S 
 delete S.queue;
 if (!S.stats) S.stats = { earned: 0, served: 0, missed: 0 };
 S.up.helper ??= 0;
+S.helperMode ??= 'harvest';
 S.started ??= S.night || S.t > 0;
 if (!S.player || blocked[Math.floor(S.player.y)]?.[Math.floor(S.player.x)] !== false) S.player = { x: 5.5, y: 8.5 };
 function save() { S.player = { x: P.x, y: P.y }; try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch {} }
@@ -313,7 +315,7 @@ function buyUpgrade(key) {
   const u = UPGRADES[key], l = S.up[key], cost = u.cost(l);
   if (l >= u.max || S.coins < cost) return;
   S.coins -= cost; S.up[key]++;
-  if (key === 'helper') { syncHelpers(); toast('🧑‍🌾 Помощник вышел на работу'); }
+  if (key === 'helper') { syncHelpers(); toast('🧑‍🌾 Помощник нанят! Режим работы — кнопка внизу'); }
   if (key === 'land') for (let k = 0; k < 4 && S.plots.length < MAX_PLOTS; k++) S.plots.push({ crop: null, prog: 0 });
   save(); renderUI(); openNight(false);
 }
@@ -399,6 +401,11 @@ const HELPER_LOOKS = [
   { shirt: '#9b7be0', shirtDark: '#7c60bd', pants: '#2f2f3a', skin: '#a8714a', hair: '#111111', hat: 'straw' },
 ];
 const HOME = { x: 3, y: 4 };   // у двери дома
+const HELPER_MODES = {
+  harvest: { btn: '🧑‍🌾 Сбор',        toast: '🧺 Помощники только собирают урожай — монеты не тратят', next: 'replant' },
+  replant: { btn: '🧑‍🌾 Сбор+посев',  toast: '🌱 Помощники собирают и пересаживают ту же культуру (за твои монеты)', next: 'rest' },
+  rest:    { btn: '🧑‍🌾 Отдых',        toast: '😴 Помощники отдыхают у дома', next: 'harvest' },
+};
 let helpers = [];
 function syncHelpers() {
   while (helpers.length < S.up.helper) {
@@ -422,7 +429,7 @@ function updateHelper(h, dt) {
       S.inv[crop] = (S.inv[crop] || 0) + 1;
       addFloat(s.x + .5, s.y + .5, `+1 ${CROP[crop].e}`);
       p.crop = null; p.prog = 0;
-      if (S.coins >= CROP[crop].seed) { S.coins -= CROP[crop].seed; p.crop = crop; }
+      if (S.helperMode === 'replant' && S.coins >= CROP[crop].seed) { S.coins -= CROP[crop].seed; p.crop = crop; }
       h.work = 0.45;
       save(); renderUI();
     }
@@ -434,7 +441,8 @@ function updateHelper(h, dt) {
   const claimed = new Set(helpers.map(o => o.target));
   if (tasks[0]) claimed.add(slotAt(tasks[0].x, tasks[0].y));
   let best = -1, bd = 1e9;
-  if (!S.night) S.plots.forEach((p, i) => {
+  const resting = S.night || S.helperMode === 'rest';
+  if (!resting) S.plots.forEach((p, i) => {
     if (!p.crop || p.prog < 1 || claimed.has(i)) return;
     const d = Math.abs(PLOT_SLOTS[i].x - hx) + Math.abs(PLOT_SLOTS[i].y - hy);
     if (d < bd) { bd = d; best = i; }
@@ -442,7 +450,7 @@ function updateHelper(h, dt) {
   if (best >= 0) {
     const pth = findPath(hx, hy, PLOT_SLOTS[best].x, PLOT_SLOTS[best].y);
     if (pth) { h.path = pth; h.target = best; }
-  } else if (S.night && (hx !== HOME.x || hy !== HOME.y)) {
+  } else if (resting && (hx !== HOME.x || hy !== HOME.y)) {
     h.path = findPath(hx, hy, HOME.x, HOME.y) || [];
   }
 }
@@ -823,6 +831,8 @@ function renderUI() {
   $('day').textContent = `День ${S.day}`;
   $('nightBtn').style.display = S.night ? '' : 'none';
   $('plantAll').style.display = S.night ? 'none' : '';
+  $('helperBtn').style.display = S.up.helper > 0 ? '' : 'none';
+  $('helperBtn').textContent = HELPER_MODES[S.helperMode].btn;
   const items = S.unlocked.filter(id => S.inv[id]).map(id => `<span>${CROP[id].e} ${S.inv[id]}</span>`);
   $('inv').innerHTML = items.length ? items.join('') : '<span style="opacity:.6">Склад пуст — посади и собери урожай</span>';
   const s = $('seeds'); s.innerHTML = '';
@@ -890,6 +900,12 @@ $('plantAll').onclick = () => {
   setTasks(routeThrough(list).slice(0, can));
 };
 $('nightBtn').onclick = () => openNight(false);
+$('helperBtn').onclick = () => {
+  S.helperMode = HELPER_MODES[S.helperMode].next;
+  toast(HELPER_MODES[S.helperMode].toast);
+  helpers.forEach(h => { h.target = null; h.path = []; h.think = 0; });
+  save(); renderUI();
+};
 $('sunbox').onclick = () => { if (!S.night && !S.started) beginClock(); else if (!S.night) toast(`Покупателей сегодня: ${S.spawned} из ${S.toSpawn}`); };
 $('overlay').onclick = e => { if (e.target.id === 'overlay') closeNight(); };
 
