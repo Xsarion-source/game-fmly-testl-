@@ -383,13 +383,17 @@ function openNight(withSummary) {
   }
   h += `<div class="row" style="margin-top:14px"><button class="wide" onclick="closeNight()">🌾 К грядкам</button>
         <button class="wide" style="background:#ffd34d" onclick="morning()">☀️ Начать день ${S.day + 1}</button></div>
-        <div style="text-align:center;margin-top:10px"><button style="background:none;color:#b0503a;font-size:12px" onclick="resetGame()">Начать заново</button></div>`;
+        <div style="text-align:center;margin-top:10px"><button style="background:none;color:#b0503a;font-size:12px" onclick="resetGame(this)">Начать заново</button></div>`;
   $('sheet').innerHTML = h;
   $('overlay').classList.add('show');
 }
 function closeNight() { $('overlay').classList.remove('show'); }
 function morning() { S.day++; startDay(); }
-function resetGame() { if (confirm('Стереть прогресс и начать заново?')) { S = newState(); startDay(); } }
+let resetArmed = false;
+function resetGame(btn) {
+  if (!resetArmed) { resetArmed = true; btn.textContent = 'Точно стереть прогресс? Нажми ещё раз'; setTimeout(() => { resetArmed = false; if (btn.isConnected) btn.textContent = 'Начать заново'; }, 3000); return; }
+  resetArmed = false; S = newState(); startDay();
+}
 
 // ================== МЕЛОЧИ ==================
 let toastT;
