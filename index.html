@@ -19,8 +19,12 @@
   #hud { position: absolute; top: 0; left: 0; right: 0; padding: 8px 10px; pointer-events: none; }
   .hudrow { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 700; }
   .pill { background: rgba(255,248,231,.92); border-radius: 999px; padding: 4px 10px; font-size: 15px; white-space: nowrap; box-shadow: 0 2px 0 rgba(0,0,0,.15); }
-  #timebar { height: 6px; border-radius: 3px; background: rgba(0,0,0,.2); margin-top: 6px; overflow: hidden; }
-  #timefill { height: 100%; width: 0; background: var(--accent); }
+  #sunbox { position: relative; width: 132px; height: 52px; border-radius: 14px; overflow: hidden; pointer-events: auto;
+            box-shadow: 0 2px 0 rgba(0,0,0,.15); transition: background 1.5s; background: #9fd8ff; cursor: default; }
+  #sunbox svg { position: absolute; inset: 0; }
+  #sunIcon { position: absolute; font-size: 18px; line-height: 1; transform: translate(-50%, -50%); transition: left .5s linear, top .5s linear; }
+  #phase { position: absolute; left: 0; right: 0; bottom: 2px; text-align: center; font-size: 11px; font-weight: 800; color: #3b2a1a; letter-spacing: .02em; }
+  #sunbox.dark #phase { color: #e8ecff; }
 
   #bottom { background: var(--panel); border-top: 3px solid var(--line); padding: 6px 8px 8px; }
   #inv { display: flex; gap: 6px; flex-wrap: wrap; font-size: 14px; font-weight: 700; min-height: 22px; margin-bottom: 6px; }
@@ -63,10 +67,13 @@
     <div id="hud">
       <div class="hudrow">
         <span class="pill" id="day">День 1</span>
-        <span class="pill" id="clock">☀️ 06:00</span>
+        <div id="sunbox" title="Время суток">
+          <svg viewBox="0 0 132 52" width="132" height="52"><path d="M14 40 A52 26 0 0 1 118 40" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="2" stroke-dasharray="3 4"/>
+            <line x1="6" y1="40" x2="126" y2="40" stroke="rgba(60,40,20,.35)" stroke-width="1.5"/></svg>
+          <span id="sunIcon">☀️</span><span id="phase">Рассвет</span>
+        </div>
         <span class="pill" id="coins">💰 0</span>
       </div>
-      <div id="timebar"><div id="timefill"></div></div>
     </div>
   </div>
 
@@ -96,7 +103,7 @@ const CROPS = [
 ];
 const CROP = Object.fromEntries(CROPS.map(c => [c.id, c]));
 
-const DAY_LEN = 90;       // секунд реального времени на день
+const DAY_LEN = 180;      // секунд реального времени на день
 const MAX_QUEUE = 5;
 const SPEED = 3.2;        // клеток в секунду
 
@@ -105,6 +112,7 @@ const UPGRADES = {
   ads:    { name: 'Реклама',           ico: '📣', desc: l => `+2 покупателя в день`,           cost: l => 30 + l*35,           max: 10 },
   fert:   { name: 'Удобрения',         ico: '🧪', desc: l => `Рост быстрее (+${l*20}% → +${(l+1)*20}%)`, cost: l => 50 + l*60, max: 5 },
   sign:   { name: 'Красивая вывеска',  ico: '🪧', desc: l => `Цены выше (+${l*10}% → +${(l+1)*10}%)`, cost: l => 60 + l*70, max: 6 },
+  helper: { name: 'Помощник',         ico: '🧑‍🌾', desc: l => `Сам собирает урожай и сажает ту же культуру заново (помощников: ${l} → ${l+1})`, cost: l => [120, 280, 520][l], max: 3 },
   bench:  { name: 'Скамейка',          ico: '🪑', desc: l => `Покупатели ждут дольше (+5 сек)`, cost: l => 25 + l*30, max: 5 },
 };
 
@@ -155,7 +163,7 @@ function newState() {
     day: 1, t: 0, night: false, coins: 30,
     plots: Array.from({ length: 8 }, () => ({ crop: null, prog: 0 })),
     inv: {}, unlocked: ['wheat'], sel: 'wheat',
-    up: { land: 0, ads: 0, fert: 0, sign: 0, bench: 0 },
+    up: { land: 0, ads: 0, fert: 0, sign: 0, bench: 0, helper: 0 },
     spawned: 0, toSpawn: 0,
     stats: { earned: 0, served: 0, missed: 0 },
     player: { x: 5.5, y: 8.5 },
@@ -165,6 +173,8 @@ let S;
 try { S = JSON.parse(localStorage.getItem(SAVE_KEY)) || newState(); } catch { S = newState(); }
 delete S.queue;
 if (!S.stats) S.stats = { earned: 0, served: 0, missed: 0 };
+S.up.helper ??= 0;
+S.started ??= S.night || S.t > 0;
 if (!S.player || blocked[Math.floor(S.player.y)]?.[Math.floor(S.player.x)] !== false) S.player = { x: 5.5, y: 8.5 };
 function save() { S.player = { x: P.x, y: P.y }; try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch {} }
 
@@ -186,8 +196,16 @@ function startDay() {
   S.toSpawn = visitorsPerDay();
   S.stats = { earned: 0, served: 0, missed: 0 };
   closeNight();
-  toast(`☀️ День ${S.day}. Ждём ${S.toSpawn} покупателей`);
+  // если всё уже засеяно ещё ночью — сажать нечего, день начинается сразу
+  S.started = !S.plots.some(p => !p.crop || p.prog >= 1);
+  toast(S.started ? `☀️ День ${S.day}. Ждём ${S.toSpawn} покупателей` : '🌅 Рассвет. Посади семечко (или нажми на солнце) — и день начнётся');
   save(); renderUI();
+}
+
+function beginClock() {
+  if (S.night || S.started) return;
+  S.started = true;
+  toast(`☀️ День ${S.day} начался. Ждём ${S.toSpawn} покупателей`);
 }
 
 function endDay() {
@@ -268,6 +286,7 @@ function plotAct(i, mode) {
     if (S.coins < c.seed) { toast('Не хватает монет на семена'); return; }
     S.coins -= c.seed; p.crop = c.id; p.prog = 0;
   } else return;
+  beginClock();
   save(); renderUI();
 }
 
@@ -294,6 +313,7 @@ function buyUpgrade(key) {
   const u = UPGRADES[key], l = S.up[key], cost = u.cost(l);
   if (l >= u.max || S.coins < cost) return;
   S.coins -= cost; S.up[key]++;
+  if (key === 'helper') { syncHelpers(); toast('🧑‍🌾 Помощник вышел на работу'); }
   if (key === 'land') for (let k = 0; k < 4 && S.plots.length < MAX_PLOTS; k++) S.plots.push({ crop: null, prog: 0 });
   save(); renderUI(); openNight(false);
 }
@@ -372,13 +392,69 @@ function updateVisitors(dt) {
   visitors = visitors.filter(v => !(v.state === 'leaving' && v.x < -1.5));
 }
 
+// ---------- Помощники ----------
+const HELPER_LOOKS = [
+  { shirt: '#4caf6a', shirtDark: '#3a8a52', pants: '#6b4a2e', skin: '#d9a37a', hair: '#2b1d14', hat: 'cap', capColor: '#2f7d46' },
+  { shirt: '#f0b429', shirtDark: '#c99418', pants: '#3b4a6b', skin: '#f6d5b8', hair: '#c9a15a', hat: 'cap', capColor: '#e0554a' },
+  { shirt: '#9b7be0', shirtDark: '#7c60bd', pants: '#2f2f3a', skin: '#a8714a', hair: '#111111', hat: 'straw' },
+];
+const HOME = { x: 3, y: 4 };   // у двери дома
+let helpers = [];
+function syncHelpers() {
+  while (helpers.length < S.up.helper) {
+    const i = helpers.length;
+    helpers.push({ x: HOME.x + .5 + i * .3, y: HOME.y + .5, path: [], target: null, phase: 0, moving: false, flip: false, work: 0, think: 0, look: HELPER_LOOKS[i % 3] });
+  }
+}
+function updateHelper(h, dt) {
+  if (h.work > 0) { h.work -= dt; h.moving = false; return; }
+  if (h.path.length) {
+    const [tx, ty] = h.path[0];
+    if (stepToward(h, tx + .5, ty + .5, 2.4, dt)) h.path.shift();
+    h.moving = true; h.phase += dt * 12; return;
+  }
+  h.moving = false;
+  if (h.target !== null) {                 // дошёл до грядки
+    const i = h.target, p = S.plots[i], s = PLOT_SLOTS[i];
+    h.target = null;
+    if (p && p.crop && p.prog >= 1) {
+      const crop = p.crop;
+      S.inv[crop] = (S.inv[crop] || 0) + 1;
+      addFloat(s.x + .5, s.y + .5, `+1 ${CROP[crop].e}`);
+      p.crop = null; p.prog = 0;
+      if (S.coins >= CROP[crop].seed) { S.coins -= CROP[crop].seed; p.crop = crop; }
+      h.work = 0.45;
+      save(); renderUI();
+    }
+    return;
+  }
+  if ((h.think -= dt) > 0) return;
+  h.think = 0.5;
+  const hx = Math.floor(h.x), hy = Math.floor(h.y);
+  const claimed = new Set(helpers.map(o => o.target));
+  if (tasks[0]) claimed.add(slotAt(tasks[0].x, tasks[0].y));
+  let best = -1, bd = 1e9;
+  if (!S.night) S.plots.forEach((p, i) => {
+    if (!p.crop || p.prog < 1 || claimed.has(i)) return;
+    const d = Math.abs(PLOT_SLOTS[i].x - hx) + Math.abs(PLOT_SLOTS[i].y - hy);
+    if (d < bd) { bd = d; best = i; }
+  });
+  if (best >= 0) {
+    const pth = findPath(hx, hy, PLOT_SLOTS[best].x, PLOT_SLOTS[best].y);
+    if (pth) { h.path = pth; h.target = best; }
+  } else if (S.night && (hx !== HOME.x || hy !== HOME.y)) {
+    h.path = findPath(hx, hy, HOME.x, HOME.y) || [];
+  }
+}
+
 // ================== ЦИКЛ ==================
 let last = performance.now(), saveAcc = 0;
 function tick(now) {
   const dt = Math.min(0.1, Math.max(0, (now - last) / 1000)); last = now;
   updatePlayer(dt);
   updateVisitors(dt);
-  if (!S.night) {
+  helpers.forEach(h => updateHelper(h, dt));
+  if (!S.night && S.started) {
     S.t += dt;
     for (const p of S.plots) if (p.crop && p.prog < 1) p.prog = Math.min(1, p.prog + dt * growMult() / CROP[p.crop].grow);
     const due = Math.floor(S.toSpawn * Math.min(1, S.t / (DAY_LEN * 0.85)));
@@ -497,6 +573,7 @@ function draw(t) {
   for (const d of decor) list.push({ z: d.z, f: () => d.kind === 'tree' ? drawTree(d) : d.kind === 'house' ? drawHouse() : drawStall() });
   S.plots.forEach((p, i) => { if (p.crop) { const s = PLOT_SLOTS[i]; list.push({ z: s.x + s.y + 1, f: () => drawCrop(i, t) }); } });
   list.push({ z: P.x + P.y + 0.01, f: () => drawPerson(P, PLAYER_LOOK) });
+  for (const h of helpers) list.push({ z: h.x + h.y, f: () => drawPerson(h, h.look) });
   for (const v of visitors) list.push({ z: v.x + v.y, f: () => drawPerson(v, v.look) });
   list.sort((a, b) => a.z - b.z).forEach(o => o.f());
 
@@ -701,6 +778,8 @@ function drawLighting() {
       ctx.fillStyle = g; ctx.fillRect(p.x - r, p.y - r, r * 2, r * 2);
     }
     ctx.globalCompositeOperation = 'source-over';
+  } else if (!S.started) {
+    ctx.fillStyle = 'rgba(255,170,150,.12)'; ctx.fillRect(0, 0, cv.width, cv.height);
   } else if (frac > .72) {
     const k = (frac - .72) / .28;
     ctx.fillStyle = `rgba(255,110,40,${.18 * k})`; ctx.fillRect(0, 0, cv.width, cv.height);
@@ -709,15 +788,38 @@ function drawLighting() {
 }
 
 // ================== ИНТЕРФЕЙС ==================
+const PHASES = [   // [до какой доли дня, подпись, цвет неба]
+  [0.18, 'Утро', 'linear-gradient(#ffd6b8,#bfe6ff)'],
+  [0.45, 'Полдень', 'linear-gradient(#7fc8ff,#d4f0ff)'],
+  [0.72, 'День', 'linear-gradient(#8fd0ff,#e2f4ff)'],
+  [0.9, 'Вечер', 'linear-gradient(#ffb27a,#ffe0b0)'],
+  [1.01, 'Закат', 'linear-gradient(#e0705a,#ffb07a)'],
+];
+let hudSig = '';
 function renderHud() {
-  const frac = S.night ? 1 : S.t / DAY_LEN;
-  const mins = 6 * 60 + Math.floor(frac * 15 * 60);   // 06:00 → 21:00
-  $('clock').textContent = S.night ? '🌙 Ночь' : `${frac > .72 ? '🌇' : '☀️'} ${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
-  $('timefill').style.width = (frac * 100) + '%';
   $('coins').textContent = `💰 ${S.coins}`;
+  // солнце идёт по дуге: восход слева, полдень наверху, закат справа
+  const frac = S.night ? 1 : S.started ? Math.min(1, S.t / DAY_LEN) : 0;
+  const step = Math.round(frac * 60);   // обновляем плавно, но без мельтешения
+  const sig = (S.night ? 'n' : S.started ? 'd' : 'r') + step;
+  if (sig === hudSig) return; hudSig = sig;
+  const box = $('sunbox'), icon = $('sunIcon');
+  let label, sky;
+  if (S.night) { label = 'Ночь'; sky = 'linear-gradient(#0d1b3d,#2b3a6b)'; }
+  else if (!S.started) { label = 'Рассвет'; sky = 'linear-gradient(#f7b8a8,#ffe3c4)'; }
+  else { [, label, sky] = PHASES.find(p => frac < p[0]); }
+  box.style.background = sky;
+  box.classList.toggle('dark', S.night);
+  $('phase').textContent = label;
+  if (S.night) { icon.textContent = '🌙'; icon.style.left = '66px'; icon.style.top = '18px'; return; }
+  const a = Math.PI * (1 - frac);
+  icon.textContent = '☀️';
+  icon.style.left = (66 + 52 * Math.cos(a)) + 'px';
+  icon.style.top = (40 - 26 * Math.sin(a)) + 'px';
 }
 
 function renderUI() {
+  hudSig = '';
   $('day').textContent = `День ${S.day}`;
   $('nightBtn').style.display = S.night ? '' : 'none';
   $('plantAll').style.display = S.night ? 'none' : '';
@@ -767,7 +869,7 @@ function morning() { S.day++; startDay(); }
 let resetArmed = false;
 function resetGame(btn) {
   if (!resetArmed) { resetArmed = true; btn.textContent = 'Точно стереть прогресс? Нажми ещё раз'; setTimeout(() => { resetArmed = false; if (btn.isConnected) btn.textContent = 'Начать заново'; }, 3000); return; }
-  resetArmed = false; S = newState(); P.x = S.player.x; P.y = S.player.y; visitors = []; setTasks([]); startDay();
+  resetArmed = false; S = newState(); P.x = S.player.x; P.y = S.player.y; visitors = []; helpers = []; setTasks([]); startDay();
 }
 
 let toastT;
@@ -788,9 +890,11 @@ $('plantAll').onclick = () => {
   setTasks(routeThrough(list).slice(0, can));
 };
 $('nightBtn').onclick = () => openNight(false);
+$('sunbox').onclick = () => { if (!S.night && !S.started) beginClock(); else if (!S.night) toast(`Покупателей сегодня: ${S.spawned} из ${S.toSpawn}`); };
 $('overlay').onclick = e => { if (e.target.id === 'overlay') closeNight(); };
 
 // ================== СТАРТ ==================
+syncHelpers();
 new ResizeObserver(resize).observe($('stage'));
 resize();
 { const a = iso(3, 11), b = iso(10, 4); cam.x = (a.x + b.x) / 2; cam.y = (a.y + b.y) / 2 - 10; clampCam(); }   // поле и лавка в кадре
