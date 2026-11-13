@@ -95,6 +95,8 @@
 <script>
 // ================== ДАННЫЕ ==================
 const CROPS = [
+  // бесплатная культура: всегда можно что-то посадить, даже без денег
+  { id: 'sunflower',  name: 'Подсолнух', e: '🌻', seed: 0, grow: 6,  price: 2,  unlockCost: 0,   unlockDay: 1 },
   { id: 'wheat',      name: 'Пшеница',  e: '🌾', seed: 2,  grow: 8,  price: 5,  unlockCost: 0,   unlockDay: 1 },
   { id: 'carrot',     name: 'Морковь',  e: '🥕', seed: 4,  grow: 12, price: 10, unlockCost: 30,  unlockDay: 2 },
   { id: 'tomato',     name: 'Помидор',  e: '🍅', seed: 6,  grow: 16, price: 16, unlockCost: 80,  unlockDay: 3 },
@@ -163,7 +165,7 @@ function newState() {
   return {
     day: 1, t: 0, night: false, coins: 30,
     plots: Array.from({ length: 8 }, () => ({ crop: null, prog: 0 })),
-    inv: {}, unlocked: ['wheat'], sel: 'wheat',
+    inv: {}, unlocked: ['sunflower', 'wheat'], sel: 'wheat',
     up: { land: 0, ads: 0, fert: 0, sign: 0, bench: 0, helper: 0 },
     spawned: 0, toSpawn: 0,
     stats: { earned: 0, served: 0, missed: 0 },
@@ -177,6 +179,7 @@ delete S.queue;
 if (!S.stats) S.stats = { earned: 0, served: 0, missed: 0 };
 S.up.helper ??= 0;
 S.helperMode ??= 'harvest';
+if (!S.unlocked.includes('sunflower')) S.unlocked.unshift('sunflower');
 S.started ??= S.night || S.t > 0;
 if (!S.player || blocked[Math.floor(S.player.y)]?.[Math.floor(S.player.x)] !== false) S.player = { x: 5.5, y: 8.5 };
 function save() { S.player = { x: P.x, y: P.y }; try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch {} }
@@ -205,12 +208,9 @@ function startDay() {
   save(); renderUI();
 }
 
-// День стартует сам, если ждать посадки бессмысленно:
-// на грядках уже что-то растёт или денег не хватает даже на самые дешёвые семена.
+// День стартует сам, если на грядках уже что-то растёт (иначе — с первой посадки)
 function shouldAutoStart() {
-  const growing = S.plots.some(p => p.crop && p.prog < 1);
-  const cheapest = Math.min(...S.unlocked.map(id => CROP[id].seed));
-  return growing || S.coins < cheapest;
+  return S.plots.some(p => p.crop && p.prog < 1);
 }
 
 function beginClock() {
@@ -235,7 +235,8 @@ const pick = a => a[Math.floor(Math.random() * a.length)];
 const darken = (hex, k) => '#' + [1,3,5].map(i => Math.round(parseInt(hex.substr(i,2),16) * k).toString(16).padStart(2,'0')).join('');
 
 function spawnVisitor() {
-  const pool = S.unlocked.flatMap((id, i) => Array(S.unlocked.length - i + 1).fill(id));   // дешёвое спрашивают чаще
+  const paid = S.unlocked.filter(id => CROP[id].seed > 0);
+  const pool = ['sunflower', ...paid.flatMap((id, i) => Array(paid.length - i + 1).fill(id))];   // дешёвое спрашивают чаще, подсолнух — изредка
   const crop = pick(pool);
   const base = CROP[crop].price;
   const qty = 1 + Math.floor(Math.random() * (base < 15 ? 4 : base < 40 ? 3 : 2));
@@ -294,7 +295,7 @@ function plotAct(i, mode) {
     p.crop = null; p.prog = 0;
   } else if (!p.crop && mode !== 'harvest') {
     const c = CROP[S.sel];
-    if (S.coins < c.seed) { toast('Не хватает монет на семена'); return; }
+    if (S.coins < c.seed) { toast('Не хватает монет — посади бесплатный подсолнух 🌻'); return; }
     S.coins -= c.seed; p.crop = c.id; p.prog = 0;
   } else return;
   beginClock();
@@ -305,7 +306,7 @@ function tapPlot(i) {
   if (i >= S.plots.length) { toast('🚜 Расширь участок ночью'); return; }
   const p = S.plots[i], s = PLOT_SLOTS[i];
   if (p.crop && p.prog < 1) { toast(`${CROP[p.crop].e} растёт… ${Math.floor(p.prog * 100)}%`); return; }
-  if (!p.crop && S.coins < CROP[S.sel].seed) { toast('Не хватает монет на семена'); return; }
+  if (!p.crop && S.coins < CROP[S.sel].seed) { toast('Не хватает монет — посади бесплатный подсолнух 🌻'); return; }
   setTasks([{ x: s.x, y: s.y, fn: () => plotAct(i) }]);
 }
 
@@ -849,7 +850,7 @@ function renderUI() {
   for (const id of S.unlocked) {
     const c = CROP[id], d = document.createElement('div');
     d.className = 'seed' + (S.sel === id ? ' sel' : '') + (S.coins < c.seed ? ' dis' : '');
-    d.innerHTML = `<div class="e">${c.e}</div><div class="c">🌰${c.seed} → ${sellPrice(id)}💰</div><div class="c">⏱${Math.round(c.grow / growMult())}с</div>`;
+    d.innerHTML = `<div class="e">${c.e}</div><div class="c">${c.seed ? '🌰' + c.seed : 'даром'} → ${sellPrice(id)}💰</div><div class="c">⏱${Math.round(c.grow / growMult())}с</div>`;
     d.onclick = () => { S.sel = id; renderUI(); };
     s.appendChild(d);
   }
@@ -902,11 +903,11 @@ $('harvestAll').onclick = () => {
   setTasks(routeThrough(list));
 };
 $('plantAll').onclick = () => {
-  const c = CROP[S.sel], can = Math.floor(S.coins / c.seed);
+  const c = CROP[S.sel], can = c.seed ? Math.floor(S.coins / c.seed) : Infinity;
   const list = [];
   S.plots.forEach((p, i) => { if (!p.crop) list.push({ x: PLOT_SLOTS[i].x, y: PLOT_SLOTS[i].y, fn: () => plotAct(i, 'plant') }); });
   if (!list.length) { toast('Свободных грядок нет'); return; }
-  if (!can) { toast('Не хватает монет на семена'); return; }
+  if (!can) { toast('Не хватает монет — посади бесплатный подсолнух 🌻'); return; }
   setTasks(routeThrough(list).slice(0, can));
 };
 $('nightBtn').onclick = () => openNight(false);
