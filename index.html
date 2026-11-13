@@ -112,7 +112,7 @@ const SPEED = 3.2;        // клеток в секунду
 
 const UPGRADES = {
   land:   { name: 'Расширить участок', ico: '🚜', desc: l => `+4 грядки (сейчас ${8 + l*4})`, cost: l => 40 + l*l*40 + l*30, max: 4 },
-  ads:    { name: 'Реклама',           ico: '📣', desc: l => `+2 покупателя в день`,           cost: l => 30 + l*35,           max: 10 },
+  ads:    { name: 'Реклама',           ico: '📣', desc: l => `+3 покупателя в день`,           cost: l => 30 + l*35,           max: 10 },
   fert:   { name: 'Удобрения',         ico: '🧪', desc: l => `Рост быстрее (+${l*20}% → +${(l+1)*20}%)`, cost: l => 50 + l*60, max: 5 },
   sign:   { name: 'Красивая вывеска',  ico: '🪧', desc: l => `Цены выше (+${l*10}% → +${(l+1)*10}%)`, cost: l => 60 + l*70, max: 6 },
   helper: { name: 'Помощник',         ico: '🧑‍🌾', desc: l => `Собирает урожай, по команде пересаживает (помощников: ${l} → ${l+1})`, cost: l => [120, 280, 520][l], max: 3 },
@@ -191,10 +191,10 @@ let tasks = [], path = [];
 let floats = [];
 
 // ================== ПРАВИЛА ==================
-const visitorsPerDay = (d = S.day) => 4 + S.up.ads * 2 + Math.floor(d / 2);
+const visitorsPerDay = (d = S.day) => 10 + d + S.up.ads * 3;   // день 1 → 11 покупателей (~1 каждые 14 сек)
 const growMult = () => 1 + S.up.fert * 0.2;
 const priceMult = () => 1 + S.up.sign * 0.1;
-const patience = () => 22 + S.up.bench * 5;
+const patience = () => 30 + S.up.bench * 5;
 const sellPrice = c => Math.round(CROP[c].price * priceMult());
 
 function startDay() {
@@ -476,7 +476,8 @@ function tick(now) {
   if (!S.night && S.started) {
     S.t += dt;
     for (const p of S.plots) if (p.crop && p.prog < 1) p.prog = Math.min(1, p.prog + dt * growMult() / CROP[p.crop].grow);
-    const due = Math.floor(S.toSpawn * Math.min(1, S.t / (DAY_LEN * 0.85)));
+    // первый покупатель — почти сразу, остальные равномерно в первые 85% дня
+    const due = Math.min(S.toSpawn, Math.floor(S.toSpawn * Math.min(1, S.t / (DAY_LEN * 0.85))) + (S.t > 3 ? 1 : 0));
     while (S.spawned < due) {
       if (queueCount() >= MAX_QUEUE) { S.spawned++; S.stats.missed++; toast('😤 Очередь полная, покупатель ушёл'); }
       else spawnVisitor();
@@ -926,6 +927,7 @@ new ResizeObserver(resize).observe($('stage'));
 resize();
 { const a = iso(3, 11), b = iso(10, 4); cam.x = (a.x + b.x) / 2; cam.y = (a.y + b.y) / 2 - 10; clampCam(); }   // поле и лавка в кадре
 if (S.toSpawn === 0 && !S.night) startDay(); else renderUI();
+if (!S.night) S.toSpawn = Math.max(S.toSpawn, visitorsPerDay());   // старые сохранения получают новый поток покупателей сразу
 if (S.night) openNight(false);
 requestAnimationFrame(tick);
 </script>
