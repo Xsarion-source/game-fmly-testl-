@@ -3,119 +3,79 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#6bbf59">
-<title>Ферма</title>
+<meta name="theme-color" content="#5a9e4b">
+<title>Солнечная ферма</title>
 <style>
   :root {
-    --sky-top: #8fd3ff; --sky-bot: #d8f1ff;
-    --grass: #6bbf59; --soil: #8a5a36; --soil-wet: #6e4426;
-    --panel: #fff8e7; --ink: #3b2a1a; --accent: #f4a92b; --good: #3e9b3a; --bad: #d9534f;
+    --panel: #fff8e7; --ink: #3b2a1a; --accent: #f4a92b; --good: #3e9b3a; --bad: #d9534f; --line: #e2d3b0;
   }
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
-  html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink); }
-  body { background: var(--grass); overflow: hidden; }
-  #app { display: flex; flex-direction: column; height: 100%; max-width: 520px; margin: 0 auto;
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+  html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink); background: #4e8c41; overflow: hidden; }
+  #app { display: flex; flex-direction: column; height: 100%; max-width: 640px; margin: 0 auto; background: #4e8c41;
          padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
 
-  /* --- HUD --- */
-  #sky { position: relative; padding: 10px 12px 8px; transition: background 1s;
-         background: linear-gradient(var(--sky-top), var(--sky-bot)); }
-  #hud { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 700; }
-  .pill { background: rgba(255,255,255,.85); border-radius: 999px; padding: 4px 10px; font-size: 15px; white-space: nowrap; }
-  #timebar { height: 8px; border-radius: 4px; background: rgba(0,0,0,.15); margin-top: 8px; overflow: hidden; }
-  #timefill { height: 100%; width: 0; background: var(--accent); transition: width .2s linear; }
-  #sun { position: absolute; top: 34px; font-size: 22px; transition: left .2s linear; pointer-events: none; }
+  #stage { flex: 1; position: relative; min-height: 0; overflow: hidden; }
+  #cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #hud { position: absolute; top: 0; left: 0; right: 0; padding: 8px 10px; pointer-events: none; }
+  .hudrow { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 700; }
+  .pill { background: rgba(255,248,231,.92); border-radius: 999px; padding: 4px 10px; font-size: 15px; white-space: nowrap; box-shadow: 0 2px 0 rgba(0,0,0,.15); }
+  #timebar { height: 6px; border-radius: 3px; background: rgba(0,0,0,.2); margin-top: 6px; overflow: hidden; }
+  #timefill { height: 100%; width: 0; background: var(--accent); }
 
-  /* --- Stall / visitors --- */
-  #stall { background: #c98b4f; border-bottom: 6px solid #8f5b2b; padding: 6px 8px; min-height: 104px; }
-  #stall h3 { margin: 0 0 4px; font-size: 13px; color: #fff3dc; font-weight: 600; }
-  #queue { display: flex; gap: 6px; overflow-x: auto; min-height: 76px; }
-  .visitor { flex: 0 0 auto; width: 78px; background: var(--panel); border-radius: 10px; padding: 4px; text-align: center;
-             box-shadow: 0 2px 0 rgba(0,0,0,.2); animation: pop .25s; cursor: pointer; }
-  .visitor .face { font-size: 26px; line-height: 1; }
-  .visitor .want { font-size: 14px; font-weight: 700; }
-  .visitor .pat { height: 4px; background: #eee; border-radius: 2px; margin-top: 3px; overflow: hidden; }
-  .visitor .pat > div { height: 100%; background: var(--good); }
-  .visitor.ok { outline: 3px solid var(--good); }
-  .empty-note { color: #fff3dc; font-size: 13px; align-self: center; opacity: .9; }
-
-  /* --- Field --- */
-  #fieldwrap { flex: 1; overflow-y: auto; padding: 10px; }
-  #field { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-  .plot { aspect-ratio: 1; border-radius: 10px; background: var(--soil); position: relative; display: flex;
-          align-items: center; justify-content: center; font-size: 30px; box-shadow: inset 0 -4px 0 rgba(0,0,0,.25); cursor: pointer; }
-  .plot.growing { background: var(--soil-wet); }
-  .plot.ready { animation: bob 1s infinite; box-shadow: inset 0 -4px 0 rgba(0,0,0,.25), 0 0 0 3px #ffe066; }
-  .plot .prog { position: absolute; left: 6px; right: 6px; bottom: 5px; height: 5px; background: rgba(0,0,0,.3); border-radius: 3px; overflow: hidden; }
-  .plot .prog > div { height: 100%; background: #9be15d; }
-  .plot.locked { background: rgba(0,0,0,.12); box-shadow: none; font-size: 20px; opacity: .7; }
-
-  /* --- Bottom bars --- */
-  #bottom { background: var(--panel); border-top: 3px solid #e2d3b0; padding: 6px 8px 8px; }
+  #bottom { background: var(--panel); border-top: 3px solid var(--line); padding: 6px 8px 8px; }
   #inv { display: flex; gap: 6px; flex-wrap: wrap; font-size: 14px; font-weight: 700; min-height: 22px; margin-bottom: 6px; }
   #inv span { background: #f0e5cb; border-radius: 6px; padding: 2px 6px; }
   #seeds { display: flex; gap: 6px; overflow-x: auto; }
-  .seed { flex: 0 0 auto; border: 2px solid #e2d3b0; background: #fff; border-radius: 10px; padding: 4px 8px; text-align: center; min-width: 64px; cursor: pointer; }
-  .seed .e { font-size: 24px; }
-  .seed .c { font-size: 12px; }
+  .seed { flex: 0 0 auto; border: 2px solid var(--line); background: #fff; border-radius: 10px; padding: 3px 8px; text-align: center; min-width: 64px; cursor: pointer; }
+  .seed .e { font-size: 22px; }
+  .seed .c { font-size: 11px; }
   .seed.sel { border-color: var(--accent); background: #fff1d1; }
   .seed.dis { opacity: .4; }
   .row { display: flex; gap: 6px; margin-top: 6px; }
-  button { font: inherit; font-weight: 700; border: none; border-radius: 10px; padding: 10px 12px; background: var(--accent); color: #3b2a1a; cursor: pointer; }
+  button { font: inherit; font-weight: 700; border: none; border-radius: 10px; padding: 10px 8px; background: var(--accent); color: var(--ink); cursor: pointer; }
   button:disabled { opacity: .45; }
   button.wide { flex: 1; }
+  button.alt { background: #e9dcbc; }
 
-  /* --- Night --- */
-  body.night #sky { --sky-top: #0d1b3d; --sky-bot: #2b3a6b; }
-  body.night { background: #3d6b38; }
-  body.night .pill { background: rgba(255,255,255,.75); }
   #overlay { position: fixed; inset: 0; background: rgba(10,15,35,.55); display: none; align-items: flex-end; justify-content: center; z-index: 10; }
   #overlay.show { display: flex; }
-  #sheet { width: 100%; max-width: 520px; max-height: 86%; overflow-y: auto; background: var(--panel); border-radius: 18px 18px 0 0;
+  #sheet { width: 100%; max-width: 640px; max-height: 86%; overflow-y: auto; background: var(--panel); border-radius: 18px 18px 0 0;
            padding: 14px 14px calc(14px + env(safe-area-inset-bottom)); animation: up .3s; }
   #sheet h2 { margin: 0 0 6px; font-size: 20px; }
   .summary { background: #f0e5cb; border-radius: 10px; padding: 8px 10px; font-size: 14px; margin-bottom: 10px; line-height: 1.5; }
-  .up { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px dashed #e2d3b0; }
+  .up { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px dashed var(--line); }
   .up .ico { font-size: 28px; width: 36px; text-align: center; }
   .up .txt { flex: 1; font-size: 14px; }
   .up .txt b { display: block; font-size: 15px; }
   .up .txt small { color: #7a6650; }
   .up button { min-width: 78px; padding: 8px; }
 
-  #toast { position: fixed; left: 50%; top: 18%; transform: translateX(-50%); background: rgba(40,30,20,.9); color: #fff;
+  #toast { position: fixed; left: 50%; top: 22%; transform: translateX(-50%); background: rgba(40,30,20,.9); color: #fff;
            padding: 8px 14px; border-radius: 999px; font-size: 14px; font-weight: 700; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 20; white-space: nowrap; }
   #toast.show { opacity: 1; }
-  .float { position: fixed; font-weight: 800; color: #ffe066; text-shadow: 0 1px 2px #000; pointer-events: none; animation: float 1s forwards; z-index: 30; }
-
-  @keyframes pop { from { transform: scale(.6); opacity: 0 } to { transform: scale(1); opacity: 1 } }
-  @keyframes bob { 50% { transform: translateY(-3px) } }
   @keyframes up { from { transform: translateY(100%) } to { transform: none } }
-  @keyframes float { to { transform: translateY(-40px); opacity: 0 } }
 </style>
 </head>
 <body>
 <div id="app">
-  <div id="sky">
+  <div id="stage">
+    <canvas id="cv"></canvas>
     <div id="hud">
-      <span class="pill" id="day">День 1</span>
-      <span class="pill" id="clock">☀️ 06:00</span>
-      <span class="pill" id="coins">💰 0</span>
+      <div class="hudrow">
+        <span class="pill" id="day">День 1</span>
+        <span class="pill" id="clock">☀️ 06:00</span>
+        <span class="pill" id="coins">💰 0</span>
+      </div>
+      <div id="timebar"><div id="timefill"></div></div>
     </div>
-    <div id="timebar"><div id="timefill"></div></div>
   </div>
-
-  <div id="stall">
-    <h3 id="stallTitle">🏪 Прилавок — нажми на покупателя, чтобы продать</h3>
-    <div id="queue"></div>
-  </div>
-
-  <div id="fieldwrap"><div id="field"></div></div>
 
   <div id="bottom">
     <div id="inv"></div>
     <div id="seeds"></div>
     <div class="row">
       <button class="wide" id="harvestAll">🧺 Собрать всё</button>
+      <button class="wide alt" id="plantAll">🌱 Засеять всё</button>
       <button class="wide" id="nightBtn" style="display:none">🌙 Улучшения</button>
     </div>
   </div>
@@ -135,19 +95,58 @@ const CROPS = [
   { id: 'pumpkin',    name: 'Тыква',    e: '🎃', seed: 25, grow: 40, price: 70, unlockCost: 600, unlockDay: 10 },
 ];
 const CROP = Object.fromEntries(CROPS.map(c => [c.id, c]));
-const FACES = ['👩','👨','👵','👴','🧑','👧','👦','🧔','👩‍🦰','👨‍🦱','🧕','👲'];
 
 const DAY_LEN = 90;       // секунд реального времени на день
-const MAX_PLOTS = 24;
 const MAX_QUEUE = 5;
+const SPEED = 3.2;        // клеток в секунду
 
 const UPGRADES = {
-  land:   { name: 'Расширить участок', ico: '🚜', desc: l => `+4 грядки (сейчас ${8 + l*4})`, cost: l => 40 + l*l*40 + l*30, max: (MAX_PLOTS-8)/4 },
+  land:   { name: 'Расширить участок', ico: '🚜', desc: l => `+4 грядки (сейчас ${8 + l*4})`, cost: l => 40 + l*l*40 + l*30, max: 4 },
   ads:    { name: 'Реклама',           ico: '📣', desc: l => `+2 покупателя в день`,           cost: l => 30 + l*35,           max: 10 },
   fert:   { name: 'Удобрения',         ico: '🧪', desc: l => `Рост быстрее (+${l*20}% → +${(l+1)*20}%)`, cost: l => 50 + l*60, max: 5 },
   sign:   { name: 'Красивая вывеска',  ico: '🪧', desc: l => `Цены выше (+${l*10}% → +${(l+1)*10}%)`, cost: l => 60 + l*70, max: 6 },
   bench:  { name: 'Скамейка',          ico: '🪑', desc: l => `Покупатели ждут дольше (+5 сек)`, cost: l => 25 + l*30, max: 5 },
 };
+
+// ================== КАРТА ==================
+// Изометрия: клетка (x, y) → экран ((x−y)·TW/2, (x+y)·TH/2)
+const TW = 64, TH = 32, W = 14, H = 14;
+const ground = Array.from({ length: H }, () => Array(W).fill('g'));
+const blocked = Array.from({ length: H }, () => Array(W).fill(false));
+const decor = [];
+
+for (let x = 0; x < W; x++) { ground[12][x] = 'r'; ground[13][x] = 'r'; }   // дорога
+for (let y = 1; y <= 11; y++) ground[y][5] = 'p';                          // тропинки
+for (let x = 6; x <= 12; x++) ground[7][x] = 'p';
+for (let x = 2; x <= 8; x++) ground[11][x] = 'p';                          // площадка у лавки
+for (const [x, y] of [[10,9],[11,9],[10,10],[11,10]]) { ground[y][x] = 'w'; blocked[y][x] = true; }  // пруд
+
+// 24 места под грядки: открываются блоками по 4
+const PLOT_SLOTS = [];
+for (const [xs, ys] of [[[6,7,8,9],[2,3]], [[6,7,8,9],[4]], [[6,7,8,9],[5]], [[10,11],[2,3]], [[10,11],[4,5]]])
+  for (const y of ys) for (const x of xs) PLOT_SLOTS.push({ x, y });
+const MAX_PLOTS = PLOT_SLOTS.length;
+PLOT_SLOTS.forEach(s => ground[s.y][s.x] = 's');
+const slotAt = (x, y) => PLOT_SLOTS.findIndex(s => s.x === x && s.y === y);
+
+function addBox(kind, x, y, w, d) {
+  decor.push({ kind, x, y, w, d, z: x + w + y + d - 1.01 });
+  for (let i = x; i < x + w; i++) for (let j = y; j < y + d; j++) blocked[j][i] = true;
+}
+addBox('house', 2, 2, 2, 2);
+addBox('stall', 3, 10, 2, 1);
+const COUNTER = { x: 4, y: 9 };   // где стоит фермер за прилавком
+
+let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const treeSpots = [[1,6],[2,8],[8,10],[12,4],[3,6],[7,9]];
+for (let x = 0; x < W; x++) treeSpots.push([x, 0]);
+for (let y = 1; y <= 11; y++) treeSpots.push([0, y], [W-1, y]);
+for (const [x, y] of treeSpots) {
+  if (ground[y][x] !== 'g' || blocked[y][x]) continue;
+  decor.push({ kind: 'tree', x, y, s: 0.85 + rnd() * 0.35, z: x + y + 1 });
+  blocked[y][x] = true;
+}
+const tuft = Array.from({ length: H }, () => Array.from({ length: W }, () => rnd()));
 
 // ================== СОСТОЯНИЕ ==================
 const SAVE_KEY = 'farm-save-v1';
@@ -157,214 +156,590 @@ function newState() {
     plots: Array.from({ length: 8 }, () => ({ crop: null, prog: 0 })),
     inv: {}, unlocked: ['wheat'], sel: 'wheat',
     up: { land: 0, ads: 0, fert: 0, sign: 0, bench: 0 },
-    queue: [], spawned: 0, toSpawn: 0,
+    spawned: 0, toSpawn: 0,
     stats: { earned: 0, served: 0, missed: 0 },
+    player: { x: 5.5, y: 8.5 },
   };
 }
 let S;
 try { S = JSON.parse(localStorage.getItem(SAVE_KEY)) || newState(); } catch { S = newState(); }
+delete S.queue;
 if (!S.stats) S.stats = { earned: 0, served: 0, missed: 0 };
-function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch {} }
+if (!S.player || blocked[Math.floor(S.player.y)]?.[Math.floor(S.player.x)] !== false) S.player = { x: 5.5, y: 8.5 };
+function save() { S.player = { x: P.x, y: P.y }; try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch {} }
+
+const P = { x: S.player.x, y: S.player.y, phase: 0, moving: false, flip: false, work: 0 };
+const PLAYER_LOOK = { shirt: '#e8604c', shirtDark: '#c44d3b', pants: '#3f6fb5', skin: '#f2c49b', hair: '#7a4a2a', hat: 'straw', overalls: true };
+let visitors = [];
+let tasks = [], path = [];
+let floats = [];
 
 // ================== ПРАВИЛА ==================
-const visitorsPerDay = () => 4 + S.up.ads * 2 + Math.floor(S.day / 2);
+const visitorsPerDay = (d = S.day) => 4 + S.up.ads * 2 + Math.floor(d / 2);
 const growMult = () => 1 + S.up.fert * 0.2;
 const priceMult = () => 1 + S.up.sign * 0.1;
 const patience = () => 22 + S.up.bench * 5;
 const sellPrice = c => Math.round(CROP[c].price * priceMult());
 
 function startDay() {
-  S.night = false; S.t = 0; S.queue = []; S.spawned = 0;
+  S.night = false; S.t = 0; S.spawned = 0;
   S.toSpawn = visitorsPerDay();
   S.stats = { earned: 0, served: 0, missed: 0 };
-  document.getElementById('overlay').classList.remove('show');
+  closeNight();
   toast(`☀️ День ${S.day}. Ждём ${S.toSpawn} покупателей`);
-  save(); render();
+  save(); renderUI();
 }
 
 function endDay() {
-  S.stats.missed += S.queue.length + (S.toSpawn - S.spawned);
-  S.queue = []; S.night = true;
-  save(); render(); openNight(true);
+  const waiting = visitors.filter(v => v.state !== 'leaving');
+  S.stats.missed += waiting.length + (S.toSpawn - S.spawned);
+  waiting.forEach(v => leave(v, null));
+  S.night = true;
+  save(); renderUI(); openNight(true);
 }
+
+// ---------- Покупатели ----------
+const SHIRTS = ['#5b8def','#e07ab8','#f0b429','#6cc08b','#9b7be0','#ef7d57','#4fb6c4'];
+const SKINS = ['#f2c49b','#d9a37a','#a8714a','#7a4f33','#f6d5b8'];
+const HAIRS = ['#2b1d14','#6b3e1f','#c9a15a','#8a8a8a','#b5462f','#111111'];
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const darken = (hex, k) => '#' + [1,3,5].map(i => Math.round(parseInt(hex.substr(i,2),16) * k).toString(16).padStart(2,'0')).join('');
 
 function spawnVisitor() {
-  // Хотят то, что открыто; чаще — дешёвое
-  const pool = S.unlocked.flatMap((id, i) => Array(S.unlocked.length - i + 1).fill(id));
-  const crop = pool[Math.floor(Math.random() * pool.length)];
+  const pool = S.unlocked.flatMap((id, i) => Array(S.unlocked.length - i + 1).fill(id));   // дешёвое спрашивают чаще
+  const crop = pick(pool);
   const base = CROP[crop].price;
   const qty = 1 + Math.floor(Math.random() * (base < 15 ? 4 : base < 40 ? 3 : 2));
-  S.queue.push({ id: Math.random(), face: FACES[Math.floor(Math.random()*FACES.length)], crop, qty, pat: patience(), max: patience() });
+  const shirt = pick(SHIRTS);
+  visitors.push({
+    x: W + 1, y: 12.5, state: 'coming', crop, qty, pat: patience(), max: patience(), wps: [],
+    phase: Math.random() * 6, moving: true, flip: true, mood: null, moodT: 0,
+    look: { shirt, shirtDark: darken(shirt, .8), pants: pick(['#3b4a6b','#5a4632','#2f2f3a','#6b6b6b']), skin: pick(SKINS), hair: pick(HAIRS), hat: Math.random() < .3 ? 'cap' : null, capColor: pick(SHIRTS) },
+  });
   S.spawned++;
+  retarget();
 }
+function retarget() {
+  visitors.filter(v => v.state !== 'leaving').forEach((v, i) => {
+    v.slot = i;
+    const sx = 3 + i + 0.5;
+    v.wps = [{ x: sx, y: v.y }, { x: sx, y: 11.5 }];
+  });
+}
+function leave(v, mood) {
+  v.state = 'leaving'; v.mood = mood; v.moodT = 1.6;
+  v.wps = [{ x: v.x, y: 13.2 }, { x: -2, y: 13.2 }];
+  retarget();
+}
+const queueCount = () => visitors.filter(v => v.state !== 'leaving').length;
 
-function sell(v, el) {
+function sell(v) {
+  if (v.state !== 'waiting') { toast('Покупатель ещё подходит'); return; }
   const have = S.inv[v.crop] || 0;
   if (have < v.qty) { toast(`Нужно ${v.qty} ${CROP[v.crop].e}, есть ${have}`); return; }
   S.inv[v.crop] = have - v.qty;
-  // Чаевые за быстрое обслуживание
-  const tip = v.pat / v.max > 0.6 ? Math.ceil(v.qty * sellPrice(v.crop) * 0.2) : 0;
+  const tip = v.pat / v.max > 0.6 ? Math.ceil(v.qty * sellPrice(v.crop) * 0.2) : 0;   // чаевые за скорость
   const money = v.qty * sellPrice(v.crop) + tip;
   S.coins += money; S.stats.earned += money; S.stats.served++;
-  S.queue = S.queue.filter(q => q !== v);
-  floatText(el, `+${money}💰${tip ? ' 😊' : ''}`);
-  save(); render();
+  addFloat(v.x, v.y, `+${money}💰`);
+  leave(v, 'happy');
+  save(); renderUI();
 }
 
-function tapPlot(i, el) {
+function tapVisitor(v) {
+  if (v.state === 'leaving') return;
+  const have = S.inv[v.crop] || 0;
+  if (have < v.qty) { toast(`Нужно ${v.qty} ${CROP[v.crop].e}, на складе ${have}`); return; }
+  const atCounter = Math.hypot(P.x - COUNTER.x - .5, P.y - COUNTER.y - .5) < 0.2 && !path.length;
+  if (atCounter) sell(v);
+  else setTasks([{ x: COUNTER.x, y: COUNTER.y, fn: () => sell(v) }]);
+}
+
+// ---------- Грядки ----------
+function plotAct(i, mode) {
+  const p = S.plots[i], s = PLOT_SLOTS[i];
+  if (!p) return;
+  if (p.crop && p.prog >= 1 && mode !== 'plant') {
+    S.inv[p.crop] = (S.inv[p.crop] || 0) + 1;
+    addFloat(s.x + .5, s.y + .5, `+1 ${CROP[p.crop].e}`);
+    p.crop = null; p.prog = 0;
+  } else if (!p.crop && mode !== 'harvest') {
+    const c = CROP[S.sel];
+    if (S.coins < c.seed) { toast('Не хватает монет на семена'); return; }
+    S.coins -= c.seed; p.crop = c.id; p.prog = 0;
+  } else return;
+  save(); renderUI();
+}
+
+function tapPlot(i) {
   if (i >= S.plots.length) { toast('🚜 Расширь участок ночью'); return; }
-  const p = S.plots[i];
-  if (p.crop && p.prog >= 1) { const e = CROP[p.crop].e; harvest(p); floatText(el, `+1 ${e}`); save(); render(); return; }
-  if (p.crop) { toast(`${CROP[p.crop].e} растёт… ${Math.floor(p.prog*100)}%`); return; }
-  const c = CROP[S.sel];
-  if (S.coins < c.seed) { toast('Не хватает монет на семена'); return; }
-  S.coins -= c.seed; p.crop = c.id; p.prog = 0;
-  save(); render();
+  const p = S.plots[i], s = PLOT_SLOTS[i];
+  if (p.crop && p.prog < 1) { toast(`${CROP[p.crop].e} растёт… ${Math.floor(p.prog * 100)}%`); return; }
+  if (!p.crop && S.coins < CROP[S.sel].seed) { toast('Не хватает монет на семена'); return; }
+  setTasks([{ x: s.x, y: s.y, fn: () => plotAct(i) }]);
 }
 
-function harvest(p) {
-  S.inv[p.crop] = (S.inv[p.crop] || 0) + 1;
-  p.crop = null; p.prog = 0;
+function routeThrough(list) {   // жадный обход: каждый раз к ближайшей клетке
+  const out = []; let cx = Math.floor(P.x), cy = Math.floor(P.y);
+  const rest = list.slice();
+  while (rest.length) {
+    let bi = 0, bd = 1e9;
+    rest.forEach((t, k) => { const d = Math.abs(t.x - cx) + Math.abs(t.y - cy); if (d < bd) { bd = d; bi = k; } });
+    const t = rest.splice(bi, 1)[0]; out.push(t); cx = t.x; cy = t.y;
+  }
+  return out;
 }
 
 function buyUpgrade(key) {
   const u = UPGRADES[key], l = S.up[key], cost = u.cost(l);
   if (l >= u.max || S.coins < cost) return;
   S.coins -= cost; S.up[key]++;
-  if (key === 'land') for (let k = 0; k < 4; k++) S.plots.push({ crop: null, prog: 0 });
-  save(); render(); openNight(false);
+  if (key === 'land') for (let k = 0; k < 4 && S.plots.length < MAX_PLOTS; k++) S.plots.push({ crop: null, prog: 0 });
+  save(); renderUI(); openNight(false);
 }
 
 function unlockCrop(id) {
   const c = CROP[id];
   if (S.unlocked.includes(id) || S.coins < c.unlockCost || S.day + 1 < c.unlockDay) return;
   S.coins -= c.unlockCost; S.unlocked.push(id); S.sel = id;
-  save(); render(); openNight(false);
+  save(); renderUI(); openNight(false);
+}
+
+// ================== ПЕРЕДВИЖЕНИЕ ==================
+const walkable = (x, y) => x >= 0 && y >= 0 && x < W && y < H && !blocked[y][x];
+function findPath(sx, sy, tx, ty) {
+  if (!walkable(tx, ty)) return null;
+  const key = (x, y) => y * W + x, prev = new Map([[key(sx, sy), -1]]), q = [[sx, sy]];
+  while (q.length) {
+    const [x, y] = q.shift();
+    if (x === tx && y === ty) break;
+    for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+      const nx = x + dx, ny = y + dy;
+      if (walkable(nx, ny) && !prev.has(key(nx, ny))) { prev.set(key(nx, ny), key(x, y)); q.push([nx, ny]); }
+    }
+  }
+  if (!prev.has(key(tx, ty))) return null;
+  const out = []; let k = key(tx, ty);
+  while (k !== -1) { out.push([k % W, Math.floor(k / W)]); k = prev.get(k); }
+  return out.reverse();
+}
+function setTasks(list) { tasks = list; path = []; nextTask(); }
+function nextTask() {
+  while (tasks.length) {
+    const t = tasks[0];
+    const p = findPath(Math.floor(P.x), Math.floor(P.y), t.x, t.y);
+    if (p) { path = p; return; }
+    tasks.shift();
+  }
+  path = [];
+}
+
+function stepToward(o, tx, ty, speed, dt) {
+  const dx = tx - o.x, dy = ty - o.y, d = Math.hypot(dx, dy), st = speed * dt;
+  const sdx = dx - dy; if (Math.abs(sdx) > 0.02) o.flip = sdx < 0;
+  if (d <= st) { o.x = tx; o.y = ty; return true; }
+  o.x += dx / d * st; o.y += dy / d * st; return false;
+}
+
+function updatePlayer(dt) {
+  if (P.work > 0) { P.work -= dt; P.moving = false; return; }
+  if (path.length) {
+    const [tx, ty] = path[0];
+    if (stepToward(P, tx + .5, ty + .5, SPEED, dt)) path.shift();
+    P.moving = true; P.phase += dt * 13;
+  } else {
+    P.moving = false;
+    if (tasks.length) { const t = tasks.shift(); if (t.fn) { t.fn(); P.work = 0.2; } nextTask(); }
+  }
+}
+
+function updateVisitors(dt) {
+  for (const v of visitors) {
+    if (v.wps.length) {
+      const w = v.wps[0];
+      if (stepToward(v, w.x, w.y, 2.2, dt)) v.wps.shift();
+      v.moving = true; v.phase += dt * 11;
+    } else {
+      v.moving = false;
+      if (v.state === 'coming') { v.state = 'waiting'; v.flip = false; }
+    }
+    if (v.moodT > 0) v.moodT -= dt;
+    if (v.state === 'waiting' && !S.night) {
+      v.pat -= dt;
+      if (v.pat <= 0) { S.stats.missed++; leave(v, 'angry'); toast('😠 Покупатель не дождался'); }
+    }
+  }
+  visitors = visitors.filter(v => !(v.state === 'leaving' && v.x < -1.5));
 }
 
 // ================== ЦИКЛ ==================
 let last = performance.now(), saveAcc = 0;
 function tick(now) {
-  const dt = Math.min(0.5, (now - last) / 1000); last = now;
+  const dt = Math.min(0.1, Math.max(0, (now - last) / 1000)); last = now;
+  updatePlayer(dt);
+  updateVisitors(dt);
   if (!S.night) {
     S.t += dt;
     for (const p of S.plots) if (p.crop && p.prog < 1) p.prog = Math.min(1, p.prog + dt * growMult() / CROP[p.crop].grow);
-    // Покупатели приходят равномерно в первые 85% дня
     const due = Math.floor(S.toSpawn * Math.min(1, S.t / (DAY_LEN * 0.85)));
     while (S.spawned < due) {
-      if (S.queue.length >= MAX_QUEUE) { S.spawned++; S.stats.missed++; toast('😤 Очередь полная, покупатель ушёл'); }
+      if (queueCount() >= MAX_QUEUE) { S.spawned++; S.stats.missed++; toast('😤 Очередь полная, покупатель ушёл'); }
       else spawnVisitor();
     }
-    for (const v of S.queue) v.pat -= dt;
-    const gone = S.queue.filter(v => v.pat <= 0);
-    if (gone.length) { S.stats.missed += gone.length; S.queue = S.queue.filter(v => v.pat > 0); renderQueue(); }
     if (S.t >= DAY_LEN) endDay();
-    saveAcc += dt; if (saveAcc > 3) { saveAcc = 0; save(); }
-    renderLive();
   }
+  floats.forEach(f => f.t += dt); floats = floats.filter(f => f.t < 1.2);
+  saveAcc += dt; if (saveAcc > 3) { saveAcc = 0; save(); }
+  updateCam(dt);
+  draw(now / 1000);
+  renderHud();
   requestAnimationFrame(tick);
 }
 
-// ================== ОТРИСОВКА ==================
+// ================== КАМЕРА И ВВОД ==================
 const $ = id => document.getElementById(id);
+const cv = $('cv'), ctx = cv.getContext('2d');
+let cw = 1, ch = 1, dpr = 1, zoom = 1, userZoom = false;
+const cam = { x: 0, y: 0 };
+const iso = (x, y) => ({ x: (x - y) * TW / 2, y: (x + y) * TH / 2 });
+const lift = (x, y, z) => { const p = iso(x, y); return { x: p.x, y: p.y - z }; };
 
-function render() {
-  document.body.classList.toggle('night', S.night);
-  $('day').textContent = `День ${S.day}`;
-  $('coins').textContent = `💰 ${S.coins}`;
-  $('nightBtn').style.display = S.night ? '' : 'none';
-  $('stallTitle').textContent = S.night ? '🌙 Ночь — лавка закрыта. Время улучшений!' : '🏪 Прилавок — нажми на покупателя, чтобы продать';
-  renderField(); renderQueue(); renderInv(); renderSeeds(); renderLive();
+function resize() {
+  const r = $('stage').getBoundingClientRect();
+  cw = Math.max(1, r.width); ch = Math.max(1, r.height);
+  dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr);
+  if (!userZoom) zoom = Math.max(0.55, Math.min(1.2, Math.max(cw / 620, ch / 950)));
+  clampCam();
+}
+function clampCam() {
+  const hw = cw / 2 / zoom, hh = ch / 2 / zoom;
+  const minX = -H * TW / 2, maxX = W * TW / 2, minY = -70, maxY = (W + H) * TH / 2 + 10;
+  cam.x = hw * 2 >= maxX - minX ? (minX + maxX) / 2 : Math.max(minX + hw, Math.min(maxX - hw, cam.x));
+  cam.y = hh * 2 >= maxY - minY ? (minY + maxY) / 2 : Math.max(minY + hh, Math.min(maxY - hh, cam.y));
+}
+function updateCam(dt) {
+  if (!P.moving) return;   // камера подтягивается, только когда фермер идёт к краю экрана
+  const p = iso(P.x, P.y), mx = cw * 0.3 / zoom, my = ch * 0.28 / zoom;
+  const k = Math.min(1, dt * 5);
+  if (p.x < cam.x - mx) cam.x += (p.x + mx - cam.x) * k;
+  if (p.x > cam.x + mx) cam.x += (p.x - mx - cam.x) * k;
+  if (p.y - 20 < cam.y - my) cam.y += (p.y - 20 + my - cam.y) * k;
+  if (p.y > cam.y + my) cam.y += (p.y - my - cam.y) * k;
+  clampCam();
 }
 
-function renderField() {
-  const f = $('field'); f.innerHTML = '';
-  const shown = Math.min(MAX_PLOTS, S.plots.length + 4);
-  for (let i = 0; i < shown; i++) {
-    const d = document.createElement('div');
-    const p = S.plots[i];
-    if (!p) { d.className = 'plot locked'; d.textContent = '🔒'; }
-    else if (!p.crop) { d.className = 'plot'; d.innerHTML = ''; }
-    else if (p.prog >= 1) { d.className = 'plot ready'; d.textContent = CROP[p.crop].e; }
-    else {
-      d.className = 'plot growing';
-      d.innerHTML = `<span style="font-size:${p.prog < .5 ? 18 : 24}px">${p.prog < .5 ? '🌱' : '🌿'}</span><div class="prog"><div style="width:${p.prog*100}%"></div></div>`;
+let down = null, pinch = null;
+const pointers = new Map();
+const pdist = () => { const [a, b] = [...pointers.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+function setZoom(z) { zoom = Math.max(0.45, Math.min(1.6, z)); userZoom = true; clampCam(); }
+cv.addEventListener('pointerdown', e => {
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  cv.setPointerCapture(e.pointerId);
+  if (pointers.size === 2) { pinch = { d: pdist(), z: zoom }; if (down) down.moved = true; return; }
+  down = { x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y, moved: false };
+});
+cv.addEventListener('wheel', e => { e.preventDefault(); setZoom(zoom * Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
+cv.addEventListener('pointermove', e => {
+  if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pinch && pointers.size === 2) { setZoom(pinch.z * pdist() / pinch.d); return; }
+  if (!down || pinch) return;
+  const dx = e.clientX - down.x, dy = e.clientY - down.y;
+  if (!down.moved && Math.hypot(dx, dy) > 8) down.moved = true;
+  if (down.moved) { cam.x = down.cx - dx / zoom; cam.y = down.cy - dy / zoom; clampCam(); }
+});
+cv.addEventListener('pointerup', e => {
+  pointers.delete(e.pointerId);
+  if (pinch) { if (pointers.size === 0) { pinch = null; down = null; } return; }
+  if (down && !down.moved) { const r = cv.getBoundingClientRect(); onTap(e.clientX - r.left, e.clientY - r.top); }
+  down = null;
+});
+cv.addEventListener('pointercancel', e => { pointers.delete(e.pointerId); pinch = null; down = null; });
+
+function onTap(sx, sy) {
+  const wx = (sx - cw / 2) / zoom + cam.x, wy = (sy - ch / 2) / zoom + cam.y;
+  // сначала покупатели (вместе с облачком над головой)
+  const vs = visitors.filter(v => v.state !== 'leaving').sort((a, b) => (b.x + b.y) - (a.x + a.y));
+  for (const v of vs) {
+    const c = iso(v.x, v.y);
+    if (Math.abs(wx - c.x) < 20 && wy > c.y - 80 && wy < c.y + 6) { tapVisitor(v); return; }
+  }
+  const fx = (wx / (TW / 2) + wy / (TH / 2)) / 2, fy = (wy / (TH / 2) - wx / (TW / 2)) / 2;
+  const tx = Math.floor(fx), ty = Math.floor(fy);
+  if (tx < 0 || ty < 0 || tx >= W || ty >= H) return;
+  const si = slotAt(tx, ty);
+  if (si >= 0) { tapPlot(si); return; }
+  if (ty === 10 && (tx === 3 || tx === 4)) { setTasks([{ x: COUNTER.x, y: COUNTER.y }]); return; }
+  if (walkable(tx, ty)) setTasks([{ x: tx, y: ty }]);
+}
+
+// ================== ОТРИСОВКА ==================
+function poly(pts, fill, stroke, lw = 1) {
+  ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.closePath();
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+  if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.stroke(); }
+}
+const tilePts = (x, y) => [iso(x, y), iso(x + 1, y), iso(x + 1, y + 1), iso(x, y + 1)];
+function circle(x, y, r, fill) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fillStyle = fill; ctx.fill(); }
+function rr(x, y, w, h, r, fill) { ctx.beginPath(); ctx.roundRect(x, y, Math.max(0, w), h, r); ctx.fillStyle = fill; ctx.fill(); }
+function emoji(e, x, y, size) { ctx.font = `${size}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(e, x, y); }
+
+function setWorld() { ctx.setTransform(dpr * zoom, 0, 0, dpr * zoom, dpr * (cw / 2 - cam.x * zoom), dpr * (ch / 2 - cam.y * zoom)); }
+
+function draw(t) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = '#4e8c41'; ctx.fillRect(0, 0, cv.width, cv.height);
+  setWorld();
+  drawGround(t);
+  drawMarker(t);
+
+  const list = [];
+  for (const d of decor) list.push({ z: d.z, f: () => d.kind === 'tree' ? drawTree(d) : d.kind === 'house' ? drawHouse() : drawStall() });
+  S.plots.forEach((p, i) => { if (p.crop) { const s = PLOT_SLOTS[i]; list.push({ z: s.x + s.y + 1, f: () => drawCrop(i, t) }); } });
+  list.push({ z: P.x + P.y + 0.01, f: () => drawPerson(P, PLAYER_LOOK) });
+  for (const v of visitors) list.push({ z: v.x + v.y, f: () => drawPerson(v, v.look) });
+  list.sort((a, b) => a.z - b.z).forEach(o => o.f());
+
+  drawLighting();
+  setWorld();
+  drawBars();
+  visitors.slice().sort((a, b) => (a.x + a.y) - (b.x + b.y)).forEach(v => drawBubble(v));
+  drawFloats();
+}
+
+function drawGround(t) {
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const g = ground[y][x], pts = tilePts(x, y);
+    const grass = (x + y) % 2 ? '#7cc35e' : '#76bc58';
+    let col = grass;
+    if (g === 'r') col = (x + y) % 2 ? '#d8bf8a' : '#d3b983';
+    else if (g === 'p') col = '#cfae78';
+    else if (g === 'w') col = '#5bb0e0';
+    else if (g === 's') {
+      const i = slotAt(x, y);
+      if (i < S.plots.length) col = S.plots[i].crop && S.plots[i].prog < 1 ? '#6b4327' : '#8a5a36';
     }
-    d.onclick = () => tapPlot(i, d);
-    f.appendChild(d);
+    poly(pts, col, col);
+
+    const c = iso(x + .5, y + .5);
+    if (g === 'g' && tuft[y][x] > .55) {          // травинки и цветочки
+      ctx.strokeStyle = '#5ea548'; ctx.lineWidth = 1.2; ctx.beginPath();
+      const ox = (tuft[y][x] - .75) * 30;
+      ctx.moveTo(c.x + ox - 3, c.y); ctx.lineTo(c.x + ox - 4, c.y - 5);
+      ctx.moveTo(c.x + ox, c.y); ctx.lineTo(c.x + ox, c.y - 6);
+      ctx.moveTo(c.x + ox + 3, c.y); ctx.lineTo(c.x + ox + 4, c.y - 5); ctx.stroke();
+      if (tuft[y][x] > .9) circle(c.x - ox, c.y - 2, 2.2, ['#ffffff','#ffd84d','#ff8fb1'][Math.floor(tuft[y][x] * 100) % 3]);
+    }
+    if (g === 'w') {
+      ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 1.2; ctx.beginPath();
+      const o = Math.sin(t * 2 + x + y) * 3;
+      ctx.moveTo(c.x - 8 + o, c.y); ctx.lineTo(c.x + 2 + o, c.y); ctx.stroke();
+    }
+    if (g === 's') {
+      const i = slotAt(x, y);
+      if (i < S.plots.length) {
+        ctx.strokeStyle = 'rgba(0,0,0,.18)'; ctx.lineWidth = 1.5;
+        for (const k of [.3, .55, .8]) { const a = iso(x + k, y + .12), b = iso(x + k, y + .88); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
+        const p = S.plots[i];
+        if (p.crop && p.prog >= 1) poly(pts, null, `rgba(255,224,102,${.6 + Math.sin(t * 5) * .35})`, 2.5);
+      } else {
+        ctx.setLineDash([4, 4]); poly(pts, null, 'rgba(255,255,255,.35)', 1.2); ctx.setLineDash([]);
+        if (i === S.plots.length) { ctx.globalAlpha = .8; emoji('🔒', c.x, c.y - 4, 14); ctx.globalAlpha = 1; }
+      }
+    }
   }
 }
 
-function renderQueue() {
-  const q = $('queue'); q.innerHTML = '';
-  if (S.night) { q.innerHTML = '<div class="empty-note">Покупатели придут утром 💤</div>'; return; }
-  if (!S.queue.length) { q.innerHTML = `<div class="empty-note">Пока никого… (придёт ещё ${S.toSpawn - S.spawned})</div>`; return; }
-  for (const v of S.queue) {
-    const d = document.createElement('div');
-    d.className = 'visitor' + ((S.inv[v.crop] || 0) >= v.qty ? ' ok' : '');
-    d.innerHTML = `<div class="face">${v.face}</div><div class="want">${v.qty}×${CROP[v.crop].e}</div>
-      <div style="font-size:11px">${v.qty * sellPrice(v.crop)}💰</div><div class="pat"><div></div></div>`;
-    d.onclick = () => sell(v, d);
-    v.el = d;
-    q.appendChild(d);
+function drawMarker(t) {
+  if (!tasks.length) return;
+  const tk = tasks[0], r = 0.12 + Math.sin(t * 6) * 0.04;
+  poly([iso(tk.x + r, tk.y + r), iso(tk.x + 1 - r, tk.y + r), iso(tk.x + 1 - r, tk.y + 1 - r), iso(tk.x + r, tk.y + 1 - r)], null, '#ffffff', 2);
+}
+
+function drawTree(d) {
+  const c = iso(d.x + .5, d.y + .5), s = d.s;
+  ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(c.x, c.y, 16 * s, 7 * s, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#7a4a2a'; ctx.fillRect(c.x - 3 * s, c.y - 22 * s, 6 * s, 22 * s);
+  circle(c.x - 10 * s, c.y - 28 * s, 12 * s, '#3c8236');
+  circle(c.x + 10 * s, c.y - 28 * s, 12 * s, '#3c8236');
+  circle(c.x, c.y - 40 * s, 15 * s, '#4a9a42');
+  circle(c.x - 5 * s, c.y - 45 * s, 6 * s, '#66b957');
+}
+
+function drawBox(x0, y0, w, d, h, top, left, right) {
+  const X = x0 + w, Y = y0 + d;
+  poly([lift(x0, Y, 0), lift(X, Y, 0), lift(X, Y, h), lift(x0, Y, h)], left);
+  poly([lift(X, y0, 0), lift(X, Y, 0), lift(X, Y, h), lift(X, y0, h)], right);
+  if (top) poly([lift(x0, y0, h), lift(X, y0, h), lift(X, Y, h), lift(x0, Y, h)], top);
+}
+
+function drawHouse() {
+  drawBox(2, 2, 2, 2, 40, null, '#efd9ae', '#d9bd8a');
+  poly([lift(2.55, 4, 0), lift(3.1, 4, 0), lift(3.1, 4, 27), lift(2.55, 4, 27)], '#8a5a36', '#6b4327');
+  const knob = lift(3.0, 4, 13); circle(knob.x, knob.y, 1.5, '#f4d35e');
+  poly([lift(4, 2.55, 15), lift(4, 3.35, 15), lift(4, 3.35, 30), lift(4, 2.55, 30)], S.night ? '#ffd76a' : '#a8dcff', '#8a5a36', 2);
+  const o = 0.18, x0 = 2 - o, y0 = 2 - o, X = 4 + o, Y = 4 + o, h = 38, apex = lift(3, 3, 74);
+  const A = lift(x0, y0, h), B = lift(X, y0, h), C = lift(X, Y, h), D = lift(x0, Y, h);
+  poly([A, B, apex], '#a8403a'); poly([A, D, apex], '#b5473f');
+  poly([D, C, apex], '#d0574c', '#a8403a'); poly([C, B, apex], '#bb4a42', '#a8403a');
+}
+
+function post(x, y) { const a = lift(x, y, 0), b = lift(x, y, 44); ctx.strokeStyle = '#7a4a2a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
+function drawStall() {
+  post(3.1, 10.1); post(4.9, 10.1);
+  drawBox(3, 10, 2, 1, 18, '#d9a066', '#b07a45', '#8f5b2b');
+  const goods = S.unlocked.filter(id => S.inv[id] > 0).slice(0, 4);
+  goods.forEach((id, i) => { const p = lift(3.35 + i * 0.45, 10.5, 18); emoji(CROP[id].e, p.x, p.y - 5, 13); });
+  post(3.1, 10.9); post(4.9, 10.9);
+  const n = 6, x0 = 2.85, w = 2.3;
+  for (let i = 0; i < n; i++) {
+    const a = x0 + i * w / n, b = a + w / n;
+    poly([lift(a, 9.85, 50), lift(b, 9.85, 50), lift(b, 11.2, 42), lift(a, 11.2, 42)], i % 2 ? '#fff4e0' : '#e0554a');
   }
 }
 
-function renderInv() {
-  const items = S.unlocked.filter(id => S.inv[id]).map(id => `<span>${CROP[id].e} ${S.inv[id]}</span>`);
-  $('inv').innerHTML = items.length ? items.join('') : '<span style="opacity:.6">Склад пуст — посади и собери урожай</span>';
-}
-
-function renderSeeds() {
-  const s = $('seeds'); s.innerHTML = '';
-  for (const id of S.unlocked) {
-    const c = CROP[id];
-    const d = document.createElement('div');
-    d.className = 'seed' + (S.sel === id ? ' sel' : '') + (S.coins < c.seed ? ' dis' : '');
-    d.innerHTML = `<div class="e">${c.e}</div><div class="c">🌰${c.seed} → ${sellPrice(id)}💰</div><div class="c">⏱${Math.round(c.grow/growMult())}с</div>`;
-    d.onclick = () => { S.sel = id; renderSeeds(); };
-    s.appendChild(d);
+function drawCrop(i, t) {
+  const s = PLOT_SLOTS[i], p = S.plots[i], c = iso(s.x + .5, s.y + .5);
+  if (p.prog >= 1) {
+    emoji(CROP[p.crop].e, c.x, c.y - 9 + Math.sin(t * 4 + i) * 1.5, 24);
+    return;
+  }
+  const spots = [[-12, -1], [12, -1], [0, -6], [0, 5]];
+  for (const [ox, oy] of spots) {
+    const x = c.x + ox, y = c.y + oy;
+    if (p.prog < 0.35) {
+      ctx.fillStyle = '#7ccf4f';
+      ctx.beginPath(); ctx.ellipse(x - 2, y - 3, 3, 1.5, -0.6, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(x + 2, y - 3, 3, 1.5, 0.6, 0, 7); ctx.fill();
+    } else {
+      const h = 6 + p.prog * 8;
+      ctx.strokeStyle = '#4f9a3a'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - h); ctx.stroke();
+      ctx.fillStyle = '#6cc04a';
+      ctx.beginPath(); ctx.ellipse(x - 3, y - h * .55, 4, 1.8, -0.5, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(x + 3, y - h * .75, 4, 1.8, 0.5, 0, 7); ctx.fill();
+      if (p.prog > 0.75) { ctx.globalAlpha = .85; emoji(CROP[p.crop].e, x, y - h - 2, 9); ctx.globalAlpha = 1; }
+    }
   }
 }
 
-let lastFieldSig = '';
-function renderLive() {
-  // Время
+function drawPerson(p, L) {
+  const c = iso(p.x, p.y), sw = p.moving ? Math.sin(p.phase) : 0, bob = p.moving ? Math.abs(Math.cos(p.phase)) * 1.5 : 0;
+  ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(c.x, c.y, 10, 4.5, 0, 0, 7); ctx.fill();
+  ctx.save(); ctx.translate(c.x, c.y - bob); if (p.flip) ctx.scale(-1, 1);
+  const work = p.work > 0 ? Math.sin(p.work * 30) * 3 : 0;
+  const la = Math.max(0, sw) * 2.5, lb = Math.max(0, -sw) * 2.5;
+  ctx.fillStyle = L.pants; ctx.fillRect(-5, -12 - la, 4, 11); ctx.fillRect(1, -12 - lb, 4, 11);
+  ctx.fillStyle = '#3a2a1e'; ctx.fillRect(-5.5, -2.5 - la, 5, 2.5); ctx.fillRect(0.5, -2.5 - lb, 5, 2.5);
+  rr(-9, -25 + sw * 1.5, 4, 11, 2, L.shirtDark);
+  rr(-7, -27, 14, 16, 5, L.shirt);
+  if (L.overalls) { ctx.fillStyle = L.pants; ctx.fillRect(-6, -19, 12, 8); ctx.fillRect(-5, -27, 2.5, 8); ctx.fillRect(2.5, -27, 2.5, 8); }
+  rr(5, -25 - sw * 1.5 + work, 4, 11, 2, L.shirt);
+  circle(7, -14 - sw * 1.5 + work, 2.3, L.skin);
+  circle(0, -33, 7.5, L.skin);
+  ctx.fillStyle = L.hair; ctx.beginPath(); ctx.arc(0, -34, 7.9, Math.PI * 1.05, Math.PI * 1.95); ctx.fill();
+  ctx.fillRect(-7.5, -35, 4, 6);
+  circle(3.6, -33, 1.1, '#2a1d12');
+  circle(4.5, -30.5, 1.6, 'rgba(230,110,110,.35)');
+  if (L.hat === 'straw') {
+    ctx.fillStyle = '#e8c56a'; ctx.beginPath(); ctx.ellipse(0, -39, 12.5, 3.5, 0, 0, 7); ctx.fill();
+    rr(-6, -46, 12, 8, 3, '#e8c56a'); ctx.fillStyle = '#c0504d'; ctx.fillRect(-6, -41.5, 12, 2);
+  } else if (L.hat === 'cap') {
+    ctx.fillStyle = L.capColor; ctx.beginPath(); ctx.arc(0, -36, 7.8, Math.PI, 0); ctx.fill();
+    ctx.fillRect(2, -37, 9, 2.5);
+  }
+  ctx.restore();
+}
+
+function drawBubble(v) {
+  const c = iso(v.x, v.y), bx = c.x, by = c.y - 64;
+  if (v.state === 'leaving') { if (v.mood && v.moodT > 0) emoji(v.mood === 'happy' ? '😊' : '😠', bx, by + 6, 18); return; }
+  const ok = (S.inv[v.crop] || 0) >= v.qty;
+  ctx.beginPath(); ctx.roundRect(bx - 19, by - 12, 38, 22, 7);
+  ctx.moveTo(bx - 4, by + 10); ctx.lineTo(bx, by + 15); ctx.lineTo(bx + 4, by + 10);
+  ctx.fillStyle = '#fffdf6'; ctx.fill(); ctx.strokeStyle = ok ? '#3e9b3a' : '#cdb994'; ctx.lineWidth = ok ? 2.5 : 1.2; ctx.stroke();
+  ctx.fillStyle = '#3b2a1a'; ctx.font = 'bold 11px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(v.qty + '×', bx - 8, by);
+  emoji(CROP[v.crop].e, bx + 7, by, 14);
+  if (v.state === 'waiting') {
+    const r = Math.max(0, v.pat / v.max);
+    rr(bx - 16, by - 18, 32, 4, 2, 'rgba(0,0,0,.25)');
+    rr(bx - 16, by - 18, 32 * r, 4, 2, r > .5 ? '#3e9b3a' : r > .25 ? '#f4a92b' : '#d9534f');
+  }
+}
+
+function drawBars() {
+  S.plots.forEach((p, i) => {
+    if (!p.crop || p.prog >= 1) return;
+    const s = PLOT_SLOTS[i], c = iso(s.x + .5, s.y + .5);
+    rr(c.x - 14, c.y - 26, 28, 4, 2, 'rgba(0,0,0,.35)');
+    rr(c.x - 14, c.y - 26, 28 * p.prog, 4, 2, '#9be15d');
+  });
+}
+
+function drawFloats() {
+  for (const f of floats) {
+    const c = iso(f.x, f.y);
+    ctx.globalAlpha = Math.max(0, 1 - f.t / 1.2);
+    ctx.font = 'bold 15px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(40,25,10,.8)';
+    ctx.strokeText(f.text, c.x, c.y - 50 - f.t * 35);
+    ctx.fillStyle = '#ffe066'; ctx.fillText(f.text, c.x, c.y - 50 - f.t * 35);
+    ctx.globalAlpha = 1;
+  }
+}
+const addFloat = (x, y, text) => floats.push({ x, y, text, t: 0 });
+
+function drawLighting() {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   const frac = S.night ? 1 : S.t / DAY_LEN;
-  const mins = 6 * 60 + Math.floor(frac * 15 * 60);  // 06:00 → 21:00
-  $('clock').textContent = S.night ? '🌙 Ночь' : `☀️ ${String(Math.floor(mins/60)).padStart(2,'0')}:${String(mins%60).padStart(2,'0')}`;
+  if (S.night) {
+    ctx.fillStyle = 'rgba(12,22,60,.55)'; ctx.fillRect(0, 0, cv.width, cv.height);
+    setWorld(); ctx.globalCompositeOperation = 'lighter';
+    for (const [p, r] of [[lift(4, 2.95, 22), 70], [lift(4, 10.5, 46), 80]]) {
+      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+      g.addColorStop(0, 'rgba(255,190,90,.35)'); g.addColorStop(1, 'rgba(255,190,90,0)');
+      ctx.fillStyle = g; ctx.fillRect(p.x - r, p.y - r, r * 2, r * 2);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  } else if (frac > .72) {
+    const k = (frac - .72) / .28;
+    ctx.fillStyle = `rgba(255,110,40,${.18 * k})`; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.fillStyle = `rgba(30,20,70,${.18 * k})`; ctx.fillRect(0, 0, cv.width, cv.height);
+  }
+}
+
+// ================== ИНТЕРФЕЙС ==================
+function renderHud() {
+  const frac = S.night ? 1 : S.t / DAY_LEN;
+  const mins = 6 * 60 + Math.floor(frac * 15 * 60);   // 06:00 → 21:00
+  $('clock').textContent = S.night ? '🌙 Ночь' : `${frac > .72 ? '🌇' : '☀️'} ${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
   $('timefill').style.width = (frac * 100) + '%';
   $('coins').textContent = `💰 ${S.coins}`;
-  // Небо темнеет к вечеру
-  if (!S.night) {
-    const k = Math.max(0, (frac - 0.7) / 0.3);
-    $('sky').style.setProperty('--sky-top', mix('#8fd3ff', '#ff9a5a', k));
-    $('sky').style.setProperty('--sky-bot', mix('#d8f1ff', '#ffd59a', k));
-  } else { $('sky').style.removeProperty('--sky-top'); $('sky').style.removeProperty('--sky-bot'); }
-  // Терпение покупателей
-  for (const v of S.queue) if (v.el) {
-    const bar = v.el.querySelector('.pat > div');
-    const r = v.pat / v.max;
-    bar.style.width = (r * 100) + '%';
-    bar.style.background = r > .5 ? 'var(--good)' : r > .25 ? 'var(--accent)' : 'var(--bad)';
+}
+
+function renderUI() {
+  $('day').textContent = `День ${S.day}`;
+  $('nightBtn').style.display = S.night ? '' : 'none';
+  $('plantAll').style.display = S.night ? 'none' : '';
+  const items = S.unlocked.filter(id => S.inv[id]).map(id => `<span>${CROP[id].e} ${S.inv[id]}</span>`);
+  $('inv').innerHTML = items.length ? items.join('') : '<span style="opacity:.6">Склад пуст — посади и собери урожай</span>';
+  const s = $('seeds'); s.innerHTML = '';
+  for (const id of S.unlocked) {
+    const c = CROP[id], d = document.createElement('div');
+    d.className = 'seed' + (S.sel === id ? ' sel' : '') + (S.coins < c.seed ? ' dis' : '');
+    d.innerHTML = `<div class="e">${c.e}</div><div class="c">🌰${c.seed} → ${sellPrice(id)}💰</div><div class="c">⏱${Math.round(c.grow / growMult())}с</div>`;
+    d.onclick = () => { S.sel = id; renderUI(); };
+    s.appendChild(d);
   }
-  // Поле: перерисовываем, только если что-то изменилось заметно
-  const sig = S.plots.map(p => p.crop ? (p.prog >= 1 ? 'R' : Math.floor(p.prog * 20)) : '_').join(',');
-  if (sig !== lastFieldSig) { lastFieldSig = sig; renderField(); }
+  renderHud();
 }
 
-function mix(a, b, k) {
-  const pa = [1,3,5].map(i => parseInt(a.substr(i,2),16)), pb = [1,3,5].map(i => parseInt(b.substr(i,2),16));
-  return 'rgb(' + pa.map((v,i) => Math.round(v + (pb[i]-v)*k)).join(',') + ')';
-}
-
-// ================== НОЧЬ / МАГАЗИН ==================
 function openNight(withSummary) {
   const st = S.stats;
   let h = `<h2>🌙 Ночь ${S.day}</h2>`;
   if (withSummary) {
     h += `<div class="summary">За день: заработано <b>${st.earned}💰</b><br>Обслужено: <b>${st.served}</b> · Ушли ни с чем: <b>${st.missed}</b><br>
-      Завтра придёт ~<b>${4 + S.up.ads*2 + Math.floor((S.day+1)/2)}</b> покупателей</div>`;
+      Завтра придёт ~<b>${visitorsPerDay(S.day + 1)}</b> покупателей</div>`;
   }
   h += `<div style="font-weight:700;margin:6px 0 2px">У тебя: 💰 ${S.coins}</div>`;
   h += `<h3 style="margin:10px 0 0">Улучшения фермы</h3>`;
@@ -381,7 +756,7 @@ function openNight(withSummary) {
       <small>${early ? `Откроется после ${c.unlockDay - 1}-го дня` : `Семена ${c.seed}💰 · растёт ${c.grow}с · продаётся за ${c.price}💰`}</small></div>
       <button ${early || S.coins < c.unlockCost ? 'disabled' : ''} onclick="unlockCrop('${c.id}')">${c.unlockCost}💰</button></div>`;
   }
-  h += `<div class="row" style="margin-top:14px"><button class="wide" onclick="closeNight()">🌾 К грядкам</button>
+  h += `<div class="row" style="margin-top:14px"><button class="wide alt" onclick="closeNight()">🌾 К грядкам</button>
         <button class="wide" style="background:#ffd34d" onclick="morning()">☀️ Начать день ${S.day + 1}</button></div>
         <div style="text-align:center;margin-top:10px"><button style="background:none;color:#b0503a;font-size:12px" onclick="resetGame(this)">Начать заново</button></div>`;
   $('sheet').innerHTML = h;
@@ -392,27 +767,34 @@ function morning() { S.day++; startDay(); }
 let resetArmed = false;
 function resetGame(btn) {
   if (!resetArmed) { resetArmed = true; btn.textContent = 'Точно стереть прогресс? Нажми ещё раз'; setTimeout(() => { resetArmed = false; if (btn.isConnected) btn.textContent = 'Начать заново'; }, 3000); return; }
-  resetArmed = false; S = newState(); startDay();
+  resetArmed = false; S = newState(); P.x = S.player.x; P.y = S.player.y; visitors = []; setTasks([]); startDay();
 }
 
-// ================== МЕЛОЧИ ==================
 let toastT;
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 1600); }
-function floatText(el, txt) {
-  const r = el.getBoundingClientRect(), f = document.createElement('div');
-  f.className = 'float'; f.textContent = txt; f.style.left = (r.left + r.width/2 - 20) + 'px'; f.style.top = r.top + 'px';
-  document.body.appendChild(f); setTimeout(() => f.remove(), 1000);
-}
 
 $('harvestAll').onclick = () => {
-  let n = 0; for (const p of S.plots) if (p.crop && p.prog >= 1) { harvest(p); n++; }
-  toast(n ? `🧺 Собрано: ${n}` : 'Нечего собирать'); save(); render();
+  const list = [];
+  S.plots.forEach((p, i) => { if (p.crop && p.prog >= 1) list.push({ x: PLOT_SLOTS[i].x, y: PLOT_SLOTS[i].y, fn: () => plotAct(i, 'harvest') }); });
+  if (!list.length) { toast('Пока нечего собирать'); return; }
+  setTasks(routeThrough(list));
+};
+$('plantAll').onclick = () => {
+  const c = CROP[S.sel], can = Math.floor(S.coins / c.seed);
+  const list = [];
+  S.plots.forEach((p, i) => { if (!p.crop) list.push({ x: PLOT_SLOTS[i].x, y: PLOT_SLOTS[i].y, fn: () => plotAct(i, 'plant') }); });
+  if (!list.length) { toast('Свободных грядок нет'); return; }
+  if (!can) { toast('Не хватает монет на семена'); return; }
+  setTasks(routeThrough(list).slice(0, can));
 };
 $('nightBtn').onclick = () => openNight(false);
 $('overlay').onclick = e => { if (e.target.id === 'overlay') closeNight(); };
 
-// Старт
-if (S.toSpawn === 0 && !S.night) startDay(); else render();
+// ================== СТАРТ ==================
+new ResizeObserver(resize).observe($('stage'));
+resize();
+{ const a = iso(3, 11), b = iso(10, 4); cam.x = (a.x + b.x) / 2; cam.y = (a.y + b.y) / 2 - 10; clampCam(); }   // поле и лавка в кадре
+if (S.toSpawn === 0 && !S.night) startDay(); else renderUI();
 if (S.night) openNight(false);
 requestAnimationFrame(tick);
 </script>
