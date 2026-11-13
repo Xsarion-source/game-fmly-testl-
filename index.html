@@ -168,6 +168,7 @@ function newState() {
     spawned: 0, toSpawn: 0,
     stats: { earned: 0, served: 0, missed: 0 },
     player: { x: 5.5, y: 8.5 },
+    helperMode: 'harvest',
   };
 }
 let S;
@@ -198,10 +199,18 @@ function startDay() {
   S.toSpawn = visitorsPerDay();
   S.stats = { earned: 0, served: 0, missed: 0 };
   closeNight();
-  // если всё уже засеяно ещё ночью — сажать нечего, день начинается сразу
-  S.started = !S.plots.some(p => !p.crop || p.prog >= 1);
-  toast(S.started ? `☀️ День ${S.day}. Ждём ${S.toSpawn} покупателей` : '🌅 Рассвет. Посади семечко (или нажми на солнце) — и день начнётся');
+  S.started = false;
+  if (shouldAutoStart()) beginClock();
+  else toast('🌅 Рассвет. Посади семечко (или нажми на солнце) — и день начнётся');
   save(); renderUI();
+}
+
+// День стартует сам, если ждать посадки бессмысленно:
+// на грядках уже что-то растёт или денег не хватает даже на самые дешёвые семена.
+function shouldAutoStart() {
+  const growing = S.plots.some(p => p.crop && p.prog < 1);
+  const cheapest = Math.min(...S.unlocked.map(id => CROP[id].seed));
+  return growing || S.coins < cheapest;
 }
 
 function beginClock() {
@@ -462,6 +471,7 @@ function tick(now) {
   updatePlayer(dt);
   updateVisitors(dt);
   helpers.forEach(h => updateHelper(h, dt));
+  if (!S.night && !S.started && shouldAutoStart()) beginClock();
   if (!S.night && S.started) {
     S.t += dt;
     for (const p of S.plots) if (p.crop && p.prog < 1) p.prog = Math.min(1, p.prog + dt * growMult() / CROP[p.crop].grow);
