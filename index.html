@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#5a9e4b">
 <title>Солнечная ферма</title>
+<!-- приложение на экране «Домой» (когда игра открыта как отдельный сайт) -->
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Ферма">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>
   :root {
     --panel: #fff8e7; --ink: #3b2a1a; --accent: #f4a92b; --good: #3e9b3a; --bad: #d9534f; --line: #e2d3b0;
@@ -490,6 +498,8 @@ function save() {
 // claude.ai (личная папка игрока в хранилище артефакта). При запуске сверяемся: пустая или более старая
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
+const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
+if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
 const trivialFarm = o => !o || ((o.day || 1) <= 1 && (o.life?.earned || 0) < 50);
 const cloudDoc = n => CLOUD.db.doc(`data/users/${CLOUD.uid}/save${n}`);
@@ -570,7 +580,7 @@ async function cloudInit() {
     if (CLOUD.state === 'nowrite') return;   // ссылка открыта только на просмотр — облако не для этого аккаунта
     if (!meta || meta.slot !== SLOT) cloudMetaSave();
     setInterval(() => { if (CLOUD.dirty) cloudPushActive(); }, 15000);
-  } catch (e) { CLOUD.state = CLOUD.db ? 'err' : 'off'; }
+  } catch (e) { CLOUD.state = CLOUD.db ? 'err' : EMBED ? 'off' : 'local'; }
 }
 
 const P = { x: S.player.x, y: S.player.y, phase: 0, moving: false, flip: false, work: 0 };
@@ -3547,10 +3557,10 @@ function slotInfo(n) {   // коротко о ферме в ячейке — б�
 function openSaves() {
   if (S) save();
   const names = slotNames();
-  const cl = { ok: '☁️ Сохраняется в облако claude.ai — не пропадёт, даже если закрыть браузер', wait: '☁️ Подключаемся к облаку…', err: '⚠️ Облако сейчас не отвечает — сохраняем в браузере и попробуем ещё',
+  const cl = { local: '💾 Ферма сохраняется в этом приложении сама', ok: '☁️ Сохраняется в облако claude.ai — не пропадёт, даже если закрыть браузер', wait: '☁️ Подключаемся к облаку…', err: '⚠️ Облако сейчас не отвечает — сохраняем в браузере и попробуем ещё',
     off: '⚠️ Облако недоступно — ферма хранится только в этом браузере. Safari может её стереть: сохраняй код фермы ↓', nowrite: '⚠️ Облако недоступно для этого аккаунта — ферма только в этом браузере. Safari может её стереть: сохраняй код фермы ↓' }[CLOUD.state];
   let h = `<h2>💾 Сохранения</h2><div style="font-size:13px;color:#7a6650;margin:-4px 0 6px">У каждой ячейки своя ферма. Игра сохраняется сама — переключайся когда угодно.</div>
-    <div style="font-size:13px;font-weight:700;color:${CLOUD.state === 'ok' ? '#3e7d32' : '#b0503a'};margin:0 0 10px">${cl}</div>`;
+    <div style="font-size:13px;font-weight:700;color:${CLOUD.state === 'ok' || CLOUD.state === 'local' ? '#3e7d32' : '#b0503a'};margin:0 0 10px">${cl}</div>`;
   for (let n = 1; n <= SLOTS; n++) {
     const d = slotInfo(n), cur = n === SLOT;
     h += `<div style="background:${cur ? '#fff4d6' : '#f6eedc'};border:2px solid ${cur ? '#e0a83a' : '#e6d7b8'};border-radius:14px;padding:10px 12px;margin-bottom:10px">
@@ -3681,7 +3691,7 @@ function openNight(withSummary) {
       Завтра придёт ~<b>${visitorsPerDay(S.day + 1)}</b> покупателей</div>`;
   }
   h += `<div style="font-weight:700;margin:6px 0 2px">У тебя: 💰 ${S.coins}</div>`;
-  if (CLOUD.state !== 'ok' && CLOUD.state !== 'wait' && S.day >= 2 && (S.codeDay || 0) < S.day)   // облака нет — Safari может стереть ферму
+  if (EMBED && CLOUD.state !== 'ok' && CLOUD.state !== 'wait' && S.day >= 2 && (S.codeDay || 0) < S.day)   // облака нет — Safari может стереть ферму
     h += `<div class="summary" style="background:#fff1d6;border:1.5px solid #f0c24a">⚠️ Ферма хранится только в этом браузере — Safari может её стереть. <a href="#" onclick="event.preventDefault();exportCode()" style="color:#b0503a;font-weight:800">Сохрани код фермы</a></div>`;
   if (hens()) {
     const fed = fedTomorrow(), need = (hens() - fed) * FEED_PER_HEN;
