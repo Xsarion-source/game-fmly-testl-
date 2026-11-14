@@ -393,7 +393,7 @@ function plotAct(i, mode) {
   if (p.crop && p.prog >= 1 && mode !== 'plant') {
     S.inv[p.crop] = (S.inv[p.crop] || 0) + 1; S.life.harvested++;
     addFloat(s.x + .5, s.y + .5, `+1 ${CROP[p.crop].e}`);
-    p.crop = null; p.prog = 0;
+    p.last = p.crop; p.crop = null; p.prog = 0;
   } else if (!p.crop && mode !== 'harvest') {
     const c = CROP[S.sel];
     if (S.coins < c.seed) { toast('Не хватает монет — посади бесплатный подсолнух 🌻'); return; }
@@ -766,15 +766,17 @@ function helperSeed(cfg, prev) {
   if (!id || !CROP[id] || S.coins < CROP[id].seed) return null;
   return id;
 }
+// «То же»: что росло на грядке раньше; на ещё не засеянной — выбранные внизу семена
+const plotPrev = p => p.last || S.sel;
 function helperPlot(i, cfg) {
   const p = S.plots[i], s = PLOT_SLOTS[i];
   if (!p) return false;
-  let prev = null;
+  let prev = plotPrev(p);
   if (p.crop && p.prog >= 1) {
     prev = p.crop;
     S.inv[prev] = (S.inv[prev] || 0) + 1; S.life.harvested++;
     addFloat(s.x + .5, s.y + .5, `+1 ${CROP[prev].e}`);
-    p.crop = null; p.prog = 0;
+    p.last = prev; p.crop = null; p.prog = 0;
   } else if (p.crop || !cfg.replant) return false;
   if (cfg.replant) {
     const id = helperSeed(cfg, prev);
@@ -786,7 +788,8 @@ function helperPlot(i, cfg) {
 function helperJobs(cfg) {
   const jobs = [], has = k => cfg.stations.includes(k);
   if (has('field')) S.plots.forEach((p, i) => {
-    const ready = p.crop && p.prog >= 1, empty = !p.crop && cfg.replant && cfg.seed !== 'same' && helperSeed(cfg, null);
+    const ready = p.crop && p.prog >= 1, empty = !p.crop && cfg.replant && helperSeed(cfg, plotPrev(p));
+    if (!p.crop && cfg.replant && !empty) jobs.broke = true;   // пустая грядка, но семена не по карману
     if (ready || empty) jobs.push({ x: PLOT_SLOTS[i].x, y: PLOT_SLOTS[i].y, act: () => helperPlot(i, cfg) });
   });
   if (has('orchard')) S.trees.forEach((t, i) => { if (treeReady(t)) jobs.push({ x: ORCHARD_SLOTS[i].x, y: ORCHARD_SLOTS[i].y, act: () => treeAct(i, 'harvest') }); });
@@ -831,16 +834,15 @@ function updateHelper(h, dt) {
   }
   const claimed = new Set(helpers.filter(o => o.target).map(o => o.target.x + ',' + o.target.y));
   if (tasks[0]) claimed.add(tasks[0].x + ',' + tasks[0].y);
-  let best = null, bd = 1e9;
-  for (const j of helperJobs(cfg)) {
-    if (claimed.has(j.x + ',' + j.y)) continue;
-    const d = Math.abs(j.x - hx) + Math.abs(j.y - hy);
-    if (d < bd) { bd = d; best = j; }
+  const jobs = helperJobs(cfg);
+  h.broke = !!jobs.broke;
+  const cand = jobs.filter(j => !claimed.has(j.x + ',' + j.y)).sort((a, b) => (Math.abs(a.x - hx) + Math.abs(a.y - hy)) - (Math.abs(b.x - hx) + Math.abs(b.y - hy)));
+  let found = false;
+  for (const j of cand) {
+    const pth = findPath(hx, hy, j.x, j.y);
+    if (pth) { h.path = pth; h.target = j; found = true; break; }
   }
-  if (best) {
-    const pth = findPath(hx, hy, best.x, best.y);
-    if (pth) { h.path = pth; h.target = best; }
-  } else {   // работы нет — ждёт на своей станции
+  if (!found) {   // работы нет — ждёт на своей станции
     const first = cfg.stations.includes('stall') ? 'stall' : cfg.stations[0];
     const base = first ? STATIONS[first].idle : REST.idle;
     const spot = first === 'stall' ? base : { x: base.x + (h.id % 2), y: base.y };
@@ -875,7 +877,7 @@ function openHelpers() {
     if (cfg.stations.includes('field')) {
       h += `<div class="chips" style="margin-top:6px">${chip(!cfg.replant, '🧺 Только сбор', `setHelper(${i},'replant',false)`)}${chip(cfg.replant, '🌱 Сбор и посев', `setHelper(${i},'replant',true)`)}</div>`;
       if (cfg.replant) {
-        h += `<div style="font-size:12px;color:#7a6650;margin:6px 0 4px">Что сажать (семена за твои монеты):</div><div class="chips">`;
+        h += `<div style="font-size:12px;color:#7a6650;margin:6px 0 4px">Что сажать (семена за твои монеты; «То же» — что росло на грядке, на новой — выбранное справа). Значок 💰 над головой — не хватает монет на семена:</div><div class="chips">`;
         h += chip(cfg.seed === 'same', '🔁 То же', `setHelper(${i},'seed','same')`);
         for (const id of S.unlocked) h += chip(cfg.seed === id, `${CROP[id].e} ${CROP[id].seed || 'даром'}`, `setHelper(${i},'seed','${id}')`);
         h += `</div>`;
@@ -1069,7 +1071,10 @@ function draw(t) {
   for (const c of cowsState) list.push({ z: c.x + c.y, f: () => drawCow(c, t) });
   S.plots.forEach((p, i) => { if (p.crop) { const s = PLOT_SLOTS[i]; list.push({ z: s.x + s.y + 1, f: () => drawCrop(i, t) }); } });
   list.push({ z: P.x + P.y + 0.01, f: () => drawPerson(P, PLAYER_LOOK) });
-  for (const h of helpers) list.push({ z: h.x + h.y, f: () => { drawPerson(h, h.look); const c = iso(h.x, h.y); const st = S.helpers[h.id]?.stations || [], icons = st.length ? st.map(k => STATIONS[k].ico) : [REST.ico];
+  for (const h of helpers) list.push({ z: h.x + h.y, f: () => { drawPerson(h, h.look); const c = iso(h.x, h.y); const cfg = S.helpers[h.id] || { stations: [] }, st = cfg.stations;
+    const fieldIco = !cfg.replant ? '🌾' : cfg.seed === 'same' ? '🔁' : CROP[cfg.seed]?.e || '🌾';   // сбор — 🌾, посев — значок культуры
+    const icons = st.length ? st.map(k => k === 'field' ? fieldIco : STATIONS[k].ico) : [REST.ico];
+    if (h.broke) icons.push('💰');
     rr(c.x - icons.length * 6.5 - 3, c.y - 69, icons.length * 13 + 6, 18, 9, 'rgba(255,253,246,.95)');
     icons.forEach((e, k) => emoji(e, c.x + (k - (icons.length - 1) / 2) * 13, c.y - 59.5, 11)); } });
   for (const v of visitors) list.push({ z: v.x + v.y, f: () => drawPerson(v, v.look) });
@@ -1710,8 +1715,11 @@ let toastT;
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 1600); }
 
 $('harvestAll').onclick = () => {   // грядки, яблони и гнездо — по кратчайшему маршруту
-  const list = readyJobs().map(j => ({ x: j.x, y: j.y, fn: () => j.act('player') }));
-  if (!list.length) { toast('Пока нечего собирать'); return; }
+  const covered = new Set(S.helpers.flatMap(c => c.stations));
+  const kindOf = j => j.x === COOP_SPOT.x && j.y === COOP_SPOT.y ? 'coop' : j.x === BARN_SPOT.x && j.y === BARN_SPOT.y ? 'barn' : orchardAt(j.x, j.y) >= 0 ? 'orchard' : 'field';
+  const all = readyJobs(), mine = all.filter(j => !covered.has(kindOf(j)));
+  const list = mine.map(j => ({ x: j.x, y: j.y, fn: () => j.act('player') }));
+  if (!list.length) { toast(all.length ? '🧑‍🌾 Это уже собирают помощники' : 'Пока нечего собирать'); return; }
   setTasks(routeThrough(list));
 };
 $('plantAll').onclick = () => {
