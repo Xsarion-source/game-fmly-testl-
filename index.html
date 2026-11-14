@@ -21,6 +21,17 @@
            font-size: 20px; line-height: 42px; box-shadow: 0 2px 0 rgba(0,0,0,.18); flex: 0 0 auto; }
   #menuBtn { font-size: 22px; font-weight: 900; }
   .hudrow { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 700; }
+  #coins { cursor: pointer; pointer-events: auto; }
+  .ebar { display: flex; align-items: center; gap: 6px; font-size: 13px; margin: 3px 0; }
+  .ebar .el { flex: 0 0 38%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ebar .et { flex: 1; height: 10px; background: #efe3c8; border-radius: 5px; overflow: hidden; }
+  .ebar .et i { display: block; height: 100%; border-radius: 5px; }
+  .ebar b { flex: 0 0 auto; min-width: 54px; text-align: right; }
+  .echart { display: flex; gap: 6px; align-items: flex-end; height: 110px; padding: 6px 4px 0; background: #f6eedb; border-radius: 10px; }
+  .ecol { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; }
+  .ebars { flex: 1; width: 100%; display: flex; gap: 2px; align-items: flex-end; justify-content: center; }
+  .ebars i { display: block; width: 40%; max-width: 14px; border-radius: 3px 3px 0 0; min-height: 1px; }
+  .ecol small { font-size: 10px; color: #7a6650; padding: 2px 0; }
   .pill { background: rgba(255,248,231,.92); border-radius: 999px; padding: 4px 10px; font-size: 15px; white-space: nowrap; box-shadow: 0 2px 0 rgba(0,0,0,.15); }
   #sunbox { position: relative; width: 132px; height: 52px; border-radius: 14px; overflow: hidden; pointer-events: auto;
             box-shadow: 0 2px 0 rgba(0,0,0,.15); transition: background 1.5s; background: #9fd8ff; cursor: default; }
@@ -310,7 +321,7 @@ try { S = JSON.parse(localStorage.getItem(SAVE_KEY)) || newState(); } catch { S 
 delete S.queue;
 if (!S.stats) S.stats = { earned: 0, served: 0, missed: 0 };
 S.life ??= { earned: 0, served: 0, harvested: 0, eggs: 0 };
-S.life.milk ??= 0; S.life.flour ??= 0; S.life.cheese ??= 0;
+S.life.milk ??= 0; S.hist ??= []; S.life.flour ??= 0; S.life.cheese ??= 0;
 S.up.clear ??= 0; S.up.mill ??= 0; S.up.dairy ??= 0;
 S.prod ??= {}; for (const k in PROD) S.prod[k] ??= { q: 0, t: 0, out: 0 };   // q — загружено партий, out — готово
 S.up.helper ??= 0;
@@ -351,6 +362,13 @@ const growMult = () => 1 + S.up.fert * 0.2;
 const priceMult = () => 1 + S.up.sign * 0.1;
 const patience = () => 30 + S.up.bench * 5;
 const sellPrice = c => Math.round(GOODS[c].price * priceMult());
+// Экономика: за день (S.stats) и за всё время (S.life) — выручка по товарам и траты по статьям
+const SPEND = { seeds: '🌱 Семена', up: '⬆️ Улучшения', crops: '🔓 Новые культуры', trees: '🌳 Саженцы' };
+function spend(n, cat) {
+  S.coins -= n;
+  for (const o of [S.stats, S.life]) { o.spent ??= {}; o.spent[cat] = (o.spent[cat] || 0) + n; }
+}
+const spentSum = o => Object.values(o.spent || {}).reduce((a, b) => a + b, 0);
 
 function startDay() {
   S.night = false; S.t = 0; S.spawned = 0; S.closing = false;
@@ -433,6 +451,7 @@ function sell(v) {
   const tip = v.pat / v.max > 0.6 ? Math.ceil(v.qty * sellPrice(v.crop) * 0.2) : 0;   // чаевые за скорость
   const money = v.qty * sellPrice(v.crop) + tip;
   S.coins += money; S.stats.earned += money; S.stats.served++; S.life.earned += money; S.life.served++;
+  for (const o of [S.stats, S.life]) { o.sold ??= {}; o.sold[v.crop] = (o.sold[v.crop] || 0) + money; }
   addFloat(v.x, v.y, `+${money}💰`);
   leave(v, 'happy');
   save(); renderUI();
@@ -470,7 +489,7 @@ function plotAct(i, mode, gh) {
     if (!c) { toast(GH_WRONG()); return; }
     if (!gh && GH_CROPS.includes(id)) { toast(`${c.e} ${c.name} растёт только в теплице 🏡`); return; }
     if (S.coins < c.seed) { toast(gh ? `Семена ${c.e} стоят ${c.seed}💰` : 'Не хватает монет — посади бесплатный подсолнух 🌻'); return; }
-    S.coins -= c.seed; p.crop = c.id; p.prog = 0;
+    spend(c.seed, 'seeds'); p.crop = c.id; p.prog = 0;
   } else return;
   beginClock();
   save(); renderUI();
@@ -511,7 +530,7 @@ function treeAct(i, mode) {
   } else if (!t.kind && mode !== 'harvest') {
     const T = TREES.apple;
     if (S.coins < T.sapling) { toast(`Саженец яблони стоит ${T.sapling}💰`); return false; }
-    S.coins -= T.sapling; t.kind = 'apple'; t.grow = 0; t.fruit = 0;
+    spend(T.sapling, 'trees'); t.kind = 'apple'; t.grow = 0; t.fruit = 0;
     toast('🌱 Яблоня посажена! Вырастет примерно за день и будет давать яблоки снова и снова');
     beginClock();
   } else return false;
@@ -704,7 +723,7 @@ function routeThrough(list) {   // жадный обход: каждый раз 
 function buyUpgrade(key) {
   const u = UPGRADES[key], l = S.up[key], cost = u.cost(l);
   if (l >= u.max || S.coins < cost || upLocked(key)) return;
-  S.coins -= cost; S.up[key]++;
+  spend(cost, 'up'); S.up[key]++;
   const before = S.plots.length;
   if (key === 'land') for (let k = 0; k < 4 && S.plots.length < MAX_PLOTS; k++) S.plots.push({ crop: null, prog: 0 });
   if (key === 'helper') syncHelpers();
@@ -811,7 +830,7 @@ function openUpgrade(key) {
 function unlockCrop(id) {
   const c = CROP[id];
   if (S.unlocked.includes(id) || S.coins < c.unlockCost || S.day + 1 < c.unlockDay) return;
-  S.coins -= c.unlockCost; S.unlocked.push(id); S.sel = id;
+  spend(c.unlockCost, 'crops'); S.unlocked.push(id); S.sel = id;
   save(); renderUI(); openNight(false);
 }
 
@@ -964,7 +983,7 @@ function helperPlot(i, cfg) {
   } else if (p.crop || !cfg.replant) return false;
   if (cfg.replant) {
     const id = helperSeed(cfg, prev);
-    if (id) { S.coins -= CROP[id].seed; p.crop = id; p.prog = 0; if (!S.night) beginClock(); }
+    if (id) { spend(CROP[id].seed, 'seeds'); p.crop = id; p.prog = 0; if (!S.night) beginClock(); }
   }
   save(); renderUI(); return true;
 }
@@ -978,7 +997,7 @@ function helperGh(i, cfg) {
   if (!p) return false;
   if (p.crop && p.prog >= 1) harvestBed(p, s, true);
   else if (p.crop || !cfg.ghReplant) return false;
-  if (cfg.ghReplant) { const id = ghHelperSeed(cfg, p); if (id) { S.coins -= CROP[id].seed; p.crop = id; p.prog = 0; if (!S.night) beginClock(); } }
+  if (cfg.ghReplant) { const id = ghHelperSeed(cfg, p); if (id) { spend(CROP[id].seed, 'seeds'); p.crop = id; p.prog = 0; if (!S.night) beginClock(); } }
   save(); renderUI(); return true;
 }
 // порядок обхода грядок «змейкой»: ряд слева направо, следующий — справа налево
@@ -2036,11 +2055,55 @@ function openProfile() {
     <button class="wide" style="width:100%;margin-top:12px" onclick="closeNight()">Закрыть</button>`;
   $('overlay').classList.add('show');
 }
+function openEconomy() {
+  const st = S.stats, L = S.life, fmt = n => Math.round(n).toLocaleString('ru-RU');
+  const row = (k, v, c) => `<div class="stat"><span>${k}</span><b${c ? ` style="color:${c}"` : ''}>${v}</b></div>`;
+  const bars = (obj, names, col) => {   // горизонтальные полоски: доля каждой статьи
+    const e = Object.entries(obj || {}).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+    if (!e.length) return '<div style="color:#7a6650;font-size:13px;margin:4px 0">Пока ничего</div>';
+    const max = e[0][1];
+    return e.map(([k, v]) => `<div class="ebar"><span class="el">${names(k)}</span><span class="et"><i style="width:${Math.max(3, v / max * 100)}%;background:${col}"></i></span><b>${fmt(v)}</b></div>`).join('');
+  };
+  const good = k => `${GOODS[k].e} ${GOODS[k].name}`, cat = k => SPEND[k] || k;
+  const spentToday = spentSum(st), net = st.earned - spentToday;
+  let h = `<h2>💰 Экономика</h2>
+    <div class="summary" style="font-size:15px">На счету <b>${fmt(S.coins)}💰</b> · цены на лотке ${Math.round(priceMult() * 100)}% (вывеска)</div>
+    <h3 style="margin:12px 0 4px">${S.night ? 'Сегодня' : `День ${S.day}`} — итог</h3>
+    ${row('💵 Выручка', '+' + fmt(st.earned), '#3e9b3a')}${row('🧾 Траты', '−' + fmt(spentToday), '#b0503a')}
+    ${row('📈 Итого', (net >= 0 ? '+' : '−') + fmt(Math.abs(net)), net >= 0 ? '#3e9b3a' : '#b0503a')}
+    ${row('🧍 Покупателей', `${st.served || 0} обслужено · ${st.missed || 0} ушли`)}
+    <h3 style="margin:12px 0 4px">Выручка по товарам — сегодня</h3>${bars(st.sold, good, '#7cc35e')}
+    <h3 style="margin:12px 0 4px">Траты — сегодня</h3>${bars(st.spent, cat, '#e8a07a')}`;
+  const hist = [...(S.hist || []), { d: S.day, e: st.earned || 0, s: spentToday, now: true }].slice(-7);
+  const hmax = Math.max(1, ...hist.flatMap(x => [x.e, x.s]));
+  h += `<h3 style="margin:12px 0 4px">Последние дни</h3><div class="echart">${hist.map(x => `<div class="ecol"><div class="ebars">
+      <i style="height:${x.e / hmax * 100}%;background:#7cc35e" title="${x.e}"></i><i style="height:${x.s / hmax * 100}%;background:#e8a07a" title="${x.s}"></i></div>
+      <small>${x.now ? 'сег.' : x.d}</small></div>`).join('')}</div>
+    <div style="font-size:12px;color:#7a6650;text-align:center"><span style="color:#3e9b3a">■</span> выручка · <span style="color:#d0805a">■</span> траты</div>`;
+  const stock = Object.keys(GOODS).filter(k => S.inv[k] > 0).map(k => [k, S.inv[k] * sellPrice(k)]).sort((a, b) => b[1] - a[1]);
+  const stockSum = stock.reduce((a, [, v]) => a + v, 0);
+  h += `<h3 style="margin:12px 0 4px">Склад — на ${fmt(stockSum)}💰 по ценам лотка</h3>
+    ${stock.length ? stock.map(([k, v]) => row(`${GOODS[k].e} ${GOODS[k].name} × ${S.inv[k]}`, fmt(v) + '💰')).join('') : '<div style="color:#7a6650;font-size:13px">Склад пуст</div>'}`;
+  // выгодность культур: прибыль с одной грядки в минуту с учётом удобрений
+  h += `<h3 style="margin:12px 0 4px">Что выгодно сажать</h3><div style="font-size:12px;color:#7a6650;margin-bottom:4px">Прибыль с одной грядки за минуту роста (цена − семена), с учётом удобрений</div>`;
+  const crops = S.unlocked.map(id => { const c = CROP[id], gh = GH_CROPS.includes(id), n = gh ? GH_YIELD : 1, t = c.grow * (gh ? GH_SLOW : 1) / growMult();
+    return [id, (n * sellPrice(id) - c.seed) / t * 60, t, gh]; }).sort((a, b) => b[1] - a[1]);
+  const cmax = Math.max(1, ...crops.map(c => c[1]));
+  h += crops.map(([id, pm, t, gh]) => `<div class="ebar"><span class="el">${CROP[id].e} ${CROP[id].name}${gh ? ' 🏡' : ''}</span><span class="et"><i style="width:${Math.max(3, pm / cmax * 100)}%;background:#ffd34d"></i></span><b>${fmt(pm)}/мин</b></div>`).join('');
+  h += `<h3 style="margin:12px 0 4px">За всё время</h3>${row('💵 Заработано', fmt(L.earned) + '💰')}${row('🧾 Потрачено <small style="color:#7a6650">(учёт с этой версии)</small>', fmt(spentSum(L)) + '💰')}
+    <h3 style="margin:12px 0 4px">Выручка по товарам — всего</h3>${bars(L.sold, good, '#7cc35e')}
+    <h3 style="margin:12px 0 4px">Траты — всего</h3>${bars(L.spent, cat, '#e8a07a')}
+    <div style="font-size:12px;color:#7a6650;margin-top:6px">Разбивка по товарам и тратам считается с этой версии игры</div>
+    <button class="wide" style="width:100%;margin-top:12px" onclick="closeNight()">Закрыть</button>`;
+  $('sheet').dataset.view = ''; $('sheet').innerHTML = h;
+  $('overlay').classList.add('show');
+}
 function openMenu() {
   $('sheet').dataset.view = ''; $('sheet').innerHTML = `<h2>☰ Меню</h2><div class="menu">
       <button onclick="${S.night ? 'openNight(false)' : "toast('🌙 Улучшения покупаются ночью')"}">⬆️ Улучшения ${S.night ? '' : '<small style="color:#7a6650">— ночью</small>'}</button>
       ${S.up.helper ? '<button onclick="openHelpers()">🧑‍🌾 Помощники</button>' : ''}
       <button onclick="openProfile()">👤 Профиль</button>
+      <button onclick="openEconomy()">💰 Экономика</button>
       <button onclick="openHelp()">📖 Как играть</button>
       <button onclick="openCheats()">🛠 Чит-меню <small style="color:#7a6650">— для тестов</small></button>
       <button style="color:#b0503a" onclick="resetGame(this)">🔄 Начать заново</button>
@@ -2104,7 +2167,12 @@ function openNight(withSummary) {
   $('overlay').classList.add('show');
 }
 function closeNight() { $('overlay').classList.remove('show'); $('sheet').dataset.view = ''; }
-function morning() { S.day++; startDay(); }
+function morning() {   // итог дня — в историю (последние 14 дней)
+  S.hist ??= [];
+  S.hist.push({ d: S.day, e: S.stats.earned || 0, s: spentSum(S.stats), sv: S.stats.served || 0, m: S.stats.missed || 0 });
+  if (S.hist.length > 14) S.hist.shift();
+  S.day++; startDay();
+}
 let resetArmed = false;
 function resetGame(btn) {
   if (!resetArmed) { resetArmed = true; btn.textContent = 'Точно стереть прогресс? Нажми ещё раз'; setTimeout(() => { resetArmed = false; if (btn.isConnected) btn.textContent = 'Начать заново'; }, 3000); return; }
@@ -2142,6 +2210,7 @@ $('plantAll').onclick = () => {
 $('nightBtn').onclick = () => openNight(false);
 $('dayBtn').onclick = () => morning();
 $('profileBtn').onclick = openProfile;
+$('coins').onclick = openEconomy;
 $('menuBtn').onclick = openMenu;
 
 // ================== ЧИТ-МЕНЮ (тройной тап по «День N») ==================
