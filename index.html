@@ -981,6 +981,8 @@ function helperGh(i, cfg) {
   if (cfg.ghReplant) { const id = ghHelperSeed(cfg, p); if (id) { S.coins -= CROP[id].seed; p.crop = id; p.prog = 0; if (!S.night) beginClock(); } }
   save(); renderUI(); return true;
 }
+// порядок обхода грядок «змейкой»: ряд слева направо, следующий — справа налево
+const snakeOrd = q => q.y * 20 + (q.y % 2 ? 19 - q.x : q.x);
 // работа для станции помощника
 function helperJobs(cfg) {
   const jobs = [], has = k => cfg.stations.includes(k);
@@ -988,12 +990,12 @@ function helperJobs(cfg) {
     if (!cfg.zones.includes(zoneOf(i))) return;   // только свои участки
     const ready = p.crop && p.prog >= 1, empty = !p.crop && cfg.replant && helperSeed(cfg, plotPrev(p));
     if (!p.crop && cfg.replant && !empty) jobs.broke = true;   // пустая грядка, но семена не по карману
-    if (ready || empty) jobs.push({ x: PLOT_SLOTS[i].x, y: PLOT_SLOTS[i].y, act: () => helperPlot(i, cfg) });
+    if (ready || empty) jobs.push({ x: PLOT_SLOTS[i].x, y: PLOT_SLOTS[i].y, ord: snakeOrd(PLOT_SLOTS[i]), act: () => helperPlot(i, cfg) });
   });
   if (has('gh')) S.gh.forEach((p, i) => {
     const ready = p.crop && p.prog >= 1, empty = !p.crop && cfg.ghReplant && ghHelperSeed(cfg, p);
     if (!p.crop && cfg.ghReplant && !empty) jobs.broke = true;
-    if (ready || empty) jobs.push({ x: GH_SLOTS[i].x, y: GH_SLOTS[i].y, act: () => helperGh(i, cfg) });
+    if (ready || empty) jobs.push({ x: GH_SLOTS[i].x, y: GH_SLOTS[i].y, ord: 1000 + snakeOrd(GH_SLOTS[i]), act: () => helperGh(i, cfg) });
   });
   for (const k in PROD) if (has(k) && S.up[k]) {
     const st = S.prod[k];
@@ -1028,6 +1030,7 @@ function updateHelper(h, dt) {
   if (h.target) {                          // дошёл до места работы
     const job = h.target; h.target = null;
     if (job.act()) h.work = 0.45;
+    if (job.ord != null) { h.cur = job.ord + 1; h.lastPlot = true; } else h.lastPlot = false;
     return;
   }
   if ((h.think -= dt) > 0) return;
@@ -1043,7 +1046,12 @@ function updateHelper(h, dt) {
   if (tasks[0]) claimed.add(tasks[0].x + ',' + tasks[0].y);
   const jobs = helperJobs(cfg);
   h.broke = !!jobs.broke;
-  const cand = jobs.filter(j => !claimed.has(j.x + ',' + j.y)).sort((a, b) => (Math.abs(a.x - hx) + Math.abs(a.y - hy)) - (Math.abs(b.x - hx) + Math.abs(b.y - hy)));
+  // грядки — по кругу от той, где был в последний раз (иначе быстрые 🌻 рядом не дают дойти до дальних);
+  // остальные станции — ближайшие; после грядки сначала заглядывает на другие станции
+  const free = jobs.filter(j => !claimed.has(j.x + ',' + j.y)), cur = h.cur || 0;
+  const beds = free.filter(j => j.ord != null).sort((a, b) => (a.ord - cur + 4000) % 4000 - (b.ord - cur + 4000) % 4000);
+  const other = free.filter(j => j.ord == null).sort((a, b) => (Math.abs(a.x - hx) + Math.abs(a.y - hy)) - (Math.abs(b.x - hx) + Math.abs(b.y - hy)));
+  const cand = h.lastPlot ? [...other, ...beds] : [...beds, ...other];
   let found = false;
   for (const j of cand) {
     const pth = findPath(hx, hy, j.x, j.y);
