@@ -160,7 +160,7 @@ const UPGRADES = {
   ads:    { name: 'Реклама',           ico: '📣', desc: l => `+3 покупателя в день`,           cost: l => 30 + l*35,           max: 10 },
   fert:   { name: 'Удобрения',         ico: '🧪', desc: l => `Рост быстрее (+${l*20}% → +${(l+1)*20}%)`, cost: l => 50 + l*60, max: 5 },
   sign:   { name: 'Красивая вывеска',  ico: '🪧', desc: l => `Цены выше (+${l*10}% → +${(l+1)*10}%)`, cost: l => 60 + l*70, max: 6 },
-  helper: { name: 'Помощник',         ico: '🧑‍🌾', desc: l => `Назначь его на поле, в сад, в курятник или за прилавок (помощников: ${l} → ${l+1})`, cost: l => [120, 280, 520][l], max: 3 },
+  helper: { name: 'Помощник',         ico: '🧑‍🌾', desc: l => `Работает на одной или нескольких станциях: поле, сад, курятник, коровник, лавка (помощников: ${l} → ${l+1})`, cost: l => [120, 280, 520, 800, 1150, 1600][l], max: 6 },
   bench:  { name: 'Скамейка',          ico: '🪑', desc: l => `Покупатели ждут дольше (+5 сек)`, cost: l => 25 + l*30, max: 5 },
 };
 
@@ -266,9 +266,10 @@ S.up.helper ??= 0;
 // у каждого помощника своя станция: поле, сад, курятник, лавка или отдых
 if (!S.helpers) {
   const m = S.helperMode || 'harvest';
-  S.helpers = Array.from({ length: S.up.helper }, () => ({ station: m === 'rest' ? 'rest' : 'field', replant: m === 'replant', seed: 'same' }));
+  S.helpers = Array.from({ length: S.up.helper }, () => ({ stations: m === 'rest' ? [] : ['field'], replant: m === 'replant', seed: 'same' }));
 }
 delete S.helperMode;
+for (const c of S.helpers) if (!c.stations) { c.stations = c.station && c.station !== 'rest' ? [c.station] : []; delete c.station; }
 S.up.orchard ??= 0; S.up.coop ??= 0;
 S.trees ??= [];
 S.coop ??= { fedDay: 0, fedHens: 0, eggs: 0, layT: 0 };
@@ -575,7 +576,7 @@ function buyUpgrade(key) {
     land: '🚜 Новые грядки готовы', orchard: '🌳 Сад готов — тапни на место, чтобы посадить яблоню',
     barn: S.up.barn === 1 ? '🐄 Коровник построен! Ночью тапни на пастбище — фермер покормит коров 🌻 или 🌾' : '🐄 На пастбище новая корова',
     coop: S.up.coop === 1 ? '🐔 Курятник построен! Ночью тапни на него — фермер покормит кур' : '🐔 В курятнике новая курица',
-    helper: '🧑‍🌾 Помощник нанят! Кнопка «Помощники» внизу — назначь ему работу', ads: S.up.ads === 1 ? '📣 У дороги появилась реклама' : '📣 Рекламный щит стал заметнее',
+    helper: '🧑‍🌾 Помощник нанят! Кнопка «Команда» внизу — назначь ему станции', ads: S.up.ads === 1 ? '📣 У дороги появилась реклама' : '📣 Рекламный щит стал заметнее',
     fert: '🧪 Мешки удобрений у поля', sign: '🪧 Новая вывеска над лотком', bench: '🪑 Скамейка у очереди',
   }[key];
   closeNight();
@@ -738,6 +739,9 @@ const HELPER_LOOKS = [
   { shirt: '#4caf6a', shirtDark: '#3a8a52', pants: '#6b4a2e', skin: '#d9a37a', hair: '#2b1d14', hat: 'cap', capColor: '#2f7d46' },
   { shirt: '#f0b429', shirtDark: '#c99418', pants: '#3b4a6b', skin: '#f6d5b8', hair: '#c9a15a', hat: 'cap', capColor: '#e0554a' },
   { shirt: '#9b7be0', shirtDark: '#7c60bd', pants: '#2f2f3a', skin: '#a8714a', hair: '#111111', hat: 'straw' },
+  { shirt: '#e0554a', shirtDark: '#b8433a', pants: '#3b4a6b', skin: '#f2c49b', hair: '#6b3e1f', hat: 'straw' },
+  { shirt: '#4fb6c4', shirtDark: '#3a909c', pants: '#5a4632', skin: '#7a4f33', hair: '#2b1d14', hat: 'cap', capColor: '#f0b429' },
+  { shirt: '#f4f1ea', shirtDark: '#d8d2c4', pants: '#2f7d46', skin: '#d9a37a', hair: '#b5462f', hat: 'cap', capColor: '#9b7be0' },
 ];
 const HOME = { x: 3, y: 4 };   // у двери дома
 const STATIONS = {
@@ -746,14 +750,14 @@ const STATIONS = {
   coop:    { ico: '🐔', name: 'Курятник', idle: { x: 8, y: 8 },  hint: 'Днём собирает яйца, ночью кормит кур урожаем со склада' },
   barn:    { ico: '🐄', name: 'Коровник', idle: { x: 14, y: 7 }, hint: 'Днём собирает молоко, ночью кормит коров 🌻 и 🌾 со склада' },
   stall:   { ico: '🏪', name: 'Лавка',    idle: { x: 3, y: 9 },  hint: 'Стоит за прилавком и продаёт всё, что есть на складе' },
-  rest:    { ico: '😴', name: 'Отдых',    idle: { x: 3, y: 4 },  hint: 'Отдыхает у дома' },
 };
+const REST = { ico: '😴', idle: { x: 3, y: 4 } };
 let helpers = [];
 function syncHelpers() {
-  while (S.helpers.length < S.up.helper) S.helpers.push({ station: ['field', 'orchard', 'coop'][S.helpers.length % 3], replant: false, seed: 'same' });
+  while (S.helpers.length < S.up.helper) S.helpers.push({ stations: [['field', 'orchard', 'coop', 'barn', 'stall', 'field'][S.helpers.length % 6]], replant: false, seed: 'same' });
   while (helpers.length < S.up.helper) {
     const i = helpers.length;
-    helpers.push({ id: i, x: HOME.x + .5 + i * .3, y: HOME.y + .5, path: [], target: null, phase: 0, moving: false, flip: false, work: 0, think: 0, sellT: 0, look: HELPER_LOOKS[i % 3] });
+    helpers.push({ id: i, x: HOME.x + .5 + i * .3, y: HOME.y + .5, path: [], target: null, phase: 0, moving: false, flip: false, work: 0, think: 0, sellT: 0, look: HELPER_LOOKS[i % HELPER_LOOKS.length] });
   }
 }
 // какой культурой помощник засеет грядку (null — не сажать)
@@ -780,22 +784,23 @@ function helperPlot(i, cfg) {
 }
 // работа для станции помощника
 function helperJobs(cfg) {
-  const jobs = [];
-  if (cfg.station === 'field') S.plots.forEach((p, i) => {
+  const jobs = [], has = k => cfg.stations.includes(k);
+  if (has('field')) S.plots.forEach((p, i) => {
     const ready = p.crop && p.prog >= 1, empty = !p.crop && cfg.replant && cfg.seed !== 'same' && helperSeed(cfg, null);
     if (ready || empty) jobs.push({ x: PLOT_SLOTS[i].x, y: PLOT_SLOTS[i].y, act: () => helperPlot(i, cfg) });
   });
-  if (cfg.station === 'orchard') S.trees.forEach((t, i) => { if (treeReady(t)) jobs.push({ x: ORCHARD_SLOTS[i].x, y: ORCHARD_SLOTS[i].y, act: () => treeAct(i, 'harvest') }); });
-  if (cfg.station === 'coop') {
+  if (has('orchard')) S.trees.forEach((t, i) => { if (treeReady(t)) jobs.push({ x: ORCHARD_SLOTS[i].x, y: ORCHARD_SLOTS[i].y, act: () => treeAct(i, 'harvest') }); });
+  if (has('coop')) {
     if (S.coop.eggs > 0) jobs.push({ ...COOP_SPOT, act: collectEggs });
     if (S.night && hens() && fedTomorrow() < hens() && feedStock() >= FEED_PER_HEN) jobs.push({ ...COOP_SPOT, act: () => feedHens() });
   }
-  if (cfg.station === 'barn') {
+  if (has('barn')) {
     if (S.barn.milk > 0) jobs.push({ ...BARN_SPOT, act: collectMilk });
     if (S.night && cows() && cowsFedTomorrow() < cows() && cowFoodStock() >= FEED_PER_COW) jobs.push({ ...BARN_SPOT, act: () => feedCows() });
   }
   return jobs;
 }
+const serveable = () => !S.night && visitors.some(v => v.state === 'waiting' && (S.inv[v.crop] || 0) >= v.qty);
 function helperSell(h) {   // продавец за прилавком
   if ((h.sellT -= 1) > 0) return;
   const v = visitors.find(v => v.state === 'waiting' && (S.inv[v.crop] || 0) >= v.qty);
@@ -809,7 +814,7 @@ function updateHelper(h, dt) {
     h.moving = true; h.phase += dt * 12; return;
   }
   h.moving = false;
-  const cfg = S.helpers[h.id] || { station: 'rest' };
+  const cfg = S.helpers[h.id] || { stations: [] };
   if (h.target) {                          // дошёл до места работы
     const job = h.target; h.target = null;
     if (job.act()) h.work = 0.45;
@@ -817,8 +822,13 @@ function updateHelper(h, dt) {
   }
   if ((h.think -= dt) > 0) return;
   h.think = 0.5;
-  const hx = Math.floor(h.x), hy = Math.floor(h.y), st = STATIONS[cfg.station];
-  if (cfg.station === 'stall' && hx === st.idle.x && hy === st.idle.y) { h.flip = false; if (!S.night) helperSell(h); return; }
+  const hx = Math.floor(h.x), hy = Math.floor(h.y), stall = STATIONS.stall.idle;
+  // лавка в приоритете: если есть кому продать — продаёт, иначе идёт по другим станциям
+  if (cfg.stations.includes('stall') && serveable()) {
+    if (hx === stall.x && hy === stall.y) { h.flip = false; helperSell(h); }
+    else h.path = findPath(hx, hy, stall.x, stall.y) || [];
+    return;
+  }
   const claimed = new Set(helpers.filter(o => o.target).map(o => o.target.x + ',' + o.target.y));
   if (tasks[0]) claimed.add(tasks[0].x + ',' + tasks[0].y);
   let best = null, bd = 1e9;
@@ -831,12 +841,19 @@ function updateHelper(h, dt) {
     const pth = findPath(hx, hy, best.x, best.y);
     if (pth) { h.path = pth; h.target = best; }
   } else {   // работы нет — ждёт на своей станции
-    const spot = cfg.station === 'stall' ? st.idle : { x: st.idle.x + (h.id % 2), y: st.idle.y };
+    const first = cfg.stations.includes('stall') ? 'stall' : cfg.stations[0];
+    const base = first ? STATIONS[first].idle : REST.idle;
+    const spot = first === 'stall' ? base : { x: base.x + (h.id % 2), y: base.y };
     if ((hx !== spot.x || hy !== spot.y) && walkable(spot.x, spot.y)) h.path = findPath(hx, hy, spot.x, spot.y) || [];
   }
 }
 
 // ---------- Панель помощников ----------
+function toggleStation(i, k) {
+  const c = S.helpers[i];
+  c.stations = k === 'rest' ? [] : c.stations.includes(k) ? c.stations.filter(x => x !== k) : [...c.stations, k];
+  setHelper(i, 'stations', c.stations);
+}
 function setHelper(i, field, val) {
   Object.assign(S.helpers[i], { [field]: val });
   const h = helpers[i]; if (h) { h.target = null; h.path = []; h.think = 0; }
@@ -844,17 +861,18 @@ function setHelper(i, field, val) {
 }
 function openHelpers() {
   const chip = (on, label, js, dis) => `<button class="chip${on ? ' on' : ''}" ${dis ? 'disabled' : ''} onclick="${js}">${label}</button>`;
-  let h = `<h2>🧑‍🌾 Помощники</h2><div style="font-size:13px;color:#7a6650;margin-bottom:6px">Назначь каждому станцию. Значок над головой показывает, кто чем занят. Работают и ночью</div>`;
+  let h = `<h2>🧑‍🌾 Помощники</h2><div style="font-size:13px;color:#7a6650;margin-bottom:6px">Отметь одну или несколько станций — помощник будет ходить между ними. Лавка в приоритете: пока есть кому продать, он стоит за прилавком. Работают и ночью</div>`;
   S.helpers.forEach((cfg, i) => {
-    const L = HELPER_LOOKS[i % 3];
+    const L = HELPER_LOOKS[i % HELPER_LOOKS.length];
+    const hint = cfg.stations.length ? cfg.stations.map(k => STATIONS[k].hint.toLowerCase()).join('; ') : 'отдыхает у дома';
     h += `<div class="hcard"><div style="font-weight:800;margin-bottom:6px"><span class="dot" style="background:${L.shirt}"></span>Помощник ${i + 1}
-      <small style="font-weight:400;color:#7a6650"> — ${STATIONS[cfg.station].hint}</small></div><div class="chips">`;
+      <small style="font-weight:400;color:#7a6650"> — ${hint}</small></div><div class="chips">`;
     for (const [k, st] of Object.entries(STATIONS)) {
       const dis = (k === 'orchard' && !S.up.orchard) || (k === 'coop' && !hens()) || (k === 'barn' && !cows());
-      h += chip(cfg.station === k, `${st.ico} ${st.name}`, `setHelper(${i},'station','${k}')`, dis);
+      h += chip(cfg.stations.includes(k), `${cfg.stations.includes(k) ? '✓ ' : ''}${st.ico} ${st.name}`, `toggleStation(${i},'${k}')`, dis);
     }
-    h += `</div>`;
-    if (cfg.station === 'field') {
+    h += chip(!cfg.stations.length, '😴 Отдых', `toggleStation(${i},'rest')`) + `</div>`;
+    if (cfg.stations.includes('field')) {
       h += `<div class="chips" style="margin-top:6px">${chip(!cfg.replant, '🧺 Только сбор', `setHelper(${i},'replant',false)`)}${chip(cfg.replant, '🌱 Сбор и посев', `setHelper(${i},'replant',true)`)}</div>`;
       if (cfg.replant) {
         h += `<div style="font-size:12px;color:#7a6650;margin:6px 0 4px">Что сажать (семена за твои монеты):</div><div class="chips">`;
@@ -1051,7 +1069,9 @@ function draw(t) {
   for (const c of cowsState) list.push({ z: c.x + c.y, f: () => drawCow(c, t) });
   S.plots.forEach((p, i) => { if (p.crop) { const s = PLOT_SLOTS[i]; list.push({ z: s.x + s.y + 1, f: () => drawCrop(i, t) }); } });
   list.push({ z: P.x + P.y + 0.01, f: () => drawPerson(P, PLAYER_LOOK) });
-  for (const h of helpers) list.push({ z: h.x + h.y, f: () => { drawPerson(h, h.look); const c = iso(h.x, h.y); circle(c.x, c.y - 60, 9, 'rgba(255,253,246,.95)'); emoji(STATIONS[S.helpers[h.id]?.station || 'rest'].ico, c.x, c.y - 59, 11); } });
+  for (const h of helpers) list.push({ z: h.x + h.y, f: () => { drawPerson(h, h.look); const c = iso(h.x, h.y); const st = S.helpers[h.id]?.stations || [], icons = st.length ? st.map(k => STATIONS[k].ico) : [REST.ico];
+    rr(c.x - icons.length * 6.5 - 3, c.y - 69, icons.length * 13 + 6, 18, 9, 'rgba(255,253,246,.95)');
+    icons.forEach((e, k) => emoji(e, c.x + (k - (icons.length - 1) / 2) * 13, c.y - 59.5, 11)); } });
   for (const v of visitors) list.push({ z: v.x + v.y, f: () => drawPerson(v, v.look) });
   list.sort((a, b) => a.z - b.z).forEach(o => o.f());
 
