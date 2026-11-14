@@ -807,7 +807,7 @@ const HELPER_LOOKS = [
 ];
 const HOME = { x: 3, y: 4 };   // у двери дома
 const STATIONS = {
-  field:   { ico: '🌾', name: 'Поле',     idle: { x: 5, y: 3 },  hint: 'Собирает созревшее на грядках' },
+  field:   { ico: '🚜', name: 'Поле',     idle: { x: 5, y: 3 },  hint: 'Собирает созревшее на грядках' },
   gh:      { ico: '🏡', name: 'Теплица',  idle: { x: 13, y: 7 }, hint: 'Собирает 🍅 и 🍓 в теплице' },
   orchard: { ico: '🍎', name: 'Сад',      idle: { x: 2, y: 6 },  hint: 'Собирает яблоки' },
   coop:    { ico: '🐔', name: 'Курятник', idle: { x: 8, y: 8 },  hint: 'Собирает яйца' },
@@ -987,10 +987,10 @@ function setHelper(i, field, val) {
 function openHelpers() {
   const chip = (on, label, js, dis) => `<button class="chip${on ? ' on' : ''}" ${dis ? 'disabled' : ''} onclick="${js}">${label}</button>`;
   let h = `<h2>🧑‍🌾 Помощники</h2><div style="font-size:13px;color:#7a6650;margin-bottom:6px">Отметь станции — помощник ходит между ними. Лавка в приоритете. Тап по имени сворачивает карточку</div>`;
-  if (S.helpers.some(c => c.stations.includes('field'))) h += `<button class="chip" style="margin-bottom:4px" onclick="clearField()">🌾✖ Снять всех с поля</button>`;
+  if (S.helpers.some(c => c.stations.includes('field'))) h += `<button class="chip" style="margin-bottom:4px" onclick="clearField()">🚜✖ Снять всех с поля</button>`;
   S.helpers.forEach((cfg, i) => {
     const L = HELPER_LOOKS[i % HELPER_LOOKS.length];
-    const icons = cfg.stations.length ? cfg.stations.map(k => k === 'field' ? '🌾' + cfg.zones.map(z => '①②③④'[z]).join('') : STATIONS[k].ico).join(' ') : '😴';
+    const icons = cfg.stations.length ? cfg.stations.map(k => k === 'field' ? '🚜' + cfg.zones.map(z => '①②③④'[z]).join('') : STATIONS[k].ico).join(' ') : '😴';
     const hint = cfg.stations.length ? cfg.stations.map(k => STATIONS[k].hint.toLowerCase()).join('; ') : 'отдыхает у дома';
     h += `<div class="hcard"><div style="font-weight:800;cursor:pointer;display:flex;align-items:center;gap:4px" onclick="foldHelper(${i})"><span class="dot" style="background:${L.shirt}"></span>Помощник ${i + 1}
       <span style="font-weight:600;margin-left:4px">${icons}</span><span style="margin-left:auto;color:#7a6650">${cfg.fold ? '▸' : '▾'}</span></div>`;
@@ -1002,7 +1002,7 @@ function openHelpers() {
     }
     h += chip(!cfg.stations.length, '😴 Отдых', `toggleStation(${i},'rest')`) + `</div>`;
     if (cfg.stations.includes('field')) {   // одна строка: «только сбор» или что сажать после сбора
-      h += `<div style="font-size:12px;color:#7a6650;margin:8px 0 4px">🌾 Участки (по 6 грядок, номера видны на поле; можно несколько):</div><div class="chips">`;
+      h += `<div style="font-size:12px;color:#7a6650;margin:8px 0 4px">🚜 Участки (по 6 грядок, номера видны на поле; можно несколько):</div><div class="chips">`;
       ZONES.forEach((z, k) => {
         const n = S.plots.filter((p, j) => zoneOf(j) === k).length, own = zoneOwner(k);
         const note = !n ? ' 🔒' : own >= 0 && own !== i ? ` · у №${own + 1}` : ` · ${n} гр.`;
@@ -1010,7 +1010,7 @@ function openHelpers() {
       });
       h += `</div>`;
       if (!cfg.zones.length) h += `<div style="font-size:12px;color:#c0392b;margin-top:4px">Выбери участок — без него помощник не работает на поле</div>`;
-      h += `<div style="font-size:12px;color:#7a6650;margin:8px 0 4px">🌾 На поле: собирать и сажать… (семена за твои монеты, 💰 над головой — не хватает)</div><div class="chips">`;
+      h += `<div style="font-size:12px;color:#7a6650;margin:8px 0 4px">🚜 На поле: собирать и сажать… (семена за твои монеты, 💰 над головой — не хватает)</div><div class="chips">`;
       h += chip(!cfg.replant, '🧺 Только сбор', `setField(${i},null)`);
       h += chip(cfg.replant && cfg.seed === 'same', '🔁 То же, что росло', `setField(${i},'same')`);
       for (const id of S.unlocked) if (!GH_CROPS.includes(id)) h += chip(cfg.replant && cfg.seed === id, `${CROP[id].e} ${CROP[id].seed || 'даром'}`, `setField(${i},'${id}')`);
