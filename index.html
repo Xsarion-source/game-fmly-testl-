@@ -445,7 +445,7 @@ const hens = () => S.up.coop > 0 ? S.up.coop + 1 : 0;
 const fedToday = () => S.coop.fedDay === S.day ? S.coop.fedHens : 0;
 const fedTomorrow = () => S.coop.fedDay === S.day + 1 ? S.coop.fedHens : 0;
 const feedStock = () => CROPS.reduce((n, c) => n + (S.inv[c.id] || 0), 0);
-function feedHens() {
+function feedHens(byHelper) {
   if (!hens()) return false;
   if (!S.night) { toast('🐔 Кур кормят ночью — так они «заряжаются» на следующий день'); return false; }
   const already = fedTomorrow(), want = hens() - already;
@@ -458,7 +458,8 @@ function feedHens() {
   }
   S.coop.fedDay = S.day + 1; S.coop.fedHens = already + n;
   addFloat(COOP_SPOT.x + .5, COOP_SPOT.y + .5, `🐔 сыты: ${S.coop.fedHens}`);
-  toast(S.coop.fedHens < hens() ? `🐔 Накормлено ${S.coop.fedHens} из ${hens()} кур — на остальных не хватило урожая` : `🐔 Все куры накормлены — завтра будут яйца`);
+  if (byHelper) toast(`🧑‍🌾 Помощник покормил кур (${S.coop.fedHens} из ${hens()})`);
+  else toast(S.coop.fedHens < hens() ? `🐔 Накормлено ${S.coop.fedHens} из ${hens()} кур — на остальных не хватило урожая` : `🐔 Все куры накормлены — завтра будут яйца`);
   save(); renderUI(); return true;
 }
 function collectEggs() {
@@ -497,7 +498,7 @@ const cows = () => S.up.barn;
 const cowsFedToday = () => S.barn.fedDay === S.day ? S.barn.fedCows : 0;
 const cowsFedTomorrow = () => S.barn.fedDay === S.day + 1 ? S.barn.fedCows : 0;
 const cowFoodStock = () => COW_FOOD.reduce((n, id) => n + (S.inv[id] || 0), 0);
-function feedCows() {
+function feedCows(byHelper) {
   if (!cows()) return false;
   if (!S.night) { toast('🐄 Коров кормят ночью — утром они дают молоко'); return false; }
   const already = cowsFedTomorrow(), want = cows() - already;
@@ -508,7 +509,8 @@ function feedCows() {
   for (const id of COW_FOOD) { const k = Math.min(need, S.inv[id] || 0); S.inv[id] = (S.inv[id] || 0) - k; need -= k; if (!need) break; }
   S.barn.fedDay = S.day + 1; S.barn.fedCows = already + n;
   addFloat(BARN_SPOT.x + .5, BARN_SPOT.y + .5, `🐄 сыты: ${S.barn.fedCows}`);
-  toast(S.barn.fedCows < cows() ? `🐄 Накормлено ${S.barn.fedCows} из ${cows()} коров — не хватило 🌻/🌾` : '🐄 Коровы накормлены — завтра будет молоко');
+  if (byHelper) toast(`🧑‍🌾 Помощник покормил коров (${S.barn.fedCows} из ${cows()})`);
+  else toast(S.barn.fedCows < cows() ? `🐄 Накормлено ${S.barn.fedCows} из ${cows()} коров — не хватило 🌻/🌾` : '🐄 Коровы накормлены — завтра будет молоко');
   save(); renderUI(); return true;
 }
 function collectMilk() {
@@ -621,14 +623,15 @@ function drawUpBadges(t) {
     const s = upSpot(key), ok = S.coins >= u.cost(l);
     const c = lift(s.x + .5, s.y + .5, { helper: 80, sign: 86, ads: 74, coop: 30, barn: 30 }[key] || 30);
     const y = c.y + Math.sin(t * 3 + s.x) * 2.5;
-    badgeHits.push({ key, x: c.x, y });
-    ctx.globalAlpha = ok ? 1 : .7;
-    circle(c.x, y, 12, ok ? '#fff8e7' : '#d8cdb5');
-    ctx.strokeStyle = ok ? '#3e9b3a' : '#8a7a62'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(c.x, y, 12, 0, 7); ctx.stroke();
-    emoji(u.ico, c.x, y + 1, 13);
-    circle(c.x + 9, y - 9, 6, ok ? '#3e9b3a' : '#8a7a62');
-    ctx.fillStyle = '#fff'; ctx.font = '900 8px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(ok ? '▲' : '🔒', c.x + 9, y - 8.5);
+    
+    // плашка «⬆ цена»: это предложение купить улучшение, а не уведомление о состоянии
+    const label = `▲ ${u.cost(l)}`, wTxt = (ctx.font = '800 10px system-ui, sans-serif', ctx.measureText(label).width), w = 22 + wTxt;
+    badgeHits.push({ key, x: c.x, y, w });
+    ctx.globalAlpha = ok ? 1 : .65;
+    ctx.beginPath(); ctx.roundRect(c.x - w / 2, y - 10, w, 20, 10); ctx.fillStyle = ok ? '#3e9b3a' : '#7a6a55'; ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+    emoji(u.ico, c.x - w / 2 + 10, y + .5, 11);
+    ctx.fillStyle = '#fff'; ctx.font = '800 10px system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(label, c.x - w / 2 + 18, y + .5);
     ctx.globalAlpha = 1;
   }
 }
@@ -651,7 +654,7 @@ function openUpgrade(key) {
     : `<button class="wide" ${S.coins < cost ? 'disabled' : ''} onclick="buyUpgrade('${key}')">Купить за ${cost}💰</button>`;
   h += `</div>${!maxed && S.coins < cost ? `<div style="text-align:center;font-size:13px;margin-top:6px;color:#b0503a">Не хватает ${cost - S.coins}💰</div>` : ''}
     <div class="row"><button class="wide alt" onclick="openNight(false)">🌙 Все улучшения</button><button class="wide alt" onclick="closeNight()">Закрыть</button></div>`;
-  $('sheet').innerHTML = h;
+  $('sheet').dataset.view = ''; $('sheet').innerHTML = h;
   $('overlay').classList.add('show');
 }
 
@@ -795,11 +798,11 @@ function helperJobs(cfg) {
   if (has('orchard')) S.trees.forEach((t, i) => { if (treeReady(t)) jobs.push({ x: ORCHARD_SLOTS[i].x, y: ORCHARD_SLOTS[i].y, act: () => treeAct(i, 'harvest') }); });
   if (has('coop')) {
     if (S.coop.eggs > 0) jobs.push({ ...COOP_SPOT, act: collectEggs });
-    if (S.night && hens() && fedTomorrow() < hens() && feedStock() >= FEED_PER_HEN) jobs.push({ ...COOP_SPOT, act: () => feedHens() });
+    if (S.night && hens() && fedTomorrow() < hens() && feedStock() >= FEED_PER_HEN) jobs.push({ ...COOP_SPOT, act: () => feedHens(true) });
   }
   if (has('barn')) {
     if (S.barn.milk > 0) jobs.push({ ...BARN_SPOT, act: collectMilk });
-    if (S.night && cows() && cowsFedTomorrow() < cows() && cowFoodStock() >= FEED_PER_COW) jobs.push({ ...BARN_SPOT, act: () => feedCows() });
+    if (S.night && cows() && cowsFedTomorrow() < cows() && cowFoodStock() >= FEED_PER_COW) jobs.push({ ...BARN_SPOT, act: () => feedCows(true) });
   }
   return jobs;
 }
@@ -856,6 +859,7 @@ function toggleStation(i, k) {
   c.stations = k === 'rest' ? [] : c.stations.includes(k) ? c.stations.filter(x => x !== k) : [...c.stations, k];
   setHelper(i, 'stations', c.stations);
 }
+function setField(i, seed) { Object.assign(S.helpers[i], seed ? { replant: true, seed } : { replant: false }); setHelper(i, 'replant', !!seed); }
 function setHelper(i, field, val) {
   Object.assign(S.helpers[i], { [field]: val });
   const h = helpers[i]; if (h) { h.target = null; h.path = []; h.think = 0; }
@@ -874,20 +878,20 @@ function openHelpers() {
       h += chip(cfg.stations.includes(k), `${cfg.stations.includes(k) ? '✓ ' : ''}${st.ico} ${st.name}`, `toggleStation(${i},'${k}')`, dis);
     }
     h += chip(!cfg.stations.length, '😴 Отдых', `toggleStation(${i},'rest')`) + `</div>`;
-    if (cfg.stations.includes('field')) {
-      h += `<div class="chips" style="margin-top:6px">${chip(!cfg.replant, '🧺 Только сбор', `setHelper(${i},'replant',false)`)}${chip(cfg.replant, '🌱 Сбор и посев', `setHelper(${i},'replant',true)`)}</div>`;
-      if (cfg.replant) {
-        h += `<div style="font-size:12px;color:#7a6650;margin:6px 0 4px">Что сажать (семена за твои монеты; «То же» — что росло на грядке, на новой — выбранное справа). Значок 💰 над головой — не хватает монет на семена:</div><div class="chips">`;
-        h += chip(cfg.seed === 'same', '🔁 То же', `setHelper(${i},'seed','same')`);
-        for (const id of S.unlocked) h += chip(cfg.seed === id, `${CROP[id].e} ${CROP[id].seed || 'даром'}`, `setHelper(${i},'seed','${id}')`);
-        h += `</div>`;
-      }
+    if (cfg.stations.includes('field')) {   // одна строка: «только сбор» или что сажать после сбора
+      h += `<div style="font-size:12px;color:#7a6650;margin:8px 0 4px">🌾 На поле: собирать и сажать… (семена за твои монеты, 💰 над головой — не хватает)</div><div class="chips">`;
+      h += chip(!cfg.replant, '🧺 Только сбор', `setField(${i},null)`);
+      h += chip(cfg.replant && cfg.seed === 'same', '🔁 То же, что росло', `setField(${i},'same')`);
+      for (const id of S.unlocked) h += chip(cfg.replant && cfg.seed === id, `${CROP[id].e} ${CROP[id].seed || 'даром'}`, `setField(${i},'${id}')`);
+      h += `</div>`;
     }
     h += `</div>`;
   });
   h += `<button class="wide" style="width:100%;margin-top:10px" onclick="closeNight()">Готово</button>`;
-  $('sheet').innerHTML = h;
+  const top = $('overlay').classList.contains('show') && $('sheet').dataset.view === 'helpers' ? $('sheet').scrollTop : 0;
+  $('sheet').innerHTML = h; $('sheet').dataset.view = 'helpers';
   $('overlay').classList.add('show');
+  $('sheet').scrollTop = top;   // переключение настроек не прыгает наверх
 }
 
 // ================== ЦИКЛ ==================
@@ -1018,7 +1022,7 @@ cv.addEventListener('pointercancel', e => { pointers.delete(e.pointerId); pinch 
 function onTap(sx, sy) {
   const wx = (sx - cw / 2) / zoom + cam.x, wy = (sy - ch / 2) / zoom + cam.y;
   // сначала покупатели (вместе с облачком над головой)
-  if (S.night) for (const b of badgeHits) if (Math.hypot(wx - b.x, wy - b.y) < 20) { openUpgrade(b.key); return; }
+  if (S.night) for (const b of badgeHits) if (Math.abs(wx - b.x) < b.w / 2 + 4 && Math.abs(wy - b.y) < 14) { openUpgrade(b.key); return; }
   let bv = null, bdv = 1e9;
   for (const v of visitors) {
     if (v.state === 'leaving') continue;
@@ -1628,7 +1632,7 @@ function renderUI() {
 function openProfile() {
   const L = S.life, stat = (k, v) => `<div class="stat"><span>${k}</span><b>${v}</b></div>`;
   const plotsUsed = S.plots.length;
-  $('sheet').innerHTML = `<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+  $('sheet').dataset.view = ''; $('sheet').innerHTML = `<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
       <div style="font-size:44px;width:68px;height:68px;border-radius:50%;background:#f0e5cb;display:flex;align-items:center;justify-content:center">🧑‍🌾</div>
       <div><h2 style="margin:0">Фермер</h2><div style="color:#7a6650">Солнечная ферма · день ${S.day}</div></div></div>
     ${stat('💰 Монет сейчас', S.coins)}${stat('💵 Заработано всего', L.earned)}${stat('🧍 Покупателей обслужено', L.served)}
@@ -1639,7 +1643,7 @@ function openProfile() {
   $('overlay').classList.add('show');
 }
 function openMenu() {
-  $('sheet').innerHTML = `<h2>☰ Меню</h2><div class="menu">
+  $('sheet').dataset.view = ''; $('sheet').innerHTML = `<h2>☰ Меню</h2><div class="menu">
       <button onclick="${S.night ? 'openNight(false)' : "toast('🌙 Улучшения покупаются ночью')"}">⬆️ Улучшения ${S.night ? '' : '<small style="color:#7a6650">— ночью</small>'}</button>
       ${S.up.helper ? '<button onclick="openHelpers()">🧑‍🌾 Помощники</button>' : ''}
       <button onclick="openProfile()">👤 Профиль</button>
@@ -1650,7 +1654,7 @@ function openMenu() {
   $('overlay').classList.add('show');
 }
 function openHelp() {
-  $('sheet').innerHTML = `<h2>📖 Как играть</h2><div style="font-size:14px;line-height:1.5">
+  $('sheet').dataset.view = ''; $('sheet').innerHTML = `<h2>📖 Как играть</h2><div style="font-size:14px;line-height:1.5">
     🌱 Выбери семена справа и тапни по грядке (или «Засеять»). День начинается с первой посадки.<br>
     🧺 Собирай урожай, яблоки и яйца — кнопка «Собрать» обходит всё сама.<br>
     🏪 Тапни по лавке — фермер встанет за прилавок и будет продавать всем, на кого хватает товара.<br>
@@ -1673,17 +1677,17 @@ function openNight(withSummary) {
     const fed = fedTomorrow(), need = (hens() - fed) * FEED_PER_HEN;
     const status = fed >= hens() ? `Все ${hens()} кур накормлены на завтра ✔ — будет ~${hens() * 5} яиц`
       : `Кур: ${hens()}${fed ? `, накормлено ${fed}` : ''}. Нужно ${need} любых растений (сначала берутся самые дешёвые), на складе ${feedStock()}`;
-    h += `<h3 style="margin:10px 0 0">🐔 Курятник</h3><div class="up"><div class="ico">🐔</div><div class="txt"><b>Покормить кур на завтра</b><small>${status}</small></div>
+    h += `<h3 style="margin:10px 0 0">🐔 Курятник${S.helpers.some(c => c.stations.includes('coop')) ? ' <small style="font-weight:400;color:#7a6650">— помощник кормит сам</small>' : ''}</h3><div class="up"><div class="ico">🐔</div><div class="txt"><b>Покормить кур на завтра</b><small>${status}</small></div>
       <button ${fed >= hens() || feedStock() < FEED_PER_HEN ? 'disabled' : ''} onclick="feedHens(); openNight(false)">Покормить</button></div>`;
   }
   if (cows()) {
     const fed = cowsFedTomorrow(), need = (cows() - fed) * FEED_PER_COW;
     const status = fed >= cows() ? `Все ${cows()} коров накормлены ✔ — будет ~${cows() * 3} 🥛`
       : `Коров: ${cows()}${fed ? `, накормлено ${fed}` : ''}. Нужно ${need} 🌻 или 🌾, на складе ${cowFoodStock()}`;
-    h += `<h3 style="margin:10px 0 0">🐄 Коровник</h3><div class="up"><div class="ico">🐄</div><div class="txt"><b>Покормить коров на завтра</b><small>${status}</small></div>
+    h += `<h3 style="margin:10px 0 0">🐄 Коровник${S.helpers.some(c => c.stations.includes('barn')) ? ' <small style="font-weight:400;color:#7a6650">— помощник кормит сам</small>' : ''}</h3><div class="up"><div class="ico">🐄</div><div class="txt"><b>Покормить коров на завтра</b><small>${status}</small></div>
       <button ${fed >= cows() || cowFoodStock() < FEED_PER_COW ? 'disabled' : ''} onclick="feedCows(); openNight(false)">Покормить</button></div>`;
   }
-  h += `<h3 style="margin:10px 0 0">Улучшения фермы</h3><small style="color:#7a6650">Можно и прямо на ферме: закрой меню и тапни на замочек или значок ⬆</small>`;
+  h += `<h3 style="margin:10px 0 0">Улучшения фермы</h3><small style="color:#7a6650">Можно и прямо на ферме: закрой меню и тапни на замочек или плашку ⬆ с ценой</small>`;
   for (const [key, u] of Object.entries(UPGRADES)) {
     const l = S.up[key], maxed = l >= u.max, cost = u.cost(l);
     h += `<div class="up"><div class="ico">${u.ico}</div><div class="txt"><b>${u.name} <small>ур. ${l}/${u.max}</small></b><small>${maxed ? 'Максимум' : u.desc(l)}</small></div>
@@ -1700,10 +1704,10 @@ function openNight(withSummary) {
   h += `<div class="row" style="margin-top:14px"><button class="wide alt" onclick="closeNight()">🌾 К грядкам</button>
         <button class="wide" style="background:#ffd34d" onclick="morning()">☀️ Начать день ${S.day + 1}</button></div>
 `;
-  $('sheet').innerHTML = h;
+  $('sheet').dataset.view = ''; $('sheet').innerHTML = h;
   $('overlay').classList.add('show');
 }
-function closeNight() { $('overlay').classList.remove('show'); }
+function closeNight() { $('overlay').classList.remove('show'); $('sheet').dataset.view = ''; }
 function morning() { S.day++; startDay(); }
 let resetArmed = false;
 function resetGame(btn) {
@@ -1767,7 +1771,7 @@ function openCheats() {
   h += `</div><div class="cheats">`;
   for (const [k, [label]] of Object.entries(CHEATS)) h += `<button class="alt" onclick="cheat('${k}')">${label}</button>`;
   h += `</div><button class="wide" style="width:100%" onclick="closeNight()">Закрыть</button>`;
-  $('sheet').innerHTML = h;
+  $('sheet').dataset.view = ''; $('sheet').innerHTML = h;
   $('overlay').classList.add('show');
 }
 $('helperBtn').onclick = openHelpers;
