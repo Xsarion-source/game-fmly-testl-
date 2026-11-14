@@ -220,7 +220,8 @@ const GH_YIELD = 6, GH_SLOW = 3;             // в теплице зреют г�
 const FEED_PER_HEN = 3;            // растений на курицу на день
 const EGG_EVERY = DAY_LEN / 5;     // сытая курица несёт ~5 яиц за день
 const COW_FOOD = ['sunflower', 'wheat'];   // коровы едят только подсолнухи и пшеницу
-const FEED_PER_COW = 4;            // растений на корову на день
+const FEED_PER_COW = 4;            // растений на корову на день (клевер уменьшает — см. feedPerCow)
+const feedPerCow = () => FEED_PER_COW - (S.up.clover || 0);
 const MILK_EVERY = DAY_LEN / 6;    // сытая корова даёт ~6 бутылок молока за день
 
 const UPGRADES = {
@@ -231,7 +232,12 @@ const UPGRADES = {
   nests:  { name: 'Уютные гнёзда',     ico: '🪺', desc: l => `Куры несутся чаще: +${(l + 1) * 20}% яиц (сейчас +${l * 20}%)`, cost: l => [300, 600, 1000][l], max: 3, need: () => hens() > 0, needText: 'Откроется, когда построишь курятник 🐔' },
   rooster:{ name: 'Петух',             ico: '🐓', desc: l => 'Иногда двойное яйцо, чаще золотые 🟡 — и из яиц вылупляются цыплята 🐣: есть место — вырастают в кур, нет — продаются за 60💰', cost: l => [800][l], max: 1, need: () => S.up.nests >= 1, needText: 'Откроется после уютных гнёзд 🪺' },
   yard:   { name: 'Просторный вольер', ico: '🐔', desc: l => `+2 места для кур (сейчас ${hensCap()}). Займут цыплята или новые куры`, cost: l => [1500, 3000][l], max: 2, need: () => S.up.coop >= 4, needText: 'Откроется, когда в курятнике будет 5 кур 🐔' },
-  barn:   { name: 'Коровник',          ico: '🐄', desc: l => l === 0 ? 'Коровник, пастбище и корова. Ночью корми подсолнухами или пшеницей — днём даёт молоко' : `+1 корова (сейчас ${l})`, cost: l => [220, 180, 260][l], max: 3 },
+  barn:   { name: 'Коровник',          ico: '🐄', desc: l => l === 0 ? 'Коровник, пастбище и корова. Ночью корми подсолнухами или пшеницей — днём даёт молоко' : `+1 корова (сейчас ${l})`, cost: l => [220, 180, 260, 420, 520, 650, 800][l],
+            get max() { return 3 + 2 * (S.up.pasture || 0); } },
+  milker: { name: 'Доильный аппарат',  ico: '🥛', desc: l => `Каждая корова даёт на 2 бутылки больше: ${6 + l * 2} → ${8 + l * 2} в день`, cost: l => [500, 1000, 1800][l], max: 3, need: () => cows() > 0, needText: 'Откроется, когда построишь коровник 🐄' },
+  clover: { name: 'Клевер на пастбище', ico: '🍀', desc: l => `Коровы едят меньше: ${feedPerCow()} → ${feedPerCow() - 1} 🌻/🌾 на корову`, cost: l => [700, 1400][l], max: 2, need: () => cows() > 0, needText: 'Откроется, когда построишь коровник 🐄' },
+  hay:    { name: 'Сеновал',           ico: '🟨', desc: l => 'Каждую ночь сам кормит коров 🌻/🌾 со склада — не нужно ходить и не нужен помощник', cost: l => [1200][l], max: 1, need: () => S.up.milker >= 1, needText: 'Откроется после доильного аппарата 🥛' },
+  pasture:{ name: 'Большое пастбище',  ico: '🐄', desc: l => `+2 места для коров (сейчас ${3 + 2 * l}). Новых коров покупай в «Коровнике»`, cost: l => [2000, 4000][l], max: 2, need: () => S.up.barn >= 3, needText: 'Откроется, когда в коровнике будет 3 коровы 🐄' },
   greenhouse: { name: 'Теплица',      ico: '🏡', desc: l => l === 0 ? 'Стеклянная теплица на 3 грядки. Только в ней растут 🍅 помидоры и 🍓 клубника — медленнее, зато гроздью по 6' : '+3 грядки в теплице', cost: l => [260, 380][l], max: 2 },
   clear:  { name: 'Расчистить лес',    ico: '🪓', desc: l => l === 0 ? 'Вырубить лес справа от пастбища — место под новое здание' : 'Вырубить лес у теплицы — место ещё под одно здание', cost: l => [2500, 4000][l], max: 2 },
   mill:   { name: 'Мельница',          ico: '🌬️', desc: l => l === 0 ? 'Мелет пшеницу: 3 🌾 → 1 🍚 мука (продаётся за 30💰)' : 'Мелет вдвое быстрее', cost: l => [3500, 5500][l], max: 2, need: () => S.up.clear >= 1, needText: 'Откроется, когда расчистишь лес 🪓' },
@@ -317,14 +323,26 @@ YARD_LV.forEach(({ x1, y1 }, yv) => {
 // Коровник (клетки 14–15 × 1–2) и пастбище (клетки 13–15 × 3–6), кормушка у тропинки
 const BARN_SPOT = at('barn', 14, 7);
 const [BX, BY] = LAYOUT.barn;
-const PASTURE = { x0: 13 + BX, y0: 3 + BY, x1: 16 + BX, y1: 7 + BY };
+// «Большое пастбище»: +столбец слева (к мешкам), потом +столбец справа (к лесу) — в старых координатах коровника
+const PAST_LV = [{ x0: 13, x1: 16 }, { x0: 12, x1: 16 }, { x0: 12, x1: 17 }];
+let PASTURE = { x0: 13 + BX, y0: 3 + BY, x1: 16 + BX, y1: 7 + BY };
 deco('barn', { kind: 'barn', z: 16.6 });   // раньше коров на пастбище (они всегда южнее коровника)
 for (let y = 1; y <= 2; y++) for (let x = 14; x <= 15; x++) blocked[y + BY][x + BX] = true;
-for (let y = 3; y <= 6; y++) for (let x = 13; x <= 15; x++) { blocked[y + BY][x + BX] = true; ground[y + BY][x + BX] = 'm'; }
-const inBarnArea = (x, y) => { x -= BX; y -= BY; return (x >= 14 && x <= 15 && y >= 1 && y <= 2) || (x >= 13 && x <= 15 && y >= 3 && y <= 6) || (x + BX === BARN_SPOT.x && y + BY === BARN_SPOT.y); };
-for (const [a, b, back] of [[[13,3],[14,3],1],[[13,3],[13,4],1],[[13,4],[13,5],1],[[13,5],[13,6],1],[[13,6],[13,7],0],
-                            [[13,7],[14,7],0],[[14,7],[15,7],0],[[15,7],[16,7],0],[[16,3],[16,4],0],[[16,4],[16,5],0],[[16,5],[16,6],0],[[16,6],[16,7],0]])
-  deco('barn', { kind: 'fence', pen: 'barn', a, b, z: (a[0] + b[0]) / 2 + (a[1] + b[1]) / 2 + (back ? -0.4 : 0.4) });
+function applyPasture() {
+  const L = PAST_LV[Math.min(2, S.up.pasture || 0)];
+  PASTURE = { x0: L.x0 + BX, y0: 3 + BY, x1: L.x1 + BX, y1: 7 + BY };
+  for (let y = 3; y <= 6; y++) for (let x = L.x0; x < L.x1; x++) { blocked[y + BY][x + BX] = true; ground[y + BY][x + BX] = 'm'; }
+}
+const inBarnArea = (x, y) => (x >= 14 + BX && x <= 15 + BX && y >= 1 + BY && y <= 2 + BY) || (x >= PASTURE.x0 && x < PASTURE.x1 && y >= PASTURE.y0 && y < PASTURE.y1) || (x === BARN_SPOT.x && y === BARN_SPOT.y);
+PAST_LV.forEach(({ x0, x1 }, pv) => {   // забор для каждого размера (рисуется только нужный)
+  const segs = [];
+  for (let x = x0; x < 14; x++) segs.push([[x, 3], [x + 1, 3], 1]);
+  for (let x = 16; x < x1; x++) segs.push([[x, 3], [x + 1, 3], 1]);
+  for (let y = 3; y < 7; y++) segs.push([[x0, y], [x0, y + 1], y < 6 ? 1 : 0]);
+  for (let x = x0; x < x1; x++) segs.push([[x, 7], [x + 1, 7], 0]);
+  for (let y = 3; y < 7; y++) segs.push([[x1, y], [x1, y + 1], 0]);
+  for (const [a, b, back] of segs) deco('barn', { kind: 'fence', pen: 'barn', pv, a, b, z: (a[0] + b[0]) / 2 + (a[1] + b[1]) / 2 + (back ? -0.4 : 0.4) });
+});
 deco('barn', { kind: 'trough', z: 14.5 + 6.8 + 0.2 });
 
 // Теплица (клетки 13–15 × 8–9): 6 грядок под стеклом, открываются по 3
@@ -401,7 +419,7 @@ function newState() {
     day: 1, t: 0, night: false, coins: 30,
     plots: Array.from({ length: 8 }, () => ({ crop: null, prog: 0 })),
     inv: {}, unlocked: ['sunflower', 'wheat'], sel: 'wheat',
-    up: { land: 0, ads: 0, fert: 0, sign: 0, bench: 0, helper: 0, orchard: 0, coop: 0, barn: 0, greenhouse: 0, clear: 0, mill: 0, dairy: 0, house: 0, bakery: 0, cozy: 0, nests: 0, rooster: 0, yard: 0 },
+    up: { land: 0, ads: 0, fert: 0, sign: 0, bench: 0, helper: 0, orchard: 0, coop: 0, barn: 0, greenhouse: 0, clear: 0, mill: 0, dairy: 0, house: 0, bakery: 0, cozy: 0, nests: 0, rooster: 0, yard: 0, milker: 0, clover: 0, hay: 0, pasture: 0 },
     bake: { sel: 'bread', q: [], t: 0, out: {} }, order: null, orderNext: 3,
     trees: [], coop: { fedDay: 0, fedHens: 0, eggs: 0, layT: 0, gold: 0, extra: 0, chicks: 0 },
     barn: { fedDay: 0, fedCows: 0, milk: 0, milkT: 0 },
@@ -421,6 +439,7 @@ S.life.milk ??= 0; S.hist ??= []; S.life.flour ??= 0; S.life.cheese ??= 0;
 S.up.clear ??= 0; S.up.mill ??= 0; S.up.dairy ??= 0;
 S.up.house ??= 0; S.up.bakery ??= 0; S.up.cozy ??= 0;
 S.up.nests ??= 0; S.up.rooster ??= 0; S.up.yard ??= 0;
+S.up.milker ??= 0; S.up.clover ??= 0; S.up.hay ??= 0; S.up.pasture ??= 0;
 S.coop.gold ??= 0; S.coop.extra ??= 0; S.coop.chicks ??= 0;
 S.bake ??= { sel: 'bread', q: [], t: 0, out: {} };
 if (S.order === undefined) { S.order = null; S.orderNext = S.day; }   // почта: первый заказ — в ближайшее утро
@@ -502,6 +521,7 @@ function endDay() {
   S.stats.missed += waiting.length + (S.toSpawn - S.spawned);
   waiting.forEach(v => leave(v, null));
   S.night = true;
+  if (S.up.hay && cows() && cowFoodStock() >= feedPerCow()) setTimeout(() => { if (S.night && cowsFedTomorrow() < cows()) { feedCows('hay'); refreshSheet(); } }, 900);   // сеновал кормит сам
   save(); renderUI(); openNight(true);
 }
 
@@ -752,7 +772,7 @@ const prodSpeed = k => S.up[k];   // 2-й уровень — вдвое быст
 function prodHave(k, byHelper) {   // сколько сырья можно взять со склада
   const P = PROD[k];
   let have = S.inv[P.in] || 0;
-  if (byHelper && P.in === 'wheat' && cows()) have -= cows() * FEED_PER_COW;   // помощник оставляет пшеницу коровам
+  if (byHelper && P.in === 'wheat' && cows()) have -= cows() * feedPerCow();   // помощник оставляет пшеницу коровам
   return Math.max(0, have);
 }
 function loadProd(k, byHelper) {
@@ -944,13 +964,14 @@ function feedCows(byHelper) {
   if (!S.night) { toast('🐄 Коров кормят ночью — утром они дают молоко'); return false; }
   const already = cowsFedTomorrow(), want = cows() - already;
   if (want <= 0) { toast('🐄 Коровы уже накормлены на завтра'); return false; }
-  const n = Math.min(want, Math.floor(cowFoodStock() / FEED_PER_COW));
-  if (!n) { toast(`🐄 Нужно ${FEED_PER_COW} 🌻 или 🌾 на корову, на складе ${cowFoodStock()}`); return false; }
-  let need = n * FEED_PER_COW;   // сначала подсолнухи — они дешевле
+  const n = Math.min(want, Math.floor(cowFoodStock() / feedPerCow()));
+  if (!n) { toast(`🐄 Нужно ${feedPerCow()} 🌻 или 🌾 на корову, на складе ${cowFoodStock()}`); return false; }
+  let need = n * feedPerCow();   // сначала подсолнухи — они дешевле
   for (const id of COW_FOOD) { const k = Math.min(need, S.inv[id] || 0); S.inv[id] = (S.inv[id] || 0) - k; need -= k; if (!need) break; }
   S.barn.fedDay = S.day + 1; S.barn.fedCows = already + n;
   addFloat(BARN_SPOT.x + .5, BARN_SPOT.y + .5, `🐄 сыты: ${S.barn.fedCows}`);
-  if (byHelper) toast(`🧑‍🌾 Помощник покормил коров (${S.barn.fedCows} из ${cows()})`);
+  if (byHelper === 'hay') toast(`🟨 Сеновал накормил коров (${S.barn.fedCows} из ${cows()})`);
+  else if (byHelper) toast(`🧑‍🌾 Помощник покормил коров (${S.barn.fedCows} из ${cows()})`);
   else toast(S.barn.fedCows < cows() ? `🐄 Накормлено ${S.barn.fedCows} из ${cows()} коров — не хватило 🌻/🌾` : '🐄 Коровы накормлены — завтра будет молоко');
   save(); renderUI(); return true;
 }
@@ -974,7 +995,7 @@ function syncCows() {
 }
 function updateCows(dt) {
   cowsState.forEach((c, i) => {
-    if (S.night) { const p = at('barn', 13.7 + i * 0.75, 3.55), done = stepToward(c, p.x, p.y, 0.5, dt); c.moving = !done; c.phase += dt * 6; return; }   // ночью у ворот коровника
+    if (S.night) { const p = { x: PASTURE.x0 + .7 + (i % 4) * .75, y: PASTURE.y0 + .55 + Math.floor(i / 4) * .8 }, done = stepToward(c, p.x, p.y, 0.5, dt); c.moving = !done; c.phase += dt * 6; return; }   // ночью у ворот коровника
     if (c.wait > 0) { c.wait -= dt; c.moving = false; return; }
     if (!c.moving) { c.tx = PASTURE.x0 + .5 + Math.random() * (PASTURE.x1 - PASTURE.x0 - 1); c.ty = PASTURE.y0 + .6 + Math.random() * (PASTURE.y1 - PASTURE.y0 - 1.1); c.moving = true; }
     if (stepToward(c, c.tx, c.ty, 0.45, dt)) { c.moving = false; c.wait = 2 + Math.random() * 4; }
@@ -1023,6 +1044,7 @@ function buyUpgrade(key) {
     syncHens();
   }
   if (key === 'barn') syncCows();
+  if (key === 'pasture') applyPasture();
   applyLots();
   if (blocked[Math.floor(P.y)][Math.floor(P.x)]) { P.x = HOME.x + .5; P.y = HOME.y + .5; }
   // закрываем меню и показываем камерой, что появилось на ферме
@@ -1042,6 +1064,10 @@ function buyUpgrade(key) {
     nests: S.up.nests === 1 ? '🪺 В вольере соломенные гнёзда — куры несутся чаще' : `🪺 Ещё гнёзда — яиц на ${S.up.nests * 20}% больше`,
     rooster: '🐓 Петух в курятнике! Двойные яйца, золотые чаще, а по утрам — цыплята 🐣',
     yard: `🐔 Вольер больше — ${hensCap()} мест для кур${S.coop.chicks ? '. Цыплята со склада переехали туда' : ''}`,
+    milker: `🥛 Доильный аппарат — каждая корова даёт ${6 + S.up.milker * 2} бутылок в день`,
+    clover: `🍀 Клевер на пастбище — корове нужно ${feedPerCow()} 🌻/🌾`,
+    hay: '🟨 Сеновал построен — каждую ночь сам кормит коров со склада',
+    pasture: `🐄 Пастбище больше — места для ${3 + 2 * S.up.pasture} коров. Покупай коров в «Коровнике»`,
     fert: '🧪 Мешки удобрений у поля', sign: '🪧 Новая вывеска над лотком', bench: '🪑 Скамейка у очереди',
   }[key];
   closeNight();
@@ -1056,7 +1082,7 @@ function upSpot(key) {
   const l = S.up[key];
   return {
     land: PLOT_SLOTS[Math.min(S.plots.length, MAX_PLOTS - 1)], orchard: ORCHARD_SLOTS[Math.min(S.trees.length, 3)],
-    coop: at('coop', 8, 10), nests: at('coop', 8.6, 9), rooster: at('coop', 6.6, 10.2), yard: at('coop', 9.4, 11), barn: at('barn', 14, 5), clear: S.up.clear ? at('dairy', 18, 9) : at('mill', 18, 5), mill: at('mill', 18, 5), dairy: at('dairy', 17, 9), greenhouse: at('gh', 14, S.up.greenhouse ? 9 : 8), helper: at('home', 3, 3),
+    coop: at('coop', 8, 10), nests: at('coop', 8.6, 9), rooster: at('coop', 6.6, 10.2), yard: at('coop', 9.4, 11), barn: at('barn', 14, 5), milker: at('barn', 16.4, 2.6), clover: at('barn', 15, 4), hay: at('barn', 13, 1.4), pasture: at('barn', 12.5, 6), clear: S.up.clear ? at('dairy', 18, 9) : at('mill', 18, 5), mill: at('mill', 18, 5), dairy: at('dairy', 17, 9), greenhouse: at('gh', 14, S.up.greenhouse ? 9 : 8), helper: at('home', 3, 3),
     house: at('home', 2, 2), bakery: at('home', 4, 3), cozy: COZY_SPOTS[Math.min(l, 4)], ads: at('ads', 12, 10),
     fert: at('fert', 12, 2 + Math.min(l, 4)), sign: at('stall', 4, 10), bench: BENCHES[Math.min(l, BENCHES.length - 1)],
   }[key];
@@ -1090,7 +1116,7 @@ function drawUpBadges(t) {
   for (const [key, u] of Object.entries(UPGRADES)) {
     const l = S.up[key]; if (l >= u.max || upLocked(key)) continue;
     const s = upSpot(key), ok = S.coins >= u.cost(l);
-    const c = lift(s.x + .5, s.y + .5, { helper: 80, house: 100, bakery: 52, cozy: 30, sign: 86, ads: 74, coop: 30, nests: 14, rooster: 20, yard: 10, barn: 30, greenhouse: 56, clear: 62, mill: 84, dairy: 58 }[key] || 30);
+    const c = lift(s.x + .5, s.y + .5, { helper: 80, house: 100, bakery: 52, cozy: 30, sign: 86, ads: 74, coop: 30, nests: 14, rooster: 20, yard: 10, milker: 24, clover: 12, hay: 30, pasture: 12, barn: 30, greenhouse: 56, clear: 62, mill: 84, dairy: 58 }[key] || 30);
     const y = c.y + Math.sin(t * 3 + s.x) * 2.5;
     
     // плашка «⬆ цена»: это предложение купить улучшение, а не уведомление о состоянии
@@ -1123,7 +1149,7 @@ function openUpgrade(key) {
   }
   if (key === 'house') h += `<div class="summary">🧑‍🌾 Помощники работают быстрее на ${S.up.house * 20}%${S.up.helper ? '' : ' — найми первого помощника'}</div>`;
   if (key === 'cozy') h += `<div class="summary">${COZY.map((c, k) => `${k < S.up.cozy ? '✔' : '◻️'} ${c}`).join('<br>')}</div>`;
-  if (key === 'barn' && cows()) h += `<div class="summary">🐄 Коров: ${cows()}, накормлено на завтра: ${cowsFedTomorrow()}. Каждой нужно ${FEED_PER_COW} 🌻 или 🌾, на складе ${cowFoodStock()}</div>`;
+  if (key === 'barn' && cows()) h += `<div class="summary">🐄 Коров: ${cows()}, накормлено на завтра: ${cowsFedTomorrow()}. Каждой нужно ${feedPerCow()} 🌻 или 🌾, на складе ${cowFoodStock()}</div>`;
   h += `<div class="row">`;
   if (key === 'coop' && hens()) h += `<button class="wide alt" ${fedTomorrow() >= hens() ? 'disabled' : ''} onclick="closeNight(); setTasks([{ ...COOP_SPOT, fn: feedHens }])">🌾 Покормить</button>`;
   if (key === 'barn' && cows()) h += `<button class="wide alt" ${cowsFedTomorrow() >= cows() ? 'disabled' : ''} onclick="closeNight(); setTasks([{ ...BARN_SPOT, fn: feedCows }])">🌻 Покормить</button>`;
@@ -1348,7 +1374,7 @@ function helperJobs(cfg) {
   }
   if (has('barn')) {
     if (S.barn.milk > 0) jobs.push({ ...BARN_SPOT, act: collectMilk });
-    if (cfg.feed && S.night && cows() && cowsFedTomorrow() < cows() && cowFoodStock() >= FEED_PER_COW) jobs.push({ ...BARN_SPOT, act: () => { feedCows(true); refreshSheet(); } });
+    if (cfg.feed && S.night && cows() && cowsFedTomorrow() < cows() && cowFoodStock() >= feedPerCow()) jobs.push({ ...BARN_SPOT, act: () => { feedCows(true); refreshSheet(); } });
   }
   return jobs;
 }
@@ -1517,7 +1543,7 @@ function step(dt) {
     if (fh) { S.coop.layT += dt * fh * layMult(); while (S.coop.layT >= EGG_EVERY) { S.coop.layT -= EGG_EVERY; layEgg(); } }
     updateProd(dt); updateBake(dt);
     const fc = cowsFedToday();   // сытые коровы дают молоко
-    if (fc) { S.barn.milkT += dt * fc; while (S.barn.milkT >= MILK_EVERY) { S.barn.milkT -= MILK_EVERY; S.barn.milk = Math.min(40, S.barn.milk + 1); } }
+    if (fc) { S.barn.milkT += dt * fc * (1 + (S.up.milker || 0) / 3); while (S.barn.milkT >= MILK_EVERY) { S.barn.milkT -= MILK_EVERY; S.barn.milk = Math.min(40, S.barn.milk + 1); } }
     // покупатели идут весь день: первый через пару секунд, последний — уже на закате,
     // а вечером, после работы, их заметно больше
     const f = Math.min(1, S.t / (DAY_LEN * 0.97)), share = f < 0.6 ? f / 1.24 : (0.6 + (f - 0.6) * 1.6) / 1.24;
@@ -1789,6 +1815,11 @@ const ICON_DRAW = {
   '🟡': K => { K.E(32, 36, 18, 24, K.G(0, 12, 0, 60, '#fff09a', '#e0a020')); K.H(24, 25, 4, 9, .8); K.star(48, 14, 10, 3, 4, '#fff6b0', 2, 0); K.star(14, 50, 6, 2, 4, '#fff6b0', 1.5, 0); },
   '🐣': K => { K.C(32, 30, 18, K.G(0, 12, 0, 48, '#fff09a', '#f5c518')); K.H(25, 22, 5, 4, .6); K.P([[44, 28], [56, 32], [44, 36]], '#f2a43a', 2.5); K.C(39, 26, 2.6, '#222', 0);
     K.D(c => { c.moveTo(10, 38); for (let x = 10; x <= 54; x += 8) { c.lineTo(x + 4, 33); c.lineTo(x + 8, 38); } c.lineTo(52, 50); c.quadraticCurveTo(32, 64, 12, 50); c.closePath(); }, K.G(0, 34, 0, 60, '#fffdf6', '#e8dcc4')); },
+  '🍀': K => { for (const a of [0, 1.5708, 3.1416, 4.7124]) { const x = 32 + Math.cos(a - .785) * 12, y = 28 + Math.sin(a - .785) * 12;
+      K.D(c => { c.moveTo(32, 28); c.bezierCurveTo(x + Math.cos(a) * 6 - Math.sin(a) * 10, y + Math.sin(a) * 6 + Math.cos(a) * 10, x + Math.cos(a) * 14, y + Math.sin(a) * 14, x + Math.cos(a) * 8 + Math.sin(a) * 8, y + Math.sin(a) * 8 - Math.cos(a) * 8); c.closePath(); }, K.G(0, 6, 0, 50, '#7fd05a', '#3e8a32'), 2.5); }
+    K.LL(32, 30, 40, 58, '#4f9a3c', 3); K.H(24, 14, 4, 2.5, .5); },
+  '🟨': K => { K.E(32, 50, 26, 8, 'rgba(0,0,0,.15)', 0, 0); K.D(c => { c.moveTo(8, 50); c.quadraticCurveTo(8, 12, 32, 8); c.quadraticCurveTo(56, 12, 56, 50); c.closePath(); }, K.G(0, 8, 0, 52, '#f6dc7a', '#d6aa48'));
+    for (const x of [-12, -4, 4, 12]) K.L(32 + x, 48, 32 + x * .5, 14, 'rgba(150,105,30,.6)', 2); K.H(22, 20, 5, 4, .45); },
   '🪺': K => { K.E(32, 42, 27, 13, K.G(0, 30, 0, 56, '#e8c56a', '#b8893c')); K.E(32, 37, 18, 6, '#8a5a2a', 0);
     for (const x of [22, 32, 42]) K.E(x, 32, 7, 9, K.G(0, 22, 0, 42, '#fffdf6', '#e9dcc4'), 2.2);
     for (const a of [-2.6, -2, -1.2, -.4, .3]) K.L(32 + Math.cos(a) * 24, 44 + Math.sin(a) * 9, 32 + Math.cos(a) * 30, 40 + Math.sin(a) * 12, '#a8783f', 2.2); },
@@ -2189,7 +2220,7 @@ function drawGround(t) {
     else if (g === 'w') col = '#5bb0e0';
     else if (g === 'o') col = (x + y) % 2 ? '#84c260' : '#7ebc5b';
     else if (g === 'y') col = hens() ? ((x + y) % 2 ? '#cfae78' : '#c9a771') : grass;
-    else if (g === 'm') col = cows() ? ((x + y) % 2 ? '#93d36b' : '#8bcc63') : grass;
+    else if (g === 'm') col = cows() ? (S.up.clover ? ((x + y) % 2 ? '#7fd46a' : '#76cc61') : ((x + y) % 2 ? '#93d36b' : '#8bcc63')) : grass;
     else if (g === 's' || (g === 'h' && S.up.greenhouse)) {
       const arr = g === 's' ? S.plots : S.gh, i = g === 's' ? slotAt(x, y) : ghAt(x, y);
       if (i < arr.length) col = arr[i].crop && arr[i].prog < 1 ? '#6b4327' : '#8a5a36';
@@ -2197,6 +2228,14 @@ function drawGround(t) {
     }
     poly(pts, col, col);
 
+    if (g === 'm' && cows() && S.up.clover) {   // клевер: белые и розовые головки с листиками
+      const c0 = iso(x + .5, y + .5);
+      for (let k = 0; k < 2 + S.up.clover; k++) {
+        const u = hash(x * 7 + k, y * 3 - k), v = hash(y * 5 + k, x * 11), px = c0.x + (u - .5) * 34, py = c0.y + (v - .5) * 14;
+        for (const a of [0, 2.1, 4.2]) circle(px + Math.cos(a) * 2.2, py + 2 + Math.sin(a) * 1.2, 1.7, '#4f9a3c');
+        circle(px, py - 1, 2.2, k % 2 ? '#f6f1ea' : '#f2a6c4'); circle(px - .6, py - 1.6, .7, 'rgba(255,255,255,.8)');
+      }
+    }
     const c = iso(x + .5, y + .5);
     if (g === 'g') groundDeco(x, y, c, tuft[y][x], hash(x, y));
     if (g === 'o') {
@@ -2860,6 +2899,14 @@ function drawBarn() {
   if (!cows()) return;
   const x0 = 14, y0 = 1, X = 16, Y = 3, h = 34, rz = 58, mid = 2;
   softShadow(x0, y0, X, Y, .3);
+  if (S.up.hay) {   // сеновал: стог и тюки сена слева от коровника
+    const c = lift(12.55, 1.95, 0);
+    ctx.fillStyle = 'rgba(30,40,15,.25)'; ctx.beginPath(); ctx.ellipse(c.x + 2, c.y + 2, 18, 7, 0, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(c.x - 15, c.y); ctx.quadraticCurveTo(c.x - 14, c.y - 26, c.x, c.y - 30); ctx.quadraticCurveTo(c.x + 14, c.y - 26, c.x + 15, c.y); ctx.closePath();
+    const g = ctx.createLinearGradient(0, c.y - 30, 0, c.y); g.addColorStop(0, '#f6dc7a'); g.addColorStop(1, '#d6aa48'); ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.3; ctx.stroke();
+    ctx.strokeStyle = 'rgba(150,105,30,.55)'; ctx.lineWidth = 1; for (const k of [-8, -3, 2, 7]) { ctx.beginPath(); ctx.moveTo(c.x + k, c.y - 2); ctx.quadraticCurveTo(c.x + k * .7, c.y - 16, c.x + k * .3, c.y - 26); ctx.stroke(); }
+    toonBox(13.05, 2.45, .4, .28, 6, ['#ecd27a', '#d2ad52'], ['#d9b65a', '#b8923e'], ['#f6e29a', '#e8cf86'], 0, 1.1);
+  }
   gface(fY(x0, X, Y, 0, h), '#d65a43', '#a83c2a'); gface(fX(X, y0, Y, 0, h), '#b8432f', '#8c2e20');
   gface([lift(X, y0, h), lift(X, Y, h), lift(X, mid, rz)], '#b8432f', '#a53b29', INK, 1.4);   // фронтон
   for (let k = 1; k < 12; k++) seg(lift(x0 + k / 6, Y, 1), lift(x0 + k / 6, Y, h - 1), 'rgba(100,25,15,.3)', 1);
@@ -2875,6 +2922,16 @@ function drawBarn() {
   ctx.lineCap = 'butt';
   toonWin('x', X, 1.72, 2.28, 38, 49, false, S.night ? null : ['#f2dc9a', '#d9b65a']);   // сеновал
   gableRoofX(x0, y0, X, Y, h, rz, .15, '#9a6448', '#6e4230', 5);
+  for (let k = 0; k < (S.up.milker || 0); k++) {   // доильный аппарат: блестящие бидоны у стены
+    const c = lift(X + .22, 2.35 + k * .26, 0);
+    ctx.fillStyle = 'rgba(30,40,15,.25)'; ctx.beginPath(); ctx.ellipse(c.x + 1, c.y + 1, 6, 2.6, 0, 0, 7); ctx.fill();
+    const g = ctx.createLinearGradient(c.x - 5, 0, c.x + 5, 0); g.addColorStop(0, '#f4f7fa'); g.addColorStop(.5, '#c9d2db'); g.addColorStop(1, '#8e9aa6');
+    ctx.beginPath(); ctx.moveTo(c.x - 5, c.y); ctx.lineTo(c.x - 5, c.y - 11); ctx.quadraticCurveTo(c.x - 5, c.y - 14, c.x - 2.6, c.y - 15); ctx.lineTo(c.x - 2.6, c.y - 17); ctx.lineTo(c.x + 2.6, c.y - 17); ctx.lineTo(c.x + 2.6, c.y - 15); ctx.quadraticCurveTo(c.x + 5, c.y - 14, c.x + 5, c.y - 11); ctx.lineTo(c.x + 5, c.y); ctx.closePath();
+    ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.1; ctx.stroke();
+    seg({ x: c.x - 5, y: c.y - 6 }, { x: c.x + 5, y: c.y - 6 }, 'rgba(90,100,110,.6)', 1);
+    seg({ x: c.x - 3, y: c.y - 2 }, { x: c.x - 3, y: c.y - 10 }, 'rgba(255,255,255,.8)', 1.2);
+  }
+
 }
 function drawTrough() {
   if (!cows()) return;
@@ -2886,6 +2943,7 @@ function drawTrough() {
 function drawFence(d) {
   if (!(d.pen === 'barn' ? cows() : hens())) return;
   if (d.yv != null && d.yv !== Math.min(2, S.up.yard || 0)) return;   // забор вольера — только текущего размера
+  if (d.pv != null && d.pv !== Math.min(2, S.up.pasture || 0)) return;
   const [ax, ay] = d.a, [bx, by] = d.b;
   for (const z of [4, 9]) { const p = lift(ax, ay, z), q = lift(bx, by, z); seg(p, q, INK, 3.4); seg(p, q, '#e0b277', 2); }
   for (const [x, y] of [[ax, ay], [bx, by]]) { vline(x, y, 0, 12.5, INK, 4.2); vline(x, y, 0, 12, '#b88550', 2.6); vline(x - .015, y, 1, 11.5, 'rgba(255,230,190,.55)', .9); }
@@ -3426,6 +3484,7 @@ function openHelp() {
     🏪 Тапни по лавке — фермер встанет за прилавок и будет продавать всем, на кого хватает товара.<br>
     🌙 Ночью тапай по значкам на ферме — улучшения, сад, курятник. Кур корми ночью — днём будут яйца.<br>
     🐄 Коров корми ночью только 🌻 подсолнухами или 🌾 пшеницей — днём они дают 🥛 молоко.<br>
+    🥛 Доильный аппарат — больше молока, 🍀 клевер — коровы едят меньше, 🟨 сеновал сам кормит коров ночью, большое пастбище — место ещё для коров.<br>
     🪺 Гнёзда — больше яиц. 🐓 Петух: двойные и золотые 🟡 яйца, а по утрам цыплята 🐣 — есть место в вольере, вырастают в кур, нет — продаются на лавке.<br>
     🏡 🍅 Помидоры и 🍓 клубника растут только в теплице — построй её ночью.<br>
     🪓 Ночью расчисти лес справа и построй 🌬️ мельницу (3 🌾 → 🍚 мука) и 🧀 сыроварню (2 🥛 → сыр). Тапни на здание — фермер загрузит сырьё и заберёт готовое.<br>
@@ -3453,11 +3512,11 @@ function openNight(withSummary) {
       <button ${fed >= hens() || feedStock() < FEED_PER_HEN ? 'disabled' : ''} onclick="feedHens(); openNight(false)">Покормить</button></div>`;
   }
   if (cows()) {
-    const fed = cowsFedTomorrow(), need = (cows() - fed) * FEED_PER_COW;
+    const fed = cowsFedTomorrow(), need = (cows() - fed) * feedPerCow();
     const status = fed >= cows() ? `Все ${cows()} коров накормлены ✔ — будет ~${cows() * 6} 🥛`
       : `Коров: ${cows()}${fed ? `, накормлено ${fed}` : ''}. Нужно ${need} 🌻 или 🌾, на складе ${cowFoodStock()}`;
-    h += `<h3 style="margin:10px 0 0">🐄 Коровник${S.helpers.some(c => c.feed && c.stations.includes('barn')) ? ' <small style="font-weight:400;color:#7a6650">— помощник кормит сам</small>' : ''}</h3><div class="up" data-why="${fed >= cows() ? '🐄 Коровы уже накормлены на завтра' : `Не хватает корма: нужно ${FEED_PER_COW} 🌻 или 🌾 на корову`}"><div class="ico">🐄</div><div class="txt"><b>Покормить коров на завтра</b><small>${status}</small></div>
-      <button ${fed >= cows() || cowFoodStock() < FEED_PER_COW ? 'disabled' : ''} onclick="feedCows(); openNight(false)">Покормить</button></div>`;
+    h += `<h3 style="margin:10px 0 0">🐄 Коровник${S.helpers.some(c => c.feed && c.stations.includes('barn')) ? ' <small style="font-weight:400;color:#7a6650">— помощник кормит сам</small>' : ''}</h3><div class="up" data-why="${fed >= cows() ? '🐄 Коровы уже накормлены на завтра' : `Не хватает корма: нужно ${feedPerCow()} 🌻 или 🌾 на корову`}"><div class="ico">🐄</div><div class="txt"><b>Покормить коров на завтра</b><small>${status}</small></div>
+      <button ${fed >= cows() || cowFoodStock() < feedPerCow() ? 'disabled' : ''} onclick="feedCows(); openNight(false)">Покормить</button></div>`;
   }
   h += `<h3 style="margin:10px 0 0">Улучшения фермы</h3><small style="color:#7a6650">Можно и прямо на ферме: закрой меню и тапни на замочек или плашку ⬆ с ценой</small>`;
   for (const [key, u] of Object.entries(UPGRADES)) {
@@ -3466,7 +3525,7 @@ function openNight(withSummary) {
       h += `<div class="up" data-why="🔒 ${u.needText}"><div class="ico">❓</div><div class="txt"><b>???</b><small>${u.needText}</small></div><button disabled>???</button></div>`;
       continue;
     }
-    h += `<div class="up" data-why="${maxed ? (key === 'coop' && l < 8 ? 'Вольер полон — расширь его' : u.max === 1 ? 'Это у вас уже есть' : 'Улучшено на максимум') : 'Недостаточно средств'}"><div class="ico">${u.ico}</div><div class="txt"><b>${u.name} <small>ур. ${l}/${u.max}</small></b><small>${maxed ? 'Максимум' : u.desc(l)}</small></div>
+    h += `<div class="up" data-why="${maxed ? (key === 'coop' && l < 8 ? 'Вольер полон — расширь его' : key === 'barn' && l < 7 ? 'Пастбище полное — расширь его' : u.max === 1 ? 'Это у вас уже есть' : 'Улучшено на максимум') : 'Недостаточно средств'}"><div class="ico">${u.ico}</div><div class="txt"><b>${u.name} <small>ур. ${l}/${u.max}</small></b><small>${maxed ? 'Максимум' : u.desc(l)}</small></div>
       <button ${maxed || S.coins < cost ? 'disabled' : ''} onclick="buyUpgrade('${key}')">${maxed ? '✔' : cost + '💰'}</button></div>`;
   }
   h += `<h3 style="margin:14px 0 0">Новые культуры</h3>`;
@@ -3590,7 +3649,7 @@ $('sunbox').onclick = () => { if (!S.night && !S.started) beginClock(); else if 
 $('overlay').onclick = e => { if (e.target.id === 'overlay') closeNight(); };
 
 // ================== СТАРТ ==================
-applyYard(); syncHelpers(); syncTrees(); syncHens(); syncCows(); syncGh(); applyLots(); orderMorning();
+applyYard(); applyPasture(); syncHelpers(); syncTrees(); syncHens(); syncCows(); syncGh(); applyLots(); orderMorning();
 new ResizeObserver(resize).observe($('stage'));
 resize();
 if (tablet) { centerCam(); clampCam(); }   // на планшете — вся ферма
