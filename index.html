@@ -1938,7 +1938,7 @@ const SPRITE_ANIM = new Set(['house', 'stall', 'bakery', 'dairy', 'doghouse', 'b
 const SPRITE_KEY = {
   house: () => '', stall: () => JSON.stringify(S.inv), bakery: () => S.bake.q.length + ',' + S.started, dairy: () => (S.prod.dairy.q > 0) + ',' + S.started,
   doghouse: () => '', billboard: () => '', mill: () => (S.prod.mill.q > 0) + ',' + S.started,
-  tree: () => '', fence: () => hens() + ',' + cows(), coop: () => S.coop.eggs + ',' + hens(), barn: () => cows(),
+  tree: () => '', flowers: () => '', well: () => '', fence: () => hens() + ',' + cows(), coop: () => S.coop.eggs + ',' + hens(), barn: () => cows(),
   trough: () => cows() + ',' + cowsFedToday(), mailbox: () => JSON.stringify(S.order), sack: () => '', bench: () => '', glass: () => '', ghroof: () => '',
 };
 const mctx = document.createElement('canvas').getContext('2d');
@@ -2627,7 +2627,7 @@ function drawFlowers(d, t) {   // уют 1: клумба в каменном б�
   for (const y of [6.5, 6.95, 7.4]) seg(lift(x1, y, 0), lift(x1, y, 2.5), 'rgba(60,55,50,.45)', 1);
   for (const [x, y, e] of [[4.3, 6.3, '🌷'], [4.7, 6.55, '🌼'], [4.35, 6.85, '🌸'], [4.7, 7.25, '🌷'], [4.3, 7.5, '🌼'], [4.65, 7.8, '🌸']]) {
     const c = lift(x, y, 2); circle(c.x, c.y, 5, '#4f9e45'); circle(c.x - 2, c.y - 1.5, 2.2, '#6dbb5a');
-    emoji(e, c.x, c.y - 6 + Math.sin(t * 2 + x * 9 + y) * .8, 11);
+    emoji(e, c.x, c.y - 6, 11);   // неподвижно — клумба рисуется один раз в спрайт
   }
 }
 function drawDoghouse(d, t) {   // уют 2: будка с двускатной крышей, миска и собака
@@ -2681,7 +2681,7 @@ function drawWell(d, t) {   // уют 3: колодец
   toonPost(4.12, 8.5, 12, 38); toonPost(4.88, 8.5, 12, 38);   // стойки стоят на кольце
   seg(lift(4.12, 8.5, 30), lift(4.88, 8.5, 30), INK, 4); seg(lift(4.12, 8.5, 30), lift(4.88, 8.5, 30), '#a87a48', 2.6);   // ворот
   const hd = lift(4.95, 8.5, 30); seg(hd, { x: hd.x + 5, y: hd.y + 5 }, INK, 2);
-  const b = lift(4.5, 8.5, 22 + Math.sin(t) * 1.5), r = lift(4.5, 8.5, 30);
+  const b = lift(4.5, 8.5, 22), r = lift(4.5, 8.5, 30);   // ведро висит неподвижно — колодец в спрайте
   seg(r, b, '#5b3a22', 1.1); emoji('🪣', b.x, b.y + 3, 10);
   const R1 = [lift(3.95, 8.2, 36), lift(5.05, 8.2, 36), lift(5.05, 8.5, 45), lift(3.95, 8.5, 45)];
   const R2 = [lift(3.95, 8.5, 45), lift(5.05, 8.5, 45), lift(5.05, 8.8, 36), lift(3.95, 8.8, 36)];
