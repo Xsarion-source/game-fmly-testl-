@@ -1541,6 +1541,7 @@ function draw(t) {
   setWorld();
   drawOutside();
   drawGround(t);
+  drawPaths();
   drawPond(t);
   drawZones();
   drawReserved();
@@ -1586,7 +1587,7 @@ function drawOutside() {
     const road = (y === 12 || y === 13) && x >= W || (y === 12 || y === 13) && x < 0, h = hash(x, y);
     const col = road ? ((x + y) % 2 ? '#d8bf8a' : '#d3b983') : (x + y) % 2 ? '#6db151' : '#68aa4c';
     poly(tilePts(x, y), col, col);
-    if (road) continue;
+    if (road) { seg(iso(x, y + .5), iso(x + 1, y + .5), 'rgba(150,110,65,.16)', 4); if (h > .88) pebble(c.x + (h - .94) * 60, c.y, 1.6, '#cdbb98'); continue; }
     const behind = x < 0 || y < 0 || (x >= W && y < 12);   // за фермой и справа — лес, перед ней — открытый луг
     if (behind && h > (x < -2 || y < -2 || x > W + 1 ? 0.25 : 0.5)) trees.push({ x, y, s: 0.8 + hash(y, x) * 0.45 });
     else if (h > .82) circle(c.x + (h - .9) * 40, c.y, 2.2, ['#ffffff', '#ffd84d', '#ff8fb1'][Math.floor(h * 1000) % 3]);
@@ -1595,6 +1596,54 @@ function drawOutside() {
   trees.sort((a, b) => (a.x + a.y) - (b.x + b.y)).forEach(drawTree);
 }
 
+// ---------- Земля: кочки травы, цветы, камешки, колеи и кромка тропинок ----------
+function grassTuft(x, y, s, dark = '#4f9a3c', light = '#7fcf5f') {   // кочка: три заострённых травинки
+  for (const [dx, h, lean] of [[-3, 6, -2], [0, 8.5, 0], [3, 6, 2]]) {
+    ctx.beginPath(); ctx.moveTo(x + (dx - 1.6) * s, y); ctx.quadraticCurveTo(x + (dx + lean * .3) * s, y - h * .6 * s, x + (dx + lean) * s, y - h * s);
+    ctx.quadraticCurveTo(x + (dx + .3) * s, y - h * .5 * s, x + (dx + 1.6) * s, y); ctx.closePath();
+    ctx.fillStyle = dark; ctx.fill();
+  }
+  ctx.beginPath(); ctx.moveTo(x - .5 * s, y); ctx.quadraticCurveTo(x, y - 5 * s, x + .2 * s, y - 7.5 * s); ctx.strokeStyle = light; ctx.lineWidth = 1; ctx.stroke();
+}
+function pebble(x, y, r, col = '#c9bfae') {
+  ctx.beginPath(); ctx.ellipse(x, y, r * 1.35, r, 0, 0, 7); ctx.fillStyle = col; ctx.fill();
+  ctx.strokeStyle = 'rgba(90,70,45,.55)'; ctx.lineWidth = .9; ctx.stroke();
+  circle(x - r * .45, y - r * .35, r * .35, 'rgba(255,255,255,.6)');
+}
+function groundDeco(x, y, c, u, h) {
+  if (h < .14) {   // светлое пятно солнечной травы
+    ctx.fillStyle = 'rgba(190,240,140,.22)'; ctx.beginPath(); ctx.ellipse(c.x + (h - .07) * 120, c.y, 18, 7, 0, 0, 7); ctx.fill();
+  }
+  if (u > .5) grassTuft(c.x + (u - .75) * 34, c.y + (h - .5) * 6, 1.15);
+  if (h > .7) grassTuft(c.x - (h - .85) * 40, c.y - 4 + (u - .5) * 4, .85);
+  if (u > .9) {   // цветок с серединкой
+    const fx = c.x - (u - .75) * 30, fy = c.y - 2, col = ['#ffffff', '#ffd84d', '#ff8fb1'][Math.floor(u * 100) % 3];
+    seg({ x: fx, y: fy + 4 }, { x: fx, y: fy }, '#4f9a3c', 1.2);
+    for (let k = 0; k < 5; k++) { const a = k * 1.2566; circle(fx + Math.cos(a) * 2, fy + Math.sin(a) * 1.4, 1.6, col); }
+    circle(fx, fy, 1.1, col === '#ffd84d' ? '#e0803a' : '#ffd84d');
+  }
+  if (h > .2 && h < .25) pebble(c.x + (u - .5) * 24, c.y + 3, 2.4, '#bdb6a8');
+}
+const pathLike = g => g === 'p' || g === 'r';
+function pathDeco(x, y, c, g, h) {
+  if (g === 'r') {   // колеи вдоль дороги
+    seg(iso(x, y + .5), iso(x + 1, y + .5), 'rgba(150,110,65,.16)', 4);
+  }
+  const a = hash(x * 3 + 1, y * 7 - 1);   // редкие камешки в тон песка
+  if (a > .8) pebble(c.x + (a - .9) * 60, c.y + (hash(y + 1, x) - .5) * 10, 1.4 + (a - .8) * 4, a > .9 ? '#e2d3b2' : '#cdbb98');
+  if (g === 'p' && h > .8) circle(c.x + (h - .9) * 30, c.y + 3, 1.2, 'rgba(120,90,50,.45)');
+  // кромка: где тропинка граничит с травой — тёмная линия и травинки на краю
+  const edges = [[0, -1, iso(x, y), iso(x + 1, y)], [-1, 0, iso(x, y), iso(x, y + 1)], [1, 0, iso(x + 1, y), iso(x + 1, y + 1)], [0, 1, iso(x, y + 1), iso(x + 1, y + 1)]];
+  for (const [dx, dy, a, b] of edges) {
+    const n = ground[y + dy]?.[x + dx];
+    if (n !== 'g' && n !== 'o') continue;
+    seg(a, b, 'rgba(140,105,60,.55)', 2);
+    if (hash(x + dx * 5, y + dy * 3) > .45) { const m = mix(a, b, .3 + hash(y, x + dx) * .4); grassTuft(m.x, m.y + 1, .6); }
+  }
+}
+function drawPaths() {   // вторым проходом — чтобы кромку не перекрыли соседние клетки
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const g = ground[y][x]; if (pathLike(g)) pathDeco(x, y, iso(x + .5, y + .5), g, hash(x, y)); }
+}
 function drawGround(t) {
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const g = ground[y][x], pts = tilePts(x, y);
@@ -1614,14 +1663,7 @@ function drawGround(t) {
     poly(pts, col, col);
 
     const c = iso(x + .5, y + .5);
-    if (g === 'g' && tuft[y][x] > .55) {          // травинки и цветочки
-      ctx.strokeStyle = '#5ea548'; ctx.lineWidth = 1.2; ctx.beginPath();
-      const ox = (tuft[y][x] - .75) * 30;
-      ctx.moveTo(c.x + ox - 3, c.y); ctx.lineTo(c.x + ox - 4, c.y - 5);
-      ctx.moveTo(c.x + ox, c.y); ctx.lineTo(c.x + ox, c.y - 6);
-      ctx.moveTo(c.x + ox + 3, c.y); ctx.lineTo(c.x + ox + 4, c.y - 5); ctx.stroke();
-      if (tuft[y][x] > .9) circle(c.x - ox, c.y - 2, 2.2, ['#ffffff','#ffd84d','#ff8fb1'][Math.floor(tuft[y][x] * 100) % 3]);
-    }
+    if (g === 'g') groundDeco(x, y, c, tuft[y][x], hash(x, y));
     if (g === 'o') {
       const i = orchardAt(x, y);
       if (i >= 0 && i < S.trees.length) {
