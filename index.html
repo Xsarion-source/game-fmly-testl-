@@ -97,6 +97,8 @@
   .up .txt b { display: block; font-size: 15px; }
   .up .txt small { color: #7a6650; }
   .up button { min-width: 78px; padding: 8px; }
+  .up:has(button:not([disabled])) { cursor: pointer; border-radius: 10px; transition: background .12s; }
+  .up:has(button:not([disabled])):active { background: rgba(224,168,58,.18); }
 
   #toast { position: fixed; left: calc(50% - 30px); top: 20%; transform: translateX(-50%); background: rgba(40,30,20,.9); color: #fff;
            padding: 8px 14px; border-radius: 18px; font-size: 14px; font-weight: 700; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 20;
@@ -553,12 +555,12 @@ function harvestBed(p, s, gh) {   // в теплице — гроздь из GH_
   addFloat(s.x + .5, s.y + .5, `+${n} ${CROP[p.crop].e}`);
   p.last = p.crop; p.crop = null; p.prog = 0;
 }
-function plotAct(i, mode, gh) {
+function plotAct(i, mode, gh, crop) {
   const p = (gh ? S.gh : S.plots)[i], s = (gh ? GH_SLOTS : PLOT_SLOTS)[i];
   if (!p) return;
   if (p.crop && p.prog >= 1 && mode !== 'plant') harvestBed(p, s, gh);
   else if (!p.crop && mode !== 'harvest') {
-    const id = gh ? ghPick() : S.sel, c = CROP[id];
+    const id = crop || (gh ? ghPick() : S.sel), c = CROP[id];
     if (!c) { toast(GH_WRONG()); return; }
     if (!gh && GH_CROPS.includes(id)) { toast(`${c.e} ${c.name} растёт только в теплице 🏡`); return; }
     if (S.coins < c.seed) { toast(gh ? `Семена ${c.e} стоят ${c.seed}💰` : 'Не хватает монет — посади бесплатный подсолнух 🌻'); return; }
@@ -568,13 +570,24 @@ function plotAct(i, mode, gh) {
   save(); renderUI();
 }
 
+// Очередь: тапы по грядкам, теплице и саду добавляются друг за другом (культура — выбранная в момент тапа).
+// Повторный тап по клетке из очереди убирает её. Любая другая команда очередь сбрасывает.
+const queuedSeeds = () => tasks.reduce((a, t) => a + (t.q && t.cost || 0), 0);
+function queueBed(task) {
+  if (!(tasks.length && tasks.every(t => t.q))) { setTasks([task]); return; }
+  const k = tasks.findIndex(t => t.x === task.x && t.y === task.y);
+  if (k >= 0) { tasks.splice(k, 1); if (k === 0) { path = []; nextTask(); } toast('Убрано из очереди'); return; }
+  tasks.push(task);
+}
 function tapPlot(i) {
   if (i >= S.plots.length) { toast('🚜 Ночью тапни на замочек — и расширишь участок'); return; }
   const p = S.plots[i], s = PLOT_SLOTS[i];
   if (p.crop && p.prog < 1) { toast(`${CROP[p.crop].e} растёт… ${Math.floor(p.prog * 100)}%`); return; }
   if (!p.crop && GH_CROPS.includes(S.sel)) { toast(`${CROP[S.sel].e} растёт только в теплице 🏡${S.up.greenhouse ? '' : ' — построй её ночью'}`); return; }
-  if (!p.crop && S.coins < CROP[S.sel].seed) { toast('Не хватает монет — посади бесплатный подсолнух 🌻'); return; }
-  setTasks([{ x: s.x, y: s.y, fn: () => plotAct(i) }]);
+  const crop = p.crop ? null : S.sel, cost = crop ? CROP[crop].seed : 0;
+  const queued = tasks.some(t => t.q && t.x === s.x && t.y === s.y);
+  if (crop && !queued && S.coins < cost + queuedSeeds()) { toast(queuedSeeds() ? 'На эту грядку монет уже не хватит' : 'Не хватает монет — посади бесплатный подсолнух 🌻'); return; }
+  queueBed({ x: s.x, y: s.y, q: true, crop, cost, fn: () => plotAct(i, undefined, false, crop) });
 }
 function tapGh(i) {
   if (i >= S.gh.length) { toast(S.up.greenhouse ? '🏡 Ночью тапни сюда — расширишь теплицу' : '🏡 Ночью тапни сюда — построишь теплицу для 🍅 и 🍓'); return; }
@@ -583,9 +596,10 @@ function tapGh(i) {
   if (!p.crop) {
     const id = ghPick();
     if (!id) { toast(GH_WRONG()); return; }
-    if (S.coins < CROP[id].seed) { toast(`Семена ${CROP[id].e} стоят ${CROP[id].seed}💰`); return; }
+    if (S.coins < CROP[id].seed + queuedSeeds() && !tasks.some(t => t.q && t.x === s.x && t.y === s.y)) { toast(`Семена ${CROP[id].e} стоят ${CROP[id].seed}💰`); return; }
   }
-  setTasks([{ x: s.x, y: s.y, fn: () => plotAct(i, undefined, true) }]);
+  const crop = p.crop ? null : ghPick(), cost = crop ? CROP[crop].seed : 0;
+  queueBed({ x: s.x, y: s.y, q: true, crop, cost, fn: () => plotAct(i, undefined, true, crop) });
 }
 
 // ---------- Сад ----------
@@ -615,7 +629,7 @@ function tapTree(i) {
   if (t.kind && t.grow < 1) { toast(`🌳 Яблоня растёт… ${Math.floor(t.grow * 100)}%`); return; }
   if (t.kind && t.fruit < 1) { toast(`🍏 Яблоки зреют… ${Math.floor(t.fruit * 100)}%`); return; }
   if (!t.kind && S.coins < TREES.apple.sapling) { toast(`Саженец яблони стоит ${TREES.apple.sapling}💰`); return; }
-  setTasks([{ x: s.x, y: s.y, fn: () => treeAct(i) }]);
+  queueBed({ x: s.x, y: s.y, q: true, crop: t.kind ? null : 'sapling', cost: t.kind ? 0 : TREES.apple.sapling, fn: () => treeAct(i) });
 }
 
 // ---------- Курятник ----------
@@ -2009,6 +2023,7 @@ function draw(t) {
   drawLighting();
   setWorld();
   drawBars();
+  drawQueueIcons();
   drawCoopBubble();
   drawBarnBubble();
   drawProdBubbles();
@@ -2370,6 +2385,18 @@ function drawMarker(t) {
   if (!tasks.length) return;
   const tk = tasks[0], r = 0.12 + Math.sin(t * 6) * 0.04;
   poly([iso(tk.x + r, tk.y + r), iso(tk.x + 1 - r, tk.y + r), iso(tk.x + 1 - r, tk.y + 1 - r), iso(tk.x + r, tk.y + 1 - r)], null, '#ffffff', 2);
+  tasks.forEach((q, k) => {   // очередь грядок: рамка и полупрозрачная культура, которую посадят
+    if (!q.q) return;
+    if (k) { ctx.setLineDash([4, 3]); poly([iso(q.x + .14, q.y + .14), iso(q.x + .86, q.y + .14), iso(q.x + .86, q.y + .86), iso(q.x + .14, q.y + .86)], null, 'rgba(255,255,255,.85)', 1.6); ctx.setLineDash([]); }
+  });
+}
+function drawQueueIcons() {   // поверх растений: что посадят или «соберут» на клетке из очереди
+  tasks.forEach(q => {
+    if (!q.q) return;
+    const c = iso(q.x + .5, q.y + .5), e = q.crop === 'sapling' ? '🌱' : q.crop ? CROP[q.crop].e : '🧺';
+    rr(c.x - 12, c.y - 40, 24, 24, 12, 'rgba(255,253,246,.8)');
+    ctx.globalAlpha = .85; emoji(e, c.x, c.y - 28, 18); ctx.globalAlpha = 1;
+  });
 }
 
 
@@ -3360,6 +3387,13 @@ function refreshSheet() {
   else return;
   $('sheet').scrollTop = top;
 }
+// строка меню с одной кнопкой нажимается целиком — не обязательно попадать в цену
+$('sheet').addEventListener('click', e => {
+  const row = e.target.closest('.up');
+  if (!row || e.target.closest('button, input, a')) return;
+  const b = row.querySelectorAll('button');
+  if (b.length === 1 && !b[0].disabled) b[0].click();
+});
 function closeNight() { $('overlay').classList.remove('show'); $('sheet').dataset.view = ''; }
 function morning() {   // итог дня — в историю (последние 14 дней)
   S.hist ??= [];
