@@ -26,6 +26,11 @@
   #phase { position: absolute; left: 0; right: 0; bottom: 2px; text-align: center; font-size: 11px; font-weight: 800; color: #3b2a1a; letter-spacing: .02em; }
   #sunbox.dark #phase { color: #e8ecff; }
   #day { pointer-events: auto; cursor: pointer; }
+  .hcard { background: #f0e5cb; border-radius: 12px; padding: 8px 10px; margin-top: 8px; font-size: 14px; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .chip { padding: 6px 9px; font-size: 13px; background: #fff; border: 2px solid var(--line); border-radius: 999px; }
+  .chip.on { background: #3e9b3a; border-color: #3e9b3a; color: #fff; }
   .cheats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
   .cheats button { padding: 9px 6px; font-size: 14px; }
   .cheats button.on { background: #3e9b3a; color: #fff; }
@@ -136,7 +141,7 @@ const UPGRADES = {
   ads:    { name: 'Реклама',           ico: '📣', desc: l => `+3 покупателя в день`,           cost: l => 30 + l*35,           max: 10 },
   fert:   { name: 'Удобрения',         ico: '🧪', desc: l => `Рост быстрее (+${l*20}% → +${(l+1)*20}%)`, cost: l => 50 + l*60, max: 5 },
   sign:   { name: 'Красивая вывеска',  ico: '🪧', desc: l => `Цены выше (+${l*10}% → +${(l+1)*10}%)`, cost: l => 60 + l*70, max: 6 },
-  helper: { name: 'Помощник',         ico: '🧑‍🌾', desc: l => `Собирает урожай, по команде пересаживает (помощников: ${l} → ${l+1})`, cost: l => [120, 280, 520][l], max: 3 },
+  helper: { name: 'Помощник',         ico: '🧑‍🌾', desc: l => `Назначь его на поле, в сад, в курятник или за прилавок (помощников: ${l} → ${l+1})`, cost: l => [120, 280, 520][l], max: 3 },
   bench:  { name: 'Скамейка',          ico: '🪑', desc: l => `Покупатели ждут дольше (+5 сек)`, cost: l => 25 + l*30, max: 5 },
 };
 
@@ -194,7 +199,7 @@ BENCHES.forEach((b, i) => decor.push({ kind: 'bench', i, x: b.x, y: b.y, z: b.x 
 
 let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 const treeSpots = [[12,8]];
-const KEEP_CLEAR = new Set(['13,9', '13,10', '13,11']);   // перед рекламным щитом — без деревьев
+const KEEP_CLEAR = new Set(['13,1', '13,2', '13,3', '13,4', '13,5', '13,6', '13,9', '13,10', '13,11']);   // перед рекламным щитом — без деревьев
 for (let x = 0; x < W; x++) treeSpots.push([x, 0]);
 for (let y = 1; y <= 11; y++) treeSpots.push([0, y], [W-1, y]);
 for (const [x, y] of treeSpots) {
@@ -216,7 +221,7 @@ function newState() {
     spawned: 0, toSpawn: 0,
     stats: { earned: 0, served: 0, missed: 0 },
     player: { x: 5.5, y: 8.5 },
-    helperMode: 'harvest',
+    helpers: [],
   };
 }
 let S;
@@ -224,7 +229,12 @@ try { S = JSON.parse(localStorage.getItem(SAVE_KEY)) || newState(); } catch { S 
 delete S.queue;
 if (!S.stats) S.stats = { earned: 0, served: 0, missed: 0 };
 S.up.helper ??= 0;
-S.helperMode ??= 'harvest';
+// у каждого помощника своя станция: поле, сад, курятник, лавка или отдых
+if (!S.helpers) {
+  const m = S.helperMode || 'harvest';
+  S.helpers = Array.from({ length: S.up.helper }, () => ({ station: m === 'rest' ? 'rest' : 'field', replant: m === 'replant', seed: 'same' }));
+}
+delete S.helperMode;
 S.up.orchard ??= 0; S.up.coop ??= 0;
 S.trees ??= [];
 S.coop ??= { fedDay: 0, fedHens: 0, eggs: 0, layT: 0 };
@@ -447,7 +457,7 @@ function updateHens(dt) {
 // Всё, что можно собрать прямо сейчас: грядки, деревья, гнездо
 function readyJobs() {
   const jobs = [];
-  S.plots.forEach((p, i) => { if (p.crop && p.prog >= 1) jobs.push({ x: PLOT_SLOTS[i].x, y: PLOT_SLOTS[i].y, act: who => who === 'helper' ? helperHarvestPlot(i) : plotAct(i, 'harvest') }); });
+  S.plots.forEach((p, i) => { if (p.crop && p.prog >= 1) jobs.push({ x: PLOT_SLOTS[i].x, y: PLOT_SLOTS[i].y, act: () => plotAct(i, 'harvest') }); });
   S.trees.forEach((t, i) => { if (treeReady(t)) jobs.push({ x: ORCHARD_SLOTS[i].x, y: ORCHARD_SLOTS[i].y, act: () => treeAct(i, 'harvest') }); });
   if (S.coop.eggs > 0) jobs.push({ ...COOP_SPOT, act: collectEggs });
   return jobs;
@@ -478,7 +488,7 @@ function buyUpgrade(key) {
   const msg = {
     land: '🚜 Новые грядки готовы', orchard: '🌳 Сад готов — тапни на место, чтобы посадить яблоню',
     coop: S.up.coop === 1 ? '🐔 Курятник построен! Ночью тапни на него — фермер покормит кур' : '🐔 В курятнике новая курица',
-    helper: '🧑‍🌾 Помощник нанят! Режим работы — кнопка внизу', ads: '📣 У дороги появилась реклама',
+    helper: '🧑‍🌾 Помощник нанят! Кнопка «Помощники» внизу — назначь ему работу', ads: S.up.ads === 1 ? '📣 У дороги появилась реклама' : '📣 Рекламный щит стал заметнее',
     fert: '🧪 Мешки удобрений у поля', sign: '🪧 Новая вывеска над лотком', bench: '🪑 Скамейка у очереди',
   }[key];
   closeNight();
@@ -513,13 +523,16 @@ function upAtNight(x, y) {   // по проходимым клеткам с ма
   return k && (!walkable(x, y) || S.up[k] < UPGRADES[k].max) ? k : null;
 }
 // Ночью над местами улучшений, на которые хватает денег, — значок ⬆
+let badgeHits = [];
 function drawUpBadges(t) {
+  badgeHits = [];
   if (!S.night) return;
   for (const [key, u] of Object.entries(UPGRADES)) {
     const l = S.up[key]; if (l >= u.max) continue;
     const s = upSpot(key), ok = S.coins >= u.cost(l);
     const c = lift(s.x + .5, s.y + .5, { helper: 80, sign: 86, ads: 74, coop: 30 }[key] || 30);
     const y = c.y + Math.sin(t * 3 + s.x) * 2.5;
+    badgeHits.push({ key, x: c.x, y });
     ctx.globalAlpha = ok ? 1 : .7;
     circle(c.x, y, 12, ok ? '#fff8e7' : '#d8cdb5');
     ctx.strokeStyle = ok ? '#3e9b3a' : '#8a7a62'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(c.x, y, 12, 0, 7); ctx.stroke();
@@ -603,6 +616,11 @@ function updatePlayer(dt) {
   } else {
     P.moving = false;
     if (tasks.length) { const t = tasks.shift(); if (t.fn) { t.fn(); P.work = 0.2; } nextTask(); }
+    else if (!S.night && Math.floor(P.x) === COUNTER.x && Math.floor(P.y) === COUNTER.y && (P.sellT = (P.sellT || 0) - dt) <= 0) {
+      P.sellT = 0.5;   // стоишь за прилавком — торгуешь со всеми, на кого хватает товара
+      const v = visitors.find(v => v.state === 'waiting' && (S.inv[v.crop] || 0) >= v.qty);
+      if (v) { sell(v); P.work = 0.25; }
+    }
   }
 }
 
@@ -632,27 +650,61 @@ const HELPER_LOOKS = [
   { shirt: '#9b7be0', shirtDark: '#7c60bd', pants: '#2f2f3a', skin: '#a8714a', hair: '#111111', hat: 'straw' },
 ];
 const HOME = { x: 3, y: 4 };   // у двери дома
-const HELPER_MODES = {
-  harvest: { btn: '🧑‍🌾 Сбор',        toast: '🧺 Помощники только собирают урожай — монеты не тратят', next: 'replant' },
-  replant: { btn: '🧑‍🌾 Сбор+посев',  toast: '🌱 Помощники собирают и пересаживают ту же культуру (за твои монеты)', next: 'rest' },
-  rest:    { btn: '🧑‍🌾 Отдых',        toast: '😴 Помощники отдыхают у дома', next: 'harvest' },
+const STATIONS = {
+  field:   { ico: '🌾', name: 'Поле',     idle: { x: 5, y: 3 },  hint: 'Собирает созревшее на грядках' },
+  orchard: { ico: '🍎', name: 'Сад',      idle: { x: 2, y: 6 },  hint: 'Собирает яблоки' },
+  coop:    { ico: '🐔', name: 'Курятник', idle: { x: 8, y: 8 },  hint: 'Днём собирает яйца, ночью кормит кур урожаем со склада' },
+  stall:   { ico: '🏪', name: 'Лавка',    idle: { x: 3, y: 9 },  hint: 'Стоит за прилавком и продаёт всё, что есть на складе' },
+  rest:    { ico: '😴', name: 'Отдых',    idle: { x: 3, y: 4 },  hint: 'Отдыхает у дома' },
 };
 let helpers = [];
 function syncHelpers() {
+  while (S.helpers.length < S.up.helper) S.helpers.push({ station: ['field', 'orchard', 'coop'][S.helpers.length % 3], replant: false, seed: 'same' });
   while (helpers.length < S.up.helper) {
     const i = helpers.length;
-    helpers.push({ x: HOME.x + .5 + i * .3, y: HOME.y + .5, path: [], target: null, phase: 0, moving: false, flip: false, work: 0, think: 0, look: HELPER_LOOKS[i % 3] });
+    helpers.push({ id: i, x: HOME.x + .5 + i * .3, y: HOME.y + .5, path: [], target: null, phase: 0, moving: false, flip: false, work: 0, think: 0, sellT: 0, look: HELPER_LOOKS[i % 3] });
   }
 }
-function helperHarvestPlot(i) {
+// какой культурой помощник засеет грядку (null — не сажать)
+function helperSeed(cfg, prev) {
+  const id = cfg.seed === 'same' ? prev : cfg.seed;
+  if (!id || !CROP[id] || S.coins < CROP[id].seed) return null;
+  return id;
+}
+function helperPlot(i, cfg) {
   const p = S.plots[i], s = PLOT_SLOTS[i];
-  if (!p || !p.crop || p.prog < 1) return false;
-  const crop = p.crop;
-  S.inv[crop] = (S.inv[crop] || 0) + 1;
-  addFloat(s.x + .5, s.y + .5, `+1 ${CROP[crop].e}`);
-  p.crop = null; p.prog = 0;
-  if (S.helperMode === 'replant' && S.coins >= CROP[crop].seed) { S.coins -= CROP[crop].seed; p.crop = crop; }
+  if (!p) return false;
+  let prev = null;
+  if (p.crop && p.prog >= 1) {
+    prev = p.crop;
+    S.inv[prev] = (S.inv[prev] || 0) + 1;
+    addFloat(s.x + .5, s.y + .5, `+1 ${CROP[prev].e}`);
+    p.crop = null; p.prog = 0;
+  } else if (p.crop || !cfg.replant) return false;
+  if (cfg.replant) {
+    const id = helperSeed(cfg, prev);
+    if (id) { S.coins -= CROP[id].seed; p.crop = id; p.prog = 0; if (!S.night) beginClock(); }
+  }
   save(); renderUI(); return true;
+}
+// работа для станции помощника
+function helperJobs(cfg) {
+  const jobs = [];
+  if (cfg.station === 'field') S.plots.forEach((p, i) => {
+    const ready = p.crop && p.prog >= 1, empty = !p.crop && cfg.replant && cfg.seed !== 'same' && helperSeed(cfg, null);
+    if (ready || empty) jobs.push({ x: PLOT_SLOTS[i].x, y: PLOT_SLOTS[i].y, act: () => helperPlot(i, cfg) });
+  });
+  if (cfg.station === 'orchard') S.trees.forEach((t, i) => { if (treeReady(t)) jobs.push({ x: ORCHARD_SLOTS[i].x, y: ORCHARD_SLOTS[i].y, act: () => treeAct(i, 'harvest') }); });
+  if (cfg.station === 'coop') {
+    if (S.coop.eggs > 0) jobs.push({ ...COOP_SPOT, act: collectEggs });
+    if (S.night && hens() && fedTomorrow() < hens() && feedStock() >= FEED_PER_HEN) jobs.push({ ...COOP_SPOT, act: () => feedHens() });
+  }
+  return jobs;
+}
+function helperSell(h) {   // продавец за прилавком
+  if ((h.sellT -= 1) > 0) return;
+  const v = visitors.find(v => v.state === 'waiting' && (S.inv[v.crop] || 0) >= v.qty);
+  if (v) { sell(v); h.work = 0.45; h.sellT = 1; }
 }
 function updateHelper(h, dt) {
   if (h.work > 0) { h.work -= dt; h.moving = false; return; }
@@ -662,19 +714,20 @@ function updateHelper(h, dt) {
     h.moving = true; h.phase += dt * 12; return;
   }
   h.moving = false;
+  const cfg = S.helpers[h.id] || { station: 'rest' };
   if (h.target) {                          // дошёл до места работы
     const job = h.target; h.target = null;
-    if (job.act('helper')) h.work = 0.45;
+    if (job.act()) h.work = 0.45;
     return;
   }
   if ((h.think -= dt) > 0) return;
   h.think = 0.5;
-  const hx = Math.floor(h.x), hy = Math.floor(h.y);
+  const hx = Math.floor(h.x), hy = Math.floor(h.y), st = STATIONS[cfg.station];
+  if (cfg.station === 'stall' && hx === st.idle.x && hy === st.idle.y) { h.flip = false; if (!S.night) helperSell(h); return; }
   const claimed = new Set(helpers.filter(o => o.target).map(o => o.target.x + ',' + o.target.y));
   if (tasks[0]) claimed.add(tasks[0].x + ',' + tasks[0].y);
   let best = null, bd = 1e9;
-  const resting = S.night || S.helperMode === 'rest';
-  if (!resting) for (const j of readyJobs()) {
+  for (const j of helperJobs(cfg)) {
     if (claimed.has(j.x + ',' + j.y)) continue;
     const d = Math.abs(j.x - hx) + Math.abs(j.y - hy);
     if (d < bd) { bd = d; best = j; }
@@ -682,9 +735,44 @@ function updateHelper(h, dt) {
   if (best) {
     const pth = findPath(hx, hy, best.x, best.y);
     if (pth) { h.path = pth; h.target = best; }
-  } else if (resting && (hx !== HOME.x || hy !== HOME.y)) {
-    h.path = findPath(hx, hy, HOME.x, HOME.y) || [];
+  } else {   // работы нет — ждёт на своей станции
+    const spot = cfg.station === 'stall' ? st.idle : { x: st.idle.x + (h.id % 2), y: st.idle.y };
+    if ((hx !== spot.x || hy !== spot.y) && walkable(spot.x, spot.y)) h.path = findPath(hx, hy, spot.x, spot.y) || [];
   }
+}
+
+// ---------- Панель помощников ----------
+function setHelper(i, field, val) {
+  Object.assign(S.helpers[i], { [field]: val });
+  const h = helpers[i]; if (h) { h.target = null; h.path = []; h.think = 0; }
+  save(); renderUI(); openHelpers();
+}
+function openHelpers() {
+  const chip = (on, label, js, dis) => `<button class="chip${on ? ' on' : ''}" ${dis ? 'disabled' : ''} onclick="${js}">${label}</button>`;
+  let h = `<h2>🧑‍🌾 Помощники</h2><div style="font-size:13px;color:#7a6650;margin-bottom:6px">Назначь каждому станцию. Значок над головой показывает, кто чем занят. Работают и ночью</div>`;
+  S.helpers.forEach((cfg, i) => {
+    const L = HELPER_LOOKS[i % 3];
+    h += `<div class="hcard"><div style="font-weight:800;margin-bottom:6px"><span class="dot" style="background:${L.shirt}"></span>Помощник ${i + 1}
+      <small style="font-weight:400;color:#7a6650"> — ${STATIONS[cfg.station].hint}</small></div><div class="chips">`;
+    for (const [k, st] of Object.entries(STATIONS)) {
+      const dis = (k === 'orchard' && !S.up.orchard) || (k === 'coop' && !hens());
+      h += chip(cfg.station === k, `${st.ico} ${st.name}`, `setHelper(${i},'station','${k}')`, dis);
+    }
+    h += `</div>`;
+    if (cfg.station === 'field') {
+      h += `<div class="chips" style="margin-top:6px">${chip(!cfg.replant, '🧺 Только сбор', `setHelper(${i},'replant',false)`)}${chip(cfg.replant, '🌱 Сбор и посев', `setHelper(${i},'replant',true)`)}</div>`;
+      if (cfg.replant) {
+        h += `<div style="font-size:12px;color:#7a6650;margin:6px 0 4px">Что сажать (семена за твои монеты):</div><div class="chips">`;
+        h += chip(cfg.seed === 'same', '🔁 То же', `setHelper(${i},'seed','same')`);
+        for (const id of S.unlocked) h += chip(cfg.seed === id, `${CROP[id].e} ${CROP[id].seed || 'даром'}`, `setHelper(${i},'seed','${id}')`);
+        h += `</div>`;
+      }
+    }
+    h += `</div>`;
+  });
+  h += `<button class="wide" style="width:100%;margin-top:10px" onclick="closeNight()">Готово</button>`;
+  $('sheet').innerHTML = h;
+  $('overlay').classList.add('show');
 }
 
 // ================== ЦИКЛ ==================
@@ -804,11 +892,15 @@ cv.addEventListener('pointercancel', e => { pointers.delete(e.pointerId); pinch 
 function onTap(sx, sy) {
   const wx = (sx - cw / 2) / zoom + cam.x, wy = (sy - ch / 2) / zoom + cam.y;
   // сначала покупатели (вместе с облачком над головой)
-  const vs = visitors.filter(v => v.state !== 'leaving').sort((a, b) => (b.x + b.y) - (a.x + a.y));
-  for (const v of vs) {
-    const c = iso(v.x, v.y);
-    if (Math.abs(wx - c.x) < 20 && wy > c.y - 80 && wy < c.y + 6) { tapVisitor(v); return; }
+  if (S.night) for (const b of badgeHits) if (Math.hypot(wx - b.x, wy - b.y) < 20) { openUpgrade(b.key); return; }
+  let bv = null, bdv = 1e9;
+  for (const v of visitors) {
+    if (v.state === 'leaving') continue;
+    const c = iso(v.x, v.y), dx = Math.abs(wx - c.x);
+    if (dx > 24 || wy < c.y - 84 || wy > c.y + 8) continue;
+    if (dx < bdv) { bdv = dx; bv = v; }
   }
+  if (bv) { tapVisitor(bv); return; }
   const fx = (wx / (TW / 2) + wy / (TH / 2)) / 2, fy = (wy / (TH / 2) - wx / (TW / 2)) / 2;
   const tx = Math.floor(fx), ty = Math.floor(fy);
   if (tx < 0 || ty < 0 || tx >= W || ty >= H) return;
@@ -818,7 +910,7 @@ function onTap(sx, sy) {
   const oi = orchardAt(tx, ty);
   if (oi >= 0) { tapTree(oi); return; }
   if (inCoopArea(tx, ty)) { tapCoop(); return; }
-  if (ty === 10 && (tx === 3 || tx === 4)) { setTasks([{ x: COUNTER.x, y: COUNTER.y }]); return; }
+  if (ty === 10 && (tx === 3 || tx === 4)) { setTasks([{ x: COUNTER.x, y: COUNTER.y }]); toast('🏪 За прилавком фермер сам продаёт всем, на кого хватает товара'); return; }
   if (walkable(tx, ty)) setTasks([{ x: tx, y: ty }]);
 }
 
@@ -850,7 +942,7 @@ function draw(t) {
   for (const h of hensState) list.push({ z: h.x + h.y, f: () => drawHen(h, t) });
   S.plots.forEach((p, i) => { if (p.crop) { const s = PLOT_SLOTS[i]; list.push({ z: s.x + s.y + 1, f: () => drawCrop(i, t) }); } });
   list.push({ z: P.x + P.y + 0.01, f: () => drawPerson(P, PLAYER_LOOK) });
-  for (const h of helpers) list.push({ z: h.x + h.y, f: () => drawPerson(h, h.look) });
+  for (const h of helpers) list.push({ z: h.x + h.y, f: () => { drawPerson(h, h.look); const c = iso(h.x, h.y); circle(c.x, c.y - 60, 9, 'rgba(255,253,246,.95)'); emoji(STATIONS[S.helpers[h.id]?.station || 'rest'].ico, c.x, c.y - 59, 11); } });
   for (const v of visitors) list.push({ z: v.x + v.y, f: () => drawPerson(v, v.look) });
   list.sort((a, b) => a.z - b.z).forEach(o => o.f());
 
@@ -1075,13 +1167,32 @@ function drawOrchardTree(i, t) {
 
 function drawBillboard(d, t) {
   const L = S.up.ads; if (!L) return;
-  vline(12.2, 10.5, 0, 54, '#7a4a2a', 3.5); vline(12.8, 10.5, 0, 54, '#7a4a2a', 3.5);
-  poly([lift(12.02, 10.5, 26), lift(13.08, 10.5, 26), lift(13.08, 10.5, 56), lift(12.02, 10.5, 56)], '#fff3d6', '#8a5a36', 2.5);
-  textOnX(12.02, 10.5, 47, 1.06, 'ФЕРМА', '#c0392b', 11);
-  textOnX(12.02, 10.5, 34, 1.06, '→ свежее', '#3e7d32', 8);
+  // 1–2: табличка на столбике · 3–4: щит · 5–6: рамка и лампочки · 7–9: флаг · 10: золотой щит
+  const big = L >= 3, x0 = big ? 12.02 : 12.2, x1 = big ? 13.08 : 12.9, zb = big ? 26 : 16, zt = big ? 56 : 32;
+  if (big) { vline(12.2, 10.5, 0, zt, '#7a4a2a', 3.5); vline(12.85, 10.5, 0, zt, '#7a4a2a', 3.5); }
+  else vline(12.55, 10.5, 0, zt, '#7a4a2a', 3);
+  const frame = L >= 10 ? '#e0b23a' : L >= 5 ? '#c0392b' : '#8a5a36';
+  poly([lift(x0, 10.5, zb), lift(x1, 10.5, zb), lift(x1, 10.5, zt), lift(x0, 10.5, zt)], L >= 10 ? '#fff6cf' : '#fff3d6', frame, L >= 5 ? 3.5 : 2);
+  const w = x1 - x0;
+  if (!big) textOnX(x0, 10.5, (zb + zt) / 2, w, 'ФЕРМА', '#c0392b', 8);
+  else {
+    textOnX(x0, 10.5, zt - 9, w, 'ФЕРМА', '#c0392b', 11);
+    textOnX(x0, 10.5, zb + 9, w, L >= 10 ? '★ ЛУЧШАЯ ★' : L >= 5 ? '★'.repeat(L - 4) : '→ свежее', L >= 5 ? '#e0a020' : '#3e7d32', L >= 5 && L < 10 ? 9 : 7);
+  }
+  if (L >= 5) for (let k = 0; k <= 6; k++) {   // лампочки по верхнему краю
+    const p = lift(x0 + w * k / 6, 10.5, zt + 2), on = (Math.floor(t * 3) + k) % 2;
+    circle(p.x, p.y, 2.2, on ? '#ffe066' : '#b88a2a');
+  }
+  if (L >= 7) {   // флаг над щитом
+    vline(13.0, 10.5, zt, zt + 26, '#6b4327', 2);
+    const a = lift(13.0, 10.5, zt + 26), wave = Math.sin(t * 4) * 2;
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.quadraticCurveTo(a.x + 9, a.y + 2 + wave, a.x + 18, a.y + 5);
+    ctx.lineTo(a.x + 18, a.y + 15); ctx.quadraticCurveTo(a.x + 9, a.y + 12 + wave, a.x, a.y + 10); ctx.closePath();
+    ctx.fillStyle = L >= 10 ? '#e0b23a' : '#e0554a'; ctx.fill();
+  }
   const n = Math.min(L - 1, 9);   // шарики: по одному за каждый уровень рекламы после первого
   for (let i = 0; i < n; i++) {
-    const top = lift(12.5, 10.5, 56), bx = top.x + (i - (n - 1) / 2) * 7, byy = top.y - 16 - (i % 3) * 6 + Math.sin(t * 2 + i) * 1.5;
+    const top = lift(12.3, 10.5, zt), bx = top.x + (i - (n - 1) / 2) * 7 - 8, byy = top.y - 16 - (i % 3) * 6 + Math.sin(t * 2 + i) * 1.5;
     ctx.strokeStyle = 'rgba(80,60,40,.6)'; ctx.lineWidth = .8; ctx.beginPath(); ctx.moveTo(top.x, top.y); ctx.lineTo(bx, byy + 5); ctx.stroke();
     ctx.fillStyle = LIGHT_COLORS[i % 4]; ctx.beginPath(); ctx.ellipse(bx, byy, 4, 5, 0, 0, 7); ctx.fill();
   }
@@ -1178,7 +1289,7 @@ function drawBubble(v) {
   const ok = (S.inv[v.crop] || 0) >= v.qty;
   ctx.beginPath(); ctx.roundRect(bx - 19, by - 12, 38, 22, 7);
   ctx.moveTo(bx - 4, by + 10); ctx.lineTo(bx, by + 15); ctx.lineTo(bx + 4, by + 10);
-  ctx.fillStyle = '#fffdf6'; ctx.fill(); ctx.strokeStyle = ok ? '#3e9b3a' : '#cdb994'; ctx.lineWidth = ok ? 2.5 : 1.2; ctx.stroke();
+  ctx.fillStyle = ok ? '#e6f7dc' : '#fffdf6'; ctx.fill(); ctx.strokeStyle = ok ? '#3e9b3a' : '#cdb994'; ctx.lineWidth = ok ? 2.5 : 1.2; ctx.stroke();
   ctx.fillStyle = '#3b2a1a'; ctx.font = 'bold 11px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(v.qty + '×', bx - 8, by);
   emoji(GOODS[v.crop].e, bx + 7, by, 14);
@@ -1278,7 +1389,7 @@ function renderUI() {
   $('nightBtn').style.display = S.night ? '' : 'none';
   $('plantAll').style.display = S.night ? 'none' : '';
   $('helperBtn').style.display = S.up.helper > 0 ? '' : 'none';
-  $('helperBtn').textContent = HELPER_MODES[S.helperMode].btn;
+  $('helperBtn').textContent = '🧑‍🌾 Помощники';
   const items = Object.keys(GOODS).filter(id => S.inv[id]).map(id => `<span>${GOODS[id].e} ${S.inv[id]}</span>`);
   $('inv').innerHTML = items.length ? items.join('') : '<span style="opacity:.6">Склад пуст — посади и собери урожай</span>';
   const s = $('seeds'); s.innerHTML = '';
@@ -1393,12 +1504,7 @@ function openCheats() {
   $('sheet').innerHTML = h;
   $('overlay').classList.add('show');
 }
-$('helperBtn').onclick = () => {
-  S.helperMode = HELPER_MODES[S.helperMode].next;
-  toast(HELPER_MODES[S.helperMode].toast);
-  helpers.forEach(h => { h.target = null; h.path = []; h.think = 0; });
-  save(); renderUI();
-};
+$('helperBtn').onclick = openHelpers;
 $('sunbox').onclick = () => { if (!S.night && !S.started) beginClock(); else if (!S.night) toast(`Покупателей сегодня: ${S.spawned} из ${S.toSpawn}`); };
 $('overlay').onclick = e => { if (e.target.id === 'overlay') closeNight(); };
 
