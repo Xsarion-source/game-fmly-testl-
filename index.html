@@ -407,8 +407,14 @@ const tuft = Array.from({ length: H }, () => Array.from({ length: W }, () => rnd
 // Три ячейки сохранений: первая — прежний сейв (ключ не меняется), вторая и третья — свои ключи
 const SLOTS = 3;
 const slotKey = n => n === 1 ? 'farm-save-v1' : 'farm-save-v1-slot' + n;
-let SLOT = 1;
-try { SLOT = Math.min(SLOTS, Math.max(1, parseInt(localStorage.getItem('farm-slot')) || 1)); } catch {}
+// window.name живёт в пределах вкладки и переживает перезагрузку — запасной канал, если Safari не даёт localStorage
+const WN = (() => { try { return window.name.startsWith('farm:') ? JSON.parse(window.name.slice(5)) : {}; } catch { return {}; } })();
+try { window.name = ''; } catch {}
+const wnSet = o => { try { window.name = 'farm:' + JSON.stringify(o); } catch {} };
+let SLOT = 1, slotKnown = false;
+try { const v = parseInt(localStorage.getItem('farm-slot')); if (v) { SLOT = v; slotKnown = true; } } catch {}
+if (WN.slot) { SLOT = WN.slot; slotKnown = true; }
+SLOT = Math.min(SLOTS, Math.max(1, SLOT));
 const SAVE_KEY = slotKey(SLOT);
 function slotNames() {
   let a = []; try { a = JSON.parse(localStorage.getItem('farm-slot-names')) || []; } catch {}
@@ -416,7 +422,7 @@ function slotNames() {
 }
 function newState() {
   return {
-    day: 1, t: 0, night: false, coins: 30,
+    day: 1, t: 0, night: false, coins: 30, farmId: Math.random().toString(36).slice(2, 10),
     plots: Array.from({ length: 8 }, () => ({ crop: null, prog: 0 })),
     inv: {}, unlocked: ['sunflower', 'wheat'], sel: 'wheat',
     up: { land: 0, ads: 0, fert: 0, sign: 0, bench: 0, helper: 0, orchard: 0, coop: 0, barn: 0, greenhouse: 0, clear: 0, mill: 0, dairy: 0, house: 0, bakery: 0, cozy: 0, nests: 0, rooster: 0, yard: 0, milker: 0, clover: 0, hay: 0, pasture: 0 },
@@ -431,7 +437,10 @@ function newState() {
   };
 }
 let S;
-try { S = JSON.parse(localStorage.getItem(SAVE_KEY)) || newState(); } catch { S = newState(); }
+let freshStart = false;   // в браузере сейва не было — облако, если есть, главнее
+try { S = WN.state || JSON.parse(localStorage.getItem(SAVE_KEY)); } catch { S = null; }
+if (!S) { S = newState(); freshStart = true; }
+S.farmId ??= Math.random().toString(36).slice(2, 10);   // у каждой фермы свой номер — так облако отличает её от другой
 delete S.queue;
 if (!S.stats) S.stats = { earned: 0, served: 0, missed: 0 };
 S.life ??= { earned: 0, served: 0, harvested: 0, eggs: 0 };
@@ -468,7 +477,100 @@ S.barn ??= { fedDay: 0, fedCows: 0, milk: 0, milkT: 0 };
 if (!S.unlocked.includes('sunflower')) S.unlocked.unshift('sunflower');
 S.started ??= S.night || S.t > 0;
 if (!S.player || blocked[Math.floor(S.player.y)]?.[Math.floor(S.player.x)] !== false) S.player = { x: 5.5, y: 8.5 };
-function save() { S.player = { x: P.x, y: P.y }; try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch {} }
+let noSave = false;   // ферма заменяется облачной — текущую не записываем поверх
+function save() {
+  if (noSave) return;
+  S.player = { x: P.x, y: P.y }; S.savedAt = Date.now();
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch {}
+  CLOUD.dirty = true;
+}
+
+// ================== ОБЛАЧНЫЕ СОХРАНЕНИЯ ==================
+// Safari стирает память встроенных страниц при закрытии — поэтому каждая ячейка лежит ещё и в облаке
+// claude.ai (личная папка игрока в хранилище артефакта). При запуске сверяемся: пустая или более старая
+// копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
+const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
+const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
+const trivialFarm = o => !o || ((o.day || 1) <= 1 && (o.life?.earned || 0) < 50);
+const cloudDoc = n => CLOUD.db.doc(`data/users/${CLOUD.uid}/save${n}`);
+const cloudMeta = () => CLOUD.db.doc(`data/users/${CLOUD.uid}/meta`);
+const readLocal = n => { try { return JSON.parse(localStorage.getItem(slotKey(n))); } catch { return null; } };
+const writeLocal = (n, o) => { try { localStorage.setItem(slotKey(n), JSON.stringify(o)); return true; } catch { return false; } };
+const withTimeout = (pr, ms) => Promise.race([pr, new Promise((_, rej) => setTimeout(() => rej({ code: 'timeout' }), ms))]);
+async function cloudPush(n, o) {
+  const json = JSON.stringify(o);
+  if (json.length > 250000) return;
+  const body = { json, savedAt: o.savedAt || Date.now(), farmId: o.farmId || '', day: o.day || 1, coins: o.coins || 0, earned: o.life?.earned || 0 };
+  await cloudDoc(n).set(body);
+  CLOUD.cache[n] = body;
+}
+async function cloudPushActive() {
+  if (!CLOUD.ready || CLOUD.busy) { CLOUD.dirty = true; return; }
+  CLOUD.busy = true; CLOUD.dirty = false;
+  try { await cloudPush(SLOT, S); CLOUD.state = 'ok'; }
+  catch (e) { CLOUD.dirty = true; CLOUD.state = 'err'; }
+  finally { CLOUD.busy = false; }
+}
+async function cloudMetaSave() {
+  if (!CLOUD.ready) return;
+  try { await cloudMeta().set({ slot: SLOT, names: slotNames() }); } catch {}
+}
+function adoptCloud(o, msg) {   // взять ферму из облака: перезапуск игры с ней
+  noSave = true;
+  const ok = writeLocal(SLOT, o);
+  wnSet({ slot: SLOT, msg, state: ok ? undefined : o, tries: (WN.tries || 0) + 1 });
+  location.reload();
+}
+function stashFarm(o) {   // разные фермы: проигравшую не выбрасываем — в свободную ячейку
+  if (trivialFarm(o)) return;
+  for (let n = 1; n <= SLOTS; n++) {
+    if (n === SLOT || readLocal(n) || CLOUD.cache[n]) continue;
+    writeLocal(n, o); cloudPush(n, o).catch(() => {});
+    const a = slotNames(); a[n - 1] = `Спасённая (день ${o.day})`; try { localStorage.setItem('farm-slot-names', JSON.stringify(a)); } catch {}
+    return;
+  }
+  try { localStorage.setItem('farm-save-backup', JSON.stringify(o)); } catch {}
+}
+async function cloudInit() {
+  try {
+    if (!window.claude?.use) throw 0;
+    const [db, user] = await Promise.all([claude.use('db'), claude.use('user')]);
+    const uid = user && await user.id();
+    if (!db || !uid) throw 0;
+    CLOUD.db = db; CLOUD.uid = uid;
+    const meta = (await withTimeout(cloudMeta().get(), 15000)).data() || null;
+    if (meta?.names) { let have = null; try { have = localStorage.getItem('farm-slot-names'); } catch {} if (!have) try { localStorage.setItem('farm-slot-names', JSON.stringify(meta.names)); } catch {} }
+    if (!slotKnown && meta?.slot && meta.slot !== SLOT && (WN.tries || 0) < 3) {   // браузер забыл, в какую ячейку играли
+      noSave = true; try { localStorage.setItem('farm-slot', String(meta.slot)); } catch {}
+      wnSet({ slot: meta.slot, tries: (WN.tries || 0) + 1 }); location.reload(); return;
+    }
+    for (let n = 1; n <= SLOTS; n++) {
+      const snap = await withTimeout(cloudDoc(n).get(), 15000);
+      CLOUD.cache[n] = snap.exists ? snap.data() : null;
+    }
+    // остальные ячейки: свежее — туда, где старее
+    for (let n = 1; n <= SLOTS; n++) {
+      if (n === SLOT) continue;
+      const c = CLOUD.cache[n], l = readLocal(n);
+      if (c && (!l || (c.savedAt || 0) > (l.savedAt || 0))) { try { writeLocal(n, JSON.parse(c.json)); } catch {} }
+      else if (l && (!c || (l.savedAt || 0) > (c.savedAt || 0))) await cloudPush(n, l).catch(() => {});
+    }
+    // активная ячейка
+    const c = CLOUD.cache[SLOT];
+    if (c && (WN.tries || 0) < 3) {
+      const cs = JSON.parse(c.json);
+      if (freshStart) { adoptCloud(cs, '☁️ Ферма загружена из облака'); return; }
+      if (cs.farmId === S.farmId) {
+        if ((cs.savedAt || 0) > (S.savedAt || 0) + 2000) { adoptCloud(cs, '☁️ В облаке сохранение новее — загрузили его'); return; }
+      } else if (progress(cs) > progress(S)) { stashFarm(S); adoptCloud(cs, '☁️ Ферма загружена из облака'); return; }
+      else stashFarm(cs);
+    }
+    CLOUD.ready = true; CLOUD.state = 'ok';
+    await cloudPushActive();
+    if (!meta || meta.slot !== SLOT) cloudMetaSave();
+    setInterval(() => { if (CLOUD.dirty) cloudPushActive(); }, 15000);
+  } catch (e) { CLOUD.state = CLOUD.db ? 'err' : 'off'; }
+}
 
 const P = { x: S.player.x, y: S.player.y, phase: 0, moving: false, flip: false, work: 0 };
 const PLAYER_LOOK = { shirt: '#e8604c', shirtDark: '#c44d3b', pants: '#3f6fb5', skin: '#f2c49b', hair: '#7a4a2a', hat: 'straw', overalls: true };
@@ -1815,6 +1917,8 @@ const ICON_DRAW = {
   '🟡': K => { K.E(32, 36, 18, 24, K.G(0, 12, 0, 60, '#fff09a', '#e0a020')); K.H(24, 25, 4, 9, .8); K.star(48, 14, 10, 3, 4, '#fff6b0', 2, 0); K.star(14, 50, 6, 2, 4, '#fff6b0', 1.5, 0); },
   '🐣': K => { K.C(32, 30, 18, K.G(0, 12, 0, 48, '#fff09a', '#f5c518')); K.H(25, 22, 5, 4, .6); K.P([[44, 28], [56, 32], [44, 36]], '#f2a43a', 2.5); K.C(39, 26, 2.6, '#222', 0);
     K.D(c => { c.moveTo(10, 38); for (let x = 10; x <= 54; x += 8) { c.lineTo(x + 4, 33); c.lineTo(x + 8, 38); } c.lineTo(52, 50); c.quadraticCurveTo(32, 64, 12, 50); c.closePath(); }, K.G(0, 34, 0, 60, '#fffdf6', '#e8dcc4')); },
+  '☁️': K => { K.D(c => { c.moveTo(14, 46); c.arc(16, 36, 10, Math.PI * .6, Math.PI * 1.45); c.arc(30, 24, 13, Math.PI * 1.1, Math.PI * 1.85); c.arc(46, 32, 11, Math.PI * 1.3, Math.PI * .25); c.lineTo(50, 46); c.closePath(); }, K.G(0, 10, 0, 48, '#ffffff', '#cfe6f7')); K.H(24, 22, 6, 3, .8); },
+  '⚠️': K => { K.D(c => { c.moveTo(32, 6); c.lineTo(60, 56); c.lineTo(4, 56); c.closePath(); }, K.G(0, 6, 0, 56, '#ffe27a', '#f2a43a')); K.LL(32, 24, 32, 40, '#3b2416', 1); K.C(32, 48, 3.2, '#3b2416', 0); },
   '🍀': K => { for (const a of [0, 1.5708, 3.1416, 4.7124]) { const x = 32 + Math.cos(a - .785) * 12, y = 28 + Math.sin(a - .785) * 12;
       K.D(c => { c.moveTo(32, 28); c.bezierCurveTo(x + Math.cos(a) * 6 - Math.sin(a) * 10, y + Math.sin(a) * 6 + Math.cos(a) * 10, x + Math.cos(a) * 14, y + Math.sin(a) * 14, x + Math.cos(a) * 8 + Math.sin(a) * 8, y + Math.sin(a) * 8 - Math.cos(a) * 8); c.closePath(); }, K.G(0, 6, 0, 50, '#7fd05a', '#3e8a32'), 2.5); }
     K.LL(32, 30, 40, 58, '#4f9a3c', 3); K.H(24, 14, 4, 2.5, .5); },
@@ -1907,7 +2011,7 @@ const ICON_DRAW = {
     K.D(c => { c.moveTo(12, 48); c.lineTo(24, 36); c.lineTo(34, 42); c.lineTo(50, 18); }, null, 7); K.D(c => { c.moveTo(12, 48); c.lineTo(24, 36); c.lineTo(34, 42); c.lineTo(50, 18); }, null, 0); K.c.strokeStyle = '#3e9b3a'; K.c.lineWidth = 4; K.c.stroke();
     K.P([[44, 16], [53, 13], [52, 23]], '#3e9b3a', 2); K.R(6, 6, 52, 52, 6, null); },
 };
-const ICON_ALIAS = { '🌆': '🌇', '⬆': '⬆️', '☀': '☀️', '🌬': '🌬️', '✉': '✉️', '🛠️': '🛠' };
+const ICON_ALIAS = { '☁': '☁️', '⚠': '⚠️', '🌆': '🌇', '⬆': '⬆️', '☀': '☀️', '🌬': '🌬️', '✉': '✉️', '🛠️': '🛠' };
 const ICON_KEYS = new Set([...Object.keys(ICON_DRAW), ...Object.keys(ICON_ALIAS)]);
 const ICON_RE = new RegExp('(' + [...ICON_KEYS].sort((a, b) => b.length - a.length).map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')');
 const iconCache = {}, iconURLs = {};
@@ -3436,12 +3540,15 @@ function openMenu() {
 const esc = t => String(t).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
 function slotInfo(n) {   // коротко о ферме в ячейке — без загрузки в игру
   if (n === SLOT) return S;
-  try { return JSON.parse(localStorage.getItem(slotKey(n))); } catch { return null; }
+  const l = readLocal(n); if (l) return l;
+  const c = CLOUD.cache[n]; return c ? { day: c.day, coins: c.coins, life: { earned: c.earned } } : null;
 }
 function openSaves() {
   if (S) save();
   const names = slotNames();
-  let h = `<h2>💾 Сохранения</h2><div style="font-size:13px;color:#7a6650;margin:-4px 0 10px">У каждой ячейки своя ферма. Игра сохраняется сама — переключайся когда угодно.</div>`;
+  const cl = { ok: '☁️ Сохраняется в облако claude.ai — не пропадёт, даже если закрыть браузер', wait: '☁️ Подключаемся к облаку…', err: '⚠️ Облако сейчас не отвечает — сохраняем в браузере и попробуем ещё', off: '⚠️ Облако недоступно — ферма хранится только в этом браузере' }[CLOUD.state];
+  let h = `<h2>💾 Сохранения</h2><div style="font-size:13px;color:#7a6650;margin:-4px 0 6px">У каждой ячейки своя ферма. Игра сохраняется сама — переключайся когда угодно.</div>
+    <div style="font-size:13px;font-weight:700;color:${CLOUD.state === 'ok' ? '#3e7d32' : '#b0503a'};margin:0 0 10px">${cl}</div>`;
   for (let n = 1; n <= SLOTS; n++) {
     const d = slotInfo(n), cur = n === SLOT;
     h += `<div style="background:${cur ? '#fff4d6' : '#f6eedc'};border:2px solid ${cur ? '#e0a83a' : '#e6d7b8'};border-radius:14px;padding:10px 12px;margin-bottom:10px">
@@ -3464,16 +3571,22 @@ function openSaves() {
 function renameSlot(n, v) {
   const a = slotNames(); a[n - 1] = v.trim().slice(0, 20) || `Ферма ${n}`;
   try { localStorage.setItem('farm-slot-names', JSON.stringify(a)); } catch {}
+  cloudMetaSave();
 }
-function switchSlot(n) {
-  save();   // текущая ферма остаётся в своей ячейке
-  try { localStorage.setItem('farm-slot', String(n)); } catch { toast('Не получилось переключить ячейку'); return; }
+async function switchSlot(n) {
+  save();   // текущая ферма остаётся в своей ячейке — и в облаке тоже, прежде чем уйти
+  if (CLOUD.ready) { toast('☁️ Сохраняем…'); try { await withTimeout(cloudPushActive(), 6000); } catch {} }
+  try { localStorage.setItem('farm-slot', String(n)); } catch {}
+  const old = SLOT; SLOT = n; await withTimeout(cloudMetaSave(), 4000).catch(() => {}); SLOT = old;
+  wnSet({ slot: n });
   location.reload();
 }
 function copyToSlot(n) {   // только в пустую ячейку — чужую ферму не затираем
-  if (localStorage.getItem(slotKey(n))) { toast('Ячейка уже занята'); return; }
+  if (slotInfo(n)) { toast('Ячейка уже занята'); return; }
   save();
-  try { localStorage.setItem(slotKey(n), JSON.stringify(S)); } catch { toast('Не получилось скопировать'); return; }
+  const ok = writeLocal(n, S);
+  if (CLOUD.ready) cloudPush(n, JSON.parse(JSON.stringify(S))).catch(() => {});
+  else if (!ok) { toast('Не получилось скопировать'); return; }
   const a = slotNames(); if (a[n - 1] === `Ферма ${n}`) renameSlot(n, `${a[SLOT - 1]} (копия)`.slice(0, 20));
   toast(`📋 Скопировано в «${slotNames()[n - 1]}»`); openSaves();
 }
@@ -3657,8 +3770,10 @@ else { const a = iso(5, 15), b = iso(11, 6); cam.x = (a.x + b.x) / 2; cam.y = (a
 if (S.toSpawn === 0 && !S.night) startDay(); else renderUI();
 if (!S.night) S.toSpawn = Math.max(S.toSpawn, visitorsPerDay());   // старые сохранения получают новый поток покупателей сразу
 if (S.night) openNight(false);
-document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });   // свернули — сохраняемся сразу
+document.addEventListener('visibilitychange', () => { if (document.hidden) { save(); cloudPushActive(); } });   // свернули — сохраняемся сразу (и в облако)
 addEventListener('pagehide', save);
+if (WN.msg) setTimeout(() => toast(WN.msg), 600);
+cloudInit();
 requestAnimationFrame(tick);
 </script>
 </body>
