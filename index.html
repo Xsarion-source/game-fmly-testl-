@@ -2055,6 +2055,29 @@ function openProfile() {
     <button class="wide" style="width:100%;margin-top:12px" onclick="closeNight()">Закрыть</button>`;
   $('overlay').classList.add('show');
 }
+// Общий график: выручка, траты и прибыль по дням или нарастающим итогом (SVG)
+let econCum = false;
+function econChart(hist) {
+  const Wd = 320, Hd = 150, L = 34, R = 8, T = 10, B = 22;
+  let pts = hist.map(x => ({ d: x.d, e: x.e, s: x.s, n: x.e - x.s, now: x.now }));
+  if (econCum) { let e = 0, sp = 0; pts = pts.map(x => ({ ...x, e: e += x.e, s: sp += x.s, n: e - sp })); }
+  if (pts.length < 2) return '<div style="color:#7a6650;font-size:13px;margin:4px 0">График появится со второго дня — каждый вечер добавляется точка</div>';
+  const vals = pts.flatMap(x => [x.e, x.s, x.n]), max = Math.max(1, ...vals), min = Math.min(0, ...vals);
+  const X = i => L + i * (Wd - L - R) / (pts.length - 1), Y = v => T + (max - v) / (max - min) * (Hd - T - B);
+  const fmt = n => Math.abs(n) >= 10000 ? Math.round(n / 1000) + 'к' : Math.round(n).toLocaleString('ru-RU');
+  const line = (k, col, w, dash) => `<polyline fill="none" stroke="${col}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"${dash ? ' stroke-dasharray="4 3"' : ''} points="${pts.map((x, i) => X(i).toFixed(1) + ',' + Y(x[k]).toFixed(1)).join(' ')}"/>`;
+  const area = `<polygon fill="rgba(91,141,239,.12)" points="${X(0)},${Y(0)} ${pts.map((x, i) => X(i).toFixed(1) + ',' + Y(x.n).toFixed(1)).join(' ')} ${X(pts.length - 1)},${Y(0)}"/>`;
+  const grid = [max, (max + min) / 2, min].filter((v, i, a) => a.indexOf(v) === i).map(v => `<line x1="${L}" x2="${Wd - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="#e6d9bb" stroke-width="1"/><text x="${L - 4}" y="${Y(v) + 3}" text-anchor="end" font-size="9" fill="#7a6650">${fmt(v)}</text>`).join('');
+  const zero = min < 0 ? `<line x1="${L}" x2="${Wd - R}" y1="${Y(0)}" y2="${Y(0)}" stroke="#7a6650" stroke-width="1"/>` : '';
+  const step = Math.max(1, Math.ceil(pts.length / 6));
+  const xl = pts.map((x, i) => (i % step === 0 || i === pts.length - 1) ? `<text x="${X(i)}" y="${Hd - 6}" text-anchor="middle" font-size="9" fill="#7a6650">${x.now ? 'сег.' : x.d}</text>` : '').join('');
+  const last = pts[pts.length - 1];
+  const dot = (k, col) => `<circle cx="${X(pts.length - 1)}" cy="${Y(last[k])}" r="3" fill="${col}"/>`;
+  return `<svg viewBox="0 0 ${Wd} ${Hd}" style="width:100%;height:auto;background:#f6eedb;border-radius:10px">${grid}${zero}${area}
+    ${line('s', '#e07a50', 2, true)}${line('e', '#3e9b3a', 2.2)}${line('n', '#4570c4', 2.6)}${dot('e', '#3e9b3a')}${dot('s', '#e07a50')}${dot('n', '#4570c4')}${xl}</svg>
+    <div style="font-size:12px;color:#7a6650;text-align:center;margin-top:2px"><b style="color:#3e9b3a">—</b> выручка ${fmt(last.e)} · <b style="color:#e07a50">- -</b> траты ${fmt(last.s)} · <b style="color:#4570c4">—</b> прибыль ${fmt(last.n)}</div>`;
+}
+function setEconCum(v) { econCum = v; const top = $('sheet').scrollTop; openEconomy(); $('sheet').scrollTop = top; }
 function openEconomy() {
   const st = S.stats, L = S.life, fmt = n => Math.round(n).toLocaleString('ru-RU');
   const row = (k, v, c) => `<div class="stat"><span>${k}</span><b${c ? ` style="color:${c}"` : ''}>${v}</b></div>`;
@@ -2080,6 +2103,10 @@ function openEconomy() {
       <i style="height:${x.e / hmax * 100}%;background:#7cc35e" title="${x.e}"></i><i style="height:${x.s / hmax * 100}%;background:#e8a07a" title="${x.s}"></i></div>
       <small>${x.now ? 'сег.' : x.d}</small></div>`).join('')}</div>
     <div style="font-size:12px;color:#7a6650;text-align:center"><span style="color:#3e9b3a">■</span> выручка · <span style="color:#d0805a">■</span> траты</div>`;
+  const all = [...(S.hist || []), { d: S.day, e: st.earned || 0, s: spentToday, now: true }];
+  h += `<h3 style="margin:14px 0 4px">Общий график — прибыль и траты</h3>
+    <div class="chips" style="margin-bottom:6px"><button class="chip${econCum ? '' : ' on'}" onclick="setEconCum(false)">По дням</button><button class="chip${econCum ? ' on' : ''}" onclick="setEconCum(true)">Нарастающим итогом</button></div>
+    ${econChart(all)}`;
   const stock = Object.keys(GOODS).filter(k => S.inv[k] > 0).map(k => [k, S.inv[k] * sellPrice(k)]).sort((a, b) => b[1] - a[1]);
   const stockSum = stock.reduce((a, [, v]) => a + v, 0);
   h += `<h3 style="margin:12px 0 4px">Склад — на ${fmt(stockSum)}💰 по ценам лотка</h3>
@@ -2170,7 +2197,7 @@ function closeNight() { $('overlay').classList.remove('show'); $('sheet').datase
 function morning() {   // итог дня — в историю (последние 14 дней)
   S.hist ??= [];
   S.hist.push({ d: S.day, e: S.stats.earned || 0, s: spentSum(S.stats), sv: S.stats.served || 0, m: S.stats.missed || 0 });
-  if (S.hist.length > 14) S.hist.shift();
+  if (S.hist.length > 400) S.hist.shift();   // история для общего графика
   S.day++; startDay();
 }
 let resetArmed = false;
