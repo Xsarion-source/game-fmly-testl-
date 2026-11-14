@@ -11,21 +11,23 @@
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
   html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink); background: #4e8c41; overflow: hidden; }
-  #app { display: flex; flex-direction: column; height: 100%; max-width: 640px; margin: 0 auto; background: #4e8c41;
-         padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+  #app { display: flex; flex-direction: column; height: 100%; max-width: 640px; margin: 0 auto; background: #4e8c41; }
 
   #stage { flex: 1; position: relative; min-height: 0; overflow: hidden; }
   #cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-  #hud { position: absolute; top: 0; left: 0; right: 0; padding: 8px 10px; pointer-events: none; }
+  #hud { position: absolute; top: 0; left: 0; right: 0; padding: calc(8px + env(safe-area-inset-top)) 10px 0; pointer-events: none; }
+  .hr { display: flex; align-items: center; gap: 6px; }
+  .round { pointer-events: auto; width: 42px; height: 42px; padding: 0; border-radius: 50%; background: rgba(255,248,231,.95);
+           font-size: 20px; line-height: 42px; box-shadow: 0 2px 0 rgba(0,0,0,.18); flex: 0 0 auto; }
+  #menuBtn { font-size: 22px; font-weight: 900; }
   .hudrow { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 700; }
   .pill { background: rgba(255,248,231,.92); border-radius: 999px; padding: 4px 10px; font-size: 15px; white-space: nowrap; box-shadow: 0 2px 0 rgba(0,0,0,.15); }
   #sunbox { position: relative; width: 132px; height: 52px; border-radius: 14px; overflow: hidden; pointer-events: auto;
             box-shadow: 0 2px 0 rgba(0,0,0,.15); transition: background 1.5s; background: #9fd8ff; cursor: default; }
   #sunbox svg { position: absolute; inset: 0; }
   #sunIcon { position: absolute; font-size: 18px; line-height: 1; transform: translate(-50%, -50%); transition: left .5s linear, top .5s linear; }
-  #phase { position: absolute; left: 0; right: 0; bottom: 2px; text-align: center; font-size: 11px; font-weight: 800; color: #3b2a1a; letter-spacing: .02em; }
+  #phase { position: absolute; left: 0; right: 0; bottom: 2px; white-space: nowrap; text-align: center; font-size: 11px; font-weight: 800; color: #3b2a1a; letter-spacing: .02em; }
   #sunbox.dark #phase { color: #e8ecff; }
-  #day { pointer-events: auto; cursor: pointer; }
   .hcard { background: #f0e5cb; border-radius: 12px; padding: 8px 10px; margin-top: 8px; font-size: 14px; }
   .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
   .chips { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -35,15 +37,27 @@
   .cheats button { padding: 9px 6px; font-size: 14px; }
   .cheats button.on { background: #3e9b3a; color: #fff; }
 
-  #bottom { background: var(--panel); border-top: 3px solid var(--line); padding: 6px 8px 8px; }
-  #inv { display: flex; gap: 6px; flex-wrap: wrap; font-size: 14px; font-weight: 700; min-height: 22px; margin-bottom: 6px; }
-  #inv span { background: #f0e5cb; border-radius: 6px; padding: 2px 6px; }
-  #seeds { display: flex; gap: 6px; overflow-x: auto; }
-  .seed { flex: 0 0 auto; border: 2px solid var(--line); background: #fff; border-radius: 10px; padding: 3px 8px; text-align: center; min-width: 64px; cursor: pointer; }
-  .seed .e { font-size: 22px; }
-  .seed .c { font-size: 11px; }
-  .seed.sel { border-color: var(--accent); background: #fff1d1; }
-  .seed.dis { opacity: .4; }
+  #inv { display: flex; gap: 4px; flex-wrap: wrap; font-size: 13px; font-weight: 800; margin: 8px 64px 0 0; }
+  #inv span { background: rgba(255,248,231,.88); border-radius: 999px; padding: 2px 8px; box-shadow: 0 1px 0 rgba(0,0,0,.15); }
+  #seeds { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 8px;
+           max-height: calc(100% - 300px); overflow-y: auto; padding: 4px 2px; scrollbar-width: none; }
+  .seed { position: relative; flex: 0 0 auto; width: 52px; height: 52px; border-radius: 50%; background: rgba(255,248,231,.95);
+          border: 3px solid transparent; box-shadow: 0 2px 0 rgba(0,0,0,.18); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .seed .e { font-size: 24px; margin-top: -6px; }
+  .seed .c { position: absolute; bottom: 2px; left: 0; right: 0; text-align: center; font-size: 10px; font-weight: 800; }
+  .seed.sel { border-color: var(--accent); background: #fff1d1; transform: scale(1.08); }
+  .seed.dis { opacity: .45; }
+  #actions { position: absolute; left: 0; right: 0; bottom: 0; padding: 0 10px calc(10px + env(safe-area-inset-bottom));
+             display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
+  #actions button { pointer-events: auto; }
+  .arow { display: flex; gap: 14px; justify-content: center; }
+  .act { width: 64px; height: 64px; padding: 0; border-radius: 50%; background: rgba(255,248,231,.96); box-shadow: 0 3px 0 rgba(0,0,0,.2);
+         display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; line-height: 1.1; }
+  .act span { font-size: 24px; line-height: 1; margin-bottom: 2px; }
+  .sunrise { background: #ffd34d; padding: 12px 22px; border-radius: 999px; font-size: 17px; box-shadow: 0 3px 0 rgba(0,0,0,.2); animation: pulse 1.6s infinite; }
+  @keyframes pulse { 50% { transform: scale(1.04); } }
+  .menu button { display: block; width: 100%; text-align: left; margin-top: 6px; background: #f0e5cb; padding: 12px; }
+  .stat { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 15px; }
   .row { display: flex; gap: 6px; margin-top: 6px; }
   button { font: inherit; font-weight: 700; border: none; border-radius: 10px; padding: 10px 8px; background: var(--accent); color: var(--ink); cursor: pointer; }
   button:disabled { opacity: .45; }
@@ -63,9 +77,9 @@
   .up .txt small { color: #7a6650; }
   .up button { min-width: 78px; padding: 8px; }
 
-  #toast { position: fixed; left: 50%; top: 22%; transform: translateX(-50%); background: rgba(40,30,20,.9); color: #fff;
+  #toast { position: fixed; left: calc(50% - 30px); top: 20%; transform: translateX(-50%); background: rgba(40,30,20,.9); color: #fff;
            padding: 8px 14px; border-radius: 18px; font-size: 14px; font-weight: 700; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 20;
-           width: max-content; max-width: calc(100% - 32px); text-align: center; }
+           width: max-content; max-width: calc(100% - 100px); text-align: center; }
   #toast.show { opacity: 1; }
   @keyframes up { from { transform: translateY(100%) } to { transform: none } }
 </style>
@@ -76,25 +90,25 @@
     <canvas id="cv"></canvas>
     <div id="hud">
       <div class="hudrow">
-        <span class="pill" id="day">День 1</span>
+        <button class="round" id="profileBtn" title="Профиль">🧑‍🌾</button>
         <div id="sunbox" title="Время суток">
           <svg viewBox="0 0 132 52" width="132" height="52"><path d="M14 40 A52 26 0 0 1 118 40" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="2" stroke-dasharray="3 4"/>
             <line x1="6" y1="40" x2="126" y2="40" stroke="rgba(60,40,20,.35)" stroke-width="1.5"/></svg>
           <span id="sunIcon">☀️</span><span id="phase">Рассвет</span>
         </div>
-        <span class="pill" id="coins">💰 0</span>
+        <div class="hr"><span class="pill" id="coins">💰 0</span><button class="round" id="menuBtn" title="Меню">☰</button></div>
       </div>
+      <div id="inv"></div>
     </div>
-  </div>
-
-  <div id="bottom">
-    <div id="inv"></div>
     <div id="seeds"></div>
-    <div class="row">
-      <button class="wide" id="harvestAll">🧺 Собрать всё</button>
-      <button class="wide alt" id="plantAll">🌱 Засеять всё</button>
-      <button class="wide" id="nightBtn" style="display:none">🌙 Улучшения</button>
-      <button class="wide alt" id="helperBtn" style="display:none"></button>
+    <div id="actions">
+      <button class="wide sunrise" id="dayBtn" style="display:none">☀️ Начать день 2</button>
+      <div class="arow">
+        <button class="act" id="harvestAll"><span>🧺</span>Собрать</button>
+        <button class="act" id="plantAll"><span>🌱</span>Засеять</button>
+        <button class="act" id="nightBtn" style="display:none"><span>⬆️</span>Улучшить</button>
+        <button class="act" id="helperBtn" style="display:none"><span>🧑‍🌾</span>Команда</button>
+      </div>
     </div>
   </div>
 </div>
@@ -220,6 +234,7 @@ function newState() {
     trees: [], coop: { fedDay: 0, fedHens: 0, eggs: 0, layT: 0 },
     spawned: 0, toSpawn: 0,
     stats: { earned: 0, served: 0, missed: 0 },
+    life: { earned: 0, served: 0, harvested: 0, eggs: 0 },
     player: { x: 5.5, y: 8.5 },
     helpers: [],
   };
@@ -228,6 +243,7 @@ let S;
 try { S = JSON.parse(localStorage.getItem(SAVE_KEY)) || newState(); } catch { S = newState(); }
 delete S.queue;
 if (!S.stats) S.stats = { earned: 0, served: 0, missed: 0 };
+S.life ??= { earned: 0, served: 0, harvested: 0, eggs: 0 };
 S.up.helper ??= 0;
 // у каждого помощника своя станция: поле, сад, курятник, лавка или отдых
 if (!S.helpers) {
@@ -333,7 +349,7 @@ function sell(v) {
   S.inv[v.crop] = have - v.qty;
   const tip = v.pat / v.max > 0.6 ? Math.ceil(v.qty * sellPrice(v.crop) * 0.2) : 0;   // чаевые за скорость
   const money = v.qty * sellPrice(v.crop) + tip;
-  S.coins += money; S.stats.earned += money; S.stats.served++;
+  S.coins += money; S.stats.earned += money; S.stats.served++; S.life.earned += money; S.life.served++;
   addFloat(v.x, v.y, `+${money}💰`);
   leave(v, 'happy');
   save(); renderUI();
@@ -353,7 +369,7 @@ function plotAct(i, mode) {
   const p = S.plots[i], s = PLOT_SLOTS[i];
   if (!p) return;
   if (p.crop && p.prog >= 1 && mode !== 'plant') {
-    S.inv[p.crop] = (S.inv[p.crop] || 0) + 1;
+    S.inv[p.crop] = (S.inv[p.crop] || 0) + 1; S.life.harvested++;
     addFloat(s.x + .5, s.y + .5, `+1 ${CROP[p.crop].e}`);
     p.crop = null; p.prog = 0;
   } else if (!p.crop && mode !== 'harvest') {
@@ -381,7 +397,7 @@ function treeAct(i, mode) {
   if (!t) return false;
   if (treeReady(t)) {
     const T = TREES[t.kind];
-    S.inv[T.fruit] = (S.inv[T.fruit] || 0) + T.yield;
+    S.inv[T.fruit] = (S.inv[T.fruit] || 0) + T.yield; S.life.harvested += T.yield;
     addFloat(s.x + .5, s.y + .5, `+${T.yield} ${GOODS[T.fruit].e}`);
     t.fruit = 0;
   } else if (!t.kind && mode !== 'harvest') {
@@ -425,7 +441,7 @@ function feedHens() {
 }
 function collectEggs() {
   if (!S.coop.eggs) return false;
-  S.inv.egg = (S.inv.egg || 0) + S.coop.eggs;
+  S.inv.egg = (S.inv.egg || 0) + S.coop.eggs; S.life.eggs += S.coop.eggs;
   addFloat(COOP_SPOT.x + .5, COOP_SPOT.y + .5, `+${S.coop.eggs} 🥚`);
   S.coop.eggs = 0;
   save(); renderUI(); return true;
@@ -677,7 +693,7 @@ function helperPlot(i, cfg) {
   let prev = null;
   if (p.crop && p.prog >= 1) {
     prev = p.crop;
-    S.inv[prev] = (S.inv[prev] || 0) + 1;
+    S.inv[prev] = (S.inv[prev] || 0) + 1; S.life.harvested++;
     addFloat(s.x + .5, s.y + .5, `+1 ${CROP[prev].e}`);
     p.crop = null; p.prog = 0;
   } else if (p.crop || !cfg.replant) return false;
@@ -1375,7 +1391,7 @@ function renderHud() {
   else { [, label, sky] = PHASES.find(p => frac < p[0]); }
   box.style.background = sky;
   box.classList.toggle('dark', S.night);
-  $('phase').textContent = label;
+  $('phase').textContent = `День ${S.day} · ${label}` + (timeScale > 1 ? ` ⏩${timeScale}` : '');
   if (S.night) { icon.textContent = '🌙'; icon.style.left = '66px'; icon.style.top = '18px'; return; }
   const a = Math.PI * (1 - frac);
   icon.textContent = '☀️';
@@ -1385,22 +1401,58 @@ function renderHud() {
 
 function renderUI() {
   hudSig = '';
-  $('day').textContent = `День ${S.day}` + (timeScale > 1 ? ` ⏩×${timeScale}` : '');
   $('nightBtn').style.display = S.night ? '' : 'none';
   $('plantAll').style.display = S.night ? 'none' : '';
+  $('dayBtn').style.display = S.night ? '' : 'none';
+  $('dayBtn').textContent = `☀️ Начать день ${S.day + 1}`;
   $('helperBtn').style.display = S.up.helper > 0 ? '' : 'none';
-  $('helperBtn').textContent = '🧑‍🌾 Помощники';
   const items = Object.keys(GOODS).filter(id => S.inv[id]).map(id => `<span>${GOODS[id].e} ${S.inv[id]}</span>`);
-  $('inv').innerHTML = items.length ? items.join('') : '<span style="opacity:.6">Склад пуст — посади и собери урожай</span>';
+  $('inv').innerHTML = items.length ? items.join('') : '<span style="opacity:.75">Склад пуст</span>';
   const s = $('seeds'); s.innerHTML = '';
   for (const id of S.unlocked) {
     const c = CROP[id], d = document.createElement('div');
     d.className = 'seed' + (S.sel === id ? ' sel' : '') + (S.coins < c.seed ? ' dis' : '');
-    d.innerHTML = `<div class="e">${c.e}</div><div class="c">${c.seed ? '🌰' + c.seed : 'даром'} → ${sellPrice(id)}💰</div><div class="c">⏱${Math.round(c.grow / growMult())}с</div>`;
-    d.onclick = () => { S.sel = id; renderUI(); };
+    d.innerHTML = `<div class="e">${c.e}</div><div class="c">${c.seed ? c.seed + '💰' : 'даром'}</div>`;
+    d.onclick = () => { S.sel = id; toast(`${c.e} ${c.name}: семена ${c.seed ? c.seed + '💰' : 'даром'} → продажа ${sellPrice(id)}💰 · растёт ${Math.round(c.grow / growMult())}с`); renderUI(); };
     s.appendChild(d);
   }
   renderHud();
+}
+
+// ---------- Профиль и меню ----------
+function openProfile() {
+  const L = S.life, stat = (k, v) => `<div class="stat"><span>${k}</span><b>${v}</b></div>`;
+  const plotsUsed = S.plots.length;
+  $('sheet').innerHTML = `<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+      <div style="font-size:44px;width:68px;height:68px;border-radius:50%;background:#f0e5cb;display:flex;align-items:center;justify-content:center">🧑‍🌾</div>
+      <div><h2 style="margin:0">Фермер</h2><div style="color:#7a6650">Солнечная ферма · день ${S.day}</div></div></div>
+    ${stat('💰 Монет сейчас', S.coins)}${stat('💵 Заработано всего', L.earned)}${stat('🧍 Покупателей обслужено', L.served)}
+    ${stat('🧺 Собрано урожая', L.harvested)}${stat('🥚 Собрано яиц', L.eggs)}${stat('🌱 Грядок', plotsUsed)}
+    ${stat('🌳 Деревьев', S.trees.filter(t => t.kind).length)}${stat('🐔 Кур', hens())}${stat('🧑‍🌾 Помощников', S.up.helper)}
+    ${stat('🌾 Культур открыто', `${S.unlocked.length} из ${CROPS.length}`)}
+    <button class="wide" style="width:100%;margin-top:12px" onclick="closeNight()">Закрыть</button>`;
+  $('overlay').classList.add('show');
+}
+function openMenu() {
+  $('sheet').innerHTML = `<h2>☰ Меню</h2><div class="menu">
+      <button onclick="${S.night ? 'openNight(false)' : "toast('🌙 Улучшения покупаются ночью')"}">⬆️ Улучшения ${S.night ? '' : '<small style="color:#7a6650">— ночью</small>'}</button>
+      ${S.up.helper ? '<button onclick="openHelpers()">🧑‍🌾 Помощники</button>' : ''}
+      <button onclick="openProfile()">👤 Профиль</button>
+      <button onclick="openHelp()">📖 Как играть</button>
+      <button onclick="openCheats()">🛠 Чит-меню <small style="color:#7a6650">— для тестов</small></button>
+      <button style="color:#b0503a" onclick="resetGame(this)">🔄 Начать заново</button>
+    </div><button class="wide" style="width:100%;margin-top:12px" onclick="closeNight()">Закрыть</button>`;
+  $('overlay').classList.add('show');
+}
+function openHelp() {
+  $('sheet').innerHTML = `<h2>📖 Как играть</h2><div style="font-size:14px;line-height:1.5">
+    🌱 Выбери семена справа и тапни по грядке (или «Засеять»). День начинается с первой посадки.<br>
+    🧺 Собирай урожай, яблоки и яйца — кнопка «Собрать» обходит всё сама.<br>
+    🏪 Тапни по лавке — фермер встанет за прилавок и будет продавать всем, на кого хватает товара.<br>
+    🌙 Ночью тапай по значкам на ферме — улучшения, сад, курятник. Кур корми ночью — днём будут яйца.<br>
+    🧑‍🌾 Помощникам назначай станции: поле, сад, курятник или лавка.</div>
+    <button class="wide" style="width:100%;margin-top:12px" onclick="openMenu()">Назад</button>`;
+  $('overlay').classList.add('show');
 }
 
 function openNight(withSummary) {
@@ -1434,7 +1486,7 @@ function openNight(withSummary) {
   }
   h += `<div class="row" style="margin-top:14px"><button class="wide alt" onclick="closeNight()">🌾 К грядкам</button>
         <button class="wide" style="background:#ffd34d" onclick="morning()">☀️ Начать день ${S.day + 1}</button></div>
-        <div style="text-align:center;margin-top:10px"><button style="background:none;color:#b0503a;font-size:12px" onclick="resetGame(this)">Начать заново</button></div>`;
+`;
   $('sheet').innerHTML = h;
   $('overlay').classList.add('show');
 }
@@ -1463,13 +1515,11 @@ $('plantAll').onclick = () => {
   setTasks(routeThrough(list).slice(0, can));
 };
 $('nightBtn').onclick = () => openNight(false);
+$('dayBtn').onclick = () => morning();
+$('profileBtn').onclick = openProfile;
+$('menuBtn').onclick = openMenu;
 
 // ================== ЧИТ-МЕНЮ (тройной тап по «День N») ==================
-let dayTaps = [];
-$('day').onclick = () => {
-  const now = Date.now(); dayTaps = dayTaps.filter(x => now - x < 900); dayTaps.push(now);
-  if (dayTaps.length >= 3) { dayTaps = []; openCheats(); }
-};
 const CHEATS = {
   money:   ['💰 +1000', () => { S.coins += 1000; }],
   money2:  ['💰 +10 000', () => { S.coins += 10000; }],
@@ -1495,7 +1545,7 @@ function cheat(k) {
 }
 function setSpeed(x) { timeScale = x; renderUI(); openCheats(); }
 function openCheats() {
-  let h = `<h2>🛠 Чит-меню</h2><div style="font-size:13px;color:#7a6650;margin-bottom:8px">Только для тестов. Открывается тройным тапом по «День N»</div>
+  let h = `<h2>🛠 Чит-меню</h2><div style="font-size:13px;color:#7a6650;margin-bottom:8px">Только для тестов</div>
     <div style="font-weight:700;margin-bottom:4px">Скорость времени</div><div class="cheats" style="grid-template-columns:repeat(4,1fr)">`;
   for (const x of [1, 3, 10, 30]) h += `<button class="${timeScale === x ? 'on' : 'alt'}" onclick="setSpeed(${x})">×${x}</button>`;
   h += `</div><div class="cheats">`;
