@@ -203,11 +203,11 @@ const UPGRADES = {
   coop:   { name: 'Курятник',          ico: '🐔', desc: l => l === 0 ? 'Курятник и 2 курицы. Ночью корми их урожаем — днём несут яйца' : `+1 курица (сейчас ${l + 1})`, cost: l => [150, 100, 140, 190][l], max: 4 },
   barn:   { name: 'Коровник',          ico: '🐄', desc: l => l === 0 ? 'Коровник, пастбище и корова. Ночью корми подсолнухами или пшеницей — днём даёт молоко' : `+1 корова (сейчас ${l})`, cost: l => [220, 180, 260][l], max: 3 },
   greenhouse: { name: 'Теплица',      ico: '🏡', desc: l => l === 0 ? 'Стеклянная теплица на 3 грядки. Только в ней растут 🍅 помидоры и 🍓 клубника — медленнее, зато гроздью по 6' : '+3 грядки в теплице', cost: l => [260, 380][l], max: 2 },
-  clear:  { name: 'Расчистить лес',    ico: '🪓', desc: l => l === 0 ? 'Вырубить лес справа от пастбища — место под мельницу' : 'Вырубить лес у теплицы — место под сыроварню', cost: l => [2500, 4000][l], max: 2 },
-  mill:   { name: 'Мельница',          ico: '🌬️', desc: l => l === 0 ? 'Мелет пшеницу: 3 🌾 → 1 🍚 мука (продаётся за 30💰)' : 'Мелет вдвое быстрее', cost: l => [3500, 5500][l], max: 2, need: () => S.up.clear >= 1, needText: 'Сначала расчисти лес 🪓' },
-  dairy:  { name: 'Сыроварня',         ico: '🧀', desc: l => l === 0 ? 'Варит сыр: 2 🥛 → 1 🧀 (продаётся за 85💰)' : 'Варит вдвое быстрее', cost: l => [5000, 8000][l], max: 2, need: () => S.up.clear >= 2, needText: 'Сначала расчисти второй участок леса 🪓' },
+  clear:  { name: 'Расчистить лес',    ico: '🪓', desc: l => l === 0 ? 'Вырубить лес справа от пастбища — место под новое здание' : 'Вырубить лес у теплицы — место ещё под одно здание', cost: l => [2500, 4000][l], max: 2 },
+  mill:   { name: 'Мельница',          ico: '🌬️', desc: l => l === 0 ? 'Мелет пшеницу: 3 🌾 → 1 🍚 мука (продаётся за 30💰)' : 'Мелет вдвое быстрее', cost: l => [3500, 5500][l], max: 2, need: () => S.up.clear >= 1, needText: 'Откроется, когда расчистишь лес 🪓' },
+  dairy:  { name: 'Сыроварня',         ico: '🧀', desc: l => l === 0 ? 'Варит сыр: 2 🥛 → 1 🧀 (продаётся за 85💰)' : 'Варит вдвое быстрее', cost: l => [5000, 8000][l], max: 2, need: () => S.up.clear >= 2, needText: 'Откроется, когда расчистишь второй участок леса 🪓' },
   house:  { name: 'Дом фермера',       ico: '🏠', desc: l => l === 0 ? 'Веранда и кухня: помощники сыты и работают на 20% быстрее' : 'Второй этаж: помощники работают ещё на 20% быстрее (всего +40%)', cost: l => [3000, 7000][l], max: 2 },
-  bakery: { name: 'Пекарня',           ico: '🥖', desc: l => l === 0 ? 'Пристройка к дому. Печёт из 🍚 муки и продуктов фермы: 🍞 хлеб, 🥧 пирог, 🍕 пиццу и 🎂 торт' : 'Печёт вдвое быстрее', cost: l => [6000, 9000][l], max: 2, need: () => S.up.mill >= 1, needText: 'Сначала построй мельницу 🌬️ — нужна мука' },
+  bakery: { name: 'Пекарня',           ico: '🥖', desc: l => l === 0 ? 'Пристройка к дому. Печёт из 🍚 муки и продуктов фермы: 🍞 хлеб, 🥧 пирог, 🍕 пиццу и 🎂 торт' : 'Печёт вдвое быстрее', cost: l => [6000, 9000][l], max: 2, need: () => S.up.mill >= 1, needText: 'Откроется после новой постройки в лесу 🪓' },
   cozy:   { name: 'Уют',               ico: '🌷', desc: l => `${COZY[l]}. Покупателям нравится — платят на 5% больше (+${l * 5}% → +${(l + 1) * 5}%)`, cost: l => [600, 1200, 2000, 3200, 5000][l], max: 5 },
   ads:    { name: 'Реклама',           ico: '📣', desc: l => `+3 покупателя в день`,           cost: l => 30 + l*35,           max: 10 },
   fert:   { name: 'Удобрения',         ico: '🧪', desc: l => `Рост быстрее (+${l*20}% → +${(l+1)*20}%)`, cost: l => 50 + l*60, max: 5 },
@@ -737,7 +737,7 @@ function updateBake(dt) {
   while (st.q.length && st.t >= BAKE[st.q[0]].time) { st.t -= BAKE[st.q[0]].time; const r = st.q.shift(); st.out[r] = (st.out[r] || 0) + 1; }
 }
 function tapBakery() {
-  if (!S.up.bakery) { toast(upLocked('bakery') ? '🥖 Здесь можно пристроить пекарню — сначала нужна мельница 🌬️' : '🥖 Ночью тапни сюда — пристроишь пекарню'); return; }
+  if (!S.up.bakery) { toast(upLocked('bakery') ? '❓ Здесь пока пусто' : '🥖 Ночью тапни сюда — пристроишь пекарню'); return; }
   openBakery();
 }
 function setBake(r) { S.bake.sel = r; save(); openBakery(); }
@@ -990,6 +990,11 @@ function drawUpBadges(t) {
 // Карточка одного улучшения (ночью — по тапу на замочек или объект на ферме)
 function openUpgrade(key) {
   const u = UPGRADES[key], l = S.up[key], maxed = l >= u.max, cost = u.cost(l);
+  if (upLocked(key)) {
+    $('sheet').dataset.view = ''; $('sheet').innerHTML = `<div class="up" style="border:none"><div class="ico" style="font-size:40px;width:52px">❓</div><div class="txt"><b style="font-size:18px">???</b></div></div>
+      <div class="summary">🔒 ${u.needText}</div><div class="row"><button class="wide alt" onclick="openNight(false)">🌙 Все улучшения</button><button class="wide alt" onclick="closeNight()">Закрыть</button></div>`;
+    $('overlay').classList.add('show'); return;
+  }
   let h = `<div class="up" style="border:none"><div class="ico" style="font-size:40px;width:52px">${u.ico}</div><div class="txt"><b style="font-size:18px">${u.name}</b>
     <small>Уровень ${l} из ${u.max}</small></div></div>
     <div class="summary">${maxed ? 'Улучшено до максимума ✔' : u.desc(l)}</div>`;
@@ -1316,6 +1321,7 @@ function openHelpers() {
     if (cfg.fold) { h += `</div>`; return; }
     h += `<div style="font-size:12px;color:#7a6650;margin:2px 0 6px">${hint}</div><div class="chips">`;
     for (const [k, st] of Object.entries(STATIONS)) {
+      if (UPGRADES[k] && upLocked(k)) continue;   // закрытые здания — тайна
       const dis = (k === 'orchard' && !S.up.orchard) || (k === 'coop' && !hens()) || (k === 'barn' && !cows()) || (k === 'gh' && !S.up.greenhouse) || (k === 'mill' && !S.up.mill) || (k === 'dairy' && !S.up.dairy) || (k === 'bakery' && !S.up.bakery);
       h += chip(cfg.stations.includes(k), `${cfg.stations.includes(k) ? '✓ ' : ''}${st.ico} ${st.name}`, `toggleStation(${i},'${k}')`, dis);
     }
@@ -2485,8 +2491,12 @@ function openNight(withSummary) {
   h += `<h3 style="margin:10px 0 0">Улучшения фермы</h3><small style="color:#7a6650">Можно и прямо на ферме: закрой меню и тапни на замочек или плашку ⬆ с ценой</small>`;
   for (const [key, u] of Object.entries(UPGRADES)) {
     const l = S.up[key], maxed = l >= u.max, cost = u.cost(l), lock = upLocked(key);
-    h += `<div class="up"><div class="ico">${u.ico}</div><div class="txt"><b>${u.name} <small>ур. ${l}/${u.max}</small></b><small>${maxed ? 'Максимум' : lock ? '🔒 ' + u.needText : u.desc(l)}</small></div>
-      <button ${maxed || lock || S.coins < cost ? 'disabled' : ''} onclick="buyUpgrade('${key}')">${maxed ? '✔' : cost + '💰'}</button></div>`;
+    if (lock) {   // ещё не открыто — тайна, как у новых культур
+      h += `<div class="up"><div class="ico">❓</div><div class="txt"><b>???</b><small>${u.needText}</small></div><button disabled>???</button></div>`;
+      continue;
+    }
+    h += `<div class="up"><div class="ico">${u.ico}</div><div class="txt"><b>${u.name} <small>ур. ${l}/${u.max}</small></b><small>${maxed ? 'Максимум' : u.desc(l)}</small></div>
+      <button ${maxed || S.coins < cost ? 'disabled' : ''} onclick="buyUpgrade('${key}')">${maxed ? '✔' : cost + '💰'}</button></div>`;
   }
   h += `<h3 style="margin:14px 0 0">Новые культуры</h3>`;
   for (const c of CROPS) {
