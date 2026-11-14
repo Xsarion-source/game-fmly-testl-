@@ -1809,31 +1809,43 @@ iconize(document.body);
 
 function emoji(e, x, y, size) { drawRich(e, x, y, size); }
 
-function setWorld() { ctx.setTransform(dpr * zoom, 0, 0, dpr * zoom, dpr * (cw / 2 - cam.x * zoom), dpr * (ch / 2 - cam.y * zoom)); }
+const camT = () => ({ x: Math.round(dpr * (cw / 2 - cam.x * zoom)), y: Math.round(dpr * (ch / 2 - cam.y * zoom)) });   // сдвиг камеры — целые пиксели
+function setWorld() { const T = camT(); ctx.setTransform(dpr * zoom, 0, 0, dpr * zoom, T.x, T.y); }
+let zoomK = 0, zoomAt = -9;   // когда последний раз менялся масштаб: пока зумят пальцами — без кэшей
+const zoomSettled = now => { const k = dpr * zoom; if (k !== zoomK) { zoomK = k; zoomAt = now; } return now - zoomAt >= .3; };
 
-const bg = { cv: document.createElement('canvas'), key: '', cx: 0, cy: 0, m: 0, still: 0 };
+// Фон (лес вокруг, земля, тропинки) рисуется в отдельную картинку сразу на всю область, куда может
+// уехать камера, — при перетаскивании он не перерисовывается. Обновляется только при изменениях на земле или новом масштабе.
+const bg = { cv: document.createElement('canvas'), key: '', r: null, ox: 0, oy: 0 };
 function groundSig() {   // всё, от чего зависит земля (кроме мигания)
   const pl = a => a.map(p => p.crop ? (p.prog < 1 ? 'w' : 'r') : '-').join('');
   return [JSON.stringify(S.up), pl(S.plots), pl(S.gh), S.trees.map(t => t.kind ? 1 : 0).join(''), hens(), cows()].join('|');
 }
-function drawBackdrop() {
-  const key = [cw, ch, dpr, zoom, groundSig()].join('/');
-  const k = dpr * zoom, ox = (bg.cx - cam.x) * k, oy = (bg.cy - cam.y) * k;
-  const moved = ox !== bg.ox || oy !== bg.oy; bg.ox = ox; bg.oy = oy;
-  bg.still = moved ? 0 : bg.still + 1;
-  // перерисовать: другое состояние/зум, камера ушла за запас или остановилась не на целом пикселе
-  if (key !== bg.key || Math.abs(ox) > bg.m || Math.abs(oy) > bg.m || (bg.still === 2 && (ox || oy))) {
-    bg.key = key; bg.m = Math.round(Math.min(cv.width, cv.height) * .2);
-    const w = cv.width + bg.m * 2, h = cv.height + bg.m * 2;
+function viewRect(pad = 0) { const hw = cw / 2 / zoom + pad, hh = ch / 2 / zoom + pad; return { x0: cam.x - hw, x1: cam.x + hw, y0: cam.y - hh, y1: cam.y + hh }; }
+function panRect() {   // всё, что камера может показать (см. clampCam)
+  const hw = cw / 2 / zoom, hh = ch / 2 / zoom, minX = -H * TW / 2 - 90, maxX = W * TW / 2 + 90, minY = -70, maxY = (W + H) * TH / 2 + 10;
+  const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+  return { x0: Math.min(minX, cx - hw) - 8, x1: Math.max(maxX, cx + hw) + 8, y0: Math.min(minY, cy - hh) - 8, y1: Math.max(maxY, cy + hh) + 8 };
+}
+const inside = (a, b) => a.x0 >= b.x0 && a.x1 <= b.x1 && a.y0 >= b.y0 && a.y1 <= b.y1;
+function drawBackdrop(now) {
+  if (!zoomSettled(now)) { drawOutside(viewRect()); drawGround(0); drawPaths(); return; }   // зум пальцами — напрямую
+  const k = dpr * zoom, key = k + '/' + groundSig(), view = viewRect();
+  if (key !== bg.key || !bg.r || !inside(view, bg.r)) {
+    let R = panRect();
+    if ((R.x1 - R.x0) * (R.y1 - R.y0) * k * k > 14e6 || Math.max(R.x1 - R.x0, R.y1 - R.y0) * k > 4000) R = viewRect(Math.min(cw, ch) / zoom * .3);   // слишком большой масштаб — с запасом вокруг экрана
+    bg.key = key; bg.r = R;
+    bg.ox = Math.floor(R.x0 * k); bg.oy = Math.floor(R.y0 * k);
+    const w = Math.ceil(R.x1 * k) - bg.ox, h = Math.ceil(R.y1 * k) - bg.oy;
     if (bg.cv.width !== w || bg.cv.height !== h) { bg.cv.width = w; bg.cv.height = h; }
-    bg.cx = cam.x; bg.cy = cam.y; bg.ox = bg.oy = 0;
     const main = ctx; ctx = bg.cv.getContext('2d');
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#4e8c41'; ctx.fillRect(0, 0, w, h);
-    ctx.setTransform(k, 0, 0, k, bg.m + dpr * (cw / 2 - cam.x * zoom), bg.m + dpr * (ch / 2 - cam.y * zoom));
-    try { drawOutside(); drawGround(0); drawPaths(); } finally { ctx = main; }
+    ctx.setTransform(k, 0, 0, k, -bg.ox, -bg.oy);
+    try { drawOutside(R); drawGround(0); drawPaths(); } finally { ctx = main; }
   }
+  const T = camT();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.drawImage(bg.cv, Math.round(bg.ox - bg.m), Math.round(bg.oy - bg.m));
+  ctx.drawImage(bg.cv, bg.ox + T.x, bg.oy + T.y);
   setWorld();
 }
 function drawGroundGlow(t) {   // мигающая рамка у созревшего — поверх закэшированной земли
@@ -1904,11 +1916,9 @@ function measure(fn) {   // границы рисунка в мировых ко
   try { fn(); } finally { ctx = main; ANIM = 0; }
   return x0 < x1 ? { x0: x0 - 4, y0: y0 - 4, x1: x1 + 4, y1: y1 + 4 } : null;   // запас под толщину обводки
 }
-let sprK = 0, sprKAt = 0;
 function drawSprite(d, fn, key, now) {
   const k = dpr * zoom;
-  if (k !== sprK) { sprK = k; sprKAt = now; }
-  if (now - sprKAt < .3) { fn(); return; }   // пока зумят пальцами — рисуем напрямую, без перестройки спрайтов
+  if (!zoomSettled(now)) { fn(); return; }   // пока зумят пальцами — рисуем напрямую, без перестройки спрайтов
   let sp = d._sp;
   const full = key + '|' + k + '|' + S.night + '|' + JSON.stringify(S.up);
   if (!sp || sp.key !== full) {
@@ -1924,7 +1934,7 @@ function drawSprite(d, fn, key, now) {
   }
   if (!sp.empty) {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.drawImage(sp.cv, Math.round(sp.ox + dpr * (cw / 2 - cam.x * zoom)), Math.round(sp.oy + dpr * (ch / 2 - cam.y * zoom)));
+    const T = camT(); ctx.drawImage(sp.cv, sp.ox + T.x, sp.oy + T.y);
     setWorld();
   }
   if (SPRITE_ANIM.has(d.kind)) {   // поверх — дым, гирлянды, флаг, крылья…
@@ -1936,7 +1946,7 @@ function draw(t) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = '#4e8c41'; ctx.fillRect(0, 0, cv.width, cv.height);
   setWorld();
-  drawBackdrop();
+  drawBackdrop(t);
   drawGroundGlow(t);
   drawPond(t);
   drawZones();
@@ -1975,12 +1985,12 @@ function draw(t) {
 
 // Мир вокруг фермы: лес позади, луг впереди, дорога уходит за край — экран заполнен на любом устройстве
 const hash = (x, y) => { const v = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return v - Math.floor(v); };
-function drawOutside() {
-  const vw = cw / 2 / zoom + TW, vh = ch / 2 / zoom + 80, R = 30, trees = [];
+function drawOutside(V = viewRect()) {
+  const R = 30, trees = [];
   for (let y = -R; y < H + R; y++) for (let x = -R; x < W + R; x++) {
     if (x >= 0 && y >= 0 && x < W && y < H) continue;
     const c = iso(x + .5, y + .5);
-    if (Math.abs(c.x - cam.x) > vw || c.y - cam.y > vh || c.y - cam.y < -vh - 60) continue;
+    if (c.x < V.x0 - TW || c.x > V.x1 + TW || c.y > V.y1 + 80 || c.y < V.y0 - 140) continue;
     const road = (y === 12 || y === 13) && x >= W || (y === 12 || y === 13) && x < 0, h = hash(x, y);
     const col = road ? ((x + y) % 2 ? '#d8bf8a' : '#d3b983') : (x + y) % 2 ? '#6db151' : '#68aa4c';
     poly(tilePts(x, y), col, col);
