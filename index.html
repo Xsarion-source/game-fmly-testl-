@@ -1531,7 +1531,7 @@ function poly(pts, fill, stroke, lw = 1) {
 const tilePts = (x, y) => [iso(x, y), iso(x + 1, y), iso(x + 1, y + 1), iso(x, y + 1)];
 function circle(x, y, r, fill) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fillStyle = fill; ctx.fill(); }
 function rr(x, y, w, h, r, fill) { ctx.beginPath(); ctx.roundRect(x, y, Math.max(0, w), h, r); ctx.fillStyle = fill; ctx.fill(); }
-function emoji(e, x, y, size) { ctx.font = `${size}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(e, x, y); }
+function emoji(e, x, y, size) { ctx.fillStyle = '#3b2416'; ctx.font = `${size}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(e, x, y); }
 
 function setWorld() { ctx.setTransform(dpr * zoom, 0, 0, dpr * zoom, dpr * (cw / 2 - cam.x * zoom), dpr * (ch / 2 - cam.y * zoom)); }
 
@@ -1741,32 +1741,32 @@ function drawReserved() {
     ctx.setLineDash([5, 5]);
     poly([iso(F.x0, F.y0), iso(F.x1 + 1, F.y0), iso(F.x1 + 1, F.y1 + 1), iso(F.x0, F.y1 + 1)], 'rgba(255,255,255,.08)', 'rgba(255,255,255,.5)', 1.4);
     ctx.setLineDash([]);
-    const c = iso((F.x0 + F.x1 + 1) / 2, (F.y0 + F.y1 + 1) / 2); ctx.globalAlpha = .85; emoji(PROD[b].ico, c.x - 8, c.y - 4, 16); emoji('🔒', c.x + 10, c.y - 4, 12); ctx.globalAlpha = 1;
+    const c = iso((F.x0 + F.x1 + 1) / 2, (F.y0 + F.y1 + 1) / 2); ctx.globalAlpha = .45; emoji(PROD[b].ico, c.x - 8, c.y - 4, 16); ctx.globalAlpha = .9; emoji('🔒', c.x + 10, c.y - 4, 12); ctx.globalAlpha = 1;
   });
   if (!cows()) {
     ctx.setLineDash([5, 5]);
     poly([iso(14, 1), iso(16, 1), iso(16, 7), iso(13, 7), iso(13, 3), iso(14, 3)], 'rgba(255,255,255,.08)', 'rgba(255,255,255,.45)', 1.4);
     ctx.setLineDash([]);
-    const c = iso(14.5, 5); ctx.globalAlpha = .85; emoji('🐄', c.x - 8, c.y - 4, 16); emoji('🔒', c.x + 10, c.y - 4, 12); ctx.globalAlpha = 1;
+    const c = iso(14.5, 5); ctx.globalAlpha = .45; emoji('🐄', c.x - 8, c.y - 4, 16); ctx.globalAlpha = .9; emoji('🔒', c.x + 10, c.y - 4, 12); ctx.globalAlpha = 1;
   }
   if (!S.up.bakery && !upLocked('bakery')) {   // место под пекарню
     ctx.setLineDash([5, 5]);
     poly([iso(4, 2), iso(5, 2), iso(5, 4), iso(4, 4)], 'rgba(255,255,255,.08)', 'rgba(255,255,255,.45)', 1.4);
     ctx.setLineDash([]);
-    const c = iso(4.5, 3); ctx.globalAlpha = .85; emoji('🥖', c.x - 8, c.y - 4, 14); emoji('🔒', c.x + 9, c.y - 4, 11); ctx.globalAlpha = 1;
+    const c = iso(4.5, 3); ctx.globalAlpha = .45; emoji('🥖', c.x - 8, c.y - 4, 14); ctx.globalAlpha = .9; emoji('🔒', c.x + 9, c.y - 4, 11); ctx.globalAlpha = 1;
   }
   if (!S.up.greenhouse) {   // место под теплицу
     ctx.setLineDash([5, 5]);
     poly([iso(13, 8), iso(16, 8), iso(16, 10), iso(13, 10)], 'rgba(255,255,255,.08)', 'rgba(255,255,255,.45)', 1.4);
     ctx.setLineDash([]);
-    const c = iso(14.5, 9); ctx.globalAlpha = .85; emoji('🏡', c.x - 8, c.y - 4, 16); emoji('🔒', c.x + 10, c.y - 4, 12); ctx.globalAlpha = 1;
+    const c = iso(14.5, 9); ctx.globalAlpha = .45; emoji('🏡', c.x - 8, c.y - 4, 16); ctx.globalAlpha = .9; emoji('🔒', c.x + 10, c.y - 4, 12); ctx.globalAlpha = 1;
   }
   // место под курятник, пока он не построен
   if (!hens()) {
     ctx.setLineDash([5, 5]);
     poly([iso(6, 8), iso(8, 8), iso(8, 9), iso(10, 9), iso(10, 11), iso(6, 11)], 'rgba(255,255,255,.08)', 'rgba(255,255,255,.45)', 1.4);
     ctx.setLineDash([]);
-    const c = iso(8, 10); ctx.globalAlpha = .85; emoji('🐔', c.x - 8, c.y - 4, 16); emoji('🔒', c.x + 10, c.y - 4, 12); ctx.globalAlpha = 1;
+    const c = iso(8, 10); ctx.globalAlpha = .45; emoji('🐔', c.x - 8, c.y - 4, 16); ctx.globalAlpha = .9; emoji('🔒', c.x + 10, c.y - 4, 12); ctx.globalAlpha = 1;
   }
 }
 
@@ -1967,55 +1967,118 @@ function drawBakery(d, t) {
   if (baking) smoke(lift(4.3, 2.45, 52), t, .9);
 }
 // Почтовый ящик: флажок поднят, когда есть заказ
-function drawMailbox() {
-  vline(4.5, 5.5, 0, 18, '#7a4a2a', 3);
-  drawBox(4.3, 5.28, .4, .44, 9, '#6e9be8', '#4a78d0', '#3d66b5', 17);
-  if (S.order) { vline(4.74, 5.62, 18, 33, '#7a4a2a', 1.5); const f = lift(4.74, 5.62, 33); poly([f, { x: f.x + 9, y: f.y + 2 }, { x: f.x, y: f.y + 7 }], '#e0393e'); }
-  else { const a = lift(4.74, 5.62, 20), b = lift(4.74, 5.2, 20); ctx.strokeStyle = '#e0393e'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
+function toonPost(x, y, z0, z1, w = .07, c = ['#c99a62', '#9e7140']) {   // тонкий брус
+  toonBox(x - w, y - w, w * 2, w * 2, z1 - z0, c, [darken(c[0], .85), darken(c[1], .85)], [c[0], c[0]], z0, 1.1);
 }
-function drawFlowers(d, t) {   // уют 1: клумбы между садом и тропинкой
-  if ((S.up.cozy || 0) < 1) return;
-  for (const [x, y, e] of [[4.3, 6.3, '🌷'], [4.7, 6.55, '🌼'], [4.35, 6.85, '🌸'], [4.7, 7.25, '🌷'], [4.3, 7.5, '🌼'], [4.65, 7.8, '🌸']]) {
-    const c = iso(x, y); emoji(e, c.x, c.y - 5 + Math.sin(t * 2 + x * 9 + y) * .8, 11);
+function drawMailbox() {
+  softShadow(4.3, 5.3, 4.7, 5.7, .25);
+  toonPost(4.5, 5.5, 0, 17);
+  const x0 = 4.28, y0 = 5.26, w = .44, d = .48, H = 25, r = 5, X = x0 + w, Y = y0 + d, N = 8;
+  toonBox(x0, y0, w, d, H - 17, ['#7fa9f0', '#4f7fd6'], ['#5a87dc', '#3a62b8'], null, 17, 1.3);
+  const arc = k => { const a = Math.PI * k / N; return { y: y0 + (1 - Math.cos(a)) / 2 * d, z: H + Math.sin(a) * r }; };
+  for (let k = 0; k < N; k++) {   // полукруглая крышка: полоски от светлой к тёмной
+    const p = arc(k), q = arc(k + 1), f = k / N;
+    const col = `rgb(${Math.round(150 - 80 * f)},${Math.round(185 - 70 * f)},${Math.round(245 - 50 * f)})`;
+    shape([lift(x0, p.y, p.z), lift(X, p.y, p.z), lift(X, q.y, q.z), lift(x0, q.y, q.z)]); ctx.fillStyle = col; ctx.fill();
+  }
+  const cap = []; for (let k = 0; k <= N; k++) { const p = arc(k); cap.push(lift(X, p.y, p.z)); }
+  gface([lift(X, Y, H), lift(X, y0, H), ...cap], '#6f99e4', '#4a74c8', INK, 1.3);   // торец-дверца
+  const top = []; for (let k = 0; k <= N; k++) { const p = arc(k); top.push(lift(x0, p.y, p.z)); }
+  shape([...top, ...cap.slice().reverse()]); ctx.strokeStyle = INK; ctx.lineWidth = 1.3; ctx.stroke();
+  const h1 = lift(X, (y0 + Y) / 2, 22); circle(h1.x, h1.y, 1.6, '#f4d35e');
+  if (S.order) {   // флажок поднят
+    toonPost(X + .04, y0 + .1, 19, 36, .025, ['#e0e0e0', '#a0a0a0']);
+    const f = lift(X + .04, y0 + .1, 36);
+    gface([f, { x: f.x + 11, y: f.y + 3 }, { x: f.x + 1, y: f.y + 9 }], '#ff5a52', '#d0302b', INK, 1.1);
+  } else {
+    const a = lift(X + .04, y0 + .1, 21), b = lift(X + .04, Y - .05, 21);
+    seg(a, b, INK, 4.5); seg(a, b, '#e0393e', 3);
   }
 }
-function drawDoghouse(d, t) {   // уют 2: будка и собака
+function drawFlowers(d, t) {   // уют 1: клумба в каменном бордюре
+  if ((S.up.cozy || 0) < 1) return;
+  const x0 = 4.12, x1 = 4.88, y0 = 6.1, y1 = 7.9;
+  gface([lift(x0, y0, 2), lift(x1, y0, 2), lift(x1, y1, 2), lift(x0, y1, 2)], '#7a5234', '#5e3d26', null);
+  gface(fY(x0, x1, y1, 0, 2.5), '#c9c2b6', '#9d968a', INK, 1); gface(fX(x1, y0, y1, 0, 2.5), '#b5aea2', '#8d867a', INK, 1);
+  for (const y of [6.5, 6.95, 7.4]) seg(lift(x1, y, 0), lift(x1, y, 2.5), 'rgba(60,55,50,.45)', 1);
+  for (const [x, y, e] of [[4.3, 6.3, '🌷'], [4.7, 6.55, '🌼'], [4.35, 6.85, '🌸'], [4.7, 7.25, '🌷'], [4.3, 7.5, '🌼'], [4.65, 7.8, '🌸']]) {
+    const c = lift(x, y, 2); circle(c.x, c.y, 5, '#4f9e45'); circle(c.x - 2, c.y - 1.5, 2.2, '#6dbb5a');
+    emoji(e, c.x, c.y - 6 + Math.sin(t * 2 + x * 9 + y) * .8, 11);
+  }
+}
+function drawDoghouse(d, t) {   // уют 2: будка с двускатной крышей, миска и собака
   if ((S.up.cozy || 0) < 2) return;
-  const x0 = 1.15, y0 = 4.1, w = .7, h = 13;
-  drawBox(x0, y0, w, w, h, null, '#c08a52', '#a87442');
-  poly([lift(x0, y0 + w, h), lift(x0 + w, y0 + w, h), lift(x0 + w / 2, y0 + w, h + 10)], '#c08a52');
-  poly([lift(x0 - .05, y0 - .05, h), lift(x0 + w / 2, y0 - .05, h + 10), lift(x0 + w / 2, y0 + w + .05, h + 10), lift(x0 - .05, y0 + w + .05, h)], '#8a4a32');
-  poly([lift(x0 + w / 2, y0 - .05, h + 10), lift(x0 + w + .05, y0 - .05, h), lift(x0 + w + .05, y0 + w + .05, h), lift(x0 + w / 2, y0 + w + .05, h + 10)], '#a8603f', '#7a4a2a');
-  const dr = lift(x0 + w, y0 + w / 2, 0); ctx.fillStyle = '#3b2416'; ctx.beginPath(); ctx.ellipse(dr.x - 1, dr.y - 5, 4, 6, 0, 0, 7); ctx.fill();
+  const x0 = 1.15, y0 = 4.1, w = .7, h = 13, X = x0 + w, Y = y0 + w, rz = h + 11, my = y0 + w / 2;
+  softShadow(x0, y0, X, Y, .26);
+  gface(fY(x0, X, Y, 0, h), '#e0a865', '#b8803f'); gface(fX(X, y0, Y, 0, h), '#c48d4d', '#9c6a32');
+  gface([lift(X, y0, h), lift(X, Y, h), lift(X, my, rz)], '#d39a58', '#c48d4d', INK, 1.3);   // фронтон
+  for (const z of [4, 8]) { seg(lift(x0, Y, z), lift(X, Y, z), 'rgba(110,70,30,.35)', 1); seg(lift(X, y0, z), lift(X, Y, z), 'rgba(90,55,25,.35)', 1); }
+  // арка входа
+  const dc = lift(X, my, 5); ctx.save(); ctx.translate(dc.x, dc.y); ctx.transform(1, -.5, 0, 1, 0, 0);
+  ctx.beginPath(); ctx.moveTo(-5, 5); ctx.lineTo(-5, -1); ctx.arc(0, -1, 5, Math.PI, 0); ctx.lineTo(5, 5); ctx.closePath();
+  ctx.fillStyle = '#3b2416'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke(); ctx.restore();
+  // крыша: два ската с карнизом
+  const o = .08, L1 = [lift(x0 - o, y0 - o, h), lift(X + o, y0 - o, h), lift(X + o, my, rz), lift(x0 - o, my, rz)];
+  const L2 = [lift(x0 - o, my, rz), lift(X + o, my, rz), lift(X + o, Y + o, h), lift(x0 - o, Y + o, h)];
+  gface(L1, '#b8584a', '#9c4438', INK, 1.3); gface(L2, '#e0705f', '#c24f42', INK, 1.4);
+  for (const f of [.33, .66]) seg(mix(L2[0], L2[3], f), mix(L2[1], L2[2], f), 'rgba(120,30,25,.35)', 1.2);
+  seg(L2[0], L2[1], 'rgba(255,225,205,.5)', 1.5);
+  const bw = lift(2.05, 4.35, 0);   // миска
+  ctx.fillStyle = INK; ctx.beginPath(); ctx.ellipse(bw.x, bw.y - 1.5, 6, 3, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#e04a3e'; ctx.beginPath(); ctx.ellipse(bw.x, bw.y - 2, 5, 2.4, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#c98a4a'; ctx.beginPath(); ctx.ellipse(bw.x, bw.y - 2.6, 3.4, 1.4, 0, 0, 7); ctx.fill();
   const c = iso(1.95, 4.85);
+  ctx.fillStyle = 'rgba(30,50,15,.25)'; ctx.beginPath(); ctx.ellipse(c.x, c.y, 9, 4, 0, 0, 7); ctx.fill();
   if (S.night) emoji('💤', c.x + 8, c.y - 22, 10);
   emoji('🐕', c.x, c.y - 8 + (S.night ? 0 : Math.abs(Math.sin(t * 3)) * -2), 17);
 }
+// каменный цилиндр: бок с горизонтальным градиентом, кладка, верхний срез
+function toonCyl(cx, cy, rx, ry, h, top) {
+  const g = ctx.createLinearGradient(cx - rx, 0, cx + rx, 0);
+  g.addColorStop(0, '#d6d0c4'); g.addColorStop(.45, '#bdb6a9'); g.addColorStop(1, '#8a8378');
+  ctx.beginPath(); ctx.moveTo(cx - rx, cy); ctx.ellipse(cx, cy, rx, ry, 0, Math.PI, 0, true); ctx.lineTo(cx + rx, cy - h);
+  ctx.ellipse(cx, cy - h, rx, ry, 0, 0, Math.PI, false); ctx.closePath(); ctx.fillStyle = g; ctx.fill();
+  ctx.save(); ctx.clip(); ctx.strokeStyle = 'rgba(70,65,58,.4)'; ctx.lineWidth = 1;
+  for (let k = 1; k < 3; k++) { const z = h * k / 3; ctx.beginPath(); ctx.ellipse(cx, cy - z, rx, ry, 0, 0, Math.PI); ctx.stroke();
+    for (let j = 0; j < 4; j++) { const a = (j + (k % 2) * .5 + .3) / 4 * Math.PI, px = cx + Math.cos(a) * rx, py = cy - z + Math.sin(a) * ry;
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, py + h / 3); ctx.stroke(); } }
+  ctx.restore();
+  ctx.beginPath(); ctx.moveTo(cx - rx, cy); ctx.ellipse(cx, cy, rx, ry, 0, Math.PI, 0, true); ctx.lineTo(cx + rx, cy - h);
+  ctx.ellipse(cx, cy - h, rx, ry, 0, 0, Math.PI, true); ctx.closePath(); ctx.strokeStyle = INK; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.fillStyle = '#e6e1d7'; ctx.beginPath(); ctx.ellipse(cx, cy - h, rx, ry, 0, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = top; ctx.beginPath(); ctx.ellipse(cx, cy - h, rx * .72, ry * .68, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.beginPath(); ctx.ellipse(cx - rx * .2, cy - h - ry * .15, rx * .3, ry * .18, 0, 0, 7); ctx.fill();
+}
 function drawWell(d, t) {   // уют 3: колодец
   if ((S.up.cozy || 0) < 3) return;
+  softShadow(4.1, 8.1, 4.9, 8.9, .28);
   const c = iso(4.5, 8.5);
-  ctx.fillStyle = '#8d8a84'; ctx.beginPath(); ctx.ellipse(c.x, c.y - 2, 15, 8, 0, 0, 7); ctx.fill();
-  ctx.fillStyle = '#b5b1a8'; ctx.fillRect(c.x - 15, c.y - 14, 30, 12);
-  ctx.fillStyle = '#a19d94'; ctx.beginPath(); ctx.ellipse(c.x, c.y - 14, 15, 8, 0, 0, 7); ctx.fill();
-  ctx.fillStyle = '#2f5d7a'; ctx.beginPath(); ctx.ellipse(c.x, c.y - 14, 11, 5.5, 0, 0, 7); ctx.fill();
-  ctx.strokeStyle = 'rgba(80,70,60,.35)'; ctx.lineWidth = 1; for (const z of [-6, -10]) { ctx.beginPath(); ctx.moveTo(c.x - 15, c.y + z); ctx.lineTo(c.x + 15, c.y + z); ctx.stroke(); }
-  vline(4.12, 8.5, 12, 36, '#7a4a2a', 2.5); vline(4.88, 8.5, 12, 36, '#7a4a2a', 2.5);
-  poly([lift(4.0, 8.2, 34), lift(5.0, 8.2, 34), lift(5.0, 8.5, 42), lift(4.0, 8.5, 42)], '#a8603f', '#7a4a2a');
-  poly([lift(4.0, 8.5, 42), lift(5.0, 8.5, 42), lift(5.0, 8.8, 34), lift(4.0, 8.8, 34)], '#b5473f', '#7a4a2a');
-  const b = lift(4.5, 8.5, 22 + Math.sin(t) * 1.5); ctx.strokeStyle = '#5b3a22'; ctx.lineWidth = 1; const r = lift(4.5, 8.5, 34); ctx.beginPath(); ctx.moveTo(r.x, r.y); ctx.lineTo(b.x, b.y); ctx.stroke();
-  emoji('🪣', b.x, b.y + 3, 10);
+  toonCyl(c.x, c.y - 1, 16, 8, 13, '#2f6d93');
+  toonPost(4.12, 8.5, 12, 38); toonPost(4.88, 8.5, 12, 38);   // стойки стоят на кольце
+  seg(lift(4.12, 8.5, 30), lift(4.88, 8.5, 30), INK, 4); seg(lift(4.12, 8.5, 30), lift(4.88, 8.5, 30), '#a87a48', 2.6);   // ворот
+  const hd = lift(4.95, 8.5, 30); seg(hd, { x: hd.x + 5, y: hd.y + 5 }, INK, 2);
+  const b = lift(4.5, 8.5, 22 + Math.sin(t) * 1.5), r = lift(4.5, 8.5, 30);
+  seg(r, b, '#5b3a22', 1.1); emoji('🪣', b.x, b.y + 3, 10);
+  const R1 = [lift(3.95, 8.2, 36), lift(5.05, 8.2, 36), lift(5.05, 8.5, 45), lift(3.95, 8.5, 45)];
+  const R2 = [lift(3.95, 8.5, 45), lift(5.05, 8.5, 45), lift(5.05, 8.8, 36), lift(3.95, 8.8, 36)];
+  gface(R1, '#b8584a', '#9c4438', INK, 1.3); gface(R2, '#e0705f', '#c24f42', INK, 1.4);
+  gface(fX(5.05, 8.5, 8.8, 34.5, 36), '#8a3a2e', '#6e2c24', null);
+  seg(mix(R2[0], R2[3], .5), mix(R2[1], R2[2], .5), 'rgba(120,30,25,.35)', 1.2);
+  seg(R2[0], R2[1], 'rgba(255,225,205,.55)', 1.5);
 }
 function drawSwing(d, t) {   // уют 4: качели у лавки
   if ((S.up.cozy || 0) < 4) return;
   const y = 9.5, z = 36;
-  for (const x of [1.1, 2.9]) { vline(x, y - .25, 0, z, '#7a4a2a', 3); vline(x, y + .25, 0, z, '#7a4a2a', 3); }
-  const a = lift(1.1, y, z), b = lift(2.9, y, z); ctx.strokeStyle = '#6b4327'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
-  const sw = S.night ? 0 : Math.sin(t * 2.2) * .22;
-  for (const x of [1.6, 2.4]) {
-    const top = lift(x, y, z), seat = lift(x, y + sw, 10);
-    ctx.strokeStyle = '#5b3a22'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(top.x, top.y); ctx.lineTo(seat.x, seat.y); ctx.stroke();
+  softShadow(1.1, 9.2, 2.9, 9.8, .2);
+  for (const x of [1.1, 2.9]) for (const dy of [-.28, .28]) {   // А-образные стойки
+    const a = lift(x, y + dy, 0), b = lift(x, y, z);
+    seg(a, b, INK, 5); seg(a, b, '#b98a55', 3.2); seg({ x: a.x - .8, y: a.y }, { x: b.x - .8, y: b.y }, 'rgba(255,230,190,.5)', 1);
   }
-  poly([lift(1.55, y + sw - .12, 10), lift(2.45, y + sw - .12, 10), lift(2.45, y + sw + .12, 10), lift(1.55, y + sw + .12, 10)], '#d9a066', '#8f5b2b', 1);
+  const a = lift(1.0, y, z), b = lift(3.0, y, z);
+  seg(a, b, INK, 6.5); seg(a, b, '#a87a48', 4.5); seg({ x: a.x, y: a.y - 1.2 }, { x: b.x, y: b.y - 1.2 }, 'rgba(255,230,190,.55)', 1.2);
+  const sw = S.night ? 0 : Math.sin(t * 2.2) * .22;
+  for (const x of [1.6, 2.4]) seg(lift(x, y, z), lift(x, y + sw, 11), '#6b4a30', 1.4);
+  toonBox(1.55, y + sw - .13, .9, .26, 2.5, ['#e2b679', '#b98a55'], ['#c99a62', '#9e7140'], ['#f0c98e', '#dcae70'], 9, 1.1);
 }
 
 const LIGHT_COLORS = ['#ffd84d', '#ff6b6b', '#6bd3ff', '#9cff6b'];
