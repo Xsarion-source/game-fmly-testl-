@@ -3354,31 +3354,31 @@ function openNight(withSummary) {
     const fed = fedTomorrow(), need = (hens() - fed) * FEED_PER_HEN;
     const status = fed >= hens() ? `Все ${hens()} кур накормлены на завтра ✔ — будет ~${hens() * 5} яиц`
       : `Кур: ${hens()}${fed ? `, накормлено ${fed}` : ''}. Нужно ${need} любых растений (сначала берутся самые дешёвые), на складе ${feedStock()}`;
-    h += `<h3 style="margin:10px 0 0">🐔 Курятник${S.helpers.some(c => c.feed && c.stations.includes('coop')) ? ' <small style="font-weight:400;color:#7a6650">— помощник кормит сам</small>' : ''}</h3><div class="up"><div class="ico">🐔</div><div class="txt"><b>Покормить кур на завтра</b><small>${status}</small></div>
+    h += `<h3 style="margin:10px 0 0">🐔 Курятник${S.helpers.some(c => c.feed && c.stations.includes('coop')) ? ' <small style="font-weight:400;color:#7a6650">— помощник кормит сам</small>' : ''}</h3><div class="up" data-why="${fed >= hens() ? '🐔 Куры уже накормлены на завтра' : `Не хватает урожая на корм: нужно ${FEED_PER_HEN} на курицу`}"><div class="ico">🐔</div><div class="txt"><b>Покормить кур на завтра</b><small>${status}</small></div>
       <button ${fed >= hens() || feedStock() < FEED_PER_HEN ? 'disabled' : ''} onclick="feedHens(); openNight(false)">Покормить</button></div>`;
   }
   if (cows()) {
     const fed = cowsFedTomorrow(), need = (cows() - fed) * FEED_PER_COW;
     const status = fed >= cows() ? `Все ${cows()} коров накормлены ✔ — будет ~${cows() * 6} 🥛`
       : `Коров: ${cows()}${fed ? `, накормлено ${fed}` : ''}. Нужно ${need} 🌻 или 🌾, на складе ${cowFoodStock()}`;
-    h += `<h3 style="margin:10px 0 0">🐄 Коровник${S.helpers.some(c => c.feed && c.stations.includes('barn')) ? ' <small style="font-weight:400;color:#7a6650">— помощник кормит сам</small>' : ''}</h3><div class="up"><div class="ico">🐄</div><div class="txt"><b>Покормить коров на завтра</b><small>${status}</small></div>
+    h += `<h3 style="margin:10px 0 0">🐄 Коровник${S.helpers.some(c => c.feed && c.stations.includes('barn')) ? ' <small style="font-weight:400;color:#7a6650">— помощник кормит сам</small>' : ''}</h3><div class="up" data-why="${fed >= cows() ? '🐄 Коровы уже накормлены на завтра' : `Не хватает корма: нужно ${FEED_PER_COW} 🌻 или 🌾 на корову`}"><div class="ico">🐄</div><div class="txt"><b>Покормить коров на завтра</b><small>${status}</small></div>
       <button ${fed >= cows() || cowFoodStock() < FEED_PER_COW ? 'disabled' : ''} onclick="feedCows(); openNight(false)">Покормить</button></div>`;
   }
   h += `<h3 style="margin:10px 0 0">Улучшения фермы</h3><small style="color:#7a6650">Можно и прямо на ферме: закрой меню и тапни на замочек или плашку ⬆ с ценой</small>`;
   for (const [key, u] of Object.entries(UPGRADES)) {
     const l = S.up[key], maxed = l >= u.max, cost = u.cost(l), lock = upLocked(key);
     if (lock) {   // ещё не открыто — тайна, как у новых культур
-      h += `<div class="up"><div class="ico">❓</div><div class="txt"><b>???</b><small>${u.needText}</small></div><button disabled>???</button></div>`;
+      h += `<div class="up" data-why="🔒 ${u.needText}"><div class="ico">❓</div><div class="txt"><b>???</b><small>${u.needText}</small></div><button disabled>???</button></div>`;
       continue;
     }
-    h += `<div class="up"><div class="ico">${u.ico}</div><div class="txt"><b>${u.name} <small>ур. ${l}/${u.max}</small></b><small>${maxed ? 'Максимум' : u.desc(l)}</small></div>
+    h += `<div class="up" data-why="${maxed ? (u.max === 1 ? 'Это у вас уже есть' : 'Улучшено на максимум') : 'Недостаточно средств'}"><div class="ico">${u.ico}</div><div class="txt"><b>${u.name} <small>ур. ${l}/${u.max}</small></b><small>${maxed ? 'Максимум' : u.desc(l)}</small></div>
       <button ${maxed || S.coins < cost ? 'disabled' : ''} onclick="buyUpgrade('${key}')">${maxed ? '✔' : cost + '💰'}</button></div>`;
   }
   h += `<h3 style="margin:14px 0 0">Новые культуры</h3>`;
   for (const c of CROPS) {
     if (S.unlocked.includes(c.id)) continue;
     const early = S.day + 1 < c.unlockDay;
-    h += `<div class="up"><div class="ico">${early ? '❓' : c.e}</div><div class="txt"><b>${early ? '???' : c.name}</b>
+    h += `<div class="up" data-why="${early ? `Откроется после ${c.unlockDay - 1}-го дня` : 'Недостаточно средств'}"><div class="ico">${early ? '❓' : c.e}</div><div class="txt"><b>${early ? '???' : c.name}</b>
       <small>${early ? `Откроется после ${c.unlockDay - 1}-го дня` : `Семена ${c.seed}💰 · продаётся за ${c.price}💰 · ${GH_CROPS.includes(c.id) ? `🏡 только в теплице: растёт ${c.grow * GH_SLOW}с, гроздь ×${GH_YIELD}` : `растёт ${c.grow}с`}`}</small></div>
       <button ${early || S.coins < c.unlockCost ? 'disabled' : ''} onclick="unlockCrop('${c.id}')">${c.unlockCost}💰</button></div>`;
   }
@@ -3402,7 +3402,9 @@ $('sheet').addEventListener('click', e => {
   const row = e.target.closest('.up');
   if (!row || e.target.closest('button, input, a')) return;
   const b = row.querySelectorAll('button');
-  if (b.length === 1 && !b[0].disabled) b[0].click();
+  if (b.length !== 1) return;
+  if (!b[0].disabled) b[0].click();
+  else toast(row.dataset.why || 'Недостаточно средств');   // почему нельзя: нет денег, уже есть, максимум…
 });
 function closeNight() { $('overlay').classList.remove('show'); $('sheet').dataset.view = ''; }
 function morning() {   // итог дня — в историю (последние 14 дней)
