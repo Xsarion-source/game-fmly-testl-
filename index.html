@@ -485,7 +485,7 @@ const QUEUE_SLOTS = [{ x: 5.5, y: 10.5 }, { x: 6.5, y: 11.5 }, { x: 7.5, y: 11.5
 function retarget() {
   visitors.filter(v => v.state !== 'leaving').forEach((v, i) => {
     v.slot = i;
-    const q = QUEUE_SLOTS[Math.min(i, QUEUE_SLOTS.length - 1)];
+    const q = QUEUE_SLOTS[i] || { x: 10.5, y: 12.5 };   // мест нет — подходит к концу очереди на дороге
     v.wps = [{ x: q.x, y: v.y }, { x: q.x, y: q.y }];
   });
 }
@@ -1100,7 +1100,10 @@ function updateVisitors(dt) {
       v.moving = true; v.phase += dt * 11;
     } else {
       v.moving = false;
-      if (v.state === 'coming') { v.state = 'waiting'; v.flip = true; }   // лицом к лавке
+      if (v.state === 'coming') {
+        if (v.slot >= MAX_QUEUE) { S.stats.missed++; leave(v, 'angry'); toast('😤 Очередь полная, покупатель ушёл'); }   // дошёл — а мест нет
+        else { v.state = 'waiting'; v.flip = true; }   // лицом к лавке
+      }
     }
     if (v.moodT > 0) v.moodT -= dt;
     if (v.state === 'waiting' && !S.night) {
@@ -1410,7 +1413,9 @@ function step(dt) {
     const f = Math.min(1, S.t / (DAY_LEN * 0.97)), share = f < 0.6 ? f / 1.24 : (0.6 + (f - 0.6) * 1.6) / 1.24;
     const due = Math.min(S.toSpawn, Math.floor(S.toSpawn * share + 0.6));
     while (S.spawned < due) {
-      if (queueCount() >= MAX_QUEUE) { S.spawned++; S.stats.missed++; toast('😤 Очередь полная, покупатель ушёл'); }
+      // решает, остаться ли, сам покупатель — когда дойдёт до конца очереди (см. updateVisitors);
+      // здесь — только предел на число людей на дороге
+      if (queueCount() >= MAX_QUEUE + 3) { S.spawned++; S.stats.missed++; toast('😤 Очередь полная, покупатель ушёл'); }
       else spawnVisitor();
     }
     // на закате лавка закрывается, но последних покупателей обслужить можно
