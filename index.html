@@ -990,7 +990,7 @@ function openHelpers() {
   if (S.helpers.some(c => c.stations.includes('field'))) h += `<button class="chip" style="margin-bottom:4px" onclick="clearField()">🚜✖ Снять всех с поля</button>`;
   S.helpers.forEach((cfg, i) => {
     const L = HELPER_LOOKS[i % HELPER_LOOKS.length];
-    const icons = cfg.stations.length ? cfg.stations.map(k => k === 'field' ? '🚜' + cfg.zones.map(z => '①②③④'[z]).join('') : STATIONS[k].ico).join(' ') : '😴';
+    const icons = cfg.stations.length ? cfg.stations.map(k => k === 'field' ? '🚜' + (cfg.zones.length ? ' №' + cfg.zones.map(z => z + 1).join(', ') : '') : STATIONS[k].ico).join(' ') : '😴';
     const hint = cfg.stations.length ? cfg.stations.map(k => STATIONS[k].hint.toLowerCase()).join('; ') : 'отдыхает у дома';
     h += `<div class="hcard"><div style="font-weight:800;cursor:pointer;display:flex;align-items:center;gap:4px" onclick="foldHelper(${i})"><span class="dot" style="background:${L.shirt}"></span>Помощник ${i + 1}
       <span style="font-weight:600;margin-left:4px">${icons}</span><span style="margin-left:auto;color:#7a6650">${cfg.fold ? '▸' : '▾'}</span></div>`;
@@ -1002,11 +1002,11 @@ function openHelpers() {
     }
     h += chip(!cfg.stations.length, '😴 Отдых', `toggleStation(${i},'rest')`) + `</div>`;
     if (cfg.stations.includes('field')) {   // одна строка: «только сбор» или что сажать после сбора
-      h += `<div style="font-size:12px;color:#7a6650;margin:8px 0 4px">🚜 Участки (по 6 грядок, номера видны на поле; можно несколько):</div><div class="chips">`;
+      h += `<div style="font-size:12px;color:#7a6650;margin:8px 0 4px">🚜 Участки по 6 грядок, номера видны на поле. Можно несколько; цветная точка — участок уже у другого помощника:</div><div class="chips">`;
       ZONES.forEach((z, k) => {
         const n = S.plots.filter((p, j) => zoneOf(j) === k).length, own = zoneOwner(k);
-        const note = !n ? ' 🔒' : own >= 0 && own !== i ? ` · у №${own + 1}` : ` · ${n} гр.`;
-        h += chip(cfg.zones.includes(k), `${cfg.zones.includes(k) ? '✓ ' : ''}${'①②③④'[k]}${note}`, `setZone(${i},${k})`);
+        const note = !n ? ' 🔒' : own >= 0 && own !== i ? ` <span class="dot" style="background:${HELPER_LOOKS[own % HELPER_LOOKS.length].shirt};margin:0 0 1px 2px"></span>` : '';
+        h += chip(cfg.zones.includes(k), `${cfg.zones.includes(k) ? '✓ ' : ''}№${k + 1}${note}`, `setZone(${i},${k})`);
       });
       h += `</div>`;
       if (!cfg.zones.length) h += `<div style="font-size:12px;color:#c0392b;margin-top:4px">Выбери участок — без него помощник не работает на поле</div>`;
