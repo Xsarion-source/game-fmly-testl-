@@ -1366,10 +1366,12 @@ function openHelpers() {
 let last = performance.now(), saveAcc = 0;
 let timeScale = 1;   // чит-ускорение
 function tick(now) {
+  const fast = pointers.size > 0 || camTarget;   // жесты — плавно, остальное время — бережём батарею
+  if (!fast && now - last < 1000 / 30 - 3) { requestAnimationFrame(tick); return; }
   const dt = Math.min(0.1, Math.max(0, (now - last) / 1000)); last = now;
   for (let k = 0; k < timeScale; k++) step(dt);
   floats.forEach(f => f.t += dt); floats = floats.filter(f => f.t < 1.2);
-  saveAcc += dt; if (saveAcc > 3) { saveAcc = 0; save(); }
+  saveAcc += dt; if (saveAcc > 5) { saveAcc = 0; save(); }
   updateCam(dt);
   draw(now / 1000);
   renderHud();
@@ -1414,7 +1416,7 @@ function step(dt) {
 
 // ================== КАМЕРА И ВВОД ==================
 const $ = id => document.getElementById(id);
-const cv = $('cv'), ctx = cv.getContext('2d');
+const cv = $('cv'); let ctx = cv.getContext('2d');
 let cw = 1, ch = 1, dpr = 1, zoom = 1, userZoom = false;
 const cam = { x: 0, y: 0 };
 const iso = (x, y) => ({ x: (x - y) * TW / 2, y: (x + y) * TH / 2 });
@@ -1796,13 +1798,50 @@ function emoji(e, x, y, size) { drawRich(e, x, y, size); }
 
 function setWorld() { ctx.setTransform(dpr * zoom, 0, 0, dpr * zoom, dpr * (cw / 2 - cam.x * zoom), dpr * (ch / 2 - cam.y * zoom)); }
 
+const bg = { cv: document.createElement('canvas'), key: '', cx: 0, cy: 0, m: 0, still: 0 };
+function groundSig() {   // всё, от чего зависит земля (кроме мигания)
+  const pl = a => a.map(p => p.crop ? (p.prog < 1 ? 'w' : 'r') : '-').join('');
+  return [JSON.stringify(S.up), pl(S.plots), pl(S.gh), S.trees.map(t => t.kind ? 1 : 0).join(''), hens(), cows()].join('|');
+}
+function drawBackdrop() {
+  const key = [cw, ch, dpr, zoom, groundSig()].join('/');
+  const k = dpr * zoom, ox = (bg.cx - cam.x) * k, oy = (bg.cy - cam.y) * k;
+  const moved = ox !== bg.ox || oy !== bg.oy; bg.ox = ox; bg.oy = oy;
+  bg.still = moved ? 0 : bg.still + 1;
+  // перерисовать: другое состояние/зум, камера ушла за запас или остановилась не на целом пикселе
+  if (key !== bg.key || Math.abs(ox) > bg.m || Math.abs(oy) > bg.m || (bg.still === 2 && (ox || oy))) {
+    bg.key = key; bg.m = Math.round(Math.min(cv.width, cv.height) * .2);
+    const w = cv.width + bg.m * 2, h = cv.height + bg.m * 2;
+    if (bg.cv.width !== w || bg.cv.height !== h) { bg.cv.width = w; bg.cv.height = h; }
+    bg.cx = cam.x; bg.cy = cam.y; bg.ox = bg.oy = 0;
+    const main = ctx; ctx = bg.cv.getContext('2d');
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#4e8c41'; ctx.fillRect(0, 0, w, h);
+    ctx.setTransform(k, 0, 0, k, bg.m + dpr * (cw / 2 - cam.x * zoom), bg.m + dpr * (ch / 2 - cam.y * zoom));
+    try { drawOutside(); drawGround(0); drawPaths(); } finally { ctx = main; }
+  }
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(bg.cv, Math.round(bg.ox - bg.m), Math.round(bg.oy - bg.m));
+  setWorld();
+}
+function drawGroundGlow(t) {   // мигающая рамка у созревшего — поверх закэшированной земли
+  const a = `rgba(255,224,102,${.6 + Math.sin(t * 5) * .35})`;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const g = ground[y][x];
+    if (g === 'o') {
+      const i = orchardAt(x, y);
+      if (i >= 0 && i < S.trees.length && treeReady(S.trees[i])) { const c = iso(x + .5, y + .5); ctx.strokeStyle = a; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(c.x, c.y, 18, 9, 0, 0, 7); ctx.stroke(); }
+    } else if (g === 's' || (g === 'h' && S.up.greenhouse)) {
+      const arr = g === 's' ? S.plots : S.gh, i = g === 's' ? slotAt(x, y) : ghAt(x, y), p = arr[i];
+      if (p && p.crop && p.prog >= 1) { const e = .07, hz = 3.5, X = x + 1 - e, Y = y + 1 - e; poly([lift(x + e, y + e, hz), lift(X, y + e, hz), lift(X, Y, hz), lift(x + e, Y, hz)], null, a, 2.5); }
+    }
+  }
+}
 function draw(t) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = '#4e8c41'; ctx.fillRect(0, 0, cv.width, cv.height);
   setWorld();
-  drawOutside();
-  drawGround(t);
-  drawPaths();
+  drawBackdrop();
+  drawGroundGlow(t);
   drawPond(t);
   drawZones();
   drawReserved();
@@ -1929,7 +1968,6 @@ function drawGround(t) {
       const i = orchardAt(x, y);
       if (i >= 0 && i < S.trees.length) {
         ctx.fillStyle = '#8a5a36'; ctx.beginPath(); ctx.ellipse(c.x, c.y, 18, 9, 0, 0, 7); ctx.fill();
-        if (treeReady(S.trees[i])) { ctx.strokeStyle = `rgba(255,224,102,${.6 + Math.sin(t * 5) * .35})`; ctx.lineWidth = 2.5; ctx.stroke(); }
         if (!S.trees[i].kind) { ctx.globalAlpha = .7; emoji('🌱', c.x, c.y - 4, 12); ctx.globalAlpha = 1; }
       } else if (i >= 0) {
         ctx.setLineDash([4, 4]); poly(pts, null, 'rgba(255,255,255,.35)', 1.2); ctx.setLineDash([]);
@@ -1957,7 +1995,6 @@ function drawGround(t) {
           const a = lift(x + k, y + .14, hz), b = lift(x + k, y + .86, hz);
           seg(a, b, 'rgba(40,20,8,.4)', 1.6); seg({ x: a.x - 1.2, y: a.y - .6 }, { x: b.x - 1.2, y: b.y - .6 }, 'rgba(255,220,180,.22)', 1);
         }
-        if (p.crop && p.prog >= 1) poly(top, null, `rgba(255,224,102,${.6 + Math.sin(t * 5) * .35})`, 2.5);
       } else {
         ctx.setLineDash([4, 4]); poly(pts, null, 'rgba(255,255,255,.35)', 1.2); ctx.setLineDash([]);
         if (i === arr.length) { ctx.globalAlpha = .8; emoji('🔒', c.x, c.y - 4, 14); ctx.globalAlpha = 1; }
@@ -2921,9 +2958,9 @@ const PHASES = [   // [до какой доли дня, подпись, цвет
   [0.9, 'Вечер', 'linear-gradient(#ffb27a,#ffe0b0)'],
   [1.01, 'Закат', 'linear-gradient(#e0705a,#ffb07a)'],
 ];
-let hudSig = '';
+let hudSig = '', hudCoins = null;
 function renderHud() {
-  $('coins').textContent = `💰 ${S.coins}`;
+  if (S.coins !== hudCoins) { hudCoins = S.coins; $('coins').textContent = `💰 ${S.coins}`; }
   // солнце идёт по дуге: восход слева, полдень наверху, закат справа
   const frac = S.night ? 1 : S.started ? Math.min(1, S.t / DAY_LEN) : 0;
   const step = Math.round(frac * 60);   // обновляем плавно, но без мельтешения
@@ -2945,7 +2982,7 @@ function renderHud() {
 }
 
 function renderUI() {
-  hudSig = '';
+  hudSig = ''; hudCoins = null;
   $('nightBtn').style.display = S.night ? '' : 'none';
   $('plantAll').style.display = S.night ? 'none' : '';
   $('dayBtn').style.display = S.night ? '' : 'none';
@@ -3219,6 +3256,8 @@ else { const a = iso(3, 11), b = iso(10, 4); cam.x = (a.x + b.x) / 2; cam.y = (a
 if (S.toSpawn === 0 && !S.night) startDay(); else renderUI();
 if (!S.night) S.toSpawn = Math.max(S.toSpawn, visitorsPerDay());   // старые сохранения получают новый поток покупателей сразу
 if (S.night) openNight(false);
+document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });   // свернули — сохраняемся сразу
+addEventListener('pagehide', save);
 requestAnimationFrame(tick);
 </script>
 </body>
