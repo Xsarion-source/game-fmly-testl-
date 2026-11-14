@@ -164,7 +164,7 @@ const UPGRADES = {
   ads:    { name: 'Реклама',           ico: '📣', desc: l => `+3 покупателя в день`,           cost: l => 30 + l*35,           max: 10 },
   fert:   { name: 'Удобрения',         ico: '🧪', desc: l => `Рост быстрее (+${l*20}% → +${(l+1)*20}%)`, cost: l => 50 + l*60, max: 5 },
   sign:   { name: 'Красивая вывеска',  ico: '🪧', desc: l => `Цены выше (+${l*10}% → +${(l+1)*10}%)`, cost: l => 60 + l*70, max: 6 },
-  helper: { name: 'Помощник',         ico: '🧑‍🌾', desc: l => `Работает на одной или нескольких станциях: поле, сад, курятник, коровник, лавка (помощников: ${l} → ${l+1})`, cost: l => [120, 280, 520, 800, 1150, 1600][l], max: 6 },
+  helper: { name: 'Помощник',         ico: '🧑‍🌾', desc: l => `Работает на одной или нескольких станциях: поле, сад, курятник, коровник, лавка (помощников: ${l} → ${l+1})`, cost: l => [120, 280, 520, 800, 1150, 1600, 2100, 2700, 3400, 4200][l], max: 10 },
   bench:  { name: 'Скамейка',          ico: '🪑', desc: l => `Покупатели ждут дольше (+5 сек)`, cost: l => 25 + l*30, max: 5 },
 };
 
@@ -800,6 +800,10 @@ const HELPER_LOOKS = [
   { shirt: '#e0554a', shirtDark: '#b8433a', pants: '#3b4a6b', skin: '#f2c49b', hair: '#6b3e1f', hat: 'bandana', capColor: '#3b6fc4' },
   { shirt: '#4fb6c4', shirtDark: '#3a909c', pants: '#5a4632', skin: '#7a4f33', hair: '#2b1d14', hat: 'cap', capColor: '#f0b429' },
   { shirt: '#f4f1ea', shirtDark: '#d8d2c4', pants: '#2f7d46', skin: '#d9a37a', hair: '#b5462f', hat: 'cap', capColor: '#9b7be0' },
+  { shirt: '#5b8def', shirtDark: '#4570c4', pants: '#5a4632', skin: '#f2c49b', hair: '#2b1d14', hat: 'beanie', capColor: '#f0b429' },
+  { shirt: '#e07ab8', shirtDark: '#bb5f96', pants: '#2f2f3a', skin: '#a8714a', hair: '#111111', hat: 'cap', capColor: '#4fb6c4' },
+  { shirt: '#ef8d3a', shirtDark: '#c9722b', pants: '#3b4a6b', skin: '#f6d5b8', hair: '#b5462f', hat: 'bandana', capColor: '#3e9b3a' },
+  { shirt: '#8a6a4a', shirtDark: '#6e5339', pants: '#2f7d46', skin: '#7a4f33', hair: '#2b1d14', hat: 'beanie', capColor: '#5b8def' },
 ];
 const HOME = { x: 3, y: 4 };   // у двери дома
 const STATIONS = {
@@ -814,7 +818,7 @@ const REST = { ico: '😴', idle: { x: 3, y: 4 } };
 let helpers = [];
 function syncHelpers() {
   while (S.helpers.length < S.up.helper) {
-    const st = ['field', 'orchard', 'coop', 'barn', 'stall', 'field'][S.helpers.length % 6];
+    const st = ['field', 'orchard', 'coop', 'barn', 'stall', 'field', 'gh', 'field', 'orchard', 'field'][S.helpers.length % 10];
     S.helpers.push({ stations: [st], replant: false, seed: 'same', zones: [], feed: false, ghReplant: false, ghSeed: 'same', fold: false });
     if (st === 'field') { const z = freeZone(); if (z != null) S.helpers[S.helpers.length - 1].zones.push(z); }
   }
@@ -1218,7 +1222,7 @@ function draw(t) {
   S.gh.forEach((p, i) => { if (p.crop) { const s = GH_SLOTS[i]; list.push({ z: s.x + s.y + 1, f: () => drawCrop(i, t, true) }); } });
   list.push({ z: P.x + P.y + 0.01, f: () => drawPerson(P, PLAYER_LOOK) });
   for (const h of helpers) list.push({ z: h.x + h.y, f: () => { drawPerson(h, h.look); const c = iso(h.x, h.y); const cfg = S.helpers[h.id] || { stations: [] }, st = cfg.stations;
-    const fieldIco = !cfg.replant ? '🌾' : cfg.seed === 'same' ? '🔁' : CROP[cfg.seed]?.e || '🌾';   // сбор — 🌾, посев — значок культуры
+    const fieldIco = !cfg.replant ? '🧺' : cfg.seed === 'same' ? '🔁' : CROP[cfg.seed]?.e || '🧺';   // только сбор — корзинка, посев — значок культуры
     const icons = st.length ? st.map(k => k === 'field' ? (!cfg.zones.length ? '❓' : fieldIco) : k === 'gh' && cfg.ghReplant && cfg.ghSeed !== 'same' ? CROP[cfg.ghSeed].e : STATIONS[k].ico) : [REST.ico];
     if (h.broke) icons.push('💰');
     rr(c.x - icons.length * 6.5 - 3, c.y - 69, icons.length * 13 + 6, 18, 9, 'rgba(255,253,246,.95)');
