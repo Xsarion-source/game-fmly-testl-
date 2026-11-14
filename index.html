@@ -508,7 +508,7 @@ async function cloudPushActive() {
   if (!CLOUD.ready || CLOUD.busy) { CLOUD.dirty = true; return; }
   CLOUD.busy = true; CLOUD.dirty = false;
   try { await cloudPush(SLOT, S); CLOUD.state = 'ok'; }
-  catch (e) { CLOUD.dirty = true; CLOUD.state = 'err'; }
+  catch (e) { if (e?.code === 'invalid_argument' || e?.code === 'not_granted') { CLOUD.state = 'nowrite'; CLOUD.ready = false; } else { CLOUD.dirty = true; CLOUD.state = 'err'; } }
   finally { CLOUD.busy = false; }
 }
 async function cloudMetaSave() {
@@ -567,6 +567,7 @@ async function cloudInit() {
     }
     CLOUD.ready = true; CLOUD.state = 'ok';
     await cloudPushActive();
+    if (CLOUD.state === 'nowrite') return;   // ссылка открыта только на просмотр — облако не для этого аккаунта
     if (!meta || meta.slot !== SLOT) cloudMetaSave();
     setInterval(() => { if (CLOUD.dirty) cloudPushActive(); }, 15000);
   } catch (e) { CLOUD.state = CLOUD.db ? 'err' : 'off'; }
@@ -3546,7 +3547,8 @@ function slotInfo(n) {   // коротко о ферме в ячейке — б�
 function openSaves() {
   if (S) save();
   const names = slotNames();
-  const cl = { ok: '☁️ Сохраняется в облако claude.ai — не пропадёт, даже если закрыть браузер', wait: '☁️ Подключаемся к облаку…', err: '⚠️ Облако сейчас не отвечает — сохраняем в браузере и попробуем ещё', off: '⚠️ Облако недоступно — ферма хранится только в этом браузере' }[CLOUD.state];
+  const cl = { ok: '☁️ Сохраняется в облако claude.ai — не пропадёт, даже если закрыть браузер', wait: '☁️ Подключаемся к облаку…', err: '⚠️ Облако сейчас не отвечает — сохраняем в браузере и попробуем ещё',
+    off: '⚠️ Облако недоступно — ферма хранится только в этом браузере. Safari может её стереть: сохраняй код фермы ↓', nowrite: '⚠️ Облако недоступно для этого аккаунта — ферма только в этом браузере. Safari может её стереть: сохраняй код фермы ↓' }[CLOUD.state];
   let h = `<h2>💾 Сохранения</h2><div style="font-size:13px;color:#7a6650;margin:-4px 0 6px">У каждой ячейки своя ферма. Игра сохраняется сама — переключайся когда угодно.</div>
     <div style="font-size:13px;font-weight:700;color:${CLOUD.state === 'ok' ? '#3e7d32' : '#b0503a'};margin:0 0 10px">${cl}</div>`;
   for (let n = 1; n <= SLOTS; n++) {
@@ -3564,9 +3566,71 @@ function openSaves() {
       </div>`}
     </div>`;
   }
+  h += `<div style="background:#f6eedc;border:2px dashed #d9c49a;border-radius:14px;padding:10px 12px;margin-bottom:10px">
+    <b>📋 Код фермы</b><div style="font-size:13px;color:#7a6650;margin:4px 0 8px">Запасная копия: скопируй код и сохрани в Заметки или пришли себе в сообщении. Вставишь — ферма вернётся, даже на другом устройстве.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="wide" style="flex:1" onclick="exportCode()">📤 Скопировать код</button><button class="wide" style="flex:1;background:#f0e5cb;color:#3b2416" onclick="importCodeUI()">📥 Вставить код</button></div></div>`;
   h += `<button class="wide" style="width:100%;margin-top:2px" onclick="openMenu()">Назад</button>`;
   $('sheet').dataset.view = 'saves'; $('sheet').innerHTML = h;
   $('overlay').classList.add('show');
+}
+// ---------- Код фермы: запасная копия текстом (сжатая) — работает без облака и без памяти браузера ----------
+const b64 = u8 => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode(...u8.subarray(i, i + 0x8000)); return btoa(s); };
+const unb64 = t => Uint8Array.from(atob(t), c => c.charCodeAt(0));
+async function farmCode(o) {
+  const raw = new TextEncoder().encode(JSON.stringify(o));
+  if (window.CompressionStream) {
+    try { const z = new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer()); return 'FARM1:' + b64(z); } catch {}
+  }
+  return 'FARM0:' + b64(raw);
+}
+async function parseFarmCode(code) {
+  code = code.replace(/\s+/g, '');
+  const m = code.match(/FARM([01]):([A-Za-z0-9+/=]+)/); if (!m) throw new Error('bad');
+  let bytes = unb64(m[2]);
+  if (m[1] === '1') bytes = new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer());
+  const o = JSON.parse(new TextDecoder().decode(bytes));
+  if (!o || typeof o.day !== 'number' || !Array.isArray(o.plots)) throw new Error('bad');
+  return o;
+}
+async function exportCode() {
+  save();
+  const code = await farmCode(S);
+  let copied = false;
+  try { await navigator.clipboard.writeText(code); copied = true; } catch {}
+  $('sheet').dataset.view = ''; $('sheet').innerHTML = `<h2>📤 Код фермы</h2>
+    <div class="summary">${copied ? '✓ Код скопирован. ' : ''}Сохрани его в Заметки или отправь себе сообщением. День ${S.day} · 💰 ${S.coins}</div>
+    <textarea id="codeBox" readonly style="width:100%;height:140px;font:12px monospace;border-radius:10px;border:1.5px solid #d9c49a;padding:8px;background:#fffaf0;word-break:break-all">${code}</textarea>
+    <div class="row" style="margin-top:8px"><button class="wide" onclick="const t=$('codeBox');t.select();t.setSelectionRange(0,1e9);try{navigator.clipboard.writeText(t.value).then(()=>toast('✓ Скопировано'),()=>{document.execCommand('copy');toast('✓ Скопировано')})}catch{document.execCommand('copy');toast('✓ Скопировано')}">📋 Скопировать ещё раз</button>
+    <button class="wide alt" onclick="openSaves()">Назад</button></div>`;
+  $('overlay').classList.add('show');
+  try { localStorage.setItem('farm-code-at', String(S.day)); } catch {}
+  S.codeDay = S.day;
+}
+let importArmed = null;
+function importCodeUI() {
+  $('sheet').dataset.view = ''; $('sheet').innerHTML = `<h2>📥 Вставить код фермы</h2>
+    <div class="summary">Вставь сюда код, который ты сохранял. Ферма из кода появится в свободной ячейке (или заменит пустую новую ферму).</div>
+    <textarea id="codeIn" placeholder="FARM1:…" style="width:100%;height:140px;font:12px monospace;border-radius:10px;border:1.5px solid #d9c49a;padding:8px;background:#fffaf0;word-break:break-all"></textarea>
+    <div class="row" style="margin-top:8px"><button class="wide" id="codeGo" onclick="importCode($('codeIn').value)">📥 Загрузить ферму</button><button class="wide alt" onclick="openSaves()">Назад</button></div>`;
+  $('overlay').classList.add('show');
+}
+async function importCode(code) {
+  let o; try { o = await parseFarmCode(code); } catch { toast('Код не подходит — проверь, что скопирован целиком'); return; }
+  o.savedAt = Date.now();
+  // куда: пустая новая ферма — заменяем её; иначе — в свободную ячейку; иначе — заменить текущую после подтверждения
+  let target = trivialFarm(S) ? SLOT : 0;
+  if (!target) for (let n = 1; n <= SLOTS; n++) if (n !== SLOT && !slotInfo(n)) { target = n; break; }
+  if (!target) {
+    if (importArmed !== code) { importArmed = code; $('codeGo').textContent = 'Свободных ячеек нет — заменить текущую ферму? Нажми ещё раз'; return; }
+    target = SLOT;
+  }
+  importArmed = null;
+  writeLocal(target, o);
+  if (CLOUD.ready) { try { await withTimeout(cloudPush(target, o), 6000); } catch {} }
+  if (target === SLOT) { noSave = true; wnSet({ slot: SLOT, msg: `📥 Ферма загружена из кода — день ${o.day}`, state: readLocal(SLOT) ? undefined : o }); location.reload(); return; }
+  const a = slotNames(); a[target - 1] = `Из кода (день ${o.day})`; try { localStorage.setItem('farm-slot-names', JSON.stringify(a)); } catch {}
+  cloudMetaSave();
+  toast(`📥 Ферма из кода — в ячейке «${slotNames()[target - 1]}»`); openSaves();
 }
 function renameSlot(n, v) {
   const a = slotNames(); a[n - 1] = v.trim().slice(0, 20) || `Ферма ${n}`;
@@ -3617,6 +3681,8 @@ function openNight(withSummary) {
       Завтра придёт ~<b>${visitorsPerDay(S.day + 1)}</b> покупателей</div>`;
   }
   h += `<div style="font-weight:700;margin:6px 0 2px">У тебя: 💰 ${S.coins}</div>`;
+  if (CLOUD.state !== 'ok' && CLOUD.state !== 'wait' && S.day >= 2 && (S.codeDay || 0) < S.day)   // облака нет — Safari может стереть ферму
+    h += `<div class="summary" style="background:#fff1d6;border:1.5px solid #f0c24a">⚠️ Ферма хранится только в этом браузере — Safari может её стереть. <a href="#" onclick="event.preventDefault();exportCode()" style="color:#b0503a;font-weight:800">Сохрани код фермы</a></div>`;
   if (hens()) {
     const fed = fedTomorrow(), need = (hens() - fed) * FEED_PER_HEN;
     const status = fed >= hens() ? `Все ${hens()} кур накормлены на завтра ✔ — будет ~${hens() * 5} яиц`
