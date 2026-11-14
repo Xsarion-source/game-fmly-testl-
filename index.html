@@ -1776,15 +1776,6 @@ function drawMarker(t) {
   poly([iso(tk.x + r, tk.y + r), iso(tk.x + 1 - r, tk.y + r), iso(tk.x + 1 - r, tk.y + 1 - r), iso(tk.x + r, tk.y + 1 - r)], null, '#ffffff', 2);
 }
 
-function drawTree(d) {
-  const c = iso(d.x + .5, d.y + .5), s = d.s;
-  ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(c.x, c.y, 16 * s, 7 * s, 0, 0, 7); ctx.fill();
-  ctx.fillStyle = '#7a4a2a'; ctx.fillRect(c.x - 3 * s, c.y - 22 * s, 6 * s, 22 * s);
-  circle(c.x - 10 * s, c.y - 28 * s, 12 * s, '#3c8236');
-  circle(c.x + 10 * s, c.y - 28 * s, 12 * s, '#3c8236');
-  circle(c.x, c.y - 40 * s, 15 * s, '#4a9a42');
-  circle(c.x - 5 * s, c.y - 45 * s, 6 * s, '#66b957');
-}
 
 function drawBox(x0, y0, w, d, h, top, left, right, z0 = 0) {
   const X = x0 + w, Y = y0 + d, H = z0 + h;
@@ -2082,34 +2073,51 @@ function drawSwing(d, t) {   // уют 4: качели у лавки
 }
 
 const LIGHT_COLORS = ['#ffd84d', '#ff6b6b', '#6bd3ff', '#9cff6b'];
+// двускатная крыша с коньком вдоль x: задний скат, передний скат с черепицей, торец карниза
+function gableRoofX(x0, y0, X, Y, h, rz, o, light, dark, rows = 4) {
+  const mid = (y0 + Y) / 2;
+  const back = [lift(x0 - o, y0 - o, h), lift(X + o, y0 - o, h), lift(X + o, mid, rz), lift(x0 - o, mid, rz)];
+  const front = [lift(x0 - o, mid, rz), lift(X + o, mid, rz), lift(X + o, Y + o, h), lift(x0 - o, Y + o, h)];
+  gface(back, darken(dark, .9), darken(dark, .75), INK, 1.4);
+  gface([lift(X + o, mid, rz), lift(X + o, Y + o, h), lift(X + o, Y + o, h - 4), lift(X + o, mid, rz - 4)], darken(dark, .7), darken(dark, .6), INK, 1.2);   // торец ската
+  gface([front[3], front[2], { x: front[2].x, y: front[2].y + 4 }, { x: front[3].x, y: front[3].y + 4 }], darken(dark, .75), darken(dark, .6), INK, 1.2);   // карниз
+  gface(front, light, dark, INK, 1.5);
+  for (let k = 1; k < rows; k++) { const f = k / rows, a = mix(front[0], front[3], f), b = mix(front[1], front[2], f);
+    seg(a, b, 'rgba(70,25,15,.35)', 1.3); seg({ x: a.x, y: a.y + 1.5 }, { x: b.x, y: b.y + 1.5 }, 'rgba(255,220,200,.2)', 1); }
+  seg(front[0], front[1], 'rgba(255,230,210,.55)', 1.8);   // блик на коньке
+}
 function drawStall(d, t) {
   const L = S.up.sign;
+  softShadow(3, 10, 5, 11, .25);
   // вывеска на двух столбах за прилавком — над головой фермера
-  vline(3.12, 10.1, 0, 64, '#7a4a2a', 3); vline(4.88, 10.1, 0, 64, '#7a4a2a', 3);
+  toonPost(3.12, 10.1, 0, 64, .06); toonPost(4.88, 10.1, 0, 64, .06);
   const xa = L ? 2.95 : 3.3, xb = L ? 5.05 : 4.7, z0 = 50, z1 = L ? 66 : 60;
   if (L >= 6) for (let k = 0; k < 8; k++) {   // флажки под вывеской
     const a = xa + k * (xb - xa) / 8, b = a + (xb - xa) / 8;
-    poly([lift(a, 10.1, z0 - 1), lift(b, 10.1, z0 - 1), lift((a + b) / 2, 10.1, z0 - 7)], LIGHT_COLORS[k % 4]);
+    gface([lift(a, 10.1, z0 - 1), lift(b, 10.1, z0 - 1), lift((a + b) / 2, 10.1, z0 - 7)], LIGHT_COLORS[k % 4], darken(LIGHT_COLORS[k % 4], .8), INK, .8);
   }
-  poly([lift(xa, 10.1, z0), lift(xb, 10.1, z0), lift(xb, 10.1, z1), lift(xa, 10.1, z1)], L ? '#fff3d6' : '#b88a55', L >= 4 ? '#e8b923' : '#6b4327', L >= 4 ? 3 : 1.5);
+  gface(fY(xa, xb, 10.18, z0 - 1.5, z0), '#8a5a36', '#6b4327', INK, 1);   // толщина доски
+  gface(fY(xa, xb, 10.1, z0, z1), L ? '#fffaf0' : '#d0a26a', L ? '#f0dfb8' : '#a8784a', L >= 4 ? '#c99a1a' : INK, L >= 4 ? 3 : 1.6);
   textOnX(xa, 10.1, (z0 + z1) / 2 - 1, xb - xa, L ? 'ФЕРМА' : 'лавка', L ? '#c0392b' : '#3b2416', L ? 11 : 8);
   if (L >= 5) { const a = lift(xa + .12, 10.1, z1 - 4), b = lift(xb - .12, 10.1, z1 - 4); emoji('⭐', a.x, a.y, 7); emoji('⭐', b.x, b.y, 7); }
   if (L >= 3) for (let k = 0; k <= 8; k++) {   // гирлянда
     const p = lift(xa + k * (xb - xa) / 8, 10.1, z1 + 3), on = S.night || Math.sin(t * 3 + k) > -0.3;
-    circle(p.x, p.y, on ? 2 : 1.5, on ? LIGHT_COLORS[k % 4] : '#776655');
+    circle(p.x, p.y, on ? 2.6 : 2, INK); circle(p.x, p.y, on ? 2 : 1.5, on ? LIGHT_COLORS[k % 4] : '#776655');
   }
-  // прилавок
-  drawBox(3, 10, 2, 1, 16, '#d9a066', '#b07a45', '#8f5b2b');
-  ctx.strokeStyle = 'rgba(0,0,0,.15)'; ctx.lineWidth = 1;
-  for (const z of [5.5, 11]) { const a = lift(3, 11, z), b = lift(5, 11, z); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
-  if (L >= 2) { const a = lift(3.08, 10.9, 16), b = lift(4.92, 10.9, 16); emoji('🌷', a.x, a.y - 6, 13); emoji('🌷', b.x, b.y - 6, 13); }
+  // прилавок: доски, столешница с кромкой
+  gface(fY(3, 5, 11, 0, 15), '#d9a066', '#a8743f'); gface(fX(5, 10, 11, 0, 15), '#b8834d', '#8f5b2b');
+  for (const x of [3.4, 3.8, 4.2, 4.6]) seg(lift(x, 11, 1), lift(x, 11, 14), 'rgba(110,65,30,.35)', 1);
+  for (const y of [10.33, 10.66]) seg(lift(5, y, 1), lift(5, y, 14), 'rgba(90,50,20,.35)', 1);
+  toonBox(2.95, 9.95, 2.1, 1.1, 2, ['#c99a62', '#a87a48'], ['#a87a48', '#8f6538'], ['#f0c98e', '#dcae70'], 15, 1.3);
+  seg(lift(2.95, 11.05, 17), lift(5.05, 11.05, 17), 'rgba(255,240,210,.7)', 1.2);
+  if (L >= 2) { const a = lift(3.08, 10.9, 17), b = lift(4.92, 10.9, 17); emoji('🌷', a.x, a.y - 6, 13); emoji('🌷', b.x, b.y - 6, 13); }
   // ящики с товаром: 3 × 2 на столешнице, в каждом — товар и количество
   const goods = Object.keys(GOODS).filter(id => S.inv[id] > 0).slice(0, 6);
   const cells = [[3.12, 10.06], [3.76, 10.06], [4.4, 10.06], [3.12, 10.52], [3.76, 10.52], [4.4, 10.52]];
   goods.forEach((id, k) => {
     const [cx, cy] = cells[k];
-    drawBox(cx, cy, .5, .4, 5, '#7a4f2c', '#c9955c', '#a8783f', 16);
-    const p = lift(cx + .25, cy + .2, 21);
+    toonBox(cx, cy, .5, .4, 5, ['#d9a066', '#b07a45'], ['#b8834d', '#8f5b2b'], ['#6b4327', '#5b3a22'], 17, 1.1);
+    const p = lift(cx + .25, cy + .2, 22);
     emoji(GOODS[id].e, p.x - 2, p.y - 7, 20);
     ctx.font = '800 11px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.lineWidth = 2.5; ctx.strokeStyle = 'rgba(40,25,10,.85)'; ctx.strokeText(S.inv[id], p.x + 10, p.y + 2);
@@ -2119,42 +2127,92 @@ function drawStall(d, t) {
 
 function drawCoop() {
   if (!hens()) return;
-  const x0 = 6, y0 = 8, X = 8, Y = 9, h = 26, o = 0.15, rz = 44;
-  poly([lift(x0 - o, y0 - o, h), lift(X + o, y0 - o, h), lift(X + o, 8.5, rz), lift(x0 - o, 8.5, rz)], '#6b3f2a');
-  drawBox(x0, y0, 2, 1, h, null, '#c0583f', '#a3462f');
-  ctx.strokeStyle = '#f4ead8'; ctx.lineWidth = 2;   // белые уголки
-  for (const [x, y] of [[x0, Y], [X, Y], [X, y0]]) { const a = lift(x, y, 0), b = lift(x, y, h); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
-  poly([lift(6.75, Y, 0), lift(7.25, Y, 0), lift(7.25, Y, 11), lift(6.75, Y, 11)], '#3b2416');               // дверца для кур
-  poly([lift(6.8, Y, 0), lift(7.2, Y, 0), lift(7.2, Y + .45, 0), lift(6.8, Y + .45, 0)], '#b5864f');         // лесенка
-  poly([lift(6.18, Y, 13), lift(6.55, Y, 13), lift(6.55, Y, 20), lift(6.18, Y, 20)], S.night ? '#ffd76a' : '#a8dcff', '#f4ead8', 1.5);
-  poly([lift(X, y0, h), lift(X, Y, h), lift(X, 8.5, rz)], '#a3462f', '#f4ead8', 1.5);                       // фронтон
-  poly([lift(x0 - o, Y + o, h), lift(X + o, Y + o, h), lift(X + o, 8.5, rz), lift(x0 - o, 8.5, rz)], '#8a5236', '#6b3f2a');
+  const x0 = 6, y0 = 8, X = 8, Y = 9, h = 26, rz = 44;
+  softShadow(x0, y0, X, Y, .26);
+  gface(fY(x0, X, Y, 0, h), '#e0705a', '#b84a36'); gface(fX(X, y0, Y, 0, h), '#c55a44', '#9c3a28');
+  gface([lift(X, y0, h), lift(X, Y, h), lift(X, 8.5, rz)], '#c55a44', '#b24c38', INK, 1.4);   // фронтон
+  for (let k = 1; k < 10; k++) seg(lift(x0 + k * .2, Y, 1), lift(x0 + k * .2, Y, h - 1), 'rgba(110,30,20,.3)', 1);
+  for (let k = 1; k < 5; k++) seg(lift(X, y0 + k * .2, 1), lift(X, y0 + k * .2, h - 1), 'rgba(90,25,15,.3)', 1);
+  for (const [x, y] of [[x0, Y], [X, Y], [X, y0]]) { vline(x, y, 0, h, INK, 4.2); vline(x, y, 0, h, '#f6eedd', 2.6); }   // белые уголки
+  gface(fY(6.72, 7.28, Y, 0, 12), '#5b3a22', '#3b2416', INK, 1.4);               // дверца для кур
+  gface([lift(6.8, Y, 0), lift(7.2, Y, 0), lift(7.2, Y + .45, 0), lift(6.8, Y + .45, 0)], '#d9a066', '#b5864f', INK, 1);   // лесенка
+  for (const f of [.15, .3]) seg(lift(6.8, Y + f, .2), lift(7.2, Y + f, .2), 'rgba(90,50,20,.5)', 1);
+  toonWin('y', Y, 6.18, 6.55, 13, 21, false);
+  gableRoofX(x0, y0, X, Y, h, rz, .15, '#9a6448', '#6e4230');
   // гнездо с яйцами на правой стене
-  drawBox(X, 8.15, .32, .7, 9, '#e8cf86', '#c9955c', '#a8783f', 3);
+  toonBox(X, 8.15, .32, .7, 9, ['#e8cf86', '#c9a55c'], ['#c9955c', '#a8783f'], ['#f2dc9a', '#e8cf86'], 3, 1.1);
   for (let k = 0; k < Math.min(S.coop.eggs, 4); k++) { const p = lift(X + .16, 8.28 + k * .15, 12); emoji('🥚', p.x, p.y - 2, 8); }
 }
 
 function drawBarn() {
   if (!cows()) return;
-  const x0 = 14, y0 = 1, X = 16, Y = 3, h = 34, o = 0.15, rz = 58, mid = 2;
-  poly([lift(x0 - o, y0 - o, h), lift(X + o, y0 - o, h), lift(X + o, mid, rz), lift(x0 - o, mid, rz)], '#6b3f2a');
-  drawBox(x0, y0, 2, 2, h, null, '#b8432f', '#9c3826');
-  ctx.strokeStyle = '#f4ead8'; ctx.lineWidth = 2.2;   // белые уголки
-  for (const [x, y] of [[x0, Y], [X, Y], [X, y0]]) vline(x, y, 0, h, '#f4ead8', 2.2);
+  const x0 = 14, y0 = 1, X = 16, Y = 3, h = 34, rz = 58, mid = 2;
+  softShadow(x0, y0, X, Y, .3);
+  gface(fY(x0, X, Y, 0, h), '#d65a43', '#a83c2a'); gface(fX(X, y0, Y, 0, h), '#b8432f', '#8c2e20');
+  gface([lift(X, y0, h), lift(X, Y, h), lift(X, mid, rz)], '#b8432f', '#a53b29', INK, 1.4);   // фронтон
+  for (let k = 1; k < 12; k++) seg(lift(x0 + k / 6, Y, 1), lift(x0 + k / 6, Y, h - 1), 'rgba(100,25,15,.3)', 1);
+  for (let k = 1; k < 12; k++) seg(lift(X, y0 + k / 6, 1), lift(X, y0 + k / 6, h - 1), 'rgba(80,20,12,.3)', 1);
+  for (const [x, y] of [[x0, Y], [X, Y], [X, y0]]) { vline(x, y, 0, h, INK, 4.5); vline(x, y, 0, h, '#f6eedd', 3); }
   // большие ворота на пастбище с белым крестом
   const d0 = 14.55, d1 = 15.45;
-  poly([lift(d0, Y, 0), lift(d1, Y, 0), lift(d1, Y, 24), lift(d0, Y, 24)], '#7a2e22', '#f4ead8', 2);
-  for (const [a, b] of [[[d0, 0], [d1, 24]], [[d0, 24], [d1, 0]]]) { const p = lift(a[0], Y, a[1]), q = lift(b[0], Y, b[1]); ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke(); }
-  poly([lift(X, y0, h), lift(X, Y, h), lift(X, mid, rz)], '#9c3826', '#f4ead8', 1.5);   // фронтон
-  poly([lift(X, 1.75, 38), lift(X, 2.25, 38), lift(X, 2.25, 48), lift(X, 1.75, 48)], S.night ? '#ffd76a' : '#e8cf86', '#f4ead8', 1.5);   // сеновал
-  poly([lift(x0 - o, Y + o, h), lift(X + o, Y + o, h), lift(X + o, mid, rz), lift(x0 - o, mid, rz)], '#8a5236', '#6b3f2a');
+  gface(fY(d0, d1, Y, 0, 25), '#a8402e', '#7a2e22', INK, 1.4);
+  ctx.lineCap = 'round';
+  for (const [a, b] of [[[d0, 0], [d1, 25]], [[d0, 25], [d1, 0]], [[d0, 0], [d0, 25]], [[d1, 0], [d1, 25]], [[d0, 25], [d1, 25]], [[d0, 12.5], [d1, 12.5]]]) {
+    const p = lift(a[0], Y, a[1]), q = lift(b[0], Y, b[1]); seg(p, q, INK, 4); seg(p, q, '#f6eedd', 2.4);
+  }
+  ctx.lineCap = 'butt';
+  toonWin('x', X, 1.72, 2.28, 38, 49, false, S.night ? null : ['#f2dc9a', '#d9b65a']);   // сеновал
+  gableRoofX(x0, y0, X, Y, h, rz, .15, '#9a6448', '#6e4230', 5);
 }
 function drawTrough() {
   if (!cows()) return;
   const full = S.night ? cowsFedTomorrow() > 0 : cowsFedToday() > 0;
-  drawBox(14.1, 6.5, .8, .32, 7, full ? '#e8cf86' : '#5b3a22', '#a8783f', '#8a5f30');
+  toonBox(14.1, 6.5, .8, .32, 7, ['#c9955c', '#a8783f'], ['#a8783f', '#8a5f30'], full ? ['#f2dc9a', '#e8cf86'] : ['#5b3a22', '#4a2e1a'], 0, 1.2);
   if (full) for (let k = 0; k < 3; k++) { const p = lift(14.3 + k * .22, 6.66, 9); emoji(k % 2 ? '🌾' : '🌻', p.x, p.y, 7); }
 }
+
+function drawFence(d) {
+  if (!(d.pen === 'barn' ? cows() : hens())) return;
+  const [ax, ay] = d.a, [bx, by] = d.b;
+  for (const z of [4, 9]) { const p = lift(ax, ay, z), q = lift(bx, by, z); seg(p, q, INK, 3.4); seg(p, q, '#e0b277', 2); }
+  for (const [x, y] of [[ax, ay], [bx, by]]) { vline(x, y, 0, 12.5, INK, 4.2); vline(x, y, 0, 12, '#b88550', 2.6); vline(x - .015, y, 1, 11.5, 'rgba(255,230,190,.55)', .9); }
+}
+
+// крона: тёмный контур, основной цвет, тень снизу справа и блики сверху слева
+function toonCrown(blobs, base, shade, light) {
+  for (const [x, y, r] of blobs) circle(x, y, r + 1.6, INK);
+  for (const [x, y, r] of blobs) circle(x, y, r, base);
+  for (const [x, y, r] of blobs) circle(x + r * .25, y + r * .3, r * .62, shade);
+  for (const [x, y, r] of blobs) circle(x - r * .28, y - r * .3, r * .45, light);
+}
+function toonTrunk(cx, cy, w, h) {
+  shape([{ x: cx - w, y: cy }, { x: cx + w, y: cy }, { x: cx + w * .7, y: cy - h }, { x: cx - w * .7, y: cy - h }]);
+  ctx.fillStyle = '#8a5530'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.4; ctx.stroke();
+  shape([{ x: cx + w * .2, y: cy }, { x: cx + w, y: cy }, { x: cx + w * .7, y: cy - h }, { x: cx + w * .1, y: cy - h }]); ctx.fillStyle = '#6b3f22'; ctx.fill();
+}
+function drawTree(d) {
+  const c = iso(d.x + .5, d.y + .5), s = d.s;
+  ctx.fillStyle = 'rgba(30,50,15,.25)'; ctx.beginPath(); ctx.ellipse(c.x + 3, c.y + 1, 17 * s, 7.5 * s, 0, 0, 7); ctx.fill();
+  toonTrunk(c.x, c.y, 3.6 * s, 24 * s);
+  toonCrown([[c.x - 10 * s, c.y - 28 * s, 12 * s], [c.x + 10 * s, c.y - 28 * s, 12 * s], [c.x, c.y - 40 * s, 15 * s]], '#4a9a42', '#3a7f35', '#6fc05f');
+}
+function drawOrchardTree(i, t) {
+  const tr = S.trees[i], s = ORCHARD_SLOTS[i], c = iso(s.x + .5, s.y + .5), T = TREES[tr.kind];
+  const k = tr.grow < 1 ? 0.3 + 0.6 * tr.grow : 1;
+  ctx.fillStyle = 'rgba(30,50,15,.25)'; ctx.beginPath(); ctx.ellipse(c.x + 3, c.y + 1, 15 * k, 7 * k, 0, 0, 7); ctx.fill();
+  toonTrunk(c.x, c.y, 3 * k, 27 * k);
+  toonCrown([[c.x - 9 * k, c.y - 30 * k, 11 * k], [c.x + 9 * k, c.y - 30 * k, 11 * k], [c.x, c.y - 40 * k, 14 * k]], T.leaf, darken(T.leaf, .8), T.leafLight);
+  if (tr.grow >= 1) {
+    const ripe = tr.fruit >= 1, n = ripe ? 8 : tr.fruit > .5 ? 5 : 0;
+    const spots = [[-12, -30], [-4, -34], [6, -29], [11, -36], [-7, -42], [3, -45], [-1, -25], [9, -24]];
+    for (let j = 0; j < n; j++) {
+      const x = c.x + spots[j][0], y = c.y + spots[j][1] + (ripe ? Math.sin(t * 2 + j) * .6 : 0), r = ripe ? 3.4 : 2.2;
+      circle(x, y, r + 1, INK); circle(x, y, r, ripe ? T.fruitColor : '#a6d65a'); circle(x - r * .35, y - r * .35, r * .35, 'rgba(255,255,255,.7)');
+    }
+  }
+}
+
+
 function drawCow(c, t) {
   const p = iso(c.x, c.y), lie = S.night && !c.moving;
   const bob = c.moving ? Math.abs(Math.sin(c.phase)) * 1 : 0;
@@ -2182,12 +2240,6 @@ function drawCow(c, t) {
   ctx.restore();
 }
 
-function drawFence(d) {
-  if (!(d.pen === 'barn' ? cows() : hens())) return;
-  const [ax, ay] = d.a, [bx, by] = d.b;
-  for (const z of [4, 9]) { const p = lift(ax, ay, z), q = lift(bx, by, z); ctx.strokeStyle = '#c99a5c'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke(); }
-  vline(ax, ay, 0, 12, '#8f6236', 2.6); vline(bx, by, 0, 12, '#8f6236', 2.6);
-}
 
 function drawHen(h, t) {
   const c = iso(h.x, h.y), sleep = S.night && !h.moving;
@@ -2210,21 +2262,6 @@ function drawHen(h, t) {
   ctx.restore();
 }
 
-function drawOrchardTree(i, t) {
-  const tr = S.trees[i], s = ORCHARD_SLOTS[i], c = iso(s.x + .5, s.y + .5), T = TREES[tr.kind];
-  const k = tr.grow < 1 ? 0.3 + 0.6 * tr.grow : 1;
-  ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(c.x, c.y, 15 * k, 7 * k, 0, 0, 7); ctx.fill();
-  ctx.fillStyle = '#7a4a2a'; ctx.fillRect(c.x - 2.5 * k, c.y - 26 * k, 5 * k, 26 * k);
-  circle(c.x - 9 * k, c.y - 30 * k, 11 * k, T.leaf);
-  circle(c.x + 9 * k, c.y - 30 * k, 11 * k, T.leaf);
-  circle(c.x, c.y - 40 * k, 14 * k, T.leaf);
-  circle(c.x - 4 * k, c.y - 44 * k, 5 * k, T.leafLight);
-  if (tr.grow >= 1) {
-    const ripe = tr.fruit >= 1, n = ripe ? 8 : tr.fruit > .5 ? 5 : 0;
-    const spots = [[-12, -30], [-4, -34], [6, -29], [11, -36], [-7, -42], [3, -45], [-1, -25], [9, -24]];
-    for (let j = 0; j < n; j++) circle(c.x + spots[j][0], c.y + spots[j][1] + (ripe ? Math.sin(t * 2 + j) * .6 : 0), ripe ? 3.2 : 2, ripe ? T.fruitColor : '#a6d65a');
-  }
-}
 
 // Теплица: стеклянные стенки (задние — до грядок, передние — после) и прозрачная двускатная крыша
 const GH_H = 30;
