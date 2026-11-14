@@ -337,7 +337,16 @@ function applyLots() {
 const tuft = Array.from({ length: H }, () => Array.from({ length: W }, () => rnd()));
 
 // ================== СОСТОЯНИЕ ==================
-const SAVE_KEY = 'farm-save-v1';
+// Три ячейки сохранений: первая — прежний сейв (ключ не меняется), вторая и третья — свои ключи
+const SLOTS = 3;
+const slotKey = n => n === 1 ? 'farm-save-v1' : 'farm-save-v1-slot' + n;
+let SLOT = 1;
+try { SLOT = Math.min(SLOTS, Math.max(1, parseInt(localStorage.getItem('farm-slot')) || 1)); } catch {}
+const SAVE_KEY = slotKey(SLOT);
+function slotNames() {
+  let a = []; try { a = JSON.parse(localStorage.getItem('farm-slot-names')) || []; } catch {}
+  return Array.from({ length: SLOTS }, (_, i) => (typeof a[i] === 'string' && a[i].trim()) || `Ферма ${i + 1}`);
+}
 function newState() {
   return {
     day: 1, t: 0, night: false, coins: 30,
@@ -1728,6 +1737,12 @@ const ICON_DRAW = {
     K.R(4, 11, 56, 8, 3, wood); K.R(4, 22, 56, 8, 3, wood);
     K.LL(10, 44, 9, 58, '#a87a48', 3); K.LL(54, 44, 55, 58, '#a87a48', 3); K.LL(30, 44, 30, 54, '#a87a48', 2.5);
     K.P([[6, 35], [58, 35], [61, 44], [3, 44]], wood); K.L(9, 39, 55, 39, 'rgba(120,70,30,.35)', 1.5); K.H(14, 14, 6, 1.5, .5); },
+  '💾': K => { K.D(c => { c.moveTo(10, 6); c.lineTo(48, 6); c.lineTo(58, 16); c.lineTo(58, 54); c.quadraticCurveTo(58, 58, 54, 58); c.lineTo(10, 58); c.quadraticCurveTo(6, 58, 6, 54); c.lineTo(6, 10); c.quadraticCurveTo(6, 6, 10, 6); }, K.G(0, 6, 0, 58, '#6fa8e8', '#3b6fb8'));
+    K.R(17, 6, 28, 18, 2, '#e9eef4', 2.5); K.R(35, 9, 6, 12, 1, '#3b6fb8', 0); K.R(14, 34, 36, 24, 3, '#fffdf6', 2.5);
+    K.L(19, 42, 45, 42, 'rgba(90,110,140,.5)', 2); K.L(19, 49, 45, 49, 'rgba(90,110,140,.5)', 2); K.H(14, 14, 3, 5, .45); },
+  '📋': K => { K.R(10, 10, 44, 50, 5, K.G(0, 10, 0, 60, '#d9a066', '#b07a46')); K.R(16, 18, 32, 36, 2, '#fffdf6', 2.5);
+    for (const y of [27, 35, 43]) K.L(21, y, 43, y, 'rgba(90,70,45,.45)', 2.2);
+    K.R(22, 4, 20, 12, 3, K.G(0, 4, 0, 16, '#eef2f6', '#9aa6b2')); K.C(32, 8, 2, '#6d7782', 0); },
   '🧾': K => { K.D(c => { c.moveTo(12, 4); c.lineTo(52, 4); c.lineTo(52, 58); for (let x = 52; x > 12; x -= 8) { c.lineTo(x - 4, 54); c.lineTo(x - 8, 58); } c.closePath(); }, K.G(0, 4, 0, 58, '#fffdf6', '#efe6d4'));
     for (const y of [14, 22, 30, 38]) K.L(20, y, y === 38 ? 34 : 44, y, 'rgba(90,58,36,.55)', 3); K.L(38, 46, 44, 46, '#3e9b3a', 3.5); },
   '📖': K => { K.D(c => { c.moveTo(32, 14); c.quadraticCurveTo(18, 8, 4, 12); c.lineTo(4, 54); c.quadraticCurveTo(18, 50, 32, 56); c.quadraticCurveTo(46, 50, 60, 54); c.lineTo(60, 12); c.quadraticCurveTo(46, 8, 32, 14); }, '#c0504d');
@@ -3008,7 +3023,7 @@ function openProfile() {
   const plotsUsed = S.plots.length;
   $('sheet').dataset.view = ''; $('sheet').innerHTML = `<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
       <div style="font-size:44px;width:68px;height:68px;border-radius:50%;background:#f0e5cb;display:flex;align-items:center;justify-content:center">🧑‍🌾</div>
-      <div><h2 style="margin:0">Фермер</h2><div style="color:#7a6650">Солнечная ферма · день ${S.day}</div></div></div>
+      <div><h2 style="margin:0">Фермер</h2><div style="color:#7a6650">${esc(slotNames()[SLOT - 1])} · день ${S.day}</div></div></div>
     ${stat('💰 Монет сейчас', S.coins)}${stat('💵 Заработано всего', L.earned)}${stat('🧍 Покупателей обслужено', L.served)}
     ${stat('🧺 Собрано урожая', L.harvested)}${stat('🥚 Собрано яиц', L.eggs)}${stat('🥛 Надоено молока', L.milk)}${stat('🍚 Смолото муки', L.flour || 0)}${stat('🧀 Сварено сыра', L.cheese || 0)}${stat('🥖 Испечено', L.baked || 0)}${stat('📬 Заказов выполнено', L.orders || 0)}${stat('🌱 Грядок', plotsUsed)}${stat('🏡 Грядок в теплице', S.gh.length)}
     ${stat('🌳 Деревьев', S.trees.filter(t => t.kind).length)}${stat('🐔 Кур', hens())}${stat('🐄 Коров', cows())}${stat('🧑‍🌾 Помощников', S.up.helper)}
@@ -3091,12 +3106,57 @@ function openMenu() {
       <button onclick="${S.night ? 'openNight(false)' : "toast('🌙 Улучшения покупаются ночью')"}">⬆️ Улучшения ${S.night ? '' : '<small style="color:#7a6650">— ночью</small>'}</button>
       ${S.up.helper ? '<button onclick="openHelpers()">🧑‍🌾 Помощники</button>' : ''}
       <button onclick="openProfile()">👤 Профиль</button>
+      <button onclick="openSaves()">💾 Сохранения <small style="color:#7a6650">— ${esc(slotNames()[SLOT - 1])}</small></button>
       <button onclick="openEconomy()">💰 Экономика</button>
       <button onclick="openHelp()">📖 Как играть</button>
       <button onclick="openCheats()">🛠 Чит-меню <small style="color:#7a6650">— для тестов</small></button>
       <button style="color:#b0503a" onclick="resetGame(this)">🔄 Начать заново</button>
     </div><button class="wide" style="width:100%;margin-top:12px" onclick="closeNight()">Закрыть</button>`;
   $('overlay').classList.add('show');
+}
+const esc = t => String(t).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
+function slotInfo(n) {   // коротко о ферме в ячейке — без загрузки в игру
+  if (n === SLOT) return S;
+  try { return JSON.parse(localStorage.getItem(slotKey(n))); } catch { return null; }
+}
+function openSaves() {
+  if (S) save();
+  const names = slotNames();
+  let h = `<h2>💾 Сохранения</h2><div style="font-size:13px;color:#7a6650;margin:-4px 0 10px">У каждой ячейки своя ферма. Игра сохраняется сама — переключайся когда угодно.</div>`;
+  for (let n = 1; n <= SLOTS; n++) {
+    const d = slotInfo(n), cur = n === SLOT;
+    h += `<div style="background:${cur ? '#fff4d6' : '#f6eedc'};border:2px solid ${cur ? '#e0a83a' : '#e6d7b8'};border-radius:14px;padding:10px 12px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <input value="${esc(names[n - 1])}" maxlength="20" onchange="renameSlot(${n}, this.value)" aria-label="Название ячейки ${n}"
+          style="flex:1;min-width:0;font:800 16px system-ui,sans-serif;color:#3b2416;background:transparent;border:none;border-bottom:1.5px dashed #c9b48a;padding:2px 0">
+        ${cur ? '<span style="font-size:12px;font-weight:800;color:#b07a1a;white-space:nowrap">▶ играешь</span>' : ''}
+      </div>
+      <div style="font-size:13px;color:#7a6650;margin:6px 0 8px">${d ? `День ${d.day} · 💰 ${d.coins} · заработано ${d.life?.earned ?? 0}` : 'Пусто — здесь можно начать новую ферму'}</div>
+      ${cur ? '' : `<div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="wide" style="flex:1" onclick="switchSlot(${n})">${d ? '▶ Играть' : '🌱 Новая ферма'}</button>
+        ${d ? '' : `<button class="wide" style="flex:1;background:#f0e5cb;color:#3b2416" onclick="copyToSlot(${n})">📋 Копия текущей</button>`}
+      </div>`}
+    </div>`;
+  }
+  h += `<button class="wide" style="width:100%;margin-top:2px" onclick="openMenu()">Назад</button>`;
+  $('sheet').dataset.view = 'saves'; $('sheet').innerHTML = h;
+  $('overlay').classList.add('show');
+}
+function renameSlot(n, v) {
+  const a = slotNames(); a[n - 1] = v.trim().slice(0, 20) || `Ферма ${n}`;
+  try { localStorage.setItem('farm-slot-names', JSON.stringify(a)); } catch {}
+}
+function switchSlot(n) {
+  save();   // текущая ферма остаётся в своей ячейке
+  try { localStorage.setItem('farm-slot', String(n)); } catch { toast('Не получилось переключить ячейку'); return; }
+  location.reload();
+}
+function copyToSlot(n) {   // только в пустую ячейку — чужую ферму не затираем
+  if (localStorage.getItem(slotKey(n))) { toast('Ячейка уже занята'); return; }
+  save();
+  try { localStorage.setItem(slotKey(n), JSON.stringify(S)); } catch { toast('Не получилось скопировать'); return; }
+  const a = slotNames(); if (a[n - 1] === `Ферма ${n}`) renameSlot(n, `${a[SLOT - 1]} (копия)`.slice(0, 20));
+  toast(`📋 Скопировано в «${slotNames()[n - 1]}»`); openSaves();
 }
 function openHelp() {
   $('sheet').dataset.view = ''; $('sheet').innerHTML = `<h2>📖 Как играть</h2><div style="font-size:14px;line-height:1.5">
