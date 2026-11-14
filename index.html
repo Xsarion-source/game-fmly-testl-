@@ -1683,34 +1683,82 @@ function drawStump(d) {   // пенёк: кора по бокам, годичн�
   ctx.strokeStyle = 'rgba(140,90,40,.6)'; ctx.lineWidth = .9; ctx.beginPath(); ctx.ellipse(c.x, c.y - 5, 4, 1.9, 0, 0, 7); ctx.stroke();
   circle(c.x, c.y - 5, 1, '#a8743f');
 }
-// Мельница: каменная башня, черепичный шатёр и крылья — крутятся, пока мелет
+// Мельница: классическая голландская — кирпичный низ, восьмигранная соломенная башня с галереей,
+// шапка-«лодочка» и четыре решётчатых крыла (крутятся, пока мелет)
+const MILL_C = { x: 19, y: 6 };
+const hexRGB = h => [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16));
+const shadeHex = (h, f) => '#' + hexRGB(h).map(v => Math.max(0, Math.min(255, Math.round(v * f))).toString(16).padStart(2, '0')).join('');
+// восьмигранный усечённый конус от z0 (радиус r0) до z1 (радиус r1); видимые грани с освещением слева
+function octaFrustum(z0, z1, r0, r1, base, deco) {
+  const P = (k, z, r) => { const a = (k * 45 + 22.5) * Math.PI / 180; return lift(MILL_C.x + r * Math.cos(a), MILL_C.y + r * Math.sin(a), z); };
+  for (let k = 0; k < 8; k++) {
+    const m = (k * 45 + 45) * Math.PI / 180, nx = Math.cos(m), ny = Math.sin(m);
+    if (nx + ny < -.01) continue;   // грань смотрит от нас
+    const f = 1.08 - .28 * (nx - ny) / Math.SQRT2;   // справа темнее
+    const pts = [P(k, z0, r0), P(k + 1, z0, r0), P(k + 1, z1, r1), P(k, z1, r1)];
+    gface(pts, shadeHex(base, f * 1.05), shadeHex(base, f * .82), INK, 1.3);
+    if (deco) deco(pts, k, f);
+  }
+}
 function drawMill(d, t) {
   if (!S.up.mill) return;
-  const x0 = 18.2, y0 = 5.2, w = 1.6, h = 46, X = x0 + w, Y = y0 + w;
-  softShadow(x0, y0, X, Y, .3);
-  gface(fY(x0, X, Y, 0, h), '#f2e8d4', '#cfc0a2'); gface(fX(X, y0, Y, 0, h), '#dccdb0', '#b5a483');
-  for (let r = 0, z = 7; z < h; z += 7, r++) {   // каменная кладка
-    seg(lift(x0, Y, z), lift(X, Y, z), 'rgba(120,100,70,.32)', 1); seg(lift(X, y0, z), lift(X, Y, z), 'rgba(100,85,60,.32)', 1);
-    for (let k = (r % 2 ? .2 : .4); k < w; k += .4) { seg(lift(x0 + k, Y, z - 7), lift(x0 + k, Y, z), 'rgba(120,100,70,.25)', 1); seg(lift(X, y0 + k, z - 7), lift(X, y0 + k, z), 'rgba(100,85,60,.25)', 1); }
+  const { x: cx, y: cy } = MILL_C;
+  softShadow(18.1, 5.1, 19.9, 6.9, .32);
+  // кирпичный цоколь
+  octaFrustum(0, 14, .84, .8, '#c4673f', (p) => {
+    for (let z = 3.5; z < 14; z += 3.5) seg(mix(p[0], p[3], z / 14), mix(p[1], p[2], z / 14), 'rgba(110,45,20,.35)', 1);
+  });
+  // дверь на фасаде к тропинке
+  const dz = (a, z) => lift(cx + Math.cos(a) * .82, cy + Math.sin(a) * .82, z);
+  const a0 = 80 * Math.PI / 180, a1 = 100 * Math.PI / 180;
+  gface([dz(a0, 0), dz(a1, 0), dz(a1, 12.5), dz(a0, 12.5)], '#3f6b4a', '#2c4e35', INK, 1.6);
+  const hd = dz(88 * Math.PI / 180, 7); circle(hd.x, hd.y, 1.3, '#ffd54a');
+  // нижняя часть башни (под галереей)
+  const rz = z => .7 - (z - 14) / 66 * .34;
+  octaFrustum(14, 30, rz(14), rz(30), '#c9a46a', (p) => { for (const f of [.3, .6]) seg(mix(p[0], p[1], f), mix(p[3], p[2], f), 'rgba(120,85,40,.35)', 1); });
+  // галерея: настил и перила
+  const G = 30, gr = .98, ring = (r, z) => Array.from({ length: 8 }, (_, k) => { const a = (k * 45 + 22.5) * Math.PI / 180; return lift(cx + r * Math.cos(a), cy + r * Math.sin(a), z); });
+  const deck = ring(gr, G), under = ring(gr, G - 3);
+  for (let k = 0; k < 8; k++) { const m = (k * 45 + 45) * Math.PI / 180; if (Math.cos(m) + Math.sin(m) < 0) continue;
+    gface([under[k], under[(k + 1) % 8], deck[(k + 1) % 8], deck[k]], '#6b4a30', '#4f3420', INK, 1.1); }
+  gface(deck, '#a87a48', '#8a6036', INK, 1.4);
+  // верхняя часть башни: солома с вертикальной штриховкой и белыми окнами
+  octaFrustum(G, 80, rz(G), rz(80), '#c9a46a', (p, k) => {
+    for (const f of [.2, .4, .6, .8]) seg(mix(p[0], p[1], f), mix(p[3], p[2], f), 'rgba(120,85,40,.3)', 1);
+    if (k === 1 || k === 0) {   // окошко
+      const q = (u, v) => mix(mix(p[0], p[1], u), mix(p[3], p[2], u), v);
+      gface([q(.3, .35), q(.7, .35), q(.7, .6), q(.3, .6)], S.night ? '#fff3b8' : '#dff4ff', S.night ? '#ffb84d' : '#7fbfe6', '#f6f1e6', 2.4);
+      shape([q(.3, .35), q(.7, .35), q(.7, .6), q(.3, .6)]); ctx.strokeStyle = INK; ctx.lineWidth = .9; ctx.stroke();
+    }
+  });
+  // перила галереи спереди
+  const rail = ring(gr - .04, G + 9), post = ring(gr - .04, G);
+  for (let k = 0; k < 8; k++) { const m = (k * 45 + 45) * Math.PI / 180; if (Math.cos(m) + Math.sin(m) < -.5) continue;
+    const j = (k + 1) % 8; seg(rail[k], rail[j], INK, 3.4); seg(rail[k], rail[j], '#f6f1e6', 1.9);
+    for (const v of [post[k], mix(post[k], post[j], .5)]) { const top = { x: v.x, y: v.y - 9 }; seg(v, top, INK, 2.6); seg(v, top, '#f6f1e6', 1.3); } }
+  // шапка-«лодочка»
+  const capC = lift(cx, cy, 80), rx = 17, ry = 8.5;
+  ctx.beginPath(); ctx.ellipse(capC.x, capC.y, rx, ry, 0, 0, Math.PI); ctx.lineTo(capC.x - rx, capC.y);
+  ctx.ellipse(capC.x, capC.y - 2, rx, ry + 9, 0, Math.PI, 0); ctx.closePath();
+  const cg = ctx.createLinearGradient(capC.x - rx, 0, capC.x + rx, 0); cg.addColorStop(0, '#8a6a50'); cg.addColorStop(.5, '#6b5040'); cg.addColorStop(1, '#4d3a2e');
+  ctx.fillStyle = cg; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.6; ctx.stroke();
+  for (const f of [-.45, 0, .45]) { ctx.strokeStyle = 'rgba(255,240,220,.18)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(capC.x + rx * f, capC.y + ry * Math.sqrt(1 - f * f)); ctx.quadraticCurveTo(capC.x + rx * f * .7, capC.y - ry - 5, capC.x, capC.y - ry - 11); ctx.stroke(); }
+  ctx.strokeStyle = '#f6f1e6'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(capC.x, capC.y, rx, ry, 0, 0, Math.PI); ctx.stroke();   // белая кромка
+  // крылья: в плоскости фасада, решётка с одной стороны маха
+  const hub = lift(cx, cy + .48, 84), spin = S.prod.mill.q && S.started && !S.night ? t * (1.2 * S.up.mill) : 0.35;
+  for (let k = 0; k < 4; k++) {
+    const a = spin + k * Math.PI / 2, ca = Math.cos(a), sa = Math.sin(a), L = 1.6, Z = 60;
+    const at = s => ({ x: hub.x + ca * s * L * TW / 2, y: hub.y + ca * s * L * TH / 2 - sa * s * Z });
+    const side = (p, m) => ({ x: p.x - sa * m * .2 * TW / 2, y: p.y - sa * m * .2 * TH / 2 - ca * m * 9 });
+    const s0 = at(.22), s1 = at(1);
+    const sail = [s0, s1, side(s1, 1), side(s0, 1)];
+    shape(sail); ctx.fillStyle = 'rgba(252,246,230,.82)'; ctx.fill();
+    for (let j = 1; j < 7; j++) { const f = j / 7; seg(mix(s0, s1, f), mix(side(s0, 1), side(s1, 1), f), '#7a5634', 1); }
+    seg(side(s0, .5), side(s1, .5), '#7a5634', 1);
+    shape(sail); ctx.strokeStyle = INK; ctx.lineWidth = 1.3; ctx.stroke();
+    seg(hub, at(1.04), INK, 4); seg(hub, at(1.04), '#a8603f', 2.4);   // махи
   }
-  gface(fY(x0, X, Y, 0, 5), '#a29b8f', '#7d766b', INK, 1.1); gface(fX(X, y0, Y, 0, 5), '#8d867a', '#6a645a', INK, 1.1);   // цоколь
-  gface(fY(18.72, 19.28, Y, 0, 17), '#b07a46', '#7e5230', '#5b3a22', 2.2);   // дверь к тропинке
-  seg(lift(19, Y, 1), lift(19, Y, 16), 'rgba(70,40,20,.45)', 1);
-  toonWin('x', X, 5.75, 6.25, 24, 33, false);
-  const apex = lift(19, 6, h + 28);
-  toonRoof(x0 - .12, y0 - .12, X + .12, Y + .12, h, apex);
-  const hub = lift(19, Y + .06, h - 6), spin = S.up.mill && S.prod.mill.q && S.started && !S.night ? t * (1.5 * S.up.mill) : 0.3;
-  for (let k = 0; k < 4; k++) {   // крыло в плоскости фасада: ось x и вертикаль
-    const a = spin + k * Math.PI / 2, cx = Math.cos(a), cz = Math.sin(a), L = 1.1, Z = 38;
-    const tip = { x: hub.x + cx * L * TW / 2, y: hub.y + cx * L * TH / 2 - cz * Z };
-    const sx = -cz * .17, sz = cx * 6.5;   // ширина лопасти
-    const p1 = { x: hub.x + cx * .22 * TW / 2, y: hub.y + cx * .22 * TH / 2 - cz * Z * .22 };
-    const q = (p, m) => ({ x: p.x + sx * m * TW / 2, y: p.y + sx * m * TH / 2 - sz * m });
-    gface([p1, tip, q(tip, 1), q(p1, 1)], '#fffaf0', '#e6dcc6', INK, 1.3);
-    for (const f of [.4, .6, .8]) seg(mix(p1, tip, f), mix(q(p1, 1), q(tip, 1), f), 'rgba(120,90,60,.45)', .9);   // решётка паруса
-    seg(hub, tip, INK, 3.4); seg(hub, tip, '#9e6a3c', 2);
-  }
-  circle(hub.x, hub.y, 4.6, INK); circle(hub.x, hub.y, 3.4, '#8a5530'); circle(hub.x - 1, hub.y - 1, 1.1, '#d7a86c');
+  circle(hub.x, hub.y, 5, INK); circle(hub.x, hub.y, 3.8, '#a8603f'); circle(hub.x - 1, hub.y - 1, 1.2, '#f0c08a');
 }
 // Сыроварня: кремовый домик с черепичной крышей, трубой и вывеской-сыром
 function drawDairy(d, t) {
@@ -1773,7 +1821,7 @@ function drawProdBubbles() {
     let text = null, ok = false;
     if (st.out) { text = `${GOODS[P.out].e}${st.out}`; ok = true; }
     else if (!st.q && !S.night) text = `${GOODS[P.in].e}?`;
-    if (text) drawBubbleAt(k === 'mill' ? lift(19, 6, 104) : lift(18, 9, 66), text, ok);
+    if (text) drawBubbleAt(k === 'mill' ? lift(19, 6, 146) : lift(18, 9, 66), text, ok);
   }
 }
 
