@@ -1802,58 +1802,169 @@ function textOnX(x0, y, z, wTiles, text, color, size) {
   ctx.restore();
 }
 
+// ---------- Объёмный мультяшный стиль: градиенты, контур, мягкие тени ----------
+const INK = '#5a3a24';
+function shape(pts) { ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.closePath(); }
+function gface(pts, c1, c2, stroke = INK, lw = 1.5) {   // грань с вертикальным градиентом: сверху светлее
+  const ys = pts.map(p => p.y), g = ctx.createLinearGradient(0, Math.min(...ys), 0, Math.max(...ys));
+  g.addColorStop(0, c1); g.addColorStop(1, c2);
+  shape(pts); ctx.fillStyle = g; ctx.fill();
+  if (stroke) { ctx.lineJoin = 'round'; ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.stroke(); }
+}
+const fY = (x0, x1, y, z0, z1) => [lift(x0, y, z0), lift(x1, y, z0), lift(x1, y, z1), lift(x0, y, z1)];   // фасад вдоль x
+const fX = (x, y0, y1, z0, z1) => [lift(x, y0, z0), lift(x, y1, z0), lift(x, y1, z1), lift(x, y0, z1)];   // фасад вдоль y
+function seg(a, b, col, lw) { ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
+const mix = (a, b, f) => ({ x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f });
+function softShadow(x0, y0, x1, y1, a = .32) {   // мягкая тень на траве, чуть вправо-вниз
+  const c = iso((x0 + x1) / 2 + .3, (y0 + y1) / 2 + .25), rx = ((x1 - x0) + (y1 - y0)) * TW / 4 + 16;
+  ctx.save(); ctx.translate(c.x, c.y); ctx.scale(1, .5);
+  const g = ctx.createRadialGradient(0, 0, rx * .4, 0, 0, rx);
+  g.addColorStop(0, `rgba(30,50,15,${a})`); g.addColorStop(1, 'rgba(30,50,15,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, rx, 0, 7); ctx.fill(); ctx.restore();
+}
+function toonBox(x0, y0, w, d, h, cl, cr, top, z0 = 0, lw = 1.5) {   // cl/cr/top — пары [свет, тень]
+  const X = x0 + w, Y = y0 + d, H = z0 + h;
+  gface(fY(x0, X, Y, z0, H), cl[0], cl[1], INK, lw);
+  gface(fX(X, y0, Y, z0, H), cr[0], cr[1], INK, lw);
+  if (top) gface([lift(x0, y0, H), lift(X, y0, H), lift(X, Y, H), lift(x0, Y, H)], top[0], top[1], INK, lw);
+}
+// окно: рама, стекло с бликом, переплёт, подоконник и (по желанию) зелёные ставни
+function toonWin(side, c, a0, a1, z0, z1, shutters, glow) {
+  const F = side === 'y' ? (a, b, za, zb) => fY(a, b, c, za, zb) : (a, b, za, zb) => fX(c, a, b, za, zb);
+  const P = side === 'y' ? (a, z) => lift(a, c, z) : (a, z) => lift(c, a, z);
+  const w = a1 - a0;
+  if (shutters) for (const [s0, s1] of [[a0 - w * .36, a0 - .02], [a1 + .02, a1 + w * .36]]) {
+    gface(F(s0, s1, z0, z1), '#86c776', '#4e8f46', INK, 1.1);
+    seg(P((s0 + s1) / 2, z0 + 2), P((s0 + s1) / 2, z1 - 2), 'rgba(40,80,35,.45)', 1);
+  }
+  const g = glow || (S.night ? ['#fff3b8', '#ffb84d'] : ['#e4f6ff', '#6fb8e6']);
+  gface(F(a0, a1, z0, z1), g[0], g[1], '#7a4a2a', 2.6);
+  if (!S.night && !glow) { ctx.globalAlpha = .6; shape([P(a0 + w * .1, z1 - 2), P(a0 + w * .34, z1 - 2), P(a0 + w * .1, z0 + (z1 - z0) * .3)]); ctx.fillStyle = '#fff'; ctx.fill(); ctx.globalAlpha = 1; }
+  seg(P((a0 + a1) / 2, z0), P((a0 + a1) / 2, z1), '#7a4a2a', 1.6);
+  seg(P(a0, (z0 + z1) / 2), P(a1, (z0 + z1) / 2), '#7a4a2a', 1.6);
+  const o = .1, sill = side === 'y'
+    ? [lift(a0 - .05, c, z0), lift(a1 + .05, c, z0), lift(a1 + .05, c + o, z0), lift(a0 - .05, c + o, z0)]
+    : [lift(c, a0 - .05, z0), lift(c, a1 + .05, z0), lift(c + o, a1 + .05, z0), lift(c + o, a0 - .05, z0)];
+  gface(sill, '#fff4de', '#e2c497', INK, 1);
+  const front = side === 'y' ? fY(a0 - .05, a1 + .05, c + o, z0 - 2.5, z0) : fX(c + o, a0 - .05, a1 + .05, z0 - 2.5, z0);
+  gface(front, '#d9b583', '#b8925f', INK, 1);
+}
+// четырёхскатная крыша с толщиной карниза, рядами черепицы и бликом на ребре
+function toonRoof(x0, y0, X, Y, h, apex) {
+  const A = lift(x0, y0, h), B = lift(X, y0, h), C = lift(X, Y, h), D = lift(x0, Y, h);
+  gface([A, B, apex], '#b84a40', '#9c3a32', INK, 1.4); gface([A, D, apex], '#c9554a', '#a8433a', INK, 1.4);
+  const th = 5, dn = p => ({ x: p.x, y: p.y + th });
+  gface([D, C, dn(C), dn(D)], '#9c4034', '#7a2e26', INK, 1.3);
+  gface([C, B, dn(B), dn(C)], '#86352c', '#66261f', INK, 1.3);
+  gface([D, C, apex], '#ec7464', '#c84c40', null); gface([C, B, apex], '#d05a4e', '#ad4036', null);
+  for (let k = 1; k < 7; k++) {   // черепица: ряды параллельно карнизу, с тенью и светлой кромкой
+    const f = k / 7;
+    for (const [P1, P2, dark] of [[D, C, 'rgba(130,35,28,.4)'], [C, B, 'rgba(100,25,20,.42)']]) {
+      const a = mix(P1, apex, f), b = mix(P2, apex, f);
+      seg(a, b, dark, 1.4); seg({ x: a.x, y: a.y + 1.6 }, { x: b.x, y: b.y + 1.6 }, 'rgba(255,215,195,.22)', 1);
+    }
+  }
+  seg(C, apex, 'rgba(255,225,205,.45)', 1.6);   // блик на переднем ребре
+  shape([D, C, B, apex]); ctx.lineJoin = 'round'; ctx.strokeStyle = INK; ctx.lineWidth = 1.7; ctx.stroke();
+  seg(C, apex, INK, 1.2);
+}
+function smoke(p, t, speed) {
+  for (let k = 0; k < 3; k++) { const f = (t * speed + k / 3) % 1; ctx.globalAlpha = .5 * (1 - f); circle(p.x + Math.sin(t + k) * 3, p.y - f * 26, 3 + f * 6, '#ffffff'); }
+  ctx.globalAlpha = 1;
+}
+
 // Дом: изба → с верандой и трубой → двухэтажный. Уют 5 — флюгер и фонарики
 function drawHouse(d, t) {
-  const L = S.up.house || 0, hw = L >= 2 ? 66 : 40, glass = S.night ? '#ffd76a' : '#a8dcff';
-  if (L >= 1) drawBox(1.85, 4, 2.3, .6, 3, '#c99a62', '#a87a48', '#8f6538');   // настил веранды
-  drawBox(2, 2, 2, 2, hw, null, '#efd9ae', '#d9bd8a');
-  if (L >= 2) {   // второй этаж: брёвнышко-пояс
-    ctx.strokeStyle = 'rgba(120,80,40,.45)'; ctx.lineWidth = 2; ctx.beginPath();
-    const a = lift(2, 4, 40), b = lift(4, 4, 40), c = lift(4, 2, 40); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.stroke();
+  const L = S.up.house || 0, hw = L >= 2 ? 74 : 40;
+  softShadow(1.8, 1.8, 4.4, 4.6);
+  if (L >= 1) {   // настил веранды: доски с тенью
+    toonBox(1.85, 4, 2.3, .6, 3, ['#c99a62', '#a87a48'], ['#a87a48', '#8f6538'], ['#e2b679', '#c99a5e'], 0, 1.2);
+    for (const y of [4.15, 4.3, 4.45]) seg(lift(1.85, y, 3), lift(4.15, y, 3), 'rgba(120,80,40,.35)', 1);
   }
-  const winY = (x0, x1, z0, z1) => poly([lift(x0, 4, z0), lift(x1, 4, z0), lift(x1, 4, z1), lift(x0, 4, z1)], glass, '#8a5a36', 2);
-  const winX = (y0, y1, z0, z1) => poly([lift(4, y0, z0), lift(4, y1, z0), lift(4, y1, z1), lift(4, y0, z1)], glass, '#8a5a36', 2);
-  poly([lift(2.55, 4, 0), lift(3.1, 4, 0), lift(3.1, 4, 27), lift(2.55, 4, 27)], '#8a5a36', '#6b4327');
-  const knob = lift(3.0, 4, 13); circle(knob.x, knob.y, 1.5, '#f4d35e');
-  winX(2.55, 3.35, 15, 30);
-  if (L >= 1 || S.up.bakery) winY(3.35, 3.85, 14, 27);
-  if (L >= 2) { winY(2.25, 2.85, 46, 60); winY(3.2, 3.8, 46, 60); winX(2.25, 2.85, 46, 60); winX(3.2, 3.8, 46, 60); }
-  const o = 0.18, x0 = 2 - o, y0 = 2 - o, X = 4 + o, Y = 4 + o, h = hw - 2, apex = lift(3, 3, hw + 34);
-  if (L >= 1) {   // труба — за передними скатами
-    drawBox(3.35, 2.25, .32, .32, 30, '#7a4430', '#9c5a40', '#844a34', hw + 4);
-    if (S.started && !S.night) { const ch = lift(3.5, 2.4, hw + 36);
-      for (let k = 0; k < 3; k++) { const f = (t * .6 + k / 3) % 1; ctx.globalAlpha = .45 * (1 - f); circle(ch.x + Math.sin(t + k) * 3, ch.y - f * 24, 3 + f * 5, '#ffffff'); }
-      ctx.globalAlpha = 1; }
+  // стены: светлый фасад слева, тень справа; внизу — каменный цоколь
+  gface(fY(2, 4, 4, 0, hw), '#fbecc9', '#e2c595'); gface(fX(4, 2, 4, 0, hw), '#e6cc9c', '#c6a46f');
+  for (let z = 10; z < hw - 2; z += 8) {   // брёвнышки-обшивка
+    seg(lift(2, 4, z), lift(4, 4, z), 'rgba(150,105,60,.22)', 1.2);
+    seg(lift(4, 2, z), lift(4, 4, z), 'rgba(120,85,45,.25)', 1.2);
   }
-  const A = lift(x0, y0, h), B = lift(X, y0, h), C = lift(X, Y, h), D = lift(x0, Y, h);
-  poly([A, B, apex], '#a8403a'); poly([A, D, apex], '#b5473f');
-  poly([D, C, apex], '#d0574c', '#a8403a'); poly([C, B, apex], '#bb4a42', '#a8403a');
+  gface(fY(2, 4, 4, 0, 6), '#b9b2a6', '#8f887c', INK, 1.2); gface(fX(4, 2, 4, 0, 6), '#a29b8f', '#7d766b', INK, 1.2);
+  for (const x of [2.5, 3.1, 3.6]) seg(lift(x, 4, 0), lift(x, 4, 6), 'rgba(60,55,50,.35)', 1);
+  for (const y of [2.5, 3.1, 3.6]) seg(lift(4, y, 0), lift(4, y, 6), 'rgba(60,55,50,.35)', 1);
+  gface(fY(3.88, 4, 4, 0, hw), '#c99a62', '#9e7140', INK, 1); gface(fX(4, 3.88, 4, 0, hw), '#b0844f', '#8a6236', INK, 1);   // угловой брус
+  if (L >= 2) {   // межэтажный пояс
+    gface(fY(2, 4, 4, 38, 42), '#c99a62', '#a87a48', INK, 1); gface(fX(4, 2, 4, 38, 42), '#b0844f', '#8f6538', INK, 1);
+  }
+  // дверь: доски, рама, ручка и ступенька
+  if (!L) toonBox(2.45, 4, .75, .18, 2, ['#c7c0b4', '#9d968a'], ['#aaa397', '#857e72'], ['#dcd6cc', '#c3bcb0'], 0, 1);
+  gface(fY(2.55, 3.1, 4, 2, 28), '#b07a46', '#7e5230', '#5b3a22', 2.4);
+  for (const x of [2.73, 2.92]) seg(lift(x, 4, 3), lift(x, 4, 27), 'rgba(70,40,20,.4)', 1);
+  const knob = lift(3.0, 4, 14); circle(knob.x, knob.y, 2, '#ffd54a'); circle(knob.x - .5, knob.y - .6, .8, '#fff6c8');
+  toonWin('x', 4, 2.55, 3.35, 15, 30, true);
+  if (L >= 1 || S.up.bakery) toonWin('y', 4, 3.4, 3.8, 14, 28, false);
+  if (L >= 2) { toonWin('y', 4, 2.3, 2.85, 47, 61, true); toonWin('y', 4, 3.2, 3.75, 47, 61, true); toonWin('x', 4, 2.35, 2.85, 47, 61, false); toonWin('x', 4, 3.2, 3.7, 47, 61, false); }
+  seg(lift(2, 4, hw), lift(4, 4, hw), 'rgba(255,250,235,.7)', 1.5);   // светлая кромка под крышей
+  const o = 0.2, apex = lift(3, 3, hw + 34);
+  if (L >= 1) {   // кирпичная труба с колпаком
+    toonBox(3.35, 2.25, .32, .32, 30, ['#c46a4a', '#9c4a32'], ['#a8573c', '#843d28'], null, hw + 4, 1.2);
+    toonBox(3.31, 2.21, .4, .4, 3, ['#7a7068', '#5e554e'], ['#6a615a', '#4f4741'], ['#9a918a', '#857c75'], hw + 34, 1.2);
+    if (S.started && !S.night) smoke(lift(3.5, 2.4, hw + 39), t, .6);
+  }
+  toonRoof(2 - o, 2 - o, 4 + o, 4 + o, hw - 2, apex);
   if (L >= 1) {   // навес веранды на двух столбиках
-    vline(1.92, 4.55, 0, 26, '#7a4a2a', 3); vline(4.08, 4.55, 0, 26, '#7a4a2a', 3);
-    poly([lift(1.85, 4, 33), lift(4.15, 4, 33), lift(4.15, 4.65, 25), lift(1.85, 4.65, 25)], '#c9a06a', '#8f6538', 1.2);
+    for (const x of [1.92, 4.08]) { vline(x, 4.55, 0, 27, INK, 5); vline(x, 4.55, 0, 27, '#a87a48', 3); vline(x - .02, 4.55, 1, 26, '#d7a86c', 1); }
+    gface(fY(1.85, 4.15, 4.68, 23, 25.5), '#a87a48', '#8f6538', INK, 1.1);
+    gface([lift(1.85, 4, 33), lift(4.15, 4, 33), lift(4.15, 4.68, 25.5), lift(1.85, 4.68, 25.5)], '#e6b97c', '#c2905a', INK, 1.4);
+    for (let k = 1; k < 4; k++) { const f = k / 4; seg(lift(1.85, 4 + .68 * f, 33 - 7.5 * f), lift(4.15, 4 + .68 * f, 33 - 7.5 * f), 'rgba(120,80,40,.35)', 1.1); }
   }
   if ((S.up.cozy || 0) >= 5) {
     const ap = lift(3, 3, hw + 34), tp = lift(3, 3, hw + 48);
-    ctx.strokeStyle = '#3b2416'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(ap.x, ap.y); ctx.lineTo(tp.x, tp.y); ctx.stroke();
+    seg(ap, tp, '#3b2416', 1.8);
     emoji('🐓', tp.x + Math.sin(t * .7) * 2, tp.y - 5, 13);
-    for (const lx of [2.35, 3.3]) { const lp = lift(lx, 4.02, 24); circle(lp.x, lp.y, 3.2, S.night ? '#ffe28a' : '#f4c95d'); circle(lp.x, lp.y - 3.5, 1.4, '#3b2416'); }
+    for (const lx of [2.35, 3.3]) {
+      const lp = lift(lx, 4.02, 23);
+      seg(lift(lx, 4.02, 30), { x: lp.x, y: lp.y - 4 }, '#3b2416', 1);
+      circle(lp.x, lp.y, 3.6, INK); circle(lp.x, lp.y, 2.7, S.night ? '#ffe28a' : '#f4c95d'); circle(lp.x - .8, lp.y - .8, .9, '#fff8d8');
+    }
   }
 }
-// Пекарня: кирпичная пристройка с покатой крышей, трубой и окном-печкой
+// Пекарня: кирпичная пристройка с покатой крышей, полосатым козырьком, трубой и окном-печкой
 function drawBakery(d, t) {
   if (!S.up.bakery) return;
-  const x0 = 4, y0 = 2.08, w = .92, dd = 1.84, h = 26, top = 37, Y = y0 + dd;
-  drawBox(x0, y0, w, dd, h, null, '#e9a46a', '#d48a52');
-  poly([lift(x0, Y, h), lift(x0 + w, Y, h), lift(x0, Y, top)], '#e9a46a');   // фронтон к дому
-  poly([lift(4.25, Y, 0), lift(4.7, Y, 0), lift(4.7, Y, 18), lift(4.25, Y, 18)], '#8a5a36', '#6b4327', 1.2);   // дверь
+  const x0 = 4, y0 = 2.08, w = .92, dd = 1.84, h = 26, top = 37, X = x0 + w, Y = y0 + dd;
+  gface(fY(x0, X, Y, 0, h), '#f6b682', '#da8b57'); gface(fX(X, y0, Y, 0, h), '#e19a66', '#bf7445');
+  gface([lift(x0, Y, h), lift(X, Y, h), lift(x0, Y, top)], '#f8bd8a', '#eaa36e');   // фронтон к дому
+  ctx.save(); shape(fX(X, y0, Y, 0, h)); ctx.clip();   // кирпичная кладка
+  for (let r = 0, z = 4; z < h; z += 4.5, r++) {
+    seg(lift(X, y0, z), lift(X, Y, z), 'rgba(140,60,30,.3)', 1);
+    for (let y = y0 + (r % 2 ? .12 : .26); y < Y; y += .28) seg(lift(X, y, z), lift(X, y, z + 4.5), 'rgba(140,60,30,.25)', 1);
+  }
+  ctx.restore();
+  ctx.save(); shape(fY(x0, X, Y, 0, h)); ctx.clip();
+  for (let r = 0, z = 4; z < h; z += 4.5, r++) {
+    seg(lift(x0, Y, z), lift(X, Y, z), 'rgba(150,70,35,.28)', 1);
+    for (let x = x0 + (r % 2 ? .1 : .24); x < X; x += .28) seg(lift(x, Y, z), lift(x, Y, z + 4.5), 'rgba(150,70,35,.22)', 1);
+  }
+  ctx.restore();
+  gface(fY(4.25, 4.7, Y, 0, 19), '#b07a46', '#7e5230', '#5b3a22', 2.2);   // дверь
+  const dk = lift(4.62, Y, 9); circle(dk.x, dk.y, 1.6, '#ffd54a');
   const baking = S.bake.q.length && S.started && !S.night;
-  poly([lift(x0 + w, 2.35, 8), lift(x0 + w, 3.25, 8), lift(x0 + w, 3.25, 19), lift(x0 + w, 2.35, 19)], S.night ? '#ffd76a' : baking ? '#ffb36a' : '#bfe6ff', '#8a5236', 2);   // окно
-  drawBox(4.15, 2.3, .3, .3, 16, '#7a4430', '#9c5a40', '#844a34', 30);   // труба печи
-  poly([lift(x0, y0 - .05, top), lift(x0 + w + .12, y0 - .05, h), lift(x0 + w + .12, Y + .1, h), lift(x0, Y + .1, top)], '#a8603f', '#7a4a2a', 1.2);
-  const sg = lift(x0 + w, 2.8, 25); emoji('🥖', sg.x + 3, sg.y - 2, 13);
-  if (baking) { const ch = lift(4.3, 2.45, 48);
-    for (let k = 0; k < 3; k++) { const f = (t * .9 + k / 3) % 1; ctx.globalAlpha = .5 * (1 - f); circle(ch.x + Math.sin(t * 1.3 + k) * 3, ch.y - f * 24, 3 + f * 5, '#ffffff'); }
-    ctx.globalAlpha = 1; }
+  toonWin('x', X, 2.4, 3.2, 7, 18, false, S.night ? null : baking ? ['#ffe0a0', '#ff9a3c'] : null);
+  for (let i = 0; i < 6; i++) {   // полосатый козырёк над окном
+    const a = 2.32 + i * .16, b = a + .16;
+    shape([lift(X, a, 22), lift(X, b, 22), lift(X + .26, b, 17), lift(X + .26, a, 17)]);
+    ctx.fillStyle = i % 2 ? '#fff6ea' : '#e0473e'; ctx.fill();
+  }
+  shape([lift(X, 2.32, 22), lift(X, 3.28, 22), lift(X + .26, 3.28, 17), lift(X + .26, 2.32, 17)]); ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke();
+  const R = [lift(x0, y0 - .06, top), lift(X + .14, y0 - .06, h), lift(X + .14, Y + .12, h), lift(x0, Y + .12, top)];
+  gface([R[2], R[1], { x: R[1].x, y: R[1].y + 4 }, { x: R[2].x, y: R[2].y + 4 }], '#86452c', '#66321f', INK, 1.2);   // торец крыши
+  gface(R, '#c4734c', '#9c5636', INK, 1.5);
+  for (let k = 1; k < 5; k++) { const f = k / 5; seg(mix(R[0], R[1], f), mix(R[3], R[2], f), 'rgba(90,40,20,.35)', 1.3); seg(mix(R[0], R[1], f + .015), mix(R[3], R[2], f + .015), 'rgba(255,215,190,.2)', 1); }
+  seg(R[0], R[3], 'rgba(255,225,200,.5)', 1.6);
+  toonBox(4.15, 2.3, .3, .3, 15, ['#c46a4a', '#9c4a32'], ['#a8573c', '#843d28'], null, 33, 1.2);   // труба печи — над крышей
+  toonBox(4.12, 2.27, .36, .36, 2.5, ['#7a7068', '#5e554e'], ['#6a615a', '#4f4741'], ['#9a918a', '#857c75'], 48, 1);
+  const sg = lift(x0 + w * .3, Y, 31);   // круглая вывеска на фронтоне
+  circle(sg.x, sg.y, 7.5, INK); circle(sg.x, sg.y, 6.4, '#f6e2b8'); emoji('🥖', sg.x, sg.y, 9);
+  if (baking) smoke(lift(4.3, 2.45, 52), t, .9);
 }
 // Почтовый ящик: флажок поднят, когда есть заказ
 function drawMailbox() {
