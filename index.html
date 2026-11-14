@@ -47,6 +47,7 @@
   .seed .c { position: absolute; bottom: 2px; left: 0; right: 0; text-align: center; font-size: 10px; font-weight: 800; }
   .seed.sel { border-color: var(--accent); background: #fff1d1; transform: scale(1.08); }
   .seed.dis { opacity: .45; }
+  .seed .ghb { position: absolute; top: -4px; right: -4px; font-size: 13px; background: #fff; border-radius: 50%; width: 19px; height: 19px; display: flex; align-items: center; justify-content: center; }
   #actions { position: absolute; left: 0; right: 0; bottom: 0; padding: 0 10px calc(10px + env(safe-area-inset-bottom));
              display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
   #actions button { pointer-events: auto; }
@@ -146,17 +147,19 @@ const GOODS = {
   egg:   { e: '🥚', name: 'Яйцо',   price: 9 },
   milk:  { e: '🥛', name: 'Молоко', price: 22 },
 };
+const GH_CROPS = ['tomato', 'strawberry'];   // растут только в теплице
 const FEED_PER_HEN = 3;            // растений на курицу на день
 const EGG_EVERY = DAY_LEN / 5;     // сытая курица несёт ~5 яиц за день
 const COW_FOOD = ['sunflower', 'wheat'];   // коровы едят только подсолнухи и пшеницу
 const FEED_PER_COW = 4;            // растений на корову на день
-const MILK_EVERY = DAY_LEN / 3;    // сытая корова даёт ~3 бутылки молока за день
+const MILK_EVERY = DAY_LEN / 6;    // сытая корова даёт ~6 бутылок молока за день
 
 const UPGRADES = {
   land:   { name: 'Расширить участок', ico: '🚜', desc: l => `+4 грядки (сейчас ${8 + l*4})`, cost: l => 40 + l*l*40 + l*30, max: 4 },
   orchard:{ name: 'Фруктовый сад',     ico: '🌳', desc: l => l === 0 ? 'Место под 2 яблони. Саженец 40💰, растёт ~день, потом плодоносит каждый день' : '+2 места под деревья', cost: l => [150, 260][l], max: 2 },
   coop:   { name: 'Курятник',          ico: '🐔', desc: l => l === 0 ? 'Курятник и 2 курицы. Ночью корми их урожаем — днём несут яйца' : `+1 курица (сейчас ${l + 1})`, cost: l => [150, 100, 140, 190][l], max: 4 },
   barn:   { name: 'Коровник',          ico: '🐄', desc: l => l === 0 ? 'Коровник, пастбище и корова. Ночью корми подсолнухами или пшеницей — днём даёт молоко' : `+1 корова (сейчас ${l})`, cost: l => [220, 180, 260][l], max: 3 },
+  greenhouse: { name: 'Теплица',      ico: '🏡', desc: l => l === 0 ? 'Стеклянная теплица на 3 грядки. Только в ней растут 🍅 помидоры и 🍓 клубника' : '+3 грядки в теплице', cost: l => [260, 380][l], max: 2 },
   ads:    { name: 'Реклама',           ico: '📣', desc: l => `+3 покупателя в день`,           cost: l => 30 + l*35,           max: 10 },
   fert:   { name: 'Удобрения',         ico: '🧪', desc: l => `Рост быстрее (+${l*20}% → +${(l+1)*20}%)`, cost: l => 50 + l*60, max: 5 },
   sign:   { name: 'Красивая вывеска',  ico: '🪧', desc: l => `Цены выше (+${l*10}% → +${(l+1)*10}%)`, cost: l => 60 + l*70, max: 6 },
@@ -226,6 +229,16 @@ for (const [a, b, back] of [[[13,3],[14,3],1],[[13,3],[13,4],1],[[13,4],[13,5],1
   decor.push({ kind: 'fence', pen: 'barn', a, b, z: (a[0] + b[0]) / 2 + (a[1] + b[1]) / 2 + (back ? -0.4 : 0.4) });
 decor.push({ kind: 'trough', z: 14.5 + 6.8 + 0.2 });
 
+// Теплица (клетки 13–15 × 8–9): 6 грядок под стеклом, открываются по 3
+const GH_SLOTS = [{ x: 13, y: 8 }, { x: 14, y: 8 }, { x: 15, y: 8 }, { x: 13, y: 9 }, { x: 14, y: 9 }, { x: 15, y: 9 }];
+GH_SLOTS.forEach(q => ground[q.y][q.x] = 'h');
+const ghAt = (x, y) => GH_SLOTS.findIndex(q => q.x === x && q.y === y);
+const GH_IDLE = { x: 13, y: 7 };
+for (const [a, b, back] of [[[13,8],[14,8],1],[[14,8],[15,8],1],[[15,8],[16,8],1],[[13,8],[13,9],1],[[13,9],[13,10],1],
+                            [[13,10],[14,10],0],[[14,10],[15,10],0],[[15,10],[16,10],0],[[16,8],[16,9],0],[[16,9],[16,10],0]])
+  decor.push({ kind: 'glass', a, b, back, z: (a[0] + b[0]) / 2 + (a[1] + b[1]) / 2 + (back ? -0.4 : 0.4) });
+decor.push({ kind: 'ghroof', z: 26.6 });
+
 // Видимые улучшения
 decor.push({ kind: 'billboard', z: 12 + 10 + 1 }); blocked[10][12] = true;             // реклама — щит у дороги
 for (let i = 0; i < 5; i++) decor.push({ kind: 'sack', i, x: 12, y: 2 + i, z: 12 + 2 + i + 1 });   // удобрения — мешки у поля
@@ -235,7 +248,7 @@ BENCHES.forEach((b, i) => decor.push({ kind: 'bench', i, x: b.x, y: b.y, z: b.x 
 let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 const treeSpots = [[12,8]];
 for (let x = 0; x < W; x++) treeSpots.push([x, 0]);
-for (let y = 1; y <= 11; y++) { treeSpots.push([0, y]); if (y > 7) treeSpots.push([W-1, y]); }   // справа у пастбища — без деревьев
+for (let y = 1; y <= 11; y++) { treeSpots.push([0, y]); if (y > 11) treeSpots.push([W-1, y]); }   // справа у пастбища и теплицы — без деревьев
 for (const [x, y] of treeSpots) {
   if (ground[y][x] !== 'g' || blocked[y][x]) continue;
   decor.push({ kind: 'tree', x, y, s: 0.85 + rnd() * 0.35, z: x + y + 1 });
@@ -274,8 +287,15 @@ if (!S.helpers) {
 }
 delete S.helperMode;
 for (const c of S.helpers) if (!c.stations) { c.stations = c.station && c.station !== 'rest' ? [c.station] : []; delete c.station; }
-for (const c of S.helpers) if (c.zone === undefined) c.zone = c.stations.includes('field') ? freeZone() : null;   // раздать участки по порядку
-S.up.orchard ??= 0; S.up.coop ??= 0;
+for (const c of S.helpers) if (!c.zones) {   // участки: раньше был один (zone), теперь список
+  c.zones = c.zone != null ? [c.zone] : [];
+  const z = c.zone === undefined && c.stations.includes('field') ? freeZone() : null;
+  delete c.zone; if (z != null) c.zones.push(z);
+}
+for (const c of S.helpers) { c.feed ??= false; c.ghReplant ??= false; c.ghSeed ??= 'same'; c.fold ??= false; }
+S.up.orchard ??= 0; S.up.coop ??= 0; S.up.greenhouse ??= 0;
+S.gh ??= [];
+for (const c of S.helpers) if (['tomato', 'strawberry'].includes(c.seed)) c.seed = 'same';   // помидоры и клубника переехали в теплицу
 S.trees ??= [];
 S.coop ??= { fedDay: 0, fedHens: 0, eggs: 0, layT: 0 };
 S.up.barn ??= 0;
@@ -311,7 +331,7 @@ function startDay() {
 
 // День стартует сам, если на грядках уже что-то растёт (иначе — с первой посадки)
 function shouldAutoStart() {
-  return S.plots.some(p => p.crop && p.prog < 1);
+  return [...S.plots, ...S.gh].some(p => p.crop && p.prog < 1);
 }
 
 function beginClock() {
@@ -336,7 +356,7 @@ const pick = a => a[Math.floor(Math.random() * a.length)];
 const darken = (hex, k) => '#' + [1,3,5].map(i => Math.round(parseInt(hex.substr(i,2),16) * k).toString(16).padStart(2,'0')).join('');
 
 function spawnVisitor() {
-  const paid = S.unlocked.filter(id => CROP[id].seed > 0);
+  const paid = S.unlocked.filter(id => CROP[id].seed > 0 && (S.up.greenhouse || !GH_CROPS.includes(id) || S.inv[id]));
   const pool = ['sunflower', ...paid.flatMap((id, i) => Array(paid.length - i + 1).fill(id))];   // дешёвое спрашивают чаще, подсолнух — изредка
   if (S.trees.some(t => t.kind && t.grow >= 1)) pool.push('apple', 'apple');
   if (hens()) pool.push('egg', 'egg');
@@ -385,23 +405,35 @@ function sell(v) {
 function tapVisitor(v) {
   if (v.state === 'leaving') return;
   const have = S.inv[v.crop] || 0;
-  if (have < v.qty) { toast(`Нужно ${v.qty} ${GOODS[v.crop].e}, на складе ${have}`); return; }
+  if (have < v.qty) {   // товара нет — всё равно идём за прилавок, облачко не мешает подойти
+    toast(`Нужно ${v.qty} ${GOODS[v.crop].e}, на складе ${have}`);
+    if (Math.floor(P.x) !== COUNTER.x || Math.floor(P.y) !== COUNTER.y) setTasks([{ x: COUNTER.x, y: COUNTER.y }]);
+    return;
+  }
   const atCounter = Math.hypot(P.x - COUNTER.x - .5, P.y - COUNTER.y - .5) < 0.2 && !path.length;
   if (atCounter) sell(v);
   else setTasks([{ x: COUNTER.x, y: COUNTER.y, fn: () => sell(v) }]);
 }
 
 // ---------- Грядки ----------
-function plotAct(i, mode) {
-  const p = S.plots[i], s = PLOT_SLOTS[i];
+// что сажать в теплице: выбранное справа, иначе что росло, иначе первое открытое
+function ghPick(p) {
+  if (GH_CROPS.includes(S.sel)) return S.sel;
+  if (p.last && S.unlocked.includes(p.last)) return p.last;
+  return GH_CROPS.find(id => S.unlocked.includes(id)) || null;
+}
+function plotAct(i, mode, gh) {
+  const p = (gh ? S.gh : S.plots)[i], s = (gh ? GH_SLOTS : PLOT_SLOTS)[i];
   if (!p) return;
   if (p.crop && p.prog >= 1 && mode !== 'plant') {
     S.inv[p.crop] = (S.inv[p.crop] || 0) + 1; S.life.harvested++;
     addFloat(s.x + .5, s.y + .5, `+1 ${CROP[p.crop].e}`);
     p.last = p.crop; p.crop = null; p.prog = 0;
   } else if (!p.crop && mode !== 'harvest') {
-    const c = CROP[S.sel];
-    if (S.coins < c.seed) { toast('Не хватает монет — посади бесплатный подсолнух 🌻'); return; }
+    const id = gh ? ghPick(p) : S.sel, c = CROP[id];
+    if (!c) { toast('🏡 Сначала открой ночью 🍅 помидоры или 🍓 клубнику'); return; }
+    if (!gh && GH_CROPS.includes(id)) { toast(`${c.e} ${c.name} растёт только в теплице 🏡`); return; }
+    if (S.coins < c.seed) { toast(gh ? `Семена ${c.e} стоят ${c.seed}💰` : 'Не хватает монет — посади бесплатный подсолнух 🌻'); return; }
     S.coins -= c.seed; p.crop = c.id; p.prog = 0;
   } else return;
   beginClock();
@@ -412,11 +444,24 @@ function tapPlot(i) {
   if (i >= S.plots.length) { toast('🚜 Ночью тапни на замочек — и расширишь участок'); return; }
   const p = S.plots[i], s = PLOT_SLOTS[i];
   if (p.crop && p.prog < 1) { toast(`${CROP[p.crop].e} растёт… ${Math.floor(p.prog * 100)}%`); return; }
+  if (!p.crop && GH_CROPS.includes(S.sel)) { toast(`${CROP[S.sel].e} растёт только в теплице 🏡${S.up.greenhouse ? '' : ' — построй её ночью'}`); return; }
   if (!p.crop && S.coins < CROP[S.sel].seed) { toast('Не хватает монет — посади бесплатный подсолнух 🌻'); return; }
   setTasks([{ x: s.x, y: s.y, fn: () => plotAct(i) }]);
 }
+function tapGh(i) {
+  if (i >= S.gh.length) { toast(S.up.greenhouse ? '🏡 Ночью тапни сюда — расширишь теплицу' : '🏡 Ночью тапни сюда — построишь теплицу для 🍅 и 🍓'); return; }
+  const p = S.gh[i], s = GH_SLOTS[i];
+  if (p.crop && p.prog < 1) { toast(`${CROP[p.crop].e} растёт… ${Math.floor(p.prog * 100)}%`); return; }
+  if (!p.crop) {
+    const id = ghPick(p);
+    if (!id) { toast('🏡 Сначала открой ночью 🍅 помидоры или 🍓 клубнику'); return; }
+    if (S.coins < CROP[id].seed) { toast(`Семена ${CROP[id].e} стоят ${CROP[id].seed}💰`); return; }
+  }
+  setTasks([{ x: s.x, y: s.y, fn: () => plotAct(i, undefined, true) }]);
+}
 
 // ---------- Сад ----------
+function syncGh() { while (S.gh.length < S.up.greenhouse * 3) S.gh.push({ crop: null, prog: 0 }); }
 function syncTrees() { while (S.trees.length < S.up.orchard * 2) S.trees.push({ kind: null, grow: 0, fruit: 0 }); }
 const treeReady = t => t.kind && t.grow >= 1 && t.fruit >= 1;
 function treeAct(i, mode) {
@@ -550,6 +595,7 @@ function updateCows(dt) {
 function readyJobs() {
   const jobs = [];
   S.plots.forEach((p, i) => { if (p.crop && p.prog >= 1) jobs.push({ x: PLOT_SLOTS[i].x, y: PLOT_SLOTS[i].y, act: () => plotAct(i, 'harvest') }); });
+  S.gh.forEach((p, i) => { if (p.crop && p.prog >= 1) jobs.push({ x: GH_SLOTS[i].x, y: GH_SLOTS[i].y, act: () => plotAct(i, 'harvest', true) }); });
   S.trees.forEach((t, i) => { if (treeReady(t)) jobs.push({ x: ORCHARD_SLOTS[i].x, y: ORCHARD_SLOTS[i].y, act: () => treeAct(i, 'harvest') }); });
   if (S.coop.eggs > 0) jobs.push({ ...COOP_SPOT, act: collectEggs });
   if (S.barn.milk > 0) jobs.push({ ...BARN_SPOT, act: collectMilk });
@@ -575,6 +621,7 @@ function buyUpgrade(key) {
   if (key === 'land') for (let k = 0; k < 4 && S.plots.length < MAX_PLOTS; k++) S.plots.push({ crop: null, prog: 0 });
   if (key === 'helper') syncHelpers();
   if (key === 'orchard') syncTrees();
+  if (key === 'greenhouse') syncGh();
   if (key === 'coop') syncHens();
   if (key === 'barn') syncCows();
   // закрываем меню и показываем камерой, что появилось на ферме
@@ -584,6 +631,7 @@ function buyUpgrade(key) {
     barn: S.up.barn === 1 ? '🐄 Коровник построен! Ночью тапни на пастбище — фермер покормит коров 🌻 или 🌾' : '🐄 На пастбище новая корова',
     coop: S.up.coop === 1 ? '🐔 Курятник построен! Ночью тапни на него — фермер покормит кур' : '🐔 В курятнике новая курица',
     helper: '🧑‍🌾 Помощник нанят! Кнопка «Команда» внизу — назначь ему станции', ads: S.up.ads === 1 ? '📣 У дороги появилась реклама' : '📣 Рекламный щит стал заметнее',
+    greenhouse: S.up.greenhouse === 1 ? '🏡 Теплица готова! Выбери 🍅 или 🍓 и тапни по грядке в ней' : '🏡 В теплице ещё 3 грядки',
     fert: '🧪 Мешки удобрений у поля', sign: '🪧 Новая вывеска над лотком', bench: '🪑 Скамейка у очереди',
   }[key];
   closeNight();
@@ -598,18 +646,19 @@ function upSpot(key) {
   const l = S.up[key];
   return {
     land: PLOT_SLOTS[Math.min(S.plots.length, MAX_PLOTS - 1)], orchard: ORCHARD_SLOTS[Math.min(S.trees.length, 3)],
-    coop: { x: 8, y: 10 }, barn: { x: 14, y: 5 }, helper: { x: 3, y: 3 }, ads: { x: 12, y: 10 },
+    coop: { x: 8, y: 10 }, barn: { x: 14, y: 5 }, greenhouse: { x: 14, y: S.up.greenhouse ? 9 : 8 }, helper: { x: 3, y: 3 }, ads: { x: 12, y: 10 },
     fert: { x: 12, y: 2 + Math.min(l, 4) }, sign: { x: 4, y: 10 }, bench: BENCHES[Math.min(l, BENCHES.length - 1)],
   }[key];
 }
 function upAt(x, y) {   // какое улучшение относится к клетке
   const si = slotAt(x, y); if (si >= S.plots.length) return 'land';
   const oi = orchardAt(x, y); if (oi >= 0 ? oi >= S.trees.length : ground[y][x] === 'o') return 'orchard';
+  const gi = ghAt(x, y); if (gi >= 0 && gi >= S.gh.length) return 'greenhouse';
   if (inCoopArea(x, y)) return 'coop';
   if (inBarnArea(x, y)) return 'barn';
   if (x >= 2 && x <= 3 && y >= 2 && y <= 3) return 'helper';
   if (y === 10 && (x === 3 || x === 4)) return 'sign';
-  if (x >= 12 && x <= 13 && y >= 9 && y <= 11) return 'ads';
+  if ((x === 12 && y >= 9 && y <= 11) || (x === 13 && (y === 10 || y === 11))) return 'ads';
   if (x === 12 && y >= 1 && y <= 6) return 'fert';
   if (BENCHES.some(b => b.x === x && b.y === y)) return 'bench';
   return null;
@@ -626,7 +675,7 @@ function drawUpBadges(t) {
   for (const [key, u] of Object.entries(UPGRADES)) {
     const l = S.up[key]; if (l >= u.max) continue;
     const s = upSpot(key), ok = S.coins >= u.cost(l);
-    const c = lift(s.x + .5, s.y + .5, { helper: 80, sign: 86, ads: 74, coop: 30, barn: 30 }[key] || 30);
+    const c = lift(s.x + .5, s.y + .5, { helper: 80, sign: 86, ads: 74, coop: 30, barn: 30, greenhouse: 56 }[key] || 30);
     const y = c.y + Math.sin(t * 3 + s.x) * 2.5;
     
     // плашка «⬆ цена»: это предложение купить улучшение, а не уведомление о состоянии
@@ -746,17 +795,18 @@ function updateVisitors(dt) {
 const HELPER_LOOKS = [
   { shirt: '#4caf6a', shirtDark: '#3a8a52', pants: '#6b4a2e', skin: '#d9a37a', hair: '#2b1d14', hat: 'cap', capColor: '#2f7d46' },
   { shirt: '#f0b429', shirtDark: '#c99418', pants: '#3b4a6b', skin: '#f6d5b8', hair: '#c9a15a', hat: 'cap', capColor: '#e0554a' },
-  { shirt: '#9b7be0', shirtDark: '#7c60bd', pants: '#2f2f3a', skin: '#a8714a', hair: '#111111', hat: 'straw' },
-  { shirt: '#e0554a', shirtDark: '#b8433a', pants: '#3b4a6b', skin: '#f2c49b', hair: '#6b3e1f', hat: 'straw' },
+  { shirt: '#9b7be0', shirtDark: '#7c60bd', pants: '#2f2f3a', skin: '#a8714a', hair: '#111111', hat: 'beanie', capColor: '#e0554a' },
+  { shirt: '#e0554a', shirtDark: '#b8433a', pants: '#3b4a6b', skin: '#f2c49b', hair: '#6b3e1f', hat: 'bandana', capColor: '#3b6fc4' },
   { shirt: '#4fb6c4', shirtDark: '#3a909c', pants: '#5a4632', skin: '#7a4f33', hair: '#2b1d14', hat: 'cap', capColor: '#f0b429' },
   { shirt: '#f4f1ea', shirtDark: '#d8d2c4', pants: '#2f7d46', skin: '#d9a37a', hair: '#b5462f', hat: 'cap', capColor: '#9b7be0' },
 ];
 const HOME = { x: 3, y: 4 };   // у двери дома
 const STATIONS = {
   field:   { ico: '🌾', name: 'Поле',     idle: { x: 5, y: 3 },  hint: 'Собирает созревшее на грядках' },
+  gh:      { ico: '🏡', name: 'Теплица',  idle: { x: 13, y: 7 }, hint: 'Собирает 🍅 и 🍓 в теплице' },
   orchard: { ico: '🍎', name: 'Сад',      idle: { x: 2, y: 6 },  hint: 'Собирает яблоки' },
-  coop:    { ico: '🐔', name: 'Курятник', idle: { x: 8, y: 8 },  hint: 'Днём собирает яйца, ночью кормит кур урожаем со склада' },
-  barn:    { ico: '🐄', name: 'Коровник', idle: { x: 14, y: 7 }, hint: 'Днём собирает молоко, ночью кормит коров 🌻 и 🌾 со склада' },
+  coop:    { ico: '🐔', name: 'Курятник', idle: { x: 8, y: 8 },  hint: 'Собирает яйца' },
+  barn:    { ico: '🐄', name: 'Коровник', idle: { x: 14, y: 7 }, hint: 'Собирает молоко' },
   stall:   { ico: '🏪', name: 'Лавка',    idle: { x: 3, y: 9 },  hint: 'Стоит за прилавком и продаёт всё, что есть на складе' },
 };
 const REST = { ico: '😴', idle: { x: 3, y: 4 } };
@@ -764,7 +814,8 @@ let helpers = [];
 function syncHelpers() {
   while (S.helpers.length < S.up.helper) {
     const st = ['field', 'orchard', 'coop', 'barn', 'stall', 'field'][S.helpers.length % 6];
-    S.helpers.push({ stations: [st], replant: false, seed: 'same', zone: st === 'field' ? freeZone() : null });
+    S.helpers.push({ stations: [st], replant: false, seed: 'same', zones: [], feed: false, ghReplant: false, ghSeed: 'same', fold: false });
+    if (st === 'field') { const z = freeZone(); if (z != null) S.helpers[S.helpers.length - 1].zones.push(z); }
   }
   while (helpers.length < S.up.helper) {
     const i = helpers.length;
@@ -773,13 +824,13 @@ function syncHelpers() {
 }
 // свободный участок: сначала тот, где больше открытых грядок
 function freeZone() {
-  const taken = new Set((S.helpers || []).map(c => c.zone).filter(z => z != null));
+  const taken = new Set((S.helpers || []).flatMap(c => c.zones || (c.zone != null ? [c.zone] : [])));
   const open = z => S.plots.filter((p, i) => zoneOf(i) === z).length;
   const free = ZONES.map((z, k) => k).filter(k => !taken.has(k)).sort((a, b) => open(b) - open(a));
   return free.length ? free[0] : null;
 }
 // клетка участка: поле занято помощником (и, если он сажает, — посевом)
-const zoneOwner = z => S.helpers.findIndex(c => c.stations.includes('field') && c.zone === z);
+const zoneOwner = z => S.helpers.findIndex(c => c.stations.includes('field') && c.zones.includes(z));
 // где стоять в ожидании: ближайшая к участку проходимая клетка снаружи
 function zoneIdle(z) {
   const Z = ZONES[z]; let best = null, bd = 1e9;
@@ -792,7 +843,8 @@ function zoneIdle(z) {
 }
 // какой культурой помощник засеет грядку (null — не сажать)
 function helperSeed(cfg, prev) {
-  const id = cfg.seed === 'same' ? prev : cfg.seed;
+  let id = cfg.seed === 'same' ? prev : cfg.seed;
+  if (GH_CROPS.includes(id)) id = GH_CROPS.includes(S.sel) ? 'wheat' : S.sel;   // в поле 🍅 и 🍓 не растут
   if (!id || !CROP[id] || S.coins < CROP[id].seed) return null;
   return id;
 }
@@ -814,23 +866,44 @@ function helperPlot(i, cfg) {
   }
   save(); renderUI(); return true;
 }
+// теплица: что посадит помощник
+function ghHelperSeed(cfg, p) {
+  const id = cfg.ghSeed === 'same' ? (p.last && S.unlocked.includes(p.last) ? p.last : GH_CROPS.find(k => S.unlocked.includes(k))) : cfg.ghSeed;
+  return id && S.unlocked.includes(id) && S.coins >= CROP[id].seed ? id : null;
+}
+function helperGh(i, cfg) {
+  const p = S.gh[i], s = GH_SLOTS[i];
+  if (!p) return false;
+  if (p.crop && p.prog >= 1) {
+    S.inv[p.crop] = (S.inv[p.crop] || 0) + 1; S.life.harvested++;
+    addFloat(s.x + .5, s.y + .5, `+1 ${CROP[p.crop].e}`);
+    p.last = p.crop; p.crop = null; p.prog = 0;
+  } else if (p.crop || !cfg.ghReplant) return false;
+  if (cfg.ghReplant) { const id = ghHelperSeed(cfg, p); if (id) { S.coins -= CROP[id].seed; p.crop = id; p.prog = 0; if (!S.night) beginClock(); } }
+  save(); renderUI(); return true;
+}
 // работа для станции помощника
 function helperJobs(cfg) {
   const jobs = [], has = k => cfg.stations.includes(k);
-  if (has('field') && cfg.zone != null) S.plots.forEach((p, i) => {
-    if (zoneOf(i) !== cfg.zone) return;   // только свой участок
+  if (has('field')) S.plots.forEach((p, i) => {
+    if (!cfg.zones.includes(zoneOf(i))) return;   // только свои участки
     const ready = p.crop && p.prog >= 1, empty = !p.crop && cfg.replant && helperSeed(cfg, plotPrev(p));
     if (!p.crop && cfg.replant && !empty) jobs.broke = true;   // пустая грядка, но семена не по карману
     if (ready || empty) jobs.push({ x: PLOT_SLOTS[i].x, y: PLOT_SLOTS[i].y, act: () => helperPlot(i, cfg) });
   });
+  if (has('gh')) S.gh.forEach((p, i) => {
+    const ready = p.crop && p.prog >= 1, empty = !p.crop && cfg.ghReplant && ghHelperSeed(cfg, p);
+    if (!p.crop && cfg.ghReplant && !empty) jobs.broke = true;
+    if (ready || empty) jobs.push({ x: GH_SLOTS[i].x, y: GH_SLOTS[i].y, act: () => helperGh(i, cfg) });
+  });
   if (has('orchard')) S.trees.forEach((t, i) => { if (treeReady(t)) jobs.push({ x: ORCHARD_SLOTS[i].x, y: ORCHARD_SLOTS[i].y, act: () => treeAct(i, 'harvest') }); });
   if (has('coop')) {
     if (S.coop.eggs > 0) jobs.push({ ...COOP_SPOT, act: collectEggs });
-    if (S.night && hens() && fedTomorrow() < hens() && feedStock() >= FEED_PER_HEN) jobs.push({ ...COOP_SPOT, act: () => feedHens(true) });
+    if (cfg.feed && S.night && hens() && fedTomorrow() < hens() && feedStock() >= FEED_PER_HEN) jobs.push({ ...COOP_SPOT, act: () => feedHens(true) });
   }
   if (has('barn')) {
     if (S.barn.milk > 0) jobs.push({ ...BARN_SPOT, act: collectMilk });
-    if (S.night && cows() && cowsFedTomorrow() < cows() && cowFoodStock() >= FEED_PER_COW) jobs.push({ ...BARN_SPOT, act: () => feedCows(true) });
+    if (cfg.feed && S.night && cows() && cowsFedTomorrow() < cows() && cowFoodStock() >= FEED_PER_COW) jobs.push({ ...BARN_SPOT, act: () => feedCows(true) });
   }
   return jobs;
 }
@@ -876,7 +949,7 @@ function updateHelper(h, dt) {
   if (!found) {   // работы нет — ждёт на своей станции
     const first = cfg.stations.includes('stall') ? 'stall' : cfg.stations[0];
     const base = first ? STATIONS[first].idle : REST.idle;
-    const spot = first === 'stall' ? base : first === 'field' && cfg.zone != null ? zoneIdle(cfg.zone) : { x: base.x + (h.id % 2), y: base.y };
+    const spot = first === 'stall' ? base : first === 'field' && cfg.zones.length ? zoneIdle(cfg.zones[0]) : first === 'gh' ? GH_IDLE : { x: base.x + (h.id % 2), y: base.y };
     if ((hx !== spot.x || hy !== spot.y) && walkable(spot.x, spot.y)) h.path = findPath(hx, hy, spot.x, spot.y) || [];
   }
 }
@@ -885,14 +958,24 @@ function updateHelper(h, dt) {
 function toggleStation(i, k) {
   const c = S.helpers[i];
   c.stations = k === 'rest' ? [] : c.stations.includes(k) ? c.stations.filter(x => x !== k) : [...c.stations, k];
-  if (!c.stations.includes('field')) c.zone = null;
-  else if (c.zone == null) { c.zone = freeZone(); if (c.zone == null) toast('Все участки заняты — забери участок у другого помощника'); }
+  if (!c.stations.includes('field')) c.zones = [];
+  else if (!c.zones.length) { const z = freeZone(); if (z == null) toast('Все участки заняты — забери участок у другого помощника'); else c.zones.push(z); }
   setHelper(i, 'stations', c.stations);
 }
-function setZone(i, z) {   // участок один на помощника: если он был у другого — переходит
-  S.helpers.forEach((c, k) => { if (k !== i && c.zone === z) { c.zone = null; const h = helpers[k]; if (h) { h.target = null; h.path = []; } } });
-  setHelper(i, 'zone', S.helpers[i].zone === z ? null : z);
+function setZone(i, z) {   // участок — только у одного помощника: если он был у другого, переходит
+  const mine = S.helpers[i].zones;
+  if (mine.includes(z)) { setHelper(i, 'zones', mine.filter(k => k !== z)); return; }
+  S.helpers.forEach((c, k) => { if (k !== i && c.zones.includes(z)) { c.zones = c.zones.filter(q => q !== z); const h = helpers[k]; if (h) { h.target = null; h.path = []; } } });
+  setHelper(i, 'zones', [...mine, z].sort());
 }
+function clearField() {   // снять всех помощников с поля
+  S.helpers.forEach(c => { c.stations = c.stations.filter(k => k !== 'field'); c.zones = []; });
+  helpers.forEach(h => { h.target = null; h.path = []; h.think = 0; });
+  toast('🌾 Поле свободно — все помощники сняты с грядок');
+  save(); renderUI(); openHelpers();
+}
+function foldHelper(i) { S.helpers[i].fold = !S.helpers[i].fold; save(); openHelpers(); }
+function setGh(i, seed) { Object.assign(S.helpers[i], seed ? { ghReplant: true, ghSeed: seed } : { ghReplant: false }); setHelper(i, 'ghReplant', !!seed); }
 function setField(i, seed) { Object.assign(S.helpers[i], seed ? { replant: true, seed } : { replant: false }); setHelper(i, 'replant', !!seed); }
 function setHelper(i, field, val) {
   Object.assign(S.helpers[i], { [field]: val });
@@ -901,32 +984,46 @@ function setHelper(i, field, val) {
 }
 function openHelpers() {
   const chip = (on, label, js, dis) => `<button class="chip${on ? ' on' : ''}" ${dis ? 'disabled' : ''} onclick="${js}">${label}</button>`;
-  let h = `<h2>🧑‍🌾 Помощники</h2><div style="font-size:13px;color:#7a6650;margin-bottom:6px">Отметь одну или несколько станций — помощник будет ходить между ними. Лавка в приоритете: пока есть кому продать, он стоит за прилавком. Работают и ночью</div>`;
+  let h = `<h2>🧑‍🌾 Помощники</h2><div style="font-size:13px;color:#7a6650;margin-bottom:6px">Отметь станции — помощник ходит между ними. Лавка в приоритете. Тап по имени сворачивает карточку</div>`;
+  if (S.helpers.some(c => c.stations.includes('field'))) h += `<button class="chip" style="margin-bottom:4px" onclick="clearField()">🌾✖ Снять всех с поля</button>`;
   S.helpers.forEach((cfg, i) => {
     const L = HELPER_LOOKS[i % HELPER_LOOKS.length];
+    const icons = cfg.stations.length ? cfg.stations.map(k => k === 'field' ? '🌾' + cfg.zones.map(z => '①②③④'[z]).join('') : STATIONS[k].ico).join(' ') : '😴';
     const hint = cfg.stations.length ? cfg.stations.map(k => STATIONS[k].hint.toLowerCase()).join('; ') : 'отдыхает у дома';
-    h += `<div class="hcard"><div style="font-weight:800;margin-bottom:6px"><span class="dot" style="background:${L.shirt}"></span>Помощник ${i + 1}
-      <small style="font-weight:400;color:#7a6650"> — ${hint}</small></div><div class="chips">`;
+    h += `<div class="hcard"><div style="font-weight:800;cursor:pointer;display:flex;align-items:center;gap:4px" onclick="foldHelper(${i})"><span class="dot" style="background:${L.shirt}"></span>Помощник ${i + 1}
+      <span style="font-weight:600;margin-left:4px">${icons}</span><span style="margin-left:auto;color:#7a6650">${cfg.fold ? '▸' : '▾'}</span></div>`;
+    if (cfg.fold) { h += `</div>`; return; }
+    h += `<div style="font-size:12px;color:#7a6650;margin:2px 0 6px">${hint}</div><div class="chips">`;
     for (const [k, st] of Object.entries(STATIONS)) {
-      const dis = (k === 'orchard' && !S.up.orchard) || (k === 'coop' && !hens()) || (k === 'barn' && !cows());
+      const dis = (k === 'orchard' && !S.up.orchard) || (k === 'coop' && !hens()) || (k === 'barn' && !cows()) || (k === 'gh' && !S.up.greenhouse);
       h += chip(cfg.stations.includes(k), `${cfg.stations.includes(k) ? '✓ ' : ''}${st.ico} ${st.name}`, `toggleStation(${i},'${k}')`, dis);
     }
     h += chip(!cfg.stations.length, '😴 Отдых', `toggleStation(${i},'rest')`) + `</div>`;
     if (cfg.stations.includes('field')) {   // одна строка: «только сбор» или что сажать после сбора
-      h += `<div style="font-size:12px;color:#7a6650;margin:8px 0 4px">🌾 Участок (до 6 грядок, номер виден на поле):</div><div class="chips">`;
+      h += `<div style="font-size:12px;color:#7a6650;margin:8px 0 4px">🌾 Участки (по 6 грядок, номера видны на поле; можно несколько):</div><div class="chips">`;
       ZONES.forEach((z, k) => {
         const n = S.plots.filter((p, j) => zoneOf(j) === k).length, own = zoneOwner(k);
         const note = !n ? ' 🔒' : own >= 0 && own !== i ? ` · у №${own + 1}` : ` · ${n} гр.`;
-        h += chip(cfg.zone === k, `${cfg.zone === k ? '✓ ' : ''}${'①②③④'[k]}${note}`, `setZone(${i},${k})`);
+        h += chip(cfg.zones.includes(k), `${cfg.zones.includes(k) ? '✓ ' : ''}${'①②③④'[k]}${note}`, `setZone(${i},${k})`);
       });
       h += `</div>`;
-      if (cfg.zone == null) h += `<div style="font-size:12px;color:#c0392b;margin-top:4px">Выбери участок — без него помощник не работает на поле</div>`;
+      if (!cfg.zones.length) h += `<div style="font-size:12px;color:#c0392b;margin-top:4px">Выбери участок — без него помощник не работает на поле</div>`;
       h += `<div style="font-size:12px;color:#7a6650;margin:8px 0 4px">🌾 На поле: собирать и сажать… (семена за твои монеты, 💰 над головой — не хватает)</div><div class="chips">`;
       h += chip(!cfg.replant, '🧺 Только сбор', `setField(${i},null)`);
       h += chip(cfg.replant && cfg.seed === 'same', '🔁 То же, что росло', `setField(${i},'same')`);
-      for (const id of S.unlocked) h += chip(cfg.replant && cfg.seed === id, `${CROP[id].e} ${CROP[id].seed || 'даром'}`, `setField(${i},'${id}')`);
+      for (const id of S.unlocked) if (!GH_CROPS.includes(id)) h += chip(cfg.replant && cfg.seed === id, `${CROP[id].e} ${CROP[id].seed || 'даром'}`, `setField(${i},'${id}')`);
       h += `</div>`;
     }
+    if (cfg.stations.includes('gh')) {
+      h += `<div style="font-size:12px;color:#7a6650;margin:8px 0 4px">🏡 В теплице: собирать и сажать…</div><div class="chips">`;
+      h += chip(!cfg.ghReplant, '🧺 Только сбор', `setGh(${i},null)`);
+      h += chip(cfg.ghReplant && cfg.ghSeed === 'same', '🔁 То же', `setGh(${i},'same')`);
+      for (const id of GH_CROPS) if (S.unlocked.includes(id)) h += chip(cfg.ghReplant && cfg.ghSeed === id, `${CROP[id].e} ${CROP[id].seed}`, `setGh(${i},'${id}')`);
+      h += `</div>`;
+    }
+    if (cfg.stations.includes('coop') || cfg.stations.includes('barn'))
+      h += `<div class="chips" style="margin-top:8px">${chip(cfg.feed, `${cfg.feed ? '✓ ' : ''}🌙 Кормить ночью сам`, `setHelper(${i},'feed',${!cfg.feed})`)}</div>
+        <div style="font-size:12px;color:#7a6650;margin-top:3px">${cfg.feed ? 'Ночью сам кормит животных урожаем со склада' : 'Животных кормишь ты — помощник только собирает'}</div>`;
     h += `</div>`;
   });
   h += `<button class="wide" style="width:100%;margin-top:10px" onclick="closeNight()">Готово</button>`;
@@ -958,7 +1055,7 @@ function step(dt) {
   if (!S.night && !S.started && shouldAutoStart()) beginClock();
   if (!S.night && S.started) {
     S.t += dt;
-    for (const p of S.plots) if (p.crop && p.prog < 1) p.prog = Math.min(1, p.prog + dt * growMult() / CROP[p.crop].grow);
+    for (const p of [...S.plots, ...S.gh]) if (p.crop && p.prog < 1) p.prog = Math.min(1, p.prog + dt * growMult() / CROP[p.crop].grow);
     for (const t of S.trees) if (t.kind) {
       const T = TREES[t.kind];
       if (t.grow < 1) t.grow = Math.min(1, t.grow + dt * growMult() / T.mature);
@@ -967,7 +1064,7 @@ function step(dt) {
     const fh = fedToday();   // сытые куры несут яйца
     if (fh) { S.coop.layT += dt * fh; while (S.coop.layT >= EGG_EVERY) { S.coop.layT -= EGG_EVERY; S.coop.eggs = Math.min(30, S.coop.eggs + 1); } }
     const fc = cowsFedToday();   // сытые коровы дают молоко
-    if (fc) { S.barn.milkT += dt * fc; while (S.barn.milkT >= MILK_EVERY) { S.barn.milkT -= MILK_EVERY; S.barn.milk = Math.min(20, S.barn.milk + 1); } }
+    if (fc) { S.barn.milkT += dt * fc; while (S.barn.milkT >= MILK_EVERY) { S.barn.milkT -= MILK_EVERY; S.barn.milk = Math.min(40, S.barn.milk + 1); } }
     // покупатели идут весь день: первый через пару секунд, последний — уже на закате,
     // а вечером, после работы, их заметно больше
     const f = Math.min(1, S.t / (DAY_LEN * 0.97)), share = f < 0.6 ? f / 1.24 : (0.6 + (f - 0.6) * 1.6) / 1.24;
@@ -1081,6 +1178,8 @@ function onTap(sx, sy) {
   if (si >= 0) { tapPlot(si); return; }
   const oi = orchardAt(tx, ty);
   if (oi >= 0) { tapTree(oi); return; }
+  const gi = ghAt(tx, ty);
+  if (gi >= 0) { tapGh(gi); return; }
   if (inCoopArea(tx, ty)) { tapCoop(); return; }
   if (inBarnArea(tx, ty)) { tapBarn(); return; }
   if (ty === 10 && (tx === 3 || tx === 4)) { setTasks([{ x: COUNTER.x, y: COUNTER.y }]); toast('🏪 За прилавком фермер сам продаёт всем, на кого хватает товара'); return; }
@@ -1111,16 +1210,17 @@ function draw(t) {
   drawMarker(t);
 
   const list = [];
-  const DRAW = { tree: drawTree, house: drawHouse, stall: drawStall, coop: drawCoop, barn: drawBarn, trough: drawTrough, fence: drawFence, billboard: drawBillboard, sack: drawSack, bench: drawBench };
+  const DRAW = { tree: drawTree, house: drawHouse, stall: drawStall, coop: drawCoop, barn: drawBarn, trough: drawTrough, fence: drawFence, billboard: drawBillboard, sack: drawSack, bench: drawBench, glass: drawGlass, ghroof: drawGhRoof };
   for (const d of decor) list.push({ z: d.z, f: () => DRAW[d.kind](d, t) });
   S.trees.forEach((tr, i) => { if (tr.kind) { const s = ORCHARD_SLOTS[i]; list.push({ z: s.x + s.y + 1, f: () => drawOrchardTree(i, t) }); } });
   for (const h of hensState) list.push({ z: h.x + h.y, f: () => drawHen(h, t) });
   for (const c of cowsState) list.push({ z: c.x + c.y, f: () => drawCow(c, t) });
   S.plots.forEach((p, i) => { if (p.crop) { const s = PLOT_SLOTS[i]; list.push({ z: s.x + s.y + 1, f: () => drawCrop(i, t) }); } });
+  S.gh.forEach((p, i) => { if (p.crop) { const s = GH_SLOTS[i]; list.push({ z: s.x + s.y + 1, f: () => drawCrop(i, t, true) }); } });
   list.push({ z: P.x + P.y + 0.01, f: () => drawPerson(P, PLAYER_LOOK) });
   for (const h of helpers) list.push({ z: h.x + h.y, f: () => { drawPerson(h, h.look); const c = iso(h.x, h.y); const cfg = S.helpers[h.id] || { stations: [] }, st = cfg.stations;
     const fieldIco = !cfg.replant ? '🌾' : cfg.seed === 'same' ? '🔁' : CROP[cfg.seed]?.e || '🌾';   // сбор — 🌾, посев — значок культуры
-    const icons = st.length ? st.map(k => k === 'field' ? (cfg.zone == null ? '❓' : fieldIco) : STATIONS[k].ico) : [REST.ico];
+    const icons = st.length ? st.map(k => k === 'field' ? (!cfg.zones.length ? '❓' : fieldIco) : k === 'gh' && cfg.ghReplant && cfg.ghSeed !== 'same' ? CROP[cfg.ghSeed].e : STATIONS[k].ico) : [REST.ico];
     if (h.broke) icons.push('💰');
     rr(c.x - icons.length * 6.5 - 3, c.y - 69, icons.length * 13 + 6, 18, 9, 'rgba(255,253,246,.95)');
     icons.forEach((e, k) => emoji(e, c.x + (k - (icons.length - 1) / 2) * 13, c.y - 59.5, 11)); } });
@@ -1168,9 +1268,10 @@ function drawGround(t) {
     else if (g === 'o') col = (x + y) % 2 ? '#84c260' : '#7ebc5b';
     else if (g === 'y') col = hens() ? ((x + y) % 2 ? '#cfae78' : '#c9a771') : grass;
     else if (g === 'm') col = cows() ? ((x + y) % 2 ? '#93d36b' : '#8bcc63') : grass;
-    else if (g === 's') {
-      const i = slotAt(x, y);
-      if (i < S.plots.length) col = S.plots[i].crop && S.plots[i].prog < 1 ? '#6b4327' : '#8a5a36';
+    else if (g === 's' || (g === 'h' && S.up.greenhouse)) {
+      const arr = g === 's' ? S.plots : S.gh, i = g === 's' ? slotAt(x, y) : ghAt(x, y);
+      if (i < arr.length) col = arr[i].crop && arr[i].prog < 1 ? '#6b4327' : '#8a5a36';
+      else if (g === 'h') col = (x + y) % 2 ? '#d9d4c2' : '#d2ccb8';   // пол теплицы
     }
     poly(pts, col, col);
 
@@ -1203,16 +1304,16 @@ function drawGround(t) {
       const o = Math.sin(t * 2 + x + y) * 3;
       ctx.moveTo(c.x - 8 + o, c.y); ctx.lineTo(c.x + 2 + o, c.y); ctx.stroke();
     }
-    if (g === 's') {
-      const i = slotAt(x, y);
-      if (i < S.plots.length) {
+    if (g === 's' || (g === 'h' && S.up.greenhouse)) {
+      const arr = g === 's' ? S.plots : S.gh, i = g === 's' ? slotAt(x, y) : ghAt(x, y);
+      if (i < arr.length) {
         ctx.strokeStyle = 'rgba(0,0,0,.18)'; ctx.lineWidth = 1.5;
         for (const k of [.3, .55, .8]) { const a = iso(x + k, y + .12), b = iso(x + k, y + .88); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
-        const p = S.plots[i];
+        const p = arr[i];
         if (p.crop && p.prog >= 1) poly(pts, null, `rgba(255,224,102,${.6 + Math.sin(t * 5) * .35})`, 2.5);
       } else {
         ctx.setLineDash([4, 4]); poly(pts, null, 'rgba(255,255,255,.35)', 1.2); ctx.setLineDash([]);
-        if (i === S.plots.length) { ctx.globalAlpha = .8; emoji('🔒', c.x, c.y - 4, 14); ctx.globalAlpha = 1; }
+        if (i === arr.length) { ctx.globalAlpha = .8; emoji('🔒', c.x, c.y - 4, 14); ctx.globalAlpha = 1; }
       }
     }
   }
@@ -1242,6 +1343,12 @@ function drawReserved() {
     poly([iso(14, 1), iso(16, 1), iso(16, 7), iso(13, 7), iso(13, 3), iso(14, 3)], 'rgba(255,255,255,.08)', 'rgba(255,255,255,.45)', 1.4);
     ctx.setLineDash([]);
     const c = iso(14.5, 5); ctx.globalAlpha = .85; emoji('🐄', c.x - 8, c.y - 4, 16); emoji('🔒', c.x + 10, c.y - 4, 12); ctx.globalAlpha = 1;
+  }
+  if (!S.up.greenhouse) {   // место под теплицу
+    ctx.setLineDash([5, 5]);
+    poly([iso(13, 8), iso(16, 8), iso(16, 10), iso(13, 10)], 'rgba(255,255,255,.08)', 'rgba(255,255,255,.45)', 1.4);
+    ctx.setLineDash([]);
+    const c = iso(14.5, 9); ctx.globalAlpha = .85; emoji('🏡', c.x - 8, c.y - 4, 16); emoji('🔒', c.x + 10, c.y - 4, 12); ctx.globalAlpha = 1;
   }
   // место под курятник, пока он не построен
   if (!hens()) {
@@ -1440,6 +1547,27 @@ function drawOrchardTree(i, t) {
   }
 }
 
+// Теплица: стеклянные стенки (задние — до грядок, передние — после) и прозрачная двускатная крыша
+const GH_H = 30;
+function drawGlass(d) {
+  if (!S.up.greenhouse) return;
+  const [ax, ay] = d.a, [bx, by] = d.b;
+  poly([lift(ax, ay, 0), lift(bx, by, 0), lift(bx, by, GH_H), lift(ax, ay, GH_H)], d.back ? 'rgba(200,235,255,.32)' : 'rgba(210,240,255,.16)', 'rgba(255,255,255,.75)', 1.2);
+  vline(ax, ay, 0, GH_H, '#f4f8f8', 2.2); vline(bx, by, 0, GH_H, '#f4f8f8', 2.2);
+  if (!d.back && ay === 10 && ax === 14) {   // дверь спереди
+    poly([lift(14.3, 10, 0), lift(14.7, 10, 0), lift(14.7, 10, 22), lift(14.3, 10, 22)], 'rgba(255,255,255,.18)', '#f4f8f8', 1.6);
+  }
+}
+function drawGhRoof() {
+  if (!S.up.greenhouse) return;
+  const H = GH_H, R = H + 14, A = lift(13, 8, H), B = lift(16, 8, H), C = lift(16, 10, H), D = lift(13, 10, H), R1 = lift(13, 9, R), R2 = lift(16, 9, R);
+  poly([A, B, R2, R1], 'rgba(200,235,255,.28)', 'rgba(255,255,255,.8)', 1.4);
+  poly([R1, R2, C, D], 'rgba(220,245,255,.2)', 'rgba(255,255,255,.85)', 1.4);
+  poly([B, C, R2], 'rgba(200,235,255,.25)', 'rgba(255,255,255,.85)', 1.4);
+  ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 1;
+  for (const k of [14, 15]) { const a = lift(k, 8, H), r = lift(k, 9, R), b = lift(k, 10, H); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(r.x, r.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
+}
+
 function drawBillboard(d, t) {
   const L = S.up.ads; if (!L) return;
   // 1–2: табличка на столбике · 3–4: щит · 5–6: рамка и лампочки · 7–9: флаг · 10: золотой щит
@@ -1453,6 +1581,11 @@ function drawBillboard(d, t) {
   else {
     textOnX(x0, 10.5, zt - 9, w, 'ФЕРМА', '#c0392b', 11);
     textOnX(x0, 10.5, zb + 9, w, L >= 10 ? '★ ЛУЧШАЯ ★' : L >= 5 ? '★'.repeat(L - 4) : '→ свежее', L >= 5 ? '#e0a020' : '#3e7d32', L >= 5 && L < 10 ? 9 : 7);
+  }
+  if (S.night) {   // ночью щит подсвечен лампой сверху
+    const a = lift(x0 + w / 2, 10.5, zt + 6); vline(x0 + w / 2, 10.5, zt, zt + 6, '#555', 1.5);
+    rr(a.x - 5, a.y - 2, 10, 4, 2, '#444'); circle(a.x, a.y + 2, 2.5, '#fff6c0');
+    ctx.globalAlpha = .28; poly([lift(x0, 10.5, zb), lift(x1, 10.5, zb), lift(x1, 10.5, zt), lift(x0, 10.5, zt)], '#ffe9a0'); ctx.globalAlpha = 1;
   }
   if (L >= 5) for (let k = 0; k <= 6; k++) {   // лампочки по верхнему краю
     const p = lift(x0 + w * k / 6, 10.5, zt + 2), on = (Math.floor(t * 3) + k) % 2;
@@ -1516,8 +1649,8 @@ function drawBubbleAt(c, text, ok) {
   emoji(text, c.x, c.y, 13);
 }
 
-function drawCrop(i, t) {
-  const s = PLOT_SLOTS[i], p = S.plots[i], c = iso(s.x + .5, s.y + .5);
+function drawCrop(i, t, gh) {
+  const s = (gh ? GH_SLOTS : PLOT_SLOTS)[i], p = (gh ? S.gh : S.plots)[i], c = iso(s.x + .5, s.y + .5);
   if (p.prog >= 1) {
     emoji(CROP[p.crop].e, c.x, c.y - 9 + Math.sin(t * 4 + i) * 1.5, 24);
     return;
@@ -1561,6 +1694,13 @@ function drawPerson(p, L) {
   if (L.hat === 'straw') {
     ctx.fillStyle = '#e8c56a'; ctx.beginPath(); ctx.ellipse(0, -39, 12.5, 3.5, 0, 0, 7); ctx.fill();
     rr(-6, -46, 12, 8, 3, '#e8c56a'); ctx.fillStyle = '#c0504d'; ctx.fillRect(-6, -41.5, 12, 2);
+  } else if (L.hat === 'beanie') {   // вязаная шапка с помпоном
+    ctx.fillStyle = L.capColor; ctx.beginPath(); ctx.arc(0, -36, 8.2, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fillRect(-8.2, -37, 16.4, 2.6); circle(0, -45, 2.8, '#fff');
+  } else if (L.hat === 'bandana') {   // бандана с узелком
+    ctx.fillStyle = L.capColor; ctx.beginPath(); ctx.arc(0, -35.5, 8, Math.PI * 1.02, Math.PI * 1.98); ctx.fill();
+    ctx.fillRect(-8, -36.5, 16, 2.5); ctx.beginPath(); ctx.moveTo(-7.5, -35); ctx.lineTo(-12, -32); ctx.lineTo(-10, -37); ctx.fill();
+    circle(-3, -39, .9, '#fff'); circle(2, -40, .9, '#fff');
   } else if (L.hat === 'cap') {
     ctx.fillStyle = L.capColor; ctx.beginPath(); ctx.arc(0, -36, 7.8, Math.PI, 0); ctx.fill();
     ctx.fillRect(2, -37, 9, 2.5);
@@ -1586,9 +1726,9 @@ function drawBubble(v) {
 }
 
 function drawBars() {
-  S.plots.forEach((p, i) => {
+  [...S.plots.map((p, i) => [p, PLOT_SLOTS[i]]), ...S.gh.map((p, i) => [p, GH_SLOTS[i]])].forEach(([p, s]) => {
     if (!p.crop || p.prog >= 1) return;
-    const s = PLOT_SLOTS[i], c = iso(s.x + .5, s.y + .5);
+    const c = iso(s.x + .5, s.y + .5);
     rr(c.x - 14, c.y - 26, 28, 4, 2, 'rgba(0,0,0,.35)');
     rr(c.x - 14, c.y - 26, 28 * p.prog, 4, 2, '#9be15d');
   });
@@ -1623,9 +1763,11 @@ function drawLighting() {
     const glows = [[lift(4, 2.95, 22), 70], [lift(4, 10.1, 56), S.up.sign >= 3 ? 95 : 60]];
     if (hens()) glows.push([lift(6.4, 9, 17), 45]);
     if (cows()) glows.push([lift(16, 2, 40), 50]);
-    for (const [p, r] of glows) {
+    if (S.up.ads) glows.push([lift(12.55, 10.5, S.up.ads >= 3 ? 42 : 24), S.up.ads >= 5 ? 85 : S.up.ads >= 3 ? 65 : 42, .6]);   // подсветка щита
+    if (S.up.greenhouse) glows.push([lift(14.5, 9, 30), 60]);
+    for (const [p, r, a = .35] of glows) {
       const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
-      g.addColorStop(0, 'rgba(255,190,90,.35)'); g.addColorStop(1, 'rgba(255,190,90,0)');
+      g.addColorStop(0, `rgba(255,200,100,${a})`); g.addColorStop(1, 'rgba(255,190,90,0)');
       ctx.fillStyle = g; ctx.fillRect(p.x - r, p.y - r, r * 2, r * 2);
     }
     ctx.globalCompositeOperation = 'source-over';
@@ -1682,8 +1824,9 @@ function renderUI() {
   for (const id of S.unlocked) {
     const c = CROP[id], d = document.createElement('div');
     d.className = 'seed' + (S.sel === id ? ' sel' : '') + (S.coins < c.seed ? ' dis' : '');
-    d.innerHTML = `<div class="e">${c.e}</div><div class="c">${c.seed ? c.seed + '💰' : 'даром'}</div>`;
-    d.onclick = () => { S.sel = id; toast(`${c.e} ${c.name}: семена ${c.seed ? c.seed + '💰' : 'даром'} → продажа ${sellPrice(id)}💰 · растёт ${Math.round(c.grow / growMult())}с`); renderUI(); };
+    const gh = GH_CROPS.includes(id);
+    d.innerHTML = `<div class="e">${c.e}</div><div class="c">${c.seed ? c.seed + '💰' : 'даром'}</div>${gh ? '<span class="ghb">🏡</span>' : ''}`;
+    d.onclick = () => { S.sel = id; toast(`${c.e} ${c.name}: семена ${c.seed ? c.seed + '💰' : 'даром'} → продажа ${sellPrice(id)}💰 · растёт ${Math.round(c.grow / growMult())}с${gh ? ' · только в теплице 🏡' : ''}`); renderUI(); };
     s.appendChild(d);
   }
   renderHud();
@@ -1697,7 +1840,7 @@ function openProfile() {
       <div style="font-size:44px;width:68px;height:68px;border-radius:50%;background:#f0e5cb;display:flex;align-items:center;justify-content:center">🧑‍🌾</div>
       <div><h2 style="margin:0">Фермер</h2><div style="color:#7a6650">Солнечная ферма · день ${S.day}</div></div></div>
     ${stat('💰 Монет сейчас', S.coins)}${stat('💵 Заработано всего', L.earned)}${stat('🧍 Покупателей обслужено', L.served)}
-    ${stat('🧺 Собрано урожая', L.harvested)}${stat('🥚 Собрано яиц', L.eggs)}${stat('🥛 Надоено молока', L.milk)}${stat('🌱 Грядок', plotsUsed)}
+    ${stat('🧺 Собрано урожая', L.harvested)}${stat('🥚 Собрано яиц', L.eggs)}${stat('🥛 Надоено молока', L.milk)}${stat('🌱 Грядок', plotsUsed)}${stat('🏡 Грядок в теплице', S.gh.length)}
     ${stat('🌳 Деревьев', S.trees.filter(t => t.kind).length)}${stat('🐔 Кур', hens())}${stat('🐄 Коров', cows())}${stat('🧑‍🌾 Помощников', S.up.helper)}
     ${stat('🌾 Культур открыто', `${S.unlocked.length} из ${CROPS.length}`)}
     <button class="wide" style="width:100%;margin-top:12px" onclick="closeNight()">Закрыть</button>`;
@@ -1721,7 +1864,8 @@ function openHelp() {
     🏪 Тапни по лавке — фермер встанет за прилавок и будет продавать всем, на кого хватает товара.<br>
     🌙 Ночью тапай по значкам на ферме — улучшения, сад, курятник. Кур корми ночью — днём будут яйца.<br>
     🐄 Коров корми ночью только 🌻 подсолнухами или 🌾 пшеницей — днём они дают 🥛 молоко.<br>
-    🧑‍🌾 Помощникам назначай станции: поле, сад, курятник, коровник или лавка.</div>
+    🏡 🍅 Помидоры и 🍓 клубника растут только в теплице — построй её ночью.<br>
+    🧑‍🌾 Помощникам назначай станции: поле (свои участки), теплица, сад, курятник, коровник или лавка.</div>
     <button class="wide" style="width:100%;margin-top:12px" onclick="openMenu()">Назад</button>`;
   $('overlay').classList.add('show');
 }
@@ -1738,14 +1882,14 @@ function openNight(withSummary) {
     const fed = fedTomorrow(), need = (hens() - fed) * FEED_PER_HEN;
     const status = fed >= hens() ? `Все ${hens()} кур накормлены на завтра ✔ — будет ~${hens() * 5} яиц`
       : `Кур: ${hens()}${fed ? `, накормлено ${fed}` : ''}. Нужно ${need} любых растений (сначала берутся самые дешёвые), на складе ${feedStock()}`;
-    h += `<h3 style="margin:10px 0 0">🐔 Курятник${S.helpers.some(c => c.stations.includes('coop')) ? ' <small style="font-weight:400;color:#7a6650">— помощник кормит сам</small>' : ''}</h3><div class="up"><div class="ico">🐔</div><div class="txt"><b>Покормить кур на завтра</b><small>${status}</small></div>
+    h += `<h3 style="margin:10px 0 0">🐔 Курятник${S.helpers.some(c => c.feed && c.stations.includes('coop')) ? ' <small style="font-weight:400;color:#7a6650">— помощник кормит сам</small>' : ''}</h3><div class="up"><div class="ico">🐔</div><div class="txt"><b>Покормить кур на завтра</b><small>${status}</small></div>
       <button ${fed >= hens() || feedStock() < FEED_PER_HEN ? 'disabled' : ''} onclick="feedHens(); openNight(false)">Покормить</button></div>`;
   }
   if (cows()) {
     const fed = cowsFedTomorrow(), need = (cows() - fed) * FEED_PER_COW;
-    const status = fed >= cows() ? `Все ${cows()} коров накормлены ✔ — будет ~${cows() * 3} 🥛`
+    const status = fed >= cows() ? `Все ${cows()} коров накормлены ✔ — будет ~${cows() * 6} 🥛`
       : `Коров: ${cows()}${fed ? `, накормлено ${fed}` : ''}. Нужно ${need} 🌻 или 🌾, на складе ${cowFoodStock()}`;
-    h += `<h3 style="margin:10px 0 0">🐄 Коровник${S.helpers.some(c => c.stations.includes('barn')) ? ' <small style="font-weight:400;color:#7a6650">— помощник кормит сам</small>' : ''}</h3><div class="up"><div class="ico">🐄</div><div class="txt"><b>Покормить коров на завтра</b><small>${status}</small></div>
+    h += `<h3 style="margin:10px 0 0">🐄 Коровник${S.helpers.some(c => c.feed && c.stations.includes('barn')) ? ' <small style="font-weight:400;color:#7a6650">— помощник кормит сам</small>' : ''}</h3><div class="up"><div class="ico">🐄</div><div class="txt"><b>Покормить коров на завтра</b><small>${status}</small></div>
       <button ${fed >= cows() || cowFoodStock() < FEED_PER_COW ? 'disabled' : ''} onclick="feedCows(); openNight(false)">Покормить</button></div>`;
   }
   h += `<h3 style="margin:10px 0 0">Улучшения фермы</h3><small style="color:#7a6650">Можно и прямо на ферме: закрой меню и тапни на замочек или плашку ⬆ с ценой</small>`;
@@ -1759,7 +1903,7 @@ function openNight(withSummary) {
     if (S.unlocked.includes(c.id)) continue;
     const early = S.day + 1 < c.unlockDay;
     h += `<div class="up"><div class="ico">${early ? '❓' : c.e}</div><div class="txt"><b>${early ? '???' : c.name}</b>
-      <small>${early ? `Откроется после ${c.unlockDay - 1}-го дня` : `Семена ${c.seed}💰 · растёт ${c.grow}с · продаётся за ${c.price}💰`}</small></div>
+      <small>${early ? `Откроется после ${c.unlockDay - 1}-го дня` : `Семена ${c.seed}💰 · растёт ${c.grow}с · продаётся за ${c.price}💰${GH_CROPS.includes(c.id) ? ' · 🏡 только в теплице' : ''}`}</small></div>
       <button ${early || S.coins < c.unlockCost ? 'disabled' : ''} onclick="unlockCrop('${c.id}')">${c.unlockCost}💰</button></div>`;
   }
   h += `<div class="row" style="margin-top:14px"><button class="wide alt" onclick="closeNight()">🌾 К грядкам</button>
@@ -1781,7 +1925,7 @@ function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add
 
 $('harvestAll').onclick = () => {   // грядки, яблони и гнездо — по кратчайшему маршруту
   const covered = new Set(S.helpers.flatMap(c => c.stations));
-  const kindOf = j => j.x === COOP_SPOT.x && j.y === COOP_SPOT.y ? 'coop' : j.x === BARN_SPOT.x && j.y === BARN_SPOT.y ? 'barn' : orchardAt(j.x, j.y) >= 0 ? 'orchard' : 'field';
+  const kindOf = j => j.x === COOP_SPOT.x && j.y === COOP_SPOT.y ? 'coop' : j.x === BARN_SPOT.x && j.y === BARN_SPOT.y ? 'barn' : orchardAt(j.x, j.y) >= 0 ? 'orchard' : ghAt(j.x, j.y) >= 0 ? 'gh' : 'field';
   const zoneTaken = j => zoneOwner(zoneOfXY(j.x, j.y)) >= 0;   // на поле — только участки без помощника
   const all = readyJobs(), mine = all.filter(j => kindOf(j) === 'field' ? !zoneTaken(j) : !covered.has(kindOf(j)));
   const list = mine.map(j => ({ x: j.x, y: j.y, fn: () => j.act('player') }));
@@ -1791,9 +1935,16 @@ $('harvestAll').onclick = () => {   // грядки, яблони и гнезд�
 $('plantAll').onclick = () => {
   const c = CROP[S.sel], can = c.seed ? Math.floor(S.coins / c.seed) : Infinity;
   const list = [];
-  const sows = i => { const o = zoneOwner(zoneOf(i)); return o >= 0 && S.helpers[o].replant; };   // там сажает помощник
-  S.plots.forEach((p, i) => { if (!p.crop && !sows(i)) list.push({ x: PLOT_SLOTS[i].x, y: PLOT_SLOTS[i].y, fn: () => plotAct(i, 'plant') }); });
-  if (!list.length) { toast(S.plots.some((p, i) => !p.crop) ? '🧑‍🌾 Пустые грядки засеют помощники' : 'Свободных грядок нет'); return; }
+  if (GH_CROPS.includes(S.sel)) {   // помидоры и клубника — в теплицу
+    if (!S.gh.length) { toast(`${c.e} растёт только в теплице 🏡 — построй её ночью`); return; }
+    const ghSows = S.helpers.some(h => h.stations.includes('gh') && h.ghReplant);
+    S.gh.forEach((p, i) => { if (!p.crop && !ghSows) list.push({ x: GH_SLOTS[i].x, y: GH_SLOTS[i].y, fn: () => plotAct(i, 'plant', true) }); });
+    if (!list.length) { toast(ghSows && S.gh.some(p => !p.crop) ? '🧑‍🌾 Теплицу засеет помощник' : 'В теплице свободных грядок нет'); return; }
+  } else {
+    const sows = i => { const o = zoneOwner(zoneOf(i)); return o >= 0 && S.helpers[o].replant; };   // там сажает помощник
+    S.plots.forEach((p, i) => { if (!p.crop && !sows(i)) list.push({ x: PLOT_SLOTS[i].x, y: PLOT_SLOTS[i].y, fn: () => plotAct(i, 'plant') }); });
+    if (!list.length) { toast(S.plots.some((p, i) => !p.crop) ? '🧑‍🌾 Пустые грядки засеют помощники' : 'Свободных грядок нет'); return; }
+  }
   if (!can) { toast('Не хватает монет — посади бесплатный подсолнух 🌻'); return; }
   setTasks(routeThrough(list).slice(0, can));
 };
@@ -1807,12 +1958,12 @@ const CHEATS = {
   money:   ['💰 +1000', () => { S.coins += 1000; }],
   money2:  ['💰 +10 000', () => { S.coins += 10000; }],
   goods:   ['📦 +10 всего', () => { for (const id of [...S.unlocked, 'apple', 'egg', 'milk']) S.inv[id] = (S.inv[id] || 0) + 10; }],
-  grow:    ['🌱 Всё созрело', () => { S.plots.forEach(p => { if (p.crop) p.prog = 1; }); S.trees.forEach(t => { if (t.kind) { t.grow = 1; t.fruit = 1; } }); if (hens()) S.coop.eggs += 5; if (cows()) S.barn.milk += 3; }],
+  grow:    ['🌱 Всё созрело', () => { [...S.plots, ...S.gh].forEach(p => { if (p.crop) p.prog = 1; }); S.trees.forEach(t => { if (t.kind) { t.grow = 1; t.fruit = 1; } }); if (hens()) S.coop.eggs += 5; if (cows()) S.barn.milk += 3; }],
   crops:   ['🔓 Все культуры', () => { S.unlocked = CROPS.map(c => c.id); }],
   maxup:   ['⭐ Все улучшения', () => {
     for (const [k, u] of Object.entries(UPGRADES)) S.up[k] = u.max;
     while (S.plots.length < MAX_PLOTS) S.plots.push({ crop: null, prog: 0 });
-    syncHelpers(); syncTrees(); syncHens(); syncCows();
+    syncHelpers(); syncTrees(); syncHens(); syncCows(); syncGh();
   }],
   feed:    ['🐔🐄 Накормить всех', () => { if (hens()) { S.coop.fedDay = S.night ? S.day + 1 : S.day; S.coop.fedHens = hens(); } if (cows()) { S.barn.fedDay = S.night ? S.day + 1 : S.day; S.barn.fedCows = cows(); } }],
   visitor: ['🧍 Покупатель', () => { if (!S.night && queueCount() < MAX_QUEUE) { spawnVisitor(); S.spawned--; } }],
@@ -1842,7 +1993,7 @@ $('sunbox').onclick = () => { if (!S.night && !S.started) beginClock(); else if 
 $('overlay').onclick = e => { if (e.target.id === 'overlay') closeNight(); };
 
 // ================== СТАРТ ==================
-syncHelpers(); syncTrees(); syncHens(); syncCows();
+syncHelpers(); syncTrees(); syncHens(); syncCows(); syncGh();
 new ResizeObserver(resize).observe($('stage'));
 resize();
 if (tablet) { centerCam(); clampCam(); }   // на планшете — вся ферма
