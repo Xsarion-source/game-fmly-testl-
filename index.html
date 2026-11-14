@@ -148,6 +148,7 @@ const GOODS = {
   milk:  { e: '🥛', name: 'Молоко', price: 22 },
 };
 const GH_CROPS = ['tomato', 'strawberry'];   // растут только в теплице
+const GH_YIELD = 6, GH_SLOW = 3;             // в теплице зреют гроздью по 6, но в 3 раза дольше
 const FEED_PER_HEN = 3;            // растений на курицу на день
 const EGG_EVERY = DAY_LEN / 5;     // сытая курица несёт ~5 яиц за день
 const COW_FOOD = ['sunflower', 'wheat'];   // коровы едят только подсолнухи и пшеницу
@@ -159,7 +160,7 @@ const UPGRADES = {
   orchard:{ name: 'Фруктовый сад',     ico: '🌳', desc: l => l === 0 ? 'Место под 2 яблони. Саженец 40💰, растёт ~день, потом плодоносит каждый день' : '+2 места под деревья', cost: l => [150, 260][l], max: 2 },
   coop:   { name: 'Курятник',          ico: '🐔', desc: l => l === 0 ? 'Курятник и 2 курицы. Ночью корми их урожаем — днём несут яйца' : `+1 курица (сейчас ${l + 1})`, cost: l => [150, 100, 140, 190][l], max: 4 },
   barn:   { name: 'Коровник',          ico: '🐄', desc: l => l === 0 ? 'Коровник, пастбище и корова. Ночью корми подсолнухами или пшеницей — днём даёт молоко' : `+1 корова (сейчас ${l})`, cost: l => [220, 180, 260][l], max: 3 },
-  greenhouse: { name: 'Теплица',      ico: '🏡', desc: l => l === 0 ? 'Стеклянная теплица на 3 грядки. Только в ней растут 🍅 помидоры и 🍓 клубника' : '+3 грядки в теплице', cost: l => [260, 380][l], max: 2 },
+  greenhouse: { name: 'Теплица',      ico: '🏡', desc: l => l === 0 ? 'Стеклянная теплица на 3 грядки. Только в ней растут 🍅 помидоры и 🍓 клубника — медленнее, зато гроздью по 6' : '+3 грядки в теплице', cost: l => [260, 380][l], max: 2 },
   ads:    { name: 'Реклама',           ico: '📣', desc: l => `+3 покупателя в день`,           cost: l => 30 + l*35,           max: 10 },
   fert:   { name: 'Удобрения',         ico: '🧪', desc: l => `Рост быстрее (+${l*20}% → +${(l+1)*20}%)`, cost: l => 50 + l*60, max: 5 },
   sign:   { name: 'Красивая вывеска',  ico: '🪧', desc: l => `Цены выше (+${l*10}% → +${(l+1)*10}%)`, cost: l => 60 + l*70, max: 6 },
@@ -236,7 +237,7 @@ const ghAt = (x, y) => GH_SLOTS.findIndex(q => q.x === x && q.y === y);
 const GH_IDLE = { x: 13, y: 7 };
 for (const [a, b, back] of [[[13,8],[14,8],1],[[14,8],[15,8],1],[[15,8],[16,8],1],[[13,8],[13,9],1],[[13,9],[13,10],1],
                             [[13,10],[14,10],0],[[14,10],[15,10],0],[[15,10],[16,10],0],[[16,8],[16,9],0],[[16,9],[16,10],0]])
-  decor.push({ kind: 'glass', a, b, back, z: (a[0] + b[0]) / 2 + (a[1] + b[1]) / 2 + (back ? -0.4 : 0.4) });
+  decor.push({ kind: 'glass', a, b, back, z: back ? 20.5 : (a[0] + b[0]) / 2 + (a[1] + b[1]) / 2 + 0.4 });   // задние стенки — раньше всех грядок теплицы
 decor.push({ kind: 'ghroof', z: 26.6 });
 
 // Видимые улучшения
@@ -417,21 +418,21 @@ function tapVisitor(v) {
 
 // ---------- Грядки ----------
 // что сажать в теплице: выбранное справа, иначе что росло, иначе первое открытое
-function ghPick(p) {
-  if (GH_CROPS.includes(S.sel)) return S.sel;
-  if (p.last && S.unlocked.includes(p.last)) return p.last;
-  return GH_CROPS.find(id => S.unlocked.includes(id)) || null;
+function ghPick() { return GH_CROPS.includes(S.sel) ? S.sel : null; }   // в теплицу — только выбранные 🍅 или 🍓
+const GH_WRONG = () => `🏡 В теплице растут только 🍅 и 🍓 — выбери их справа${GH_CROPS.some(id => S.unlocked.includes(id)) ? '' : ' (сначала открой ночью)'}`;
+function harvestBed(p, s, gh) {   // в теплице — гроздь из GH_YIELD плодов
+  const n = gh ? GH_YIELD : 1;
+  S.inv[p.crop] = (S.inv[p.crop] || 0) + n; S.life.harvested += n;
+  addFloat(s.x + .5, s.y + .5, `+${n} ${CROP[p.crop].e}`);
+  p.last = p.crop; p.crop = null; p.prog = 0;
 }
 function plotAct(i, mode, gh) {
   const p = (gh ? S.gh : S.plots)[i], s = (gh ? GH_SLOTS : PLOT_SLOTS)[i];
   if (!p) return;
-  if (p.crop && p.prog >= 1 && mode !== 'plant') {
-    S.inv[p.crop] = (S.inv[p.crop] || 0) + 1; S.life.harvested++;
-    addFloat(s.x + .5, s.y + .5, `+1 ${CROP[p.crop].e}`);
-    p.last = p.crop; p.crop = null; p.prog = 0;
-  } else if (!p.crop && mode !== 'harvest') {
-    const id = gh ? ghPick(p) : S.sel, c = CROP[id];
-    if (!c) { toast('🏡 Сначала открой ночью 🍅 помидоры или 🍓 клубнику'); return; }
+  if (p.crop && p.prog >= 1 && mode !== 'plant') harvestBed(p, s, gh);
+  else if (!p.crop && mode !== 'harvest') {
+    const id = gh ? ghPick() : S.sel, c = CROP[id];
+    if (!c) { toast(GH_WRONG()); return; }
     if (!gh && GH_CROPS.includes(id)) { toast(`${c.e} ${c.name} растёт только в теплице 🏡`); return; }
     if (S.coins < c.seed) { toast(gh ? `Семена ${c.e} стоят ${c.seed}💰` : 'Не хватает монет — посади бесплатный подсолнух 🌻'); return; }
     S.coins -= c.seed; p.crop = c.id; p.prog = 0;
@@ -453,8 +454,8 @@ function tapGh(i) {
   const p = S.gh[i], s = GH_SLOTS[i];
   if (p.crop && p.prog < 1) { toast(`${CROP[p.crop].e} растёт… ${Math.floor(p.prog * 100)}%`); return; }
   if (!p.crop) {
-    const id = ghPick(p);
-    if (!id) { toast('🏡 Сначала открой ночью 🍅 помидоры или 🍓 клубнику'); return; }
+    const id = ghPick();
+    if (!id) { toast(GH_WRONG()); return; }
     if (S.coins < CROP[id].seed) { toast(`Семена ${CROP[id].e} стоят ${CROP[id].seed}💰`); return; }
   }
   setTasks([{ x: s.x, y: s.y, fn: () => plotAct(i, undefined, true) }]);
@@ -874,11 +875,8 @@ function ghHelperSeed(cfg, p) {
 function helperGh(i, cfg) {
   const p = S.gh[i], s = GH_SLOTS[i];
   if (!p) return false;
-  if (p.crop && p.prog >= 1) {
-    S.inv[p.crop] = (S.inv[p.crop] || 0) + 1; S.life.harvested++;
-    addFloat(s.x + .5, s.y + .5, `+1 ${CROP[p.crop].e}`);
-    p.last = p.crop; p.crop = null; p.prog = 0;
-  } else if (p.crop || !cfg.ghReplant) return false;
+  if (p.crop && p.prog >= 1) harvestBed(p, s, true);
+  else if (p.crop || !cfg.ghReplant) return false;
   if (cfg.ghReplant) { const id = ghHelperSeed(cfg, p); if (id) { S.coins -= CROP[id].seed; p.crop = id; p.prog = 0; if (!S.night) beginClock(); } }
   save(); renderUI(); return true;
 }
@@ -1055,7 +1053,8 @@ function step(dt) {
   if (!S.night && !S.started && shouldAutoStart()) beginClock();
   if (!S.night && S.started) {
     S.t += dt;
-    for (const p of [...S.plots, ...S.gh]) if (p.crop && p.prog < 1) p.prog = Math.min(1, p.prog + dt * growMult() / CROP[p.crop].grow);
+    for (const p of S.plots) if (p.crop && p.prog < 1) p.prog = Math.min(1, p.prog + dt * growMult() / CROP[p.crop].grow);
+    for (const p of S.gh) if (p.crop && p.prog < 1) p.prog = Math.min(1, p.prog + dt * growMult() / (CROP[p.crop].grow * GH_SLOW));
     for (const t of S.trees) if (t.kind) {
       const T = TREES[t.kind];
       if (t.grow < 1) t.grow = Math.min(1, t.grow + dt * growMult() / T.mature);
@@ -1552,7 +1551,7 @@ const GH_H = 30;
 function drawGlass(d) {
   if (!S.up.greenhouse) return;
   const [ax, ay] = d.a, [bx, by] = d.b;
-  poly([lift(ax, ay, 0), lift(bx, by, 0), lift(bx, by, GH_H), lift(ax, ay, GH_H)], d.back ? 'rgba(200,235,255,.32)' : 'rgba(210,240,255,.16)', 'rgba(255,255,255,.75)', 1.2);
+  poly([lift(ax, ay, 0), lift(bx, by, 0), lift(bx, by, GH_H), lift(ax, ay, GH_H)], d.back ? 'rgba(200,235,255,.3)' : null, 'rgba(255,255,255,.75)', 1.2);
   vline(ax, ay, 0, GH_H, '#f4f8f8', 2.2); vline(bx, by, 0, GH_H, '#f4f8f8', 2.2);
   if (!d.back && ay === 10 && ax === 14) {   // дверь спереди
     poly([lift(14.3, 10, 0), lift(14.7, 10, 0), lift(14.7, 10, 22), lift(14.3, 10, 22)], 'rgba(255,255,255,.18)', '#f4f8f8', 1.6);
@@ -1561,9 +1560,9 @@ function drawGlass(d) {
 function drawGhRoof() {
   if (!S.up.greenhouse) return;
   const H = GH_H, R = H + 14, A = lift(13, 8, H), B = lift(16, 8, H), C = lift(16, 10, H), D = lift(13, 10, H), R1 = lift(13, 9, R), R2 = lift(16, 9, R);
-  poly([A, B, R2, R1], 'rgba(200,235,255,.28)', 'rgba(255,255,255,.8)', 1.4);
-  poly([R1, R2, C, D], 'rgba(220,245,255,.2)', 'rgba(255,255,255,.85)', 1.4);
-  poly([B, C, R2], 'rgba(200,235,255,.25)', 'rgba(255,255,255,.85)', 1.4);
+  poly([A, B, R2, R1], null, 'rgba(255,255,255,.8)', 1.4);
+  poly([R1, R2, C, D], null, 'rgba(255,255,255,.85)', 1.4);
+  poly([B, C, R2], null, 'rgba(255,255,255,.85)', 1.4);
   ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 1;
   for (const k of [14, 15]) { const a = lift(k, 8, H), r = lift(k, 9, R), b = lift(k, 10, H); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(r.x, r.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
 }
@@ -1652,7 +1651,9 @@ function drawBubbleAt(c, text, ok) {
 function drawCrop(i, t, gh) {
   const s = (gh ? GH_SLOTS : PLOT_SLOTS)[i], p = (gh ? S.gh : S.plots)[i], c = iso(s.x + .5, s.y + .5);
   if (p.prog >= 1) {
-    emoji(CROP[p.crop].e, c.x, c.y - 9 + Math.sin(t * 4 + i) * 1.5, 24);
+    const b = Math.sin(t * 4 + i) * 1.5;
+    if (gh) for (const [ox, oy] of [[-9, -4], [9, -4], [0, -13], [-5, 4], [6, 4], [0, -4]]) emoji(CROP[p.crop].e, c.x + ox, c.y + oy - 6 + b, 15);   // гроздь
+    else emoji(CROP[p.crop].e, c.x, c.y - 9 + b, 24);
     return;
   }
   const spots = [[-12, -1], [12, -1], [0, -6], [0, 5]];
@@ -1826,7 +1827,7 @@ function renderUI() {
     d.className = 'seed' + (S.sel === id ? ' sel' : '') + (S.coins < c.seed ? ' dis' : '');
     const gh = GH_CROPS.includes(id);
     d.innerHTML = `<div class="e">${c.e}</div><div class="c">${c.seed ? c.seed + '💰' : 'даром'}</div>${gh ? '<span class="ghb">🏡</span>' : ''}`;
-    d.onclick = () => { S.sel = id; toast(`${c.e} ${c.name}: семена ${c.seed ? c.seed + '💰' : 'даром'} → продажа ${sellPrice(id)}💰 · растёт ${Math.round(c.grow / growMult())}с${gh ? ' · только в теплице 🏡' : ''}`); renderUI(); };
+    d.onclick = () => { S.sel = id; toast(`${c.e} ${c.name}: семена ${c.seed ? c.seed + '💰' : 'даром'} → продажа ${sellPrice(id)}💰 · растёт ${Math.round(c.grow * (gh ? GH_SLOW : 1) / growMult())}с${gh ? ` · только в теплице 🏡, гроздь ×${GH_YIELD}` : ''}`); renderUI(); };
     s.appendChild(d);
   }
   renderHud();
@@ -1903,7 +1904,7 @@ function openNight(withSummary) {
     if (S.unlocked.includes(c.id)) continue;
     const early = S.day + 1 < c.unlockDay;
     h += `<div class="up"><div class="ico">${early ? '❓' : c.e}</div><div class="txt"><b>${early ? '???' : c.name}</b>
-      <small>${early ? `Откроется после ${c.unlockDay - 1}-го дня` : `Семена ${c.seed}💰 · растёт ${c.grow}с · продаётся за ${c.price}💰${GH_CROPS.includes(c.id) ? ' · 🏡 только в теплице' : ''}`}</small></div>
+      <small>${early ? `Откроется после ${c.unlockDay - 1}-го дня` : `Семена ${c.seed}💰 · продаётся за ${c.price}💰 · ${GH_CROPS.includes(c.id) ? `🏡 только в теплице: растёт ${c.grow * GH_SLOW}с, гроздь ×${GH_YIELD}` : `растёт ${c.grow}с`}`}</small></div>
       <button ${early || S.coins < c.unlockCost ? 'disabled' : ''} onclick="unlockCrop('${c.id}')">${c.unlockCost}💰</button></div>`;
   }
   h += `<div class="row" style="margin-top:14px"><button class="wide alt" onclick="closeNight()">🌾 К грядкам</button>
