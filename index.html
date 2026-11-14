@@ -1141,9 +1141,12 @@ const STATIONS = {
 };
 const REST = { ico: '😴', idle: { x: 3, y: 4 } };
 let helpers = [];
+// работа недоступна, пока нет здания (сада, кур, коров, теплицы…)
+const stationOff = k => (k === 'orchard' && !S.up.orchard) || (k === 'coop' && !hens()) || (k === 'barn' && !cows()) || (k === 'gh' && !S.up.greenhouse) || (k === 'mill' && !S.up.mill) || (k === 'dairy' && !S.up.dairy) || (k === 'bakery' && !S.up.bakery);
 function syncHelpers() {
   while (S.helpers.length < S.up.helper) {
-    const st = ['field', 'orchard', 'coop', 'barn', 'stall', 'field', 'gh', 'field', 'orchard', 'field'][S.helpers.length % 10];
+    const order = ['field', 'orchard', 'coop', 'barn', 'stall', 'field', 'gh', 'field', 'orchard', 'field'], n = S.helpers.length;
+    const st = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(k => order[(n + k) % 10]).find(k => !stationOff(k)) || 'field';   // новому — первая доступная работа
     S.helpers.push({ stations: [st], replant: false, seed: 'same', zones: [], feed: false, ghReplant: false, ghSeed: 'same', fold: false });
     if (st === 'field') { const z = freeZone(); if (z != null) S.helpers[S.helpers.length - 1].zones.push(z); }
   }
@@ -1336,7 +1339,7 @@ function openHelpers() {
     h += `<div style="font-size:12px;color:#7a6650;margin:2px 0 6px">${hint}</div><div class="chips">`;
     for (const [k, st] of Object.entries(STATIONS)) {
       if (UPGRADES[k] && upLocked(k)) continue;   // закрытые здания — тайна
-      const dis = (k === 'orchard' && !S.up.orchard) || (k === 'coop' && !hens()) || (k === 'barn' && !cows()) || (k === 'gh' && !S.up.greenhouse) || (k === 'mill' && !S.up.mill) || (k === 'dairy' && !S.up.dairy) || (k === 'bakery' && !S.up.bakery);
+      const dis = stationOff(k) && !cfg.stations.includes(k);   // уже выбранную работу всегда можно снять
       h += chip(cfg.stations.includes(k), `${cfg.stations.includes(k) ? '✓ ' : ''}${st.ico} ${st.name}`, `toggleStation(${i},'${k}')`, dis);
     }
     h += chip(!cfg.stations.length, '😴 Отдых', `toggleStation(${i},'rest')`) + `</div>`;
