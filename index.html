@@ -11,7 +11,7 @@
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
   html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink); background: #4e8c41; overflow: hidden; }
-  #app { display: flex; flex-direction: column; height: 100%; max-width: 640px; margin: 0 auto; background: #4e8c41; }
+  #app { display: flex; flex-direction: column; height: 100%; background: #4e8c41; }
 
   #stage { flex: 1; position: relative; min-height: 0; overflow: hidden; }
   #cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
@@ -926,12 +926,19 @@ const cam = { x: 0, y: 0 };
 const iso = (x, y) => ({ x: (x - y) * TW / 2, y: (x + y) * TH / 2 });
 const lift = (x, y, z) => { const p = iso(x, y); return { x: p.x, y: p.y - z }; };
 
+// Планшет и компьютер: вся ферма целиком помещается на экран (с запасом под верхние и нижние кнопки)
+const WORLD = { x0: -330, x1: W * TW / 2, y0: -60, y1: (W + H) * TH / 2 };   // слева — пустой конец дороги, его можно обрезать
+let tablet = false;
+const fitZoom = () => Math.max(0.5, Math.min(1.6, (cw - 150) / (WORLD.x1 - WORLD.x0), (ch - 240) / (WORLD.y1 - WORLD.y0)));
+function centerCam() { cam.x = (WORLD.x0 + WORLD.x1) / 2 + 40 / zoom; cam.y = (WORLD.y0 + WORLD.y1) / 2 - 10 / zoom; }
 function resize() {
   const r = $('stage').getBoundingClientRect();
   cw = Math.max(1, r.width); ch = Math.max(1, r.height);
   dpr = Math.min(2, window.devicePixelRatio || 1);
   cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr);
-  if (!userZoom) zoom = Math.max(0.55, Math.min(1.2, Math.max(cw / 620, ch / 950)));
+  const wasTablet = tablet; tablet = cw >= 700;
+  if (!userZoom) zoom = tablet ? fitZoom() : Math.max(0.55, Math.min(1.2, Math.max(cw / 620, ch / 950)));
+  if (tablet && (!wasTablet || !userZoom)) centerCam();
   clampCam();
 }
 function clampCam() {
@@ -1031,6 +1038,7 @@ function draw(t) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = '#4e8c41'; ctx.fillRect(0, 0, cv.width, cv.height);
   setWorld();
+  drawOutside();
   drawGround(t);
   drawReserved();
   drawMarker(t);
@@ -1055,6 +1063,26 @@ function draw(t) {
   drawUpBadges(t);
   visitors.slice().sort((a, b) => (a.x + a.y) - (b.x + b.y)).forEach(v => drawBubble(v));
   drawFloats();
+}
+
+// Мир вокруг фермы: лес позади, луг впереди, дорога уходит за край — экран заполнен на любом устройстве
+const hash = (x, y) => { const v = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return v - Math.floor(v); };
+function drawOutside() {
+  const vw = cw / 2 / zoom + TW, vh = ch / 2 / zoom + 80, R = 30, trees = [];
+  for (let y = -R; y < H + R; y++) for (let x = -R; x < W + R; x++) {
+    if (x >= 0 && y >= 0 && x < W && y < H) continue;
+    const c = iso(x + .5, y + .5);
+    if (Math.abs(c.x - cam.x) > vw || c.y - cam.y > vh || c.y - cam.y < -vh - 60) continue;
+    const road = (y === 12 || y === 13) && x >= W || (y === 12 || y === 13) && x < 0, h = hash(x, y);
+    const col = road ? ((x + y) % 2 ? '#d8bf8a' : '#d3b983') : (x + y) % 2 ? '#6db151' : '#68aa4c';
+    poly(tilePts(x, y), col, col);
+    if (road) continue;
+    const behind = x < 0 || y < 0;   // за фермой — лес, перед ней — открытый луг
+    if (behind && h > (x < -2 || y < -2 ? 0.25 : 0.5)) trees.push({ x, y, s: 0.8 + hash(y, x) * 0.45 });
+    else if (h > .82) circle(c.x + (h - .9) * 40, c.y, 2.2, ['#ffffff', '#ffd84d', '#ff8fb1'][Math.floor(h * 1000) % 3]);
+    else if (!behind && h < .06) { circle(c.x - 5, c.y - 5, 7, '#4f9a40'); circle(c.x + 5, c.y - 4, 6, '#5aa64a'); }   // кусты
+  }
+  trees.sort((a, b) => (a.x + a.y) - (b.x + b.y)).forEach(drawTree);
 }
 
 function drawGround(t) {
@@ -1722,7 +1750,8 @@ $('overlay').onclick = e => { if (e.target.id === 'overlay') closeNight(); };
 syncHelpers(); syncTrees(); syncHens(); syncCows();
 new ResizeObserver(resize).observe($('stage'));
 resize();
-{ const a = iso(3, 11), b = iso(10, 4); cam.x = (a.x + b.x) / 2; cam.y = (a.y + b.y) / 2 - 10; clampCam(); }   // поле и лавка в кадре
+if (tablet) { centerCam(); clampCam(); }   // на планшете — вся ферма
+else { const a = iso(3, 11), b = iso(10, 4); cam.x = (a.x + b.x) / 2; cam.y = (a.y + b.y) / 2 - 10; clampCam(); }   // на телефоне — поле и лавка в кадре
 if (S.toSpawn === 0 && !S.night) startDay(); else renderUI();
 if (!S.night) S.toSpawn = Math.max(S.toSpawn, visitorsPerDay());   // старые сохранения получают новый поток покупателей сразу
 if (S.night) openNight(false);
