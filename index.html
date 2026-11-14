@@ -97,8 +97,17 @@
   .up .txt b { display: block; font-size: 15px; }
   .up .txt small { color: #7a6650; }
   .up button { min-width: 78px; padding: 8px; }
-  .up:has(button:not([disabled])) { cursor: pointer; border-radius: 10px; transition: background .12s; }
-  .up:has(button:not([disabled])):active { background: rgba(224,168,58,.18); }
+  /* строка с покупкой — сама кнопка-карточка; цена справа — просто подпись */
+  .up:has(button) { background: #fffaf0; border: 1.5px solid #ecdcb8; border-radius: 14px; padding: 10px 12px; margin: 8px 0;
+                    box-shadow: 0 3px 0 #e6d3aa; transition: transform .08s, box-shadow .08s, background .12s; }
+  .up:has(button:not([disabled])) { cursor: pointer; }
+  .up:has(button:not([disabled])):active { transform: translateY(2px); box-shadow: 0 1px 0 #e6d3aa; background: #fff1cf; }
+  .up:has(button[disabled]) { background: #f4ecdb; box-shadow: none; border-color: #eadfc6; }
+  .up:has(button[disabled]) .ico { opacity: .6; }
+  .up button { background: none; min-width: 0; padding: 4px 0 4px 6px; font-size: 16px; font-weight: 900; color: #3b2416; white-space: nowrap; pointer-events: none; }
+  .up button::after { content: ' ›'; color: #c99a3a; font-weight: 900; }
+  .up button:disabled { opacity: 1; color: #b9a78a; }
+  .up button:disabled::after { content: ''; }
 
   #toast { position: fixed; left: calc(50% - 30px); top: 20%; transform: translateX(-50%); background: rgba(40,30,20,.9); color: #fff;
            padding: 8px 14px; border-radius: 18px; font-size: 14px; font-weight: 700; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 20;
