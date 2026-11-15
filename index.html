@@ -590,7 +590,7 @@ S.life ??= { earned: 0, served: 0, harvested: 0, eggs: 0 };
 S.life.milk ??= 0; S.hist ??= []; S.life.flour ??= 0; S.life.cheese ??= 0;
 S.up.clear ??= 0; S.up.mill ??= 0; S.up.dairy ??= 0;
 S.up.house ??= 0; S.up.bakery ??= 0; S.up.cozy ??= 0;
-S.stallOff ??= []; S.picnic ??= 0; S.special ??= []; S.trophies ??= []; S.contestDay ??= 0; S.spOn ??= []; S.up.fairstall ??= 0; S.fair ??= { stock: {} }; S.fair.pm ??= {};
+S.stallOff ??= []; S.picnic ??= 0; S.special ??= []; S.trophies ??= []; S.contestDay ??= 0; S.spOn ??= []; S.seenGoods ??= []; S.up.fairstall ??= 0; S.fair ??= { stock: {} }; S.fair.pm ??= {};
 if (!S.fair.crates) { S.fair.crates = []; for (const [c, n0] of Object.entries(S.fair.stock || {})) for (let n = n0; n > 0; n -= CRATE) S.fair.crates.push({ id: c, n: Math.min(CRATE, n) }); }   // ящики — явным списком
 syncFair(); syncSpecial();   // особые находки и кубки конкурсов   // товары, снятые с продажи (копятся для заказов и производства)
 S.up.nests ??= 0; S.up.rooster ??= 0; S.up.yard ??= 0;
@@ -637,7 +637,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.30';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.31';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3947,6 +3947,7 @@ function renderHud() {
 
 function renderUI() {
   hudSig = ''; hudCoins = null; applySeasonBg();
+  for (const id in S.inv) if (S.inv[id] > 0 && !S.seenGoods.includes(id) && GOODS[id] && !GOODS[id].sp) S.seenGoods.push(id);   // запоминаем товары — чтобы их можно было снять с продажи и при нуле
   $('nightBtn').style.display = S.night ? '' : 'none';
   $('plantAll').style.display = '';   // сажать можно и ночью — к утру прорастёт
   $('dayBtn').style.display = S.night ? '' : 'none';
@@ -4479,8 +4480,9 @@ function calDay(d) {
 // ---------- Прилавок: что выставлено на продажу ----------
 function openStall() {
   if (fairOn()) { openFairPack(); return; }
-  const has = { apple: S.up.orchard, egg: hens(), milk: cows(), flour: S.up.mill, cheese: S.up.dairy, bread: S.up.bakery, pie: S.up.bakery, pizza: S.up.bakery, cake: S.up.bakery };
-  const known = Object.keys(GOODS).filter(id => S.inv[id] > 0 || S.stallOff.includes(id) || S.unlocked.includes(id) || has[id]);
+  const has = { apple: S.up.orchard, egg: hens(), goldegg: hens(), chick: S.up.rooster, milk: cows(), flour: S.up.mill, cheese: S.up.dairy, bread: S.up.bakery, pie: S.up.bakery, pizza: S.up.bakery, cake: S.up.bakery };
+  // в списке всё, что ферма умеет производить или когда-либо было на складе — даже если сейчас 0 шт.
+  const known = Object.keys(GOODS).filter(id => !GOODS[id].sp && (S.inv[id] > 0 || S.stallOff.includes(id) || S.unlocked.includes(id) || has[id] || S.seenGoods.includes(id)));
   let h = `<h2>🏪 Прилавок</h2><div style="font-size:13px;color:#7a6650;margin:-2px 0 8px">Фермер и продавец продают только выставленное. Снятое копится на складе — для заказов, мельницы, сыроварни и пекарни. Менять можно в любой момент.</div>
     <button class="wide" style="width:100%;margin-bottom:8px;background:#ffe28f" onclick="openFairPack()">🎪 Товары на ярмарку — ящиков ${cratesUsed()} из ${fairCrates()}${isFair(S.day + 1) || (isFair() && S.night) ? ' · ярмарка завтра!' : ''}</button>
     <div class="row" style="margin-bottom:6px"><button class="wide alt" onclick="stallAll(true)">✔ Выставить всё</button><button class="wide alt" onclick="stallAll(false)">✖ Убрать всё</button></div>
