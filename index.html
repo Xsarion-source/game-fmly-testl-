@@ -126,6 +126,17 @@
   .crates i { width: 22px; height: 18px; border-radius: 4px; background: #efe6d2; border: 1.5px dashed #cdb994; }
   .crates i.on { background: linear-gradient(#e0b47a, #b8834d); border: 1.5px solid #7a4a2a; }
   .crates b { margin-left: 6px; font-size: 14px; }
+  .cgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 6px 0 10px; }
+  .crate { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 4px; border-radius: 14px;
+           background: repeating-linear-gradient(0deg, #f6ecd8 0 9px, #efe2c6 9px 10px); border: 2px dashed #cdb994; color: #9a8466; box-shadow: none; font-weight: 700; }
+  .crate.full { background: repeating-linear-gradient(0deg, #e8bf86 0 9px, #d4a66a 9px 11px); border: 2px solid #8f5b2b; color: #4a2e18; box-shadow: 0 3px 0 #7a4a2a; }
+  .crate .ce { font-size: 30px; line-height: 1.1; } .crate .ce.plus { font-size: 30px; color: #cdb994; }
+  .crate b { font-size: 18px; } .crate b i { font-style: normal; font-size: 12px; opacity: .7; } .crate small { font-size: 11px; line-height: 1.1; text-align: center; }
+  .crate.lockd { opacity: .55; }
+  .cedit { display: flex; align-items: center; gap: 12px; margin: 4px 0 10px; } .cedit .ce { font-size: 48px; } .cedit b { display: block; font-size: 18px; } .cedit small { display: block; color: #7a6650; font-size: 13px; }
+  .crow { display: flex; align-items: center; gap: 10px; } .crow input[type=range] { flex: 1; height: 34px; accent-color: #f4a92b; }
+  .crow input[type=number] { width: 72px; font-size: 22px; font-weight: 800; text-align: center; padding: 6px; border-radius: 10px; border: 1.5px solid #d9c49a; background: #fffaf0; user-select: text; -webkit-user-select: text; }
+  .cquick { display: flex; gap: 6px; margin-top: 8px; } .cquick button { flex: 1; padding: 8px 4px; font-size: 14px; }
   .fpinfo { font-size: 15px; line-height: 1.4; color: #5a4632; margin: -2px 0 10px; }
   .fphead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; margin: 4px 0 6px; }
   .fpprice { font-size: 14px; background: #fff3c4; border: 1.5px solid #f0c24a; border-radius: 999px; padding: 4px 10px; cursor: pointer; }
@@ -364,7 +375,12 @@ const prestigePts = () => S.trophies.reduce((a, t) => a + (4 - t.p), 0) + (S.up.
 const fairMult = () => 1 + Math.min(.5, .05 + prestigePts() * .03);
 const unitPrice = c => fairOn() ? Math.round(sellPrice(c) * fairMult()) : sellPrice(c);
 const fairCrates = () => CRATES_PER * (1 + (S.up.fairstall || 0));
-const cratesUsed = () => Object.values(S.fair.stock).reduce((a, n) => a + Math.ceil(n / CRATE), 0);
+const cratesUsed = () => S.fair.crates.filter(c => c && c.id && c.n > 0).length;
+function syncFair() {   // S.fair.stock — сумма по ящикам (из неё продаём и рисуем)
+  S.fair.crates = S.fair.crates.map(c => c && c.id && c.n > 0 ? c : null);
+  while (S.fair.crates.length && !S.fair.crates[S.fair.crates.length - 1]) S.fair.crates.pop();
+  S.fair.stock = {}; for (const c of S.fair.crates) if (c) S.fair.stock[c.id] = (S.fair.stock[c.id] || 0) + c.n;
+}
 const stockOf = c => fairOn() ? S.fair.stock[c] || 0 : S.inv[c] || 0;   // откуда продаём сейчас
 const sellSpot = () => fairOn() ? FAIR_SELL : COUNTER;
 
@@ -530,7 +546,9 @@ S.life ??= { earned: 0, served: 0, harvested: 0, eggs: 0 };
 S.life.milk ??= 0; S.hist ??= []; S.life.flour ??= 0; S.life.cheese ??= 0;
 S.up.clear ??= 0; S.up.mill ??= 0; S.up.dairy ??= 0;
 S.up.house ??= 0; S.up.bakery ??= 0; S.up.cozy ??= 0;
-S.stallOff ??= []; S.picnic ??= 0; S.special ??= []; S.trophies ??= []; S.contestDay ??= 0; S.spOn ??= []; S.up.fairstall ??= 0; S.fair ??= { stock: {} }; syncSpecial();   // особые находки и кубки конкурсов   // товары, снятые с продажи (копятся для заказов и производства)
+S.stallOff ??= []; S.picnic ??= 0; S.special ??= []; S.trophies ??= []; S.contestDay ??= 0; S.spOn ??= []; S.up.fairstall ??= 0; S.fair ??= { stock: {} };
+if (!S.fair.crates) { S.fair.crates = []; for (const [c, n0] of Object.entries(S.fair.stock || {})) for (let n = n0; n > 0; n -= CRATE) S.fair.crates.push({ id: c, n: Math.min(CRATE, n) }); }   // ящики — явным списком
+syncFair(); syncSpecial();   // особые находки и кубки конкурсов   // товары, снятые с продажи (копятся для заказов и производства)
 S.up.nests ??= 0; S.up.rooster ??= 0; S.up.yard ??= 0;
 S.up.milker ??= 0; S.up.clover ??= 0; S.up.hay ??= 0; S.up.pasture ??= 0;
 S.coop.gold ??= 0; S.coop.extra ??= 0; S.coop.chicks ??= 0;
@@ -575,7 +593,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.19';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.20';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -775,7 +793,7 @@ function beginClock() {
 function endDay() {
   if (isFair()) {   // ярмарка закрылась — непроданное едет домой
     const left = Object.entries(S.fair.stock).filter(([, n]) => n > 0);
-    left.forEach(([c, n]) => S.inv[c] = (S.inv[c] || 0) + n); S.fair.stock = {};
+    left.forEach(([c, n]) => S.inv[c] = (S.inv[c] || 0) + n); S.fair.stock = {}; S.fair.crates = [];
     if (left.length) setTimeout(() => toast(`🎪 Ярмарка закрылась. Непроданное вернулось на склад: ${left.map(([c, n]) => n + ' ' + GOODS[c].e).join(', ')}`), 1500);
   }
   const waiting = visitors.filter(v => v.state !== 'leaving');
@@ -848,7 +866,7 @@ function sell(v) {
   if (v.state !== 'waiting') { toast('Покупатель ещё подходит'); return; }
   const have = stockOf(v.crop);
   if (have < v.qty) { toast(`Нужно ${v.qty} ${GOODS[v.crop].e}, есть ${have}${fairOn() ? ' на ярмарке' : ''}`); return; }
-  if (fairOn()) { S.fair.stock[v.crop] = have - v.qty; if (!S.fair.stock[v.crop]) delete S.fair.stock[v.crop]; }
+  if (fairOn()) { let q = v.qty; for (const c of S.fair.crates.filter(c => c && c.id === v.crop).sort((a, b) => a.n - b.n)) { const k = Math.min(q, c.n); c.n -= k; q -= k; if (!q) break; } syncFair(); }
   else S.inv[v.crop] = have - v.qty;
   const tip = v.pat / v.max > 0.6 ? Math.ceil(v.qty * unitPrice(v.crop) * 0.2) : 0;   // чаевые за скорость
   const money = v.qty * unitPrice(v.crop) + tip;
@@ -4399,45 +4417,75 @@ function openStall() {
   $('sheet').dataset.view = 'stall'; $('sheet').innerHTML = h; $('overlay').classList.add('show');
 }
 // ---------- Ярмарка: сборы в ящики ----------
+// ---------- Ярмарка: ящики — главное в окне. Тап по ящику — выбрать товар и сколько положить ----------
+let crateSel = null;
 function openFairPack() {
+  crateSel = null; if (!fairOn()) syncFair();
   const lock = fairOn(), used = cratesUsed(), tot = fairCrates(), days = (5 - cal().dow + 7) % 7;
   const when = days === 0 ? 'сегодня' : days === 1 ? 'завтра' : `через ${days} ${days < 5 ? 'дня' : 'дней'}`, pct = Math.round((fairMult() - 1) * 100);
-  let h = `<h2>🎪 Товары на ярмарку</h2><div class="fpinfo">${lock ? '<b>Ярмарка идёт!</b> Пополнить ящики уже нельзя. Вечером непроданное вернётся на склад.'
-    : `<b>Ярмарка!</b> Проходит по субботам. Следующая ярмарка — <b>${when}</b>.<br>Собери ящики заранее: в 1 ящике — один вид товара, до ${CRATE} шт. Собранное ждёт на складе ярмарки и не продаётся в лавке. Пополнение в субботу невозможно.`}</div>`;
-  h += `<div class="fphead"><div class="crates">${Array.from({ length: tot }, (_, i) => `<i class="${i < used ? 'on' : ''}"></i>`).join('')}<b>${used} из ${tot} ящиков</b></div>
-    <div class="fpprice" onclick="toast('🏅 Престиж: ${prestigePts()}. Очки — кубки 🥇3 🥈2 🥉1 и уровни уюта 🌷. Каждое очко — ещё +3% на ярмарке (до +50%)')">🏅 Цены на ярмарке <b>+${pct}%</b> ⓘ</div></div>`;
-  if (!lock && (S.up.fairstall || 0) < 2 && used >= tot) h += `<div style="font-size:13px;color:#7a6650;margin:2px 0 6px">Нужно больше ящиков? Ночью: «Улучшения» → «Ферма» → 🎪 «Место на ярмарке»</div>`;
-  const ids = Object.keys(GOODS).filter(id => !GOODS[id].sp && ((S.inv[id] || 0) > 0 || (S.fair.stock[id] || 0) > 0));
-  if (!ids.length) h += `<div class="summary">Пока нечего везти — собери урожай.</div>`;
-  for (const id of ids) {
-    const g = GOODS[id], inv = S.inv[id] || 0, st = S.fair.stock[id] || 0;
-    if (lock && !st) continue;
-    h += `<div class="pack"><span class="e">${g.e}</span><div class="t"><b>${g.name} <span class="pr">${Math.round(sellPrice(id) * fairMult())}💰</span></b>
-      <div class="nums">${lock ? `<span class="n2">🎪 <b>${st}</b></span>` : `<span class="n1">🏠 <b>${inv}</b></span><span class="arr">→</span><span class="n2 ${st ? 'on' : ''}">🎪 <b>${st}</b></span>`}</div></div>
-      ${lock ? '' : `<div class="pbtn"><button class="alt" ${st ? '' : 'disabled'} onclick="packFair('${id}',-${CRATE})">−${CRATE}</button><button class="alt" ${st ? '' : 'disabled'} onclick="packFair('${id}',-1)">−1</button><button ${inv && canPack(id, 1) ? '' : 'disabled'} onclick="packFair('${id}',1)">+1</button><button ${inv && canPack(id, 1) ? '' : 'disabled'} onclick="packFair('${id}',${CRATE})">+${CRATE}</button></div>`}</div>`;
+  let h = `<h2>🎪 Ярмарка ${lock ? 'идёт!' : when}</h2><div class="fpinfo">${lock ? 'Пополнить ящики уже нельзя. Вечером непроданное вернётся на склад.'
+    : `Нажми на ящик и положи в него товар — до ${CRATE} шт. одного вида. В субботу всё это продаётся на ярмарке.`}</div>
+    <div class="cgrid">`;
+  for (let i = 0; i < 12; i++) {
+    const c = S.fair.crates[i];
+    if (i >= tot) { if (i < tot + 4 && (S.up.fairstall || 0) < 2 && i < 12) h += `<button class="crate lockd" onclick="toast('🔒 Ещё 4 ящика — ночью: «Улучшения» → «Ферма» → 🎪 «Место на ярмарке»')"><span class="ce">🔒</span><small>купить место</small></button>`; continue; }
+    h += c ? `<button class="crate full" onclick="${lock ? '' : `openCrate(${i})`}"><span class="ce">${GOODS[c.id].e}</span><b>${c.n}<i>/${CRATE}</i></b><small>${GOODS[c.id].name}</small></button>`
+      : `<button class="crate" ${lock ? 'disabled' : `onclick="openCrate(${i})"`}><span class="ce plus">＋</span><small>пустой</small></button>`;
   }
+  h += `</div><div class="fphead"><b>📦 ${used} из ${tot} ящиков</b><div class="fpprice" onclick="toast('🏅 Престиж: ${prestigePts()}. Очки — кубки 🥇3 🥈2 🥉1 и уровни уюта 🌷. Каждое очко — ещё +3% на ярмарке (до +50%)')">🏅 Цены на ярмарке <b>+${pct}%</b> ⓘ</div></div>`;
   if (!lock && used) h += `<button class="wide alt" style="width:100%;margin-top:8px" onclick="packFair(null)">↩️ Вернуть всё на склад</button>`;
   h += `<button class="wide" style="width:100%;margin-top:10px" onclick="S.night ? openNight(false) : closeNight()">Готово</button>`;
-  const top = $('sheet').dataset.view === 'fairpack' ? $('sheet').scrollTop : 0;
-  $('sheet').dataset.view = 'fairpack'; $('sheet').innerHTML = h; $('overlay').classList.add('show'); $('sheet').scrollTop = top;
+  $('sheet').dataset.view = 'fairpack'; $('sheet').innerHTML = h; $('overlay').classList.add('show');
 }
-function canPack(id, n) {   // влезет ли ещё n штук: ящики считаются по каждому товару отдельно
-  const st = S.fair.stock[id] || 0;
-  return cratesUsed() - Math.ceil(st / CRATE) + Math.ceil((st + n) / CRATE) <= fairCrates();
-}
-function packFair(id, d) {
+function openCrate(i, pick) {
   if (fairOn()) return;
-  if (id === null) { for (const [c, n] of Object.entries(S.fair.stock)) S.inv[c] = (S.inv[c] || 0) + n; S.fair.stock = {}; }
+  crateSel = i;
+  const c = S.fair.crates[i];
+  let h = `<h2>📦 Ящик ${i + 1}</h2>`;
+  if (!c || pick) {   // выбор товара
+    const ids = Object.keys(GOODS).filter(id => !GOODS[id].sp && (S.inv[id] || 0) > 0);
+    h += `<div class="fpinfo">Что положить в ящик?</div>`;
+    if (!ids.length) h += `<div class="summary">На складе пусто — сначала собери урожай.</div>`;
+    h += `<div class="stallg">` + ids.map(id => `<button class="sg on" onclick="fillCrate(${i},'${id}')"><span class="e">${GOODS[id].e}</span><b>${GOODS[id].name}</b><small>на складе ${S.inv[id]}</small><i>${Math.round(sellPrice(id) * fairMult())}💰 на ярмарке</i></button>`).join('') + `</div>`;
+    h += `<button class="wide alt" style="width:100%;margin-top:12px" onclick="openFairPack()">← К ящикам</button>`;
+  } else {   // сколько положить
+    const g = GOODS[c.id], max = Math.min(CRATE, c.n + (S.inv[c.id] || 0));
+    h += `<div class="cedit"><span class="ce">${g.e}</span><div><b>${g.name}</b><small id="crInv">на складе осталось ${S.inv[c.id] || 0}</small><small>${Math.round(sellPrice(c.id) * fairMult())}💰 за штуку на ярмарке</small></div></div>
+      <div class="crow"><input type="range" id="crRange" min="0" max="${max}" value="${c.n}" oninput="setCrate(${i}, +this.value)">
+      <input type="number" id="crNum" min="0" max="${max}" value="${c.n}" inputmode="numeric" oninput="setCrate(${i}, +this.value)"></div>
+      <div class="cquick">${[0, 5, 10, max].filter((v, k, a) => a.indexOf(v) === k).map(v => `<button class="alt" onclick="setCrate(${i}, ${v})">${v === max ? 'Полный' : v === 0 ? 'Пусто' : v}</button>`).join('')}</div>
+      <div class="row" style="margin-top:12px"><button class="wide alt" onclick="setCrate(${i}, 0); openCrate(${i}, true)">🔁 Другой товар</button><button class="wide" onclick="save(); openFairPack()">✔ Готово</button></div>`;
+  }
+  $('sheet').dataset.view = 'crate'; $('sheet').innerHTML = h; $('overlay').classList.add('show');
+}
+function fillCrate(i, id) {
+  const old = S.fair.crates[i]; if (old) { S.inv[old.id] = (S.inv[old.id] || 0) + old.n; }
+  const n = Math.min(CRATE, S.inv[id] || 0); S.inv[id] -= n;
+  while (S.fair.crates.length <= i) S.fair.crates.push(null);
+  S.fair.crates[i] = { id, n }; syncFair(); save(); renderUI(); openCrate(i);
+}
+function setCrate(i, v) {   // ползунок / число: перекладываем между складом и ящиком на лету
+  const c = S.fair.crates[i]; if (!c || fairOn()) return;
+  const max = Math.min(CRATE, c.n + (S.inv[c.id] || 0)); v = Math.max(0, Math.min(max, Math.round(v) || 0));
+  S.inv[c.id] = (S.inv[c.id] || 0) + c.n - v; c.n = v;
+  if ($('crRange')) $('crRange').value = v; if ($('crNum') && document.activeElement !== $('crNum')) $('crNum').value = v;
+  if ($('crInv')) $('crInv').textContent = `на складе осталось ${S.inv[c.id] || 0}`;
+  S.fair.stock = {}; for (const x of S.fair.crates) if (x && x.n > 0) S.fair.stock[x.id] = (S.fair.stock[x.id] || 0) + x.n;   // без чистки пустых, пока ящик открыт
+  renderUI();
+}
+function packFair(id, d) {   // «вернуть всё»; и для тестов: положить/забрать d штук товара
+  if (fairOn()) return;
+  if (id === null) { for (const c of S.fair.crates) if (c) S.inv[c.id] = (S.inv[c.id] || 0) + c.n; S.fair.crates = []; }
   else if (d > 0) {
     let n = Math.min(d, S.inv[id] || 0);
-    while (n > 0 && !canPack(id, n)) n--;
-    if (!n) { toast(`📦 Нет свободного ящика — ${fairCrates()} из ${fairCrates()} заняты`); return; }
-    S.inv[id] -= n; S.fair.stock[id] = (S.fair.stock[id] || 0) + n;
+    for (const c of S.fair.crates) if (c && c.id === id && n) { const k = Math.min(n, CRATE - c.n); c.n += k; S.inv[id] -= k; n -= k; }
+    for (let i = 0; i < fairCrates() && n; i++) if (!S.fair.crates[i]?.n) { const k = Math.min(n, CRATE); while (S.fair.crates.length <= i) S.fair.crates.push(null); S.fair.crates[i] = { id, n: k }; S.inv[id] -= k; n -= k; }
+    if (n) toast(`📦 Нет свободного ящика — ${fairCrates()} из ${fairCrates()} заняты`);
   } else {
-    const n = Math.min(-d, S.fair.stock[id] || 0);
-    S.fair.stock[id] -= n; S.inv[id] = (S.inv[id] || 0) + n; if (!S.fair.stock[id]) delete S.fair.stock[id];
+    let n = -d;
+    for (const c of S.fair.crates.filter(c => c && c.id === id).reverse()) { const k = Math.min(n, c.n); c.n -= k; S.inv[id] = (S.inv[id] || 0) + k; n -= k; }
   }
-  save(); renderUI(); openFairPack();
+  syncFair(); save(); renderUI(); if ($('sheet').dataset.view === 'fairpack') openFairPack();
 }
 function toggleSale(id) {
   const L = GOODS[id].sp ? S.spOn : S.stallOff, i = L.indexOf(id); if (i >= 0) L.splice(i, 1); else L.push(id);
