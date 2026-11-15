@@ -604,7 +604,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.21';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.22';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3880,8 +3880,6 @@ function renderUI() {
   $('helperBtn').style.display = S.up.helper > 0 ? '' : 'none';
   $('bakeBtn').style.display = S.up.bakery > 0 ? '' : 'none';
   const items = Object.keys(GOODS).filter(id => S.inv[id]).map(id => `<span class="${GOODS[id].sp ? 'sp' : onSale(id) ? '' : 'off'}">${GOODS[id].sp ? '🌟' : ''}${GOODS[id].e} ${S.inv[id]}</span>`);
-  const fs = Object.keys(S.fair.stock).filter(c => S.fair.stock[c] > 0);
-  if (fs.length) items.unshift(`<span class="sp">🎪 ${fs.map(c => GOODS[c].e + S.fair.stock[c]).join(' ')}</span>`);   // собрано на ярмарку
   $('inv').innerHTML = items.length ? items.join('') : '<span style="opacity:.75">Склад пуст</span>';
   { const d = (5 - cal().dow + 7) % 7, used = cratesUsed(), fb = $('fairBtn');   // кнопка ярмарки: когда и сколько ящиков собрано
     const when = d === 0 ? (S.night ? 'через неделю' : 'сегодня!') : d === 1 ? 'завтра' : `через ${d} ${d < 5 ? 'дня' : 'дней'}`;
