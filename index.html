@@ -616,7 +616,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.26';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.27';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -851,7 +851,8 @@ function spawnVisitor() {
   const shown = fairOn() ? pool : pool.filter(onSale);
   const crop = pick(shown.length && Math.random() < .85 ? shown : pool);   // спрашивают в основном выставленное
   const base = GOODS[crop].price;
-  const qty = crop === 'goldegg' || GOODS[crop].sp ? 1 : 1 + Math.floor(Math.random() * (base < 15 ? 4 : base < 40 ? 3 : 2)) + (isFair() ? 1 + (Math.random() < .5 ? 1 : 0) : 0);   // на ярмарке берут больше
+  const qty0 = crop === 'goldegg' || GOODS[crop].sp ? 1 : 1 + Math.floor(Math.random() * (base < 15 ? 4 : base < 40 ? 3 : 2)) + (isFair() ? 1 + (Math.random() < .5 ? 1 : 0) : 0);   // на ярмарке берут больше
+  const qty = fairOn() ? Math.max(1, Math.min(qty0, S.fair.stock[crop] || 1)) : qty0;
   const shirt = pick(SHIRTS);
   visitors.push({
     x: isFair() && Math.random() < .5 ? -2 : W + 1, y: ROAD + .5, state: 'coming', crop, qty, pat: patience(), max: patience(), wps: [],
@@ -1576,6 +1577,11 @@ function updateVisitors(dt) {
       }
     }
     if (v.moodT > 0) v.moodT -= dt;
+    if (fairOn() && v.state !== 'leaving') {   // ярмарка: товар кончился — берут, сколько осталось, или уходят без обиды
+      const have = S.fair.stock[v.crop] || 0;
+      if (!have) { leave(v, null); continue; }
+      if (have < v.qty) v.qty = have;
+    }
     if (v.state === 'waiting' && !S.night) {
       v.pat -= dt;
       if (v.pat <= 0) { S.stats.missed++; leave(v, 'angry'); toast('😠 Покупатель не дождался'); }
@@ -1885,6 +1891,7 @@ function step(dt) {
     while (S.spawned < due) {
       // решает, остаться ли, сам покупатель — когда дойдёт до конца очереди (см. updateVisitors);
       // здесь — только предел на число людей на дороге
+      if (fairOn() && !Object.keys(S.fair.stock).length) { S.spawned++; continue; }   // на ярмарке всё распродано — за нашим товаром больше не идут
       if (queueCount() >= MAX_QUEUE + 3) { S.spawned++; S.stats.missed++; toast('😤 Очередь полная, покупатель ушёл'); }
       else spawnVisitor();
     }
@@ -1921,8 +1928,8 @@ function resize() {
 }
 function clampCam() {
   const hw = cw / 2 / zoom, hh = ch / 2 / zoom;
-  const minX = -H * TW / 2 - 260, maxX = W * TW / 2 + 90,   // запас: край карты можно вытащить из-под кнопок
-        minY = -70, maxY = (W + H) * TH / 2 + 130;
+  const minX = -H * TW / 2 - 340, maxX = W * TW / 2 + 90,   // запас: край карты можно вытащить из-под кнопок
+        minY = -70, maxY = (W + H) * TH / 2 + 260;
   cam.x = hw * 2 >= maxX - minX ? (minX + maxX) / 2 : Math.max(minX + hw, Math.min(maxX - hw, cam.x));
   cam.y = hh * 2 >= maxY - minY ? (minY + maxY) / 2 : Math.max(minY + hh, Math.min(maxY - hh, cam.y));
 }
@@ -1988,7 +1995,7 @@ function onTap(sx, sy) {
   const fx = (wx / (TW / 2) + wy / (TH / 2)) / 2, fy = (wy / (TH / 2) - wx / (TW / 2)) / 2;
   const tx = Math.floor(fx), ty = Math.floor(fy);
   if (fairOn() && tx >= 17 && tx <= 19 + 2 * (S.up.fairstall || 0) && ty >= 22 && ty <= 25) { goFair(); return; }   // лотки фермы
-  if (tx >= 4 && tx <= 31 && ty >= 19 && ty <= 32) { openTrophies(); return; }   // ярмарка за дорогой
+  if (tx >= 3 && tx <= 33 && ty >= 19 && ty <= 34) { openTrophies(); return; }   // ярмарка за дорогой
   if (tx < 0 || ty < 0 || tx >= W || ty >= H) return;
   if (S.night) { const k = upAtNight(tx, ty); if (k) { openUpgrade(k); return; } }
   if (tx === TROPHY.x && ty === TROPHY.y) { openTrophies(); return; }
@@ -2319,7 +2326,7 @@ function groundSig() {   // всё, от чего зависит земля (к�
 }
 function viewRect(pad = 0) { const hw = cw / 2 / zoom + pad, hh = ch / 2 / zoom + pad; return { x0: cam.x - hw, x1: cam.x + hw, y0: cam.y - hh, y1: cam.y + hh }; }
 function panRect() {   // всё, что камера может показать (см. clampCam)
-  const hw = cw / 2 / zoom, hh = ch / 2 / zoom, minX = -H * TW / 2 - 260, maxX = W * TW / 2 + 90, minY = -70, maxY = (W + H) * TH / 2 + 130;
+  const hw = cw / 2 / zoom, hh = ch / 2 / zoom, minX = -H * TW / 2 - 340, maxX = W * TW / 2 + 90, minY = -70, maxY = (W + H) * TH / 2 + 260;
   const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
   return { x0: Math.min(minX, cx - hw) - 8, x1: Math.max(maxX, cx + hw) + 8, y0: Math.min(minY, cy - hh) - 8, y1: Math.max(maxY, cy + hh) + 8 };
 }
@@ -2510,7 +2517,7 @@ function drawOutsideTrees() { outTrees.sort((a, b) => (a.x + a.y) - (b.x + b.y))
 
 // ---------- Ярмарка за дорогой: по субботам — шатры, флажки, народ; в другие дни — табличка ----------
 const FAIR = { x: 5, y: 23 };   // площадь ярмарки — в трёх клетках от дороги, вход — арка у дороги
-function fairTent(x0, y0, w, d, cA, cB, goods, face = 'y', zh = 26, ah = 66) {   // большой полосатый шатёр с прилавком; face — сторона входа (+y или +x)
+function fairTent(x0, y0, w, d, cA, cB, goods, face = 'y', zh = 40, ah = 104) {   // большой полосатый шатёр с прилавком; face — сторона входа (+y или +x)
   const X = x0 + w, Y = y0 + d, apex = lift(x0 + w / 2, y0 + d / 2, ah);
   softShadow(x0, y0, X, Y, .25);
   const n = 8, m = 6;
@@ -2569,9 +2576,9 @@ function drawWheel(t) {   // колесо обозрения — медленн�
 }
 const WHEEL = { x: 21, y: 30.3 };
 const FAIR_OBJS = [
-  { kind: 'ftent', x0: 6.6, y0: 25.6, w: 2.5, d: 3.6, cA: '#e05a4a', cB: '#fff4e6', goods: ['🍎', '🧀', '🥧', '🍯'], face: 'x' },
-  { kind: 'ftent', x0: 26.2, y0: 24.2, w: 3, d: 2.3, cA: '#4f8fe0', cB: '#fff4e6', goods: ['🍞', '🥛', '🍓', '🌽'] },
-  { kind: 'ftent', x0: 12.6, y0: 28.2, w: 3.8, d: 2.5, cA: '#f0b429', cB: '#fff4e6', goods: ['🎈', '🍭', '🧸', '🎁'] },
+  { kind: 'ftent', x0: 5.6, y0: 24.6, w: 3.4, d: 4.8, cA: '#e05a4a', cB: '#fff4e6', goods: ['🍎', '🧀', '🥧', '🍯'], face: 'x' },
+  { kind: 'ftent', x0: 25.6, y0: 23.8, w: 4.6, d: 3.4, cA: '#4f8fe0', cB: '#fff4e6', goods: ['🍞', '🥛', '🍓', '🌽'] },
+  { kind: 'ftent', x0: 12.6, y0: 29.2, w: 5, d: 3.4, cA: '#f0b429', cB: '#fff4e6', goods: ['🎈', '🍭', '🧸', '🎁'] },
   { kind: 'booth', k: 0 }, { kind: 'booth', k: 1 }, { kind: 'booth', k: 2 }, { kind: 'wheel' },
 ].map(o => ({ ...o, z: o.kind === 'ftent' ? o.x0 + o.w + o.y0 + o.d / 2 + .2 : o.kind === 'booth' ? (BOOTHS[o.k].x0 + BOOTHS[o.k].x1) / 2 + 24.4 : WHEEL.x + WHEEL.y + .3 }));
 function fairDrawList(list, t) {
@@ -2587,7 +2594,7 @@ function fairDrawList(list, t) {
 }
 // гости ярмарки: семьи приходят по дороге, гуляют между шатрами, катаются на колесе и уходят
 let fairFolk = [], fairSpawnT = 0;
-const FAIR_SPOTS = [[10.6, 26.6], [10.8, 29.0], [20.6, 31.6], [22.4, 31.2], [27.6, 27.6], [14.5, 31.6], [18.4, 27.6], [12.4, 27.2], [24.0, 28.6]];
+const FAIR_SPOTS = [[10.6, 26.6], [10.8, 29.0], [20.6, 31.6], [22.4, 31.2], [27.8, 28.3], [15.2, 33.4], [18.4, 27.6], [12.4, 27.2], [24.0, 28.6]];
 const FAIR_ENTR = [10.1, 10.7, 11.3];   // все — через арку у дороги
 function spawnFamily() {
   const fromLeft = Math.random() < .5, sx = fromLeft ? -3 : W + 3, ex = fromLeft ? W + 3 : -3, n = 2 + Math.floor(Math.random() * 3);
@@ -2621,8 +2628,8 @@ function updateFair(dt) {
 // площадь ярмарки видна всегда: утоптанная земля, дорожки от дороги, места под шатры, настил под лотки, круг под колесо
 function drawFairPlaza() {
   const win = season().id === 'winter', C = win ? ['#e6eaea', '#dde3e3'] : ['#dcc492', '#d5bc89'];
-  for (let ty = 23; ty <= 31; ty++) for (let tx = 5; tx <= 30; tx++) {
-    if ((ty === 31 && (tx < 7 || tx > 28)) || (tx === 5 && ty > 29) || (tx === 30 && ty > 29)) continue;   // скруглённые углы
+  for (let ty = 23; ty <= 33; ty++) for (let tx = 4; tx <= 32; tx++) {
+    if ((ty === 33 && (tx < 6 || tx > 30)) || (tx === 4 && ty > 31) || (tx === 32 && ty > 31)) continue;   // скруглённые углы
     poly(tilePts(tx, ty), C[(tx + ty) % 2], C[(tx + ty) % 2]);
     const h = hash(tx * 3, ty * 7);
     if (h > .7) pebble(iso(tx + h, ty + .5).x, iso(tx + h, ty + .5).y, 1.4, win ? '#c9d2d4' : '#bba57a');
@@ -2631,7 +2638,7 @@ function drawFairPlaza() {
   ctx.fillStyle = C[0]; shape([iso(9.5, 19), iso(13.5, 19), iso(13.5, 23), iso(9.5, 23)]); ctx.fill();   // широкая дорожка от дороги к арке и шатру фермы
   for (let py = 19; py < 23; py++) for (let px = 9.6; px < 13.4; px += .8) if (hash(px * 5, py) > .6) pebble(iso(px + .3, py + .5).x, iso(px + .3, py + .5).y, 1.3, win ? '#c9d2d4' : '#bba57a');
   // бортик площади: колышки с верёвкой
-  const edge = [[9.5, 23], [5, 23], [5, 30], [7, 32], [29, 32], [31, 30], [31, 23], [13.5, 23]];
+  const edge = [[9.5, 23], [4, 23], [4, 32], [6, 34], [31, 34], [33, 32], [33, 23], [13.5, 23]];
   ctx.setLineDash([5, 4]); ctx.strokeStyle = win ? 'rgba(120,120,120,.5)' : 'rgba(120,85,45,.55)'; ctx.lineWidth = 2;
   ctx.beginPath(); edge.forEach(([ex, ey], i) => { const q = iso(ex, ey); i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y); }); ctx.stroke(); ctx.setLineDash([]);
   const pad = (x0, y0, x1, y1, fill, line) => {   // место под шатёр: утоптанный прямоугольник с колышками по углам
@@ -2639,7 +2646,7 @@ function drawFairPlaza() {
     for (const [px, py] of [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]) { const q = iso(px, py); ctx.fillStyle = '#6b4327'; ctx.fillRect(q.x - 1.5, q.y - 6, 3, 6); }
   };
   const padC = win ? 'rgba(150,160,165,.35)' : 'rgba(150,105,55,.28)', padL = win ? 'rgba(110,120,125,.5)' : 'rgba(110,70,35,.5)';
-  pad(6.4, 25.4, 9.4, 29.4, padC, padL); pad(12.4, 28.0, 16.6, 30.9, padC, padL); pad(26.0, 24.0, 29.4, 26.7, padC, padL);
+  pad(5.4, 24.4, 9.2, 29.6, padC, padL); pad(12.4, 29.0, 17.8, 32.8, padC, padL); pad(25.4, 23.6, 30.4, 27.4, padC, padL);
   // настил под лотки фермы: купленные — доски, следующий — пунктир с замочком
   BOOTHS.forEach((B, k) => {
     const x0 = B.x0 - .15, x1 = B.x1 + .15, y0 = 22.6, y1 = 24.55, own = k <= (S.up.fairstall || 0);
@@ -2688,8 +2695,8 @@ function drawFairGround() {
     }
   }
   { const A = lift(ax0, ay, 50), B = lift(ax1, ay, 50); for (let j = 0; j < 12; j++) { const P0 = mix(A, B, j / 12), P1 = mix(A, B, (j + 1) / 12); gface([P0, P1, { x: (P0.x + P1.x) / 2, y: (P0.y + P1.y) / 2 + 7 }], LIGHT_COLORS[j % 4], darken(LIGHT_COLORS[j % 4], .85), INK, .7); } }
-  for (const [bx, by, c] of [[x + 7.2, y + 8.1, '#e05a4a'], [x + 7.5, y + 7.9, '#4f8fe0'], [x + 7.0, y + 8.0, '#f0b429']]) {   // шарики у жёлтого шатра
-    const a = lift(bx, by, 14), b = lift(bx, by, 40 + (bx - x - 7.0) * 30); seg(a, b, 'rgba(60,40,20,.6)', .8);
+  for (const [bx, by, c] of [[x + 7.0, y + 10.1, '#e05a4a'], [x + 7.3, y + 9.9, '#4f8fe0'], [x + 6.8, y + 10.0, '#f0b429']]) {   // шарики у жёлтого шатра
+    const a = lift(bx, by, 14), b = lift(bx, by, 40 + (bx - x - 6.8) * 30); seg(a, b, 'rgba(60,40,20,.6)', .8);
     ctx.beginPath(); ctx.ellipse(b.x, b.y - 5, 5, 6.5, 0, 0, 7); ctx.fillStyle = c; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1; ctx.stroke(); circle(b.x - 1.8, b.y - 7.5, 1.4, 'rgba(255,255,255,.7)');
   }
 }
