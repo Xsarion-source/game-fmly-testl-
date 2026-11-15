@@ -7,7 +7,11 @@
 <title>Солнечная ферма</title>
 <!-- приложение на экране «Домой» (когда игра открыта как отдельный сайт) -->
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=2">
+<link rel="apple-touch-icon" sizes="120x120" href="apple-touch-icon-120.png?v=2">
+<link rel="apple-touch-icon" sizes="152x152" href="apple-touch-icon-152.png?v=2">
+<link rel="apple-touch-icon" sizes="167x167" href="apple-touch-icon-167.png?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon-180.png?v=2">
 <link rel="icon" type="image/png" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -499,7 +503,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-15.2';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-15.3';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
