@@ -639,7 +639,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.41';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.42';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1778,9 +1778,9 @@ function updateHelper(h, dt) {
   const cfg = S.helpers[h.id] || { stations: [] };
   if (h.target) {                          // дошёл до места работы
     const job = h.target; h.target = null;
-    if (job.act()) h.work = 0.3 / homeMult();
+    if (job.act()) h.work = 0.45 / homeMult();
     if (job.ord != null) { h.cur = job.ord + 1; h.lastPlot = true; } else h.lastPlot = false;
-    h.think = 0;   // следующая работа — сразу, без паузы
+    h.think = 0.5;   // пауза полсекунды перед следующим делом
     return;
   }
   if ((h.think -= dt) > 0) return;
