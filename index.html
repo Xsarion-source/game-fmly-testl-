@@ -499,6 +499,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
+const BUILD = '2026-11-15.2';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3560,7 +3561,7 @@ function openSaves() {
   const names = slotNames();
   const cl = { local: '💾 Ферма сохраняется в этом приложении сама', ok: '☁️ Сохраняется в облако claude.ai — не пропадёт, даже если закрыть браузер', wait: '☁️ Подключаемся к облаку…', err: '⚠️ Облако сейчас не отвечает — сохраняем в браузере и попробуем ещё',
     off: '⚠️ Облако недоступно — ферма хранится только в этом браузере. Safari может её стереть: сохраняй код фермы ↓', nowrite: '⚠️ Облако недоступно для этого аккаунта — ферма только в этом браузере. Safari может её стереть: сохраняй код фермы ↓' }[CLOUD.state];
-  let h = `<h2>💾 Сохранения</h2><div style="font-size:13px;color:#7a6650;margin:-4px 0 6px">У каждой ячейки своя ферма. Игра сохраняется сама — переключайся когда угодно.</div>
+  let h = `<h2>💾 Сохранения</h2><div style="font-size:13px;color:#7a6650;margin:-4px 0 6px">У каждой ячейки своя ферма. Игра сохраняется сама — переключайся когда угодно. <span style="opacity:.6">Версия ${BUILD}</span></div>
     <div style="font-size:13px;font-weight:700;color:${CLOUD.state === 'ok' || CLOUD.state === 'local' ? '#3e7d32' : '#b0503a'};margin:0 0 10px">${cl}</div>`
     + (EMBED && CLOUD.state !== 'ok' ? `<div class="summary" style="background:#e9f6e2;border:1.5px solid #9bd07f">📱 Надёжнее играть в приложении: открой <a href="${APP_URL}" target="_blank" rel="noopener" style="font-weight:800;color:#2f6b2a">${APP_URL.replace('https://', '')}</a> в Safari → «Поделиться» → «На экран „Домой“». Там ферма сохраняется сама. Перенеси её кодом ниже.</div>` : '');
   for (let n = 1; n <= SLOTS; n++) {
@@ -3922,7 +3923,24 @@ else { const a = iso(5, 15), b = iso(11, 6); cam.x = (a.x + b.x) / 2; cam.y = (a
 if (S.toSpawn === 0 && !S.night) startDay(); else renderUI();
 if (!S.night) S.toSpawn = Math.max(S.toSpawn, visitorsPerDay());   // старые сохранения получают новый поток покупателей сразу
 if (S.night) openNight(false);
-document.addEventListener('visibilitychange', () => { if (document.hidden) { save(); cloudPushActive(); } });   // свернули — сохраняемся сразу (и в облако)
+// Приложение на экране «Домой» держит старую версию в памяти — проверяем сайт и обновляемся сами (ферма сохраняется до перезагрузки)
+let updBusy = false;
+async function checkUpdate() {
+  if (EMBED || updBusy || !/^https?:/.test(location.protocol)) return; updBusy = true;
+  try {
+    const t = await (await fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })).text();
+    const b = (t.match(/const BUILD = '([^']+)'/) || [])[1];
+    let tried = ''; try { tried = sessionStorage.getItem('farm-upd') || ''; } catch {}
+    if (b && b !== BUILD && b !== tried) {
+      try { sessionStorage.setItem('farm-upd', b); } catch {}
+      save(); noSave = true; wnSet({ slot: SLOT, msg: '✨ Игра обновилась' });
+      location.replace(location.pathname + '?v=' + encodeURIComponent(b)); return;
+    }
+  } catch {}
+  updBusy = false;
+}
+setTimeout(checkUpdate, 1500);
+document.addEventListener('visibilitychange', () => { if (document.hidden) { save(); cloudPushActive(); } else checkUpdate(); });   // свернули — сохраняемся сразу (и в облако)
 addEventListener('pagehide', save);
 if (WN.msg) setTimeout(() => toast(WN.msg), 600);
 cloudInit();
