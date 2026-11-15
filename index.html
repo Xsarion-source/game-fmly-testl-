@@ -120,6 +120,13 @@
   .cal .n { font-size: 12px; font-weight: 800; align-self: flex-start; }
   .cal .ev { font-size: 13px; line-height: 1.1; }
   .cal .m { font-size: 10px; font-weight: 800; color: #3e7d32; margin-top: auto; }
+  .crates { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 4px 0; }
+  .crates i { width: 22px; height: 18px; border-radius: 4px; background: #efe6d2; border: 1.5px dashed #cdb994; }
+  .crates i.on { background: linear-gradient(#e0b47a, #b8834d); border: 1.5px solid #7a4a2a; }
+  .crates b { margin-left: 6px; font-size: 14px; }
+  .pack { display: flex; align-items: center; gap: 5px; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+  .pack .e { font-size: 26px; width: 32px; text-align: center; } .pack .t { flex: 1; font-size: 13px; line-height: 1.25; } .pack .t b:first-child { display: block; font-size: 14px; } .pack .t small { color: #7a6650; }
+  .pack button { min-width: 0; padding: 7px 6px; font-size: 13px; border-radius: 10px; }
   .stallg { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
   .stallg .sg { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 8px 4px; border-radius: 14px; border: 1.5px solid #ecdcb8; background: #f3ead6; color: #7a6650; box-shadow: none; font-weight: 600; }
   .stallg .sg .e { font-size: 28px; filter: grayscale(.7); opacity: .7; }
@@ -293,6 +300,7 @@ const UPGRADES = {
   fert:   { name: 'Удобрения',         ico: '🧪', desc: l => `Рост быстрее (+${l*20}% → +${(l+1)*20}%)`, cost: l => 50 + l*60, max: 5 },
   sign:   { name: 'Красивая вывеска',  ico: '🪧', desc: l => `Цены выше (+${l*10}% → +${(l+1)*10}%)`, cost: l => 60 + l*70, max: 6 },
   helper: { name: 'Помощник',         ico: '🧑‍🌾', desc: l => `Работает на одной или нескольких станциях: поле, сад, курятник, коровник, лавка (помощников: ${l} → ${l+1})`, cost: l => [120, 280, 520, 800, 1150, 1600, 2100, 2700, 3400, 4200][l], max: 10 },
+  fairstall: { name: 'Место на ярмарке', ico: '🎪', desc: l => `Ещё один лоток рядом с шатром фермы: +${CRATES_PER} ящика товара на ярмарку (сейчас ${fairCrates()})`, cost: l => [600, 1500][l], max: 2 },
   bench:  { name: 'Скамейка',          ico: '🪑', desc: l => `Покупатели ждут дольше (+5 сек)`, cost: l => 25 + l*30, max: 5 },
 };
 
@@ -338,6 +346,11 @@ const COUNTER = at('stall', 4, 9);   // где стоит фермер за пр
 const FAIR_GATE = 12, FAIR_SELL = { x: 12, y: 20 }, FAIR_HELP = { x: 13, y: 20 };
 const FAIR_QUEUE = [[12.5, 22.2], [13.5, 22.45], [14.5, 22.45], [15.5, 22.45], [16.5, 22.45]].map(([x, y]) => ({ x, y }));
 const fairOn = () => isFair() && !S.night;
+// товары на ярмарку собирают заранее, в ящики: 1 ящик — один вид товара, до CRATE штук; в субботу дополнить нельзя
+const CRATE = 12, CRATES_PER = 4;
+const fairCrates = () => CRATES_PER * (1 + (S.up.fairstall || 0));
+const cratesUsed = () => Object.values(S.fair.stock).reduce((a, n) => a + Math.ceil(n / CRATE), 0);
+const stockOf = c => fairOn() ? S.fair.stock[c] || 0 : S.inv[c] || 0;   // откуда продаём сейчас
 const sellSpot = () => fairOn() ? FAIR_SELL : COUNTER;
 
 // Сад слева от дома: 4 места под деревья
@@ -502,7 +515,7 @@ S.life ??= { earned: 0, served: 0, harvested: 0, eggs: 0 };
 S.life.milk ??= 0; S.hist ??= []; S.life.flour ??= 0; S.life.cheese ??= 0;
 S.up.clear ??= 0; S.up.mill ??= 0; S.up.dairy ??= 0;
 S.up.house ??= 0; S.up.bakery ??= 0; S.up.cozy ??= 0;
-S.stallOff ??= []; S.picnic ??= 0; S.special ??= []; S.trophies ??= []; S.contestDay ??= 0; S.spOn ??= []; syncSpecial();   // особые находки и кубки конкурсов   // товары, снятые с продажи (копятся для заказов и производства)
+S.stallOff ??= []; S.picnic ??= 0; S.special ??= []; S.trophies ??= []; S.contestDay ??= 0; S.spOn ??= []; S.up.fairstall ??= 0; S.fair ??= { stock: {} }; syncSpecial();   // особые находки и кубки конкурсов   // товары, снятые с продажи (копятся для заказов и производства)
 S.up.nests ??= 0; S.up.rooster ??= 0; S.up.yard ??= 0;
 S.up.milker ??= 0; S.up.clover ??= 0; S.up.hay ??= 0; S.up.pasture ??= 0;
 S.coop.gold ??= 0; S.coop.extra ??= 0; S.coop.chicks ??= 0;
@@ -547,7 +560,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.8';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.10';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -727,9 +740,9 @@ function startDay() {
   else toast('🌅 Рассвет. Посади семечко (или нажми на солнце) — и день начнётся');
   if (coopMsg) setTimeout(() => toast(coopMsg), 1700);
   if (cal().sday === 1 && S.day > 1) setTimeout(() => toast(`${season().e} Наступила ${season().name.toLowerCase()}: ${season().text}`), coopMsg ? 3400 : 1700);
-  if (isFair()) { setTimeout(() => { toast('🎪 Ярмарка! Лавка закрыта — торгуем в шатре фермы за дорогой. Покупателей больше, берут больше'); if (!tasks.length && !path.length) setTasks([{ x: FAIR_SELL.x, y: FAIR_SELL.y }]); }, 900); setTimeout(() => toast(`🏆 Сегодня конкурс ${SPECIAL[contestOf()].what} ${SPECIAL[contestOf()].e} — тапни на доску у входа на ярмарку`), 3600); }
+  if (isFair()) { setTimeout(() => { toast(cratesUsed() ? `🎪 Ярмарка! Лавка закрыта — торгуем в шатре фермы. Привезли ${cratesUsed()} ящ.` : '🎪 Ярмарка, а ящики пустые — продавать нечего. Собери товары к следующей субботе'); if (!tasks.length && !path.length) setTasks([{ x: FAIR_SELL.x, y: FAIR_SELL.y }]); }, 900); setTimeout(() => toast(`🏆 Сегодня конкурс ${SPECIAL[contestOf()].what} ${SPECIAL[contestOf()].e} — тапни на доску у входа на ярмарку`), 3600); }
   if (isRest()) setTimeout(openSunday, 600);
-  if (isFair(S.day + 1)) setTimeout(() => toast(contestReminder()), 2600);
+  if (isFair(S.day + 1)) { setTimeout(() => toast(contestReminder()), 2600); if (!cratesUsed()) setTimeout(() => toast('🎪 Завтра ярмарка — собери товары в ящики: «Прилавок» → «Товары на ярмарку»'), 5200); }
   save(); renderUI();
 }
 
@@ -745,6 +758,11 @@ function beginClock() {
 }
 
 function endDay() {
+  if (isFair()) {   // ярмарка закрылась — непроданное едет домой
+    const left = Object.entries(S.fair.stock).filter(([, n]) => n > 0);
+    left.forEach(([c, n]) => S.inv[c] = (S.inv[c] || 0) + n); S.fair.stock = {};
+    if (left.length) setTimeout(() => toast(`🎪 Ярмарка закрылась. Непроданное вернулось на склад: ${left.map(([c, n]) => n + ' ' + GOODS[c].e).join(', ')}`), 1500);
+  }
   const waiting = visitors.filter(v => v.state !== 'leaving');
   S.stats.missed += waiting.length + (S.toSpawn - S.spawned);
   waiting.forEach(v => leave(v, null));
@@ -773,7 +791,8 @@ function spawnVisitor() {
   if (S.up.bakery) for (const r in BAKE) if (canMake(r)) pool.push(r);
   const spSale = Object.keys(GOODS).filter(id => GOODS[id].sp && onSale(id) && S.inv[id] > 0);
   if (spSale.length && Math.random() < .15) pool.length = 0, pool.push(pick(spSale));   // за выставленной находкой приходит особый покупатель
-  const shown = pool.filter(onSale);
+  if (fairOn()) { const fs = Object.keys(S.fair.stock).filter(c => S.fair.stock[c] > 0); if (fs.length) pool.length = 0, fs.forEach(c => pool.push(...Array(Math.min(48, S.fair.stock[c])).fill(c))); }   // чего привезли больше — то и спрашивают чаще   // на ярмарке спрашивают то, что привезли
+  const shown = fairOn() ? pool : pool.filter(onSale);
   const crop = pick(shown.length && Math.random() < .85 ? shown : pool);   // спрашивают в основном выставленное
   const base = GOODS[crop].price;
   const qty = crop === 'goldegg' || GOODS[crop].sp ? 1 : 1 + Math.floor(Math.random() * (base < 15 ? 4 : base < 40 ? 3 : 2)) + (isFair() ? 1 + (Math.random() < .5 ? 1 : 0) : 0);   // на ярмарке берут больше
@@ -807,14 +826,15 @@ function leave(v, mood) {
   retarget();
 }
 const onSale = id => GOODS[id]?.sp ? S.spOn.includes(id) : !S.stallOff.includes(id);   // находки — только если выставить вручную
-const canSell = v => onSale(v.crop) && (S.inv[v.crop] || 0) >= v.qty;   // фермер и продавец сами продают только выставленное
+const canSell = v => fairOn() ? (S.fair.stock[v.crop] || 0) >= v.qty : onSale(v.crop) && (S.inv[v.crop] || 0) >= v.qty;   // фермер и продавец сами продают только выставленное
 const queueCount = () => visitors.filter(v => v.state !== 'leaving').length;
 
 function sell(v) {
   if (v.state !== 'waiting') { toast('Покупатель ещё подходит'); return; }
-  const have = S.inv[v.crop] || 0;
-  if (have < v.qty) { toast(`Нужно ${v.qty} ${GOODS[v.crop].e}, есть ${have}`); return; }
-  S.inv[v.crop] = have - v.qty;
+  const have = stockOf(v.crop);
+  if (have < v.qty) { toast(`Нужно ${v.qty} ${GOODS[v.crop].e}, есть ${have}${fairOn() ? ' на ярмарке' : ''}`); return; }
+  if (fairOn()) { S.fair.stock[v.crop] = have - v.qty; if (!S.fair.stock[v.crop]) delete S.fair.stock[v.crop]; }
+  else S.inv[v.crop] = have - v.qty;
   const tip = v.pat / v.max > 0.6 ? Math.ceil(v.qty * sellPrice(v.crop) * 0.2) : 0;   // чаевые за скорость
   const money = v.qty * sellPrice(v.crop) + tip;
   S.coins += money; S.stats.earned += money; S.stats.served++; S.life.earned += money; S.life.served++;
@@ -831,13 +851,13 @@ function sell(v) {
 
 function tapVisitor(v) {
   if (v.state === 'leaving') return;
-  const have = S.inv[v.crop] || 0;
+  const have = stockOf(v.crop);
   if (have < v.qty) {   // товара нет — всё равно идём за прилавок, облачко не мешает подойти
-    toast(`Нужно ${v.qty} ${GOODS[v.crop].e}, на складе ${have}`);
+    toast(`Нужно ${v.qty} ${GOODS[v.crop].e}, ${fairOn() ? 'на ярмарке' : 'на складе'} ${have}`);
     if (Math.floor(P.x) !== sellSpot().x || Math.floor(P.y) !== sellSpot().y) setTasks([{ x: sellSpot().x, y: sellSpot().y }]);
     return;
   }
-  if (!onSale(v.crop)) toast(`${GOODS[v.crop].e} не выставлен на прилавок — продаём только этому покупателю`);
+  if (!fairOn() && !onSale(v.crop)) toast(`${GOODS[v.crop].e} не выставлен на прилавок — продаём только этому покупателю`);
   const sp = sellSpot(), atCounter = Math.hypot(P.x - sp.x - .5, P.y - sp.y - .5) < 0.2 && !path.length;
   if (atCounter) sell(v);
   else setTasks([{ x: sp.x, y: sp.y, fn: () => sell(v) }]);
@@ -1331,7 +1351,7 @@ function upSpot(key) {
     land: PLOT_SLOTS[Math.min(S.plots.length, MAX_PLOTS - 1)], orchard: ORCHARD_SLOTS[Math.min(S.trees.length, 3)],
     coop: at('coop', 8, 10), nests: at('coop', 8.6, 9), rooster: at('coop', 6.6, 10.2), yard: at('coop', 9.4, 11), barn: at('barn', 14, 5), milker: at('barn', 16.4, 2.6), clover: at('barn', 15, 4), hay: at('barn', 13, 1.4), pasture: at('barn', 12.5, 6), clear: S.up.clear ? at('dairy', 18, 9) : at('mill', 18, 5), mill: at('mill', 18, 5), dairy: at('dairy', 17, 9), greenhouse: at('gh', 14, S.up.greenhouse ? 9 : 8), helper: at('home', 3, 3),
     house: at('home', 2, 2), bakery: at('home', 4, 3), cozy: COZY_SPOTS[Math.min(l, 4)], ads: at('ads', 12, 10),
-    fert: at('fert', 12, 2 + Math.min(l, 4)), sign: at('stall', 4, 10), bench: BENCHES[Math.min(l, BENCHES.length - 1)],
+    fert: at('fert', 12, 2 + Math.min(l, 4)), sign: at('stall', 4, 10), fairstall: { x: 13 + 2 * Math.min(l, 1), y: 20 }, bench: BENCHES[Math.min(l, BENCHES.length - 1)],
   }[key];
 }
 function upAt(x, y) {   // какое улучшение относится к клетке
@@ -1911,7 +1931,7 @@ function onTap(sx, sy) {
   if (bv) { tapVisitor(bv); return; }
   const fx = (wx / (TW / 2) + wy / (TH / 2)) / 2, fy = (wy / (TH / 2) - wx / (TW / 2)) / 2;
   const tx = Math.floor(fx), ty = Math.floor(fy);
-  if (fairOn() && tx >= 11 && tx <= 13 && ty >= 19 && ty <= 22) { goFair(); return; }   // шатёр фермы
+  if (fairOn() && tx >= 11 && tx <= (S.up.fairstall ? 13 + 2 * S.up.fairstall : 13) && ty >= 19 && ty <= 22) { goFair(); return; }   // лотки фермы
   if (tx >= 4 && tx <= 21 && ty >= 19 && ty <= 28) { openTrophies(); return; }   // ярмарка за дорогой
   if (tx < 0 || ty < 0 || tx >= W || ty >= H) return;
   if (S.night) { const k = upAtNight(tx, ty); if (k) { openUpgrade(k); return; } }
@@ -2450,23 +2470,23 @@ function fairTent(x0, y0, w, d, cA, cB, goods, zh = 26, ah = 66) {   // боль
   toonBox(x0 + w * .66, Y + .14, w * .26, .36, 9, ['#d9a066', '#b07a45'], ['#b8834d', '#8f5b2b'], ['#f0c98e', '#dcae70'], 0, 1.1);
   goods.forEach((e, k) => { const p = lift(x0 + w * [.15, .27, .73, .85][k], Y + .32, 11); emoji(e, p.x, p.y - 5, 13); });
 }
-function drawBooth() {   // шатёр фермы: навес на столбах, прилавок с выставленным товаром
-  const x0 = 11.2, x1 = 13.8, y0 = 19.75, y1 = 21.3, H = 76;
+const BOOTHS = [{ x0: 11.2, x1: 13.8, c: '#3e9b3a', sign: 'ФЕРМА' }, { x0: 14.0, x1: 16.1, c: '#e07a2f' }, { x0: 16.3, x1: 18.4, c: '#8e5bd0' }];
+function drawBooth(k = 0) {   // лоток фермы: навес на столбах, прилавок с товаром из ящиков
+  const B = BOOTHS[k], x0 = B.x0, x1 = B.x1, y0 = 19.75, y1 = 21.3, H = 76;
   softShadow(x0, y0, x1, y1, .22);
   for (const [x, y] of [[x0, y0], [x1, y0]]) toonPost(x, y, 0, H + 8, .07);
-  toonBox(11.3, 21.0, 2.4, .36, 13, ['#e0b47a', '#b8834d'], ['#b8834d', '#8f5b2b'], ['#f6d39a', '#e0b47a'], 0, 1.2);
-  const goods = Object.keys(GOODS).filter(id => S.inv[id] > 0 && onSale(id)).slice(0, 5);
-  goods.forEach((id, k) => { const p = lift(11.55 + k * .47, 21.18, 15); emoji(GOODS[id].e, p.x, p.y - 6, 15); });
+  toonBox(x0 + .1, 21.0, x1 - x0 - .2, .36, 13, ['#e0b47a', '#b8834d'], ['#b8834d', '#8f5b2b'], ['#f6d39a', '#e0b47a'], 0, 1.2);
+  const per = k ? 3 : 4, goods = Object.keys(S.fair.stock).filter(id => S.fair.stock[id] > 0).slice(k ? 4 + (k - 1) * 3 : 0).slice(0, per);
+  goods.forEach((id, j) => { const p = lift(x0 + .4 + j * .55, 21.18, 15); emoji(GOODS[id].e, p.x, p.y - 6, 15); });
   for (const [x, y] of [[x0, y1], [x1, y1]]) toonPost(x, y, 0, H - 4, .07);
-  const n = 8;
-  for (let k = 0; k < n; k++) {   // полосатый навес
-    const xa = x0 - .1 + (x1 - x0 + .2) * k / n, xb = x0 - .1 + (x1 - x0 + .2) * (k + 1) / n, c = k % 2 ? '#fffaf0' : '#3e9b3a';
+  const n = k ? 6 : 8;
+  for (let i = 0; i < n; i++) {   // полосатый навес
+    const xa = x0 - .1 + (x1 - x0 + .2) * i / n, xb = x0 - .1 + (x1 - x0 + .2) * (i + 1) / n, c = i % 2 ? '#fffaf0' : B.c;
     gface([lift(xa, y0 - .1, H + 8), lift(xb, y0 - .1, H + 8), lift(xb, y1 + .2, H - 4), lift(xa, y1 + .2, H - 4)], c, darken(c, .9), INK, 1);
     gface(fY(xa, xb, y1 + .2, H - 10, H - 4), c, darken(c, .85), INK, 1);
   }
-  gface(fX(x1 + .1, y0 - .1, y1 + .2, H - 4, H + 8), '#2f7d2c', '#24631f', INK, 1);
-  gface(fY(11.6, 13.4, y0 - .1, H + 8, H + 21), '#fffaf0', '#f0dfb8', '#7a4a2a', 1.6);   // вывеска
-  textOnX(11.6, y0 - .1, H + 14.5, 1.8, 'ФЕРМА', '#2f7d2c', 9);
+  gface(fX(x1 + .1, y0 - .1, y1 + .2, H - 4, H + 8), darken(B.c, .8), darken(B.c, .65), INK, 1);
+  if (B.sign) { gface(fY(11.6, 13.4, y0 - .1, H + 8, H + 21), '#fffaf0', '#f0dfb8', '#7a4a2a', 1.6); textOnX(11.6, y0 - .1, H + 14.5, 1.8, B.sign, '#2f7d2c', 9); }   // вывеска
 }
 function drawWheel(t) {   // колесо обозрения — медленно крутится
   const base = iso(WHEEL.x, WHEEL.y), R = 48, hub = { x: base.x, y: base.y - 84 }, a0 = t * .25;
@@ -2488,14 +2508,14 @@ function drawWheel(t) {   // колесо обозрения — медленн�
 const WHEEL = { x: 26, y: 20.3 };
 const FAIR_OBJS = [
   { kind: 'ftent', x0: 6.3, y0: 20.7, w: 3, d: 2.3, cA: '#e05a4a', cB: '#fff4e6', goods: ['🍎', '🧀', '🥧', '🍯'] },
-  { kind: 'ftent', x0: 17.3, y0: 20.5, w: 3, d: 2.3, cA: '#4f8fe0', cB: '#fff4e6', goods: ['🍞', '🥛', '🍓', '🌽'] },
+  { kind: 'ftent', x0: 19.2, y0: 20.5, w: 3, d: 2.3, cA: '#4f8fe0', cB: '#fff4e6', goods: ['🍞', '🥛', '🍓', '🌽'] },
   { kind: 'ftent', x0: 8.4, y0: 24.3, w: 2.8, d: 2.2, cA: '#f0b429', cB: '#fff4e6', goods: ['🎈', '🍭', '🧸', '🎁'] },
-  { kind: 'booth' }, { kind: 'wheel' },
-].map(o => ({ ...o, z: o.kind === 'ftent' ? o.x0 + o.w / 2 + o.y0 + o.d + .2 : o.kind === 'booth' ? 12.5 + 21.4 : WHEEL.x + WHEEL.y + .3 }));
+  { kind: 'booth', k: 0 }, { kind: 'booth', k: 1 }, { kind: 'booth', k: 2 }, { kind: 'wheel' },
+].map(o => ({ ...o, z: o.kind === 'ftent' ? o.x0 + o.w / 2 + o.y0 + o.d + .2 : o.kind === 'booth' ? (BOOTHS[o.k].x0 + BOOTHS[o.k].x1) / 2 + 21.4 : WHEEL.x + WHEEL.y + .3 }));
 function fairDrawList(list, t) {
   for (const o of FAIR_OBJS) {
     if (o.kind === 'wheel') list.push({ z: o.z, f: () => drawWheel(t) });
-    else if (o.kind === 'booth') list.push({ z: o.z, f: () => drawSprite(o, drawBooth, Object.keys(GOODS).filter(id => S.inv[id] > 0 && onSale(id)).slice(0, 5).join(), t) });
+    else if (o.kind === 'booth') { if (o.k <= (S.up.fairstall || 0)) list.push({ z: o.z, f: () => drawSprite(o, () => drawBooth(o.k), Object.keys(S.fair.stock).join(), t) }); }
     else list.push({ z: o.z, f: () => drawSprite(o, () => fairTent(o.x0, o.y0, o.w, o.d, o.cA, o.cB, o.goods), '', t) });
   }
   for (const f of fairFolk) list.push({ z: f.x + f.y, f: () => {
@@ -2505,7 +2525,7 @@ function fairDrawList(list, t) {
 }
 // гости ярмарки: семьи приходят по дороге, гуляют между шатрами, катаются на колесе и уходят
 let fairFolk = [], fairSpawnT = 0;
-const FAIR_SPOTS = [[7.8, 23.6], [9.8, 27.0], [26.2, 21.9], [27.1, 21.4], [18.8, 23.4], [13.6, 25.0], [6.4, 25.4], [16.6, 25.0], [21.2, 23.6]];
+const FAIR_SPOTS = [[7.8, 23.6], [9.8, 27.0], [26.2, 21.9], [27.1, 21.4], [20.7, 23.4], [13.6, 25.0], [6.4, 25.4], [16.6, 25.0], [21.2, 23.6]];
 const FAIR_ENTR = [6.4, 10.5, 23.2];
 function spawnFamily() {
   const fromLeft = Math.random() < .5, sx = fromLeft ? -3 : W + 3, ex = fromLeft ? W + 3 : -3, n = 2 + Math.floor(Math.random() * 3);
@@ -2558,7 +2578,7 @@ function drawFairGround() {
   textOnX(x + .8, y + 2.6, 28, 1, 'КОНКУРС', '#ffe9a8', 5.5);
   { const p = lift(x + 1.3, y + 2.6, 19); emoji(SPECIAL[k].e, p.x, p.y - 2, 12); }
   // флажки вдоль дороги — с проходами
-  const runs = [[x + .2, x + 4.6], [x + 9.4, x + 16.6], [x + 18.6, x + 22.6]];   // проходы: у арки, у шатра фермы и к колесу
+  const runs = [[x + .2, x + 4.6], [x + 13.6, x + 17.8]];   // проходы: у арки, у шатра фермы и к колесу
   for (const [a, b] of runs) {
     for (let px = a; px <= b + .01; px += (b - a) / Math.max(1, Math.round(b - a))) toonPost(px, y - .3, 0, 34, .04);
     const segs = Math.round((b - a) * 4);
@@ -3772,6 +3792,8 @@ function renderUI() {
   $('helperBtn').style.display = S.up.helper > 0 ? '' : 'none';
   $('bakeBtn').style.display = S.up.bakery > 0 ? '' : 'none';
   const items = Object.keys(GOODS).filter(id => S.inv[id]).map(id => `<span class="${GOODS[id].sp ? 'sp' : onSale(id) ? '' : 'off'}">${GOODS[id].sp ? '🌟' : ''}${GOODS[id].e} ${S.inv[id]}</span>`);
+  const fs = Object.keys(S.fair.stock).filter(c => S.fair.stock[c] > 0);
+  if (fs.length) items.unshift(`<span class="sp">🎪 ${fs.map(c => GOODS[c].e + S.fair.stock[c]).join(' ')}</span>`);   // собрано на ярмарку
   $('inv').innerHTML = items.length ? items.join('') : '<span style="opacity:.75">Склад пуст</span>';
   const s = $('seeds'); s.innerHTML = '';
   for (const id of S.unlocked) {
@@ -4087,7 +4109,7 @@ function openHelp() {
     🏡 🍅 Помидоры и 🍓 клубника растут только в теплице — построй её ночью.<br>
     🪓 Ночью расчисти лес справа и построй 🌬️ мельницу (3 🌾 → 🍚 мука) и 🧀 сыроварню (2 🥛 → сыр). Тапни на здание — фермер загрузит сырьё и заберёт готовое.<br>
     🥖 Пекарня — пристройка к дому (нужна мельница): выбери рецепт — 🍞 хлеб, 🥧 пирог, 🍕 пиццу или 🎂 торт.<br>
-    🎪 В субботу лавка закрыта: фермер торгует в зелёном шатре фермы на ярмарке (тапни шатёр — выбрать товары). Помощник-продавец тоже идёт туда.<br>
+    🎪 В субботу лавка закрыта: фермер торгует в шатре фермы на ярмарке. Товары собери заранее — «Прилавок» → «Товары на ярмарку» (в ящик — один товар, до 12 шт.); в субботу дополнить нельзя. Больше ящиков — «Место на ярмарке».<br>
     🏆 Иногда случается чудо: гигантская тыква, королевский початок, золотая клубника или отборный сыр. Выставь находку на субботний конкурс — кубок встанет на доску почёта у дома, а цены вырастут.<br>
     📅 Неделя: по субботам 🎪 ярмарка за дорогой — покупателей больше, и берут больше. Воскресенье — выходной: лавка закрыта, можно устроить 🧺 пикник (помощники неделю работают быстрее) или отдохнуть до понедельника. Сезоны меняются каждые 4 недели — тапни на солнышко, там календарь.<br>
     📬 С 3-го дня в почтовый ящик у тропинки приходят заказы: собери товар за 3 дня — заплатят в 1,6 раза больше лотка.<br>
@@ -4102,7 +4124,7 @@ function openNight(withSummary) {
   let h = `<h2>🌙 Ночь ${S.day}</h2>`;
   if (withSummary) {
     h += `<div class="summary">За день: заработано <b>${st.earned}💰</b><br>Обслужено: <b>${st.served}</b> · Ушли ни с чем: <b>${st.missed}</b><br>
-      ${isRest(S.day + 1) ? 'Завтра <b>воскресенье — выходной</b> 🧺 лавка закрыта' : `Завтра придёт ~<b>${visitorsPerDay(S.day + 1)}</b> покупателей${isFair(S.day + 1) ? ` — <b>ярмарка</b> 🎪<br>${contestReminder()}` : ''}`}</div>`;
+      ${isRest(S.day + 1) ? 'Завтра <b>воскресенье — выходной</b> 🧺 лавка закрыта' : `Завтра придёт ~<b>${visitorsPerDay(S.day + 1)}</b> покупателей${isFair(S.day + 1) ? ` — <b>ярмарка</b> 🎪<br>📦 Собрано ящиков: <b>${cratesUsed()} из ${fairCrates()}</b> — <a href="#" onclick="event.preventDefault();openFairPack()" style="color:#b0503a;font-weight:800">собрать товары</a><br>${contestReminder()}` : ''}`}</div>`;
   }
   h += `<div style="font-weight:700;margin:6px 0 2px">У тебя: 💰 ${S.coins}</div>`;
   if (EMBED && CLOUD.state !== 'ok' && CLOUD.state !== 'wait' && S.day >= 2 && (S.codeDay || 0) < S.day)   // облака нет — Safari может стереть ферму
@@ -4129,7 +4151,7 @@ function openNight(withSummary) {
   $('overlay').classList.add('show');
 }
 // Магазин ночью — три вкладки; в каждой сначала то, что можно купить, потом дорогое, потом тайны «???», в конце — купленное
-const FARM_UPS = ['land', 'fert', 'ads', 'sign', 'bench', 'helper', 'cozy'];
+const FARM_UPS = ['land', 'fert', 'ads', 'sign', 'bench', 'helper', 'cozy', 'fairstall'];
 let upTab = 'farm';
 function shopRows() {
   const rows = { farm: [], crops: [], build: [] };
@@ -4186,8 +4208,8 @@ function openSunday() {
 const PICNIC = at('pond', 8, 10);   // плед у пруда
 function goFair() {   // фермер идёт в шатёр фермы на ярмарке; уже там — выбор товаров
   if (!fairOn()) { openTrophies(); return; }
-  if (Math.floor(P.x) === FAIR_SELL.x && Math.floor(P.y) === FAIR_SELL.y && !path.length) { openStall(); return; }
-  setTasks([{ x: FAIR_SELL.x, y: FAIR_SELL.y }]); toast('🎪 Фермер идёт в шатёр на ярмарке. Тапни шатёр ещё раз — выбрать товары');
+  if (Math.floor(P.x) === FAIR_SELL.x && Math.floor(P.y) === FAIR_SELL.y && !path.length) { openFairPack(); return; }
+  setTasks([{ x: FAIR_SELL.x, y: FAIR_SELL.y }]); toast('🎪 Фермер идёт в шатёр фермы на ярмарке');
 }
 function picnic() {
   if (S.picnic === S.day) return;
@@ -4291,9 +4313,11 @@ function calDay(d) {
 }
 // ---------- Прилавок: что выставлено на продажу ----------
 function openStall() {
+  if (fairOn()) { openFairPack(); return; }
   const has = { apple: S.up.orchard, egg: hens(), milk: cows(), flour: S.up.mill, cheese: S.up.dairy, bread: S.up.bakery, pie: S.up.bakery, pizza: S.up.bakery, cake: S.up.bakery };
   const known = Object.keys(GOODS).filter(id => S.inv[id] > 0 || S.stallOff.includes(id) || S.unlocked.includes(id) || has[id]);
   let h = `<h2>🏪 Прилавок</h2><div style="font-size:13px;color:#7a6650;margin:-2px 0 8px">Фермер и продавец продают только выставленное. Снятое копится на складе — для заказов, мельницы, сыроварни и пекарни. Менять можно в любой момент.</div>
+    <button class="wide" style="width:100%;margin-bottom:8px;background:#ffe28f" onclick="openFairPack()">🎪 Товары на ярмарку — ящиков ${cratesUsed()} из ${fairCrates()}${isFair(S.day + 1) || (isFair() && S.night) ? ' · ярмарка завтра!' : ''}</button>
     <div class="row" style="margin-bottom:6px"><button class="wide alt" onclick="stallAll(true)">✔ Выставить всё</button><button class="wide alt" onclick="stallAll(false)">✖ Убрать всё</button></div>
     <div class="stallg">`;
   for (const id of known) {
@@ -4310,6 +4334,44 @@ function openStall() {
   }
   h += `<button class="wide" style="width:100%;margin-top:12px" onclick="S.night ? openNight(false) : closeNight()">Готово</button>`;
   $('sheet').dataset.view = 'stall'; $('sheet').innerHTML = h; $('overlay').classList.add('show');
+}
+// ---------- Ярмарка: сборы в ящики ----------
+function openFairPack() {
+  const lock = fairOn(), used = cratesUsed(), tot = fairCrates(), days = (5 - cal().dow + 7) % 7;
+  let h = `<h2>🎪 Товары на ярмарку</h2><div style="font-size:13px;color:#7a6650;margin:-2px 0 8px">${lock ? '<b>Ярмарка идёт — дополнить уже нельзя.</b> Вечером непроданное вернётся на склад.'
+    : `Ярмарка — ${days ? `в субботу, через ${days} дн.` : 'в субботу'}. Собери ящики заранее: в 1 ящике — один вид товара, до ${CRATE} шт. Собранное ждёт на складе ярмарки, в лавке не продаётся. В субботу дополнить будет нельзя.`}</div>`;
+  h += `<div class="crates">${Array.from({ length: tot }, (_, i) => `<i class="${i < used ? 'on' : ''}"></i>`).join('')}<b>Ящиков: ${used} из ${tot}</b></div>`;
+  if (!lock && (S.up.fairstall || 0) < 2) h += `<div style="font-size:12px;color:#7a6650;margin:2px 0 6px">Больше ящиков — ночью: «Улучшения» → «Ферма» → 🎪 «Место на ярмарке»</div>`;
+  const ids = Object.keys(GOODS).filter(id => !GOODS[id].sp && ((S.inv[id] || 0) > 0 || (S.fair.stock[id] || 0) > 0));
+  if (!ids.length) h += `<div class="summary">Пока нечего везти — собери урожай.</div>`;
+  for (const id of ids) {
+    const g = GOODS[id], inv = S.inv[id] || 0, st = S.fair.stock[id] || 0;
+    if (lock && !st) continue;
+    h += `<div class="pack"><span class="e">${g.e}</span><div class="t"><b>${g.name}</b><small>${lock ? `осталось ${st}` : `на складе ${inv} · на ярмарку <b>${st}</b>${st ? ` (${Math.ceil(st / CRATE)} ящ.)` : ''}`} · ${sellPrice(id)}💰</small></div>
+      ${lock ? '' : `<button class="alt" ${st ? '' : 'disabled'} onclick="packFair('${id}',-${CRATE})">−${CRATE}</button><button class="alt" ${st ? '' : 'disabled'} onclick="packFair('${id}',-1)">−1</button><button ${inv && canPack(id, 1) ? '' : 'disabled'} onclick="packFair('${id}',1)">+1</button><button ${inv && canPack(id, 1) ? '' : 'disabled'} onclick="packFair('${id}',${CRATE})">+${CRATE}</button>`}</div>`;
+  }
+  if (!lock && used) h += `<button class="wide alt" style="width:100%;margin-top:8px" onclick="packFair(null)">↩️ Вернуть всё на склад</button>`;
+  h += `<button class="wide" style="width:100%;margin-top:10px" onclick="S.night ? openNight(false) : closeNight()">Готово</button>`;
+  const top = $('sheet').dataset.view === 'fairpack' ? $('sheet').scrollTop : 0;
+  $('sheet').dataset.view = 'fairpack'; $('sheet').innerHTML = h; $('overlay').classList.add('show'); $('sheet').scrollTop = top;
+}
+function canPack(id, n) {   // влезет ли ещё n штук: ящики считаются по каждому товару отдельно
+  const st = S.fair.stock[id] || 0;
+  return cratesUsed() - Math.ceil(st / CRATE) + Math.ceil((st + n) / CRATE) <= fairCrates();
+}
+function packFair(id, d) {
+  if (fairOn()) return;
+  if (id === null) { for (const [c, n] of Object.entries(S.fair.stock)) S.inv[c] = (S.inv[c] || 0) + n; S.fair.stock = {}; }
+  else if (d > 0) {
+    let n = Math.min(d, S.inv[id] || 0);
+    while (n > 0 && !canPack(id, n)) n--;
+    if (!n) { toast(`📦 Нет свободного ящика — ${fairCrates()} из ${fairCrates()} заняты`); return; }
+    S.inv[id] -= n; S.fair.stock[id] = (S.fair.stock[id] || 0) + n;
+  } else {
+    const n = Math.min(-d, S.fair.stock[id] || 0);
+    S.fair.stock[id] -= n; S.inv[id] = (S.inv[id] || 0) + n; if (!S.fair.stock[id]) delete S.fair.stock[id];
+  }
+  save(); renderUI(); openFairPack();
 }
 function toggleSale(id) {
   const L = GOODS[id].sp ? S.spOn : S.stallOff, i = L.indexOf(id); if (i >= 0) L.splice(i, 1); else L.push(id);
