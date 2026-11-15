@@ -639,7 +639,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.36';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.37';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -2528,7 +2528,7 @@ function draw(t) {
   for (const c of cowsState) list.push({ z: c.x + c.y, f: () => drawCow(c, t) });
   S.plots.forEach((p, i) => { if (p.crop) { const s = PLOT_SLOTS[i]; list.push({ z: s.x + s.y + 1, f: () => drawCrop(i, t) }); } });
   S.gh.forEach((p, i) => { if (p.crop) { const s = GH_SLOTS[i]; list.push({ z: s.x + s.y + 1, f: () => drawCrop(i, t, true) }); } });
-  list.push({ z: P.x + P.y + 0.01, f: () => drawPerson(P, PLAYER_LOOK) });
+  list.push({ z: P.x + P.y + 0.01, f: () => S.picnic === S.day && !S.night && !path.length && !P.moving && Math.floor(P.x) === PICNIC.x && Math.floor(P.y) === PICNIC.y ? drawSitting(P, PLAYER_LOOK) : drawPerson(P, PLAYER_LOOK) });   // на пикнике фермер сидит на пледе
   for (const h of helpers) list.push({ z: h.x + h.y, f: () => { const pose = picPose(h); if (pose) { drawHelperPose(h, pose, t); return; } drawPerson(h, h.look); const c = iso(h.x, h.y); const cfg = S.helpers[h.id] || { stations: [] }, st = cfg.stations;
     const fieldIco = !cfg.replant ? '🧺' : cfg.seed === 'same' ? '🔁' : CROP[cfg.seed]?.e || '🧺';   // только сбор — корзинка, посев — значок культуры
     const icons = isRest() && !S.night ? [S.picnic === S.day ? '🧺' : REST.ico] : st.length ? st.map(k => k === 'field' ? (!cfg.zones.length ? '❓' : fieldIco) : k === 'gh' && cfg.ghReplant && cfg.ghSeed !== 'same' ? CROP[cfg.ghSeed].e : STATIONS[k].ico) : [REST.ico];
@@ -4410,17 +4410,20 @@ const PICNIC = at('pond', 8, 10);
 const PIC_SPOTS = [{ dx: -1, dy: 0, pose: 'sit' }, { dx: 1, dy: 1, pose: 'lie' }, { dx: 4, dy: 0, pose: 'talk', face: 1 }, { dx: 5, dy: 0, pose: 'talk', face: -1 }, { dx: -1, dy: 1, pose: 'sit' }, { dx: -2, dy: 0, pose: 'lie' }];
 const picPose = h => { if (S.picnic !== S.day || S.night || h.path.length || h.moving) return null; const q = PIC_SPOTS[h.id % 6];
   return Math.floor(h.x) === PICNIC.x + q.dx && Math.floor(h.y) === PICNIC.y + q.dy ? q.pose : null; };
+function drawSitting(h, look) {   // сидит, подогнув ноги
+  const c = iso(h.x, h.y);
+  ctx.save(); ctx.beginPath(); ctx.rect(c.x - 30, c.y - 90, 60, 86); ctx.clip();   // ноги «под» собой — прячем нижние 6 px
+  ctx.translate(0, 6); drawPerson({ ...h, moving: false }, look); ctx.restore();
+  ctx.fillStyle = look.pants; ctx.beginPath(); ctx.ellipse(c.x + (h.flip ? -5 : 5), c.y - 3, 7, 3, 0, 0, 7); ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke();   // колени
+}
 function drawHelperPose(h, pose, t) {
   const c = iso(h.x, h.y);
   if (pose === 'lie') {   // лежит на спине, руки за головой
     ctx.save(); ctx.translate(c.x, c.y - 2); ctx.scale(1, .55); ctx.rotate(h.id % 2 ? -1.45 : 1.45); ctx.translate(-c.x, -c.y);
     drawPerson({ ...h, moving: false }, h.look); ctx.restore();
     if (Math.sin(t * 1.3 + h.id) > .3) emoji('💤', c.x + 14, c.y - 22 - (t * 6 % 6), 10);
-  } else if (pose === 'sit') {   // сидит, подогнув ноги
-    ctx.save(); ctx.beginPath(); ctx.rect(c.x - 30, c.y - 90, 60, 86); ctx.clip();   // ноги «под» собой — прячем нижние 6 px
-    ctx.translate(0, 6); drawPerson({ ...h, moving: false }, h.look); ctx.restore();
-    ctx.fillStyle = h.look.pants; ctx.beginPath(); ctx.ellipse(c.x + (h.flip ? -5 : 5), c.y - 3, 7, 3, 0, 0, 7); ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke();   // колени
-  } else {
+  } else if (pose === 'sit') drawSitting(h, h.look);
+  else {
     drawPerson({ ...h, moving: false }, h.look);
     const q = PIC_SPOTS[h.id % 6], my = Math.floor(t / 2.2) % 2 === (q.face > 0 ? 0 : 1);   // болтают по очереди
     if (my) { rr(c.x - 11, c.y - 70, 22, 16, 8, 'rgba(255,253,246,.95)'); emoji(['💬', '😄', '🍉', '☀️'][Math.floor(t / 4.4 + h.id) % 4], c.x, c.y - 62, 11); }
