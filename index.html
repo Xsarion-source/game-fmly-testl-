@@ -155,6 +155,7 @@
   .crow button { min-width: 40px; padding: 6px 0; font-size: 20px; font-weight: 900; }
   #crNum { min-width: 34px; font-size: 22px; text-align: right; }
   .cpsub { font-size: 13px; color: #7a6650; margin-top: 4px; }
+  .pmrow { display: flex; gap: 6px; margin-top: 10px; } .pmrow button { flex: 1; padding: 8px 2px; font-size: 13px; }
   .cedit { display: flex; align-items: center; gap: 12px; margin: 4px 0 10px; } .cedit .ce { font-size: 48px; } .cedit b { display: block; font-size: 18px; } .cedit small { display: block; color: #7a6650; font-size: 13px; }
   .crow { display: flex; align-items: center; gap: 10px; } .crow input[type=range] { flex: 1; height: 34px; accent-color: #f4a92b; }
   .crow input[type=number] { width: 72px; font-size: 22px; font-weight: 800; text-align: center; padding: 6px; border-radius: 10px; border: 1.5px solid #d9c49a; background: #fffaf0; user-select: text; -webkit-user-select: text; }
@@ -391,12 +392,32 @@ const COUNTER = at('stall', 4, 9);   // где стоит фермер за пр
 const FAIR_GATE = 12, FAIR_SELL = { x: 18, y: 23 }, FAIR_HELP = { x: 19, y: 23 };   // лоток фермы — справа от входной дорожки
 const FAIR_QUEUE = [[18.5, 25.2], [19.5, 25.45], [20.5, 25.45], [21.5, 25.45], [22.5, 25.45]].map(([x, y]) => ({ x, y }));
 const fairOn = () => isFair() && !S.night;
+// соседи по ярмарке: у каждого свой ларёк, 3 товара с запасом на день и свои цены
+const RIVALS_DEF = [{ name: 'Ромашка' }, { name: 'Дядя Петя' }, { name: 'Солнышко' }];
+const nextFairDay = () => S.day + (5 - cal().dow + 7) % 7;
+function rivals() {
+  const fd = isFair() ? S.day : nextFairDay();
+  if (S.fair.rv?.d === fd) return S.fair.rv.s;
+  let seed = fd * 7919 + 13; const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const basics = ['carrot', 'wheat', 'egg', 'milk', 'apple'];
+  const pool = Object.keys(GOODS).filter(g => !GOODS[g].sp && !['sunflower', 'chick', 'goldegg'].includes(g) && (canMake(g) || basics.includes(g)));
+  const s = RIVALS_DEF.map(() => {
+    const goods = [], st = {}, pr = {};
+    while (goods.length < 3 && goods.length < pool.length) { const g = pool[Math.floor(r() * pool.length)]; if (!goods.includes(g)) goods.push(g); }
+    for (const g of goods) { st[g] = 10 + Math.floor(r() * 22); pr[g] = Math.max(1, Math.round(GOODS[g].price * seasonPrice(g) * (1.05 + r() * .35))); }
+    return { stock: st, price: pr };
+  });
+  S.fair.rv = { d: fd, s }; return s;
+}
+const fairAnyStock = () => Object.keys(S.fair.stock).length > 0 || rivals().some(R => Object.values(R.stock).some(n => n > 0));
 // товары на ярмарку собирают заранее, в ящики: 1 ящик — один вид товара, до CRATE штук; в субботу дополнить нельзя
 const CRATE = 20, CRATES_PER = 4;
 // престиж фермы: очки за кубки (🥇3 🥈2 🥉1) + уровни уюта → наценка на ярмарке
 const prestigePts = () => S.trophies.reduce((a, t) => a + (4 - t.p), 0) + (S.up.cozy || 0);
 const fairMult = () => 1 + Math.min(.5, .05 + prestigePts() * .03);
-const unitPrice = c => fairOn() ? Math.round(sellPrice(c) * fairMult()) : sellPrice(c);
+const PM = [.9, 1, 1.15], PM_NAME = ['Дешевле −10%', 'Обычная', 'Дороже +15%'];
+const myFairPrice = c => Math.round(sellPrice(c) * fairMult() * PM[(S.fair.pm?.[c] ?? 0) + 1]);   // своя цена на ярмарке: базовая × престиж × выбранная
+const unitPrice = c => fairOn() ? myFairPrice(c) : sellPrice(c);
 const fairCrates = () => CRATES_PER * (1 + (S.up.fairstall || 0));
 const cratesUsed = () => S.fair.crates.filter(c => c && c.id && c.n > 0).length;
 function syncFair() {   // S.fair.stock — сумма по ящикам (из неё продаём и рисуем)
@@ -569,7 +590,7 @@ S.life ??= { earned: 0, served: 0, harvested: 0, eggs: 0 };
 S.life.milk ??= 0; S.hist ??= []; S.life.flour ??= 0; S.life.cheese ??= 0;
 S.up.clear ??= 0; S.up.mill ??= 0; S.up.dairy ??= 0;
 S.up.house ??= 0; S.up.bakery ??= 0; S.up.cozy ??= 0;
-S.stallOff ??= []; S.picnic ??= 0; S.special ??= []; S.trophies ??= []; S.contestDay ??= 0; S.spOn ??= []; S.up.fairstall ??= 0; S.fair ??= { stock: {} };
+S.stallOff ??= []; S.picnic ??= 0; S.special ??= []; S.trophies ??= []; S.contestDay ??= 0; S.spOn ??= []; S.up.fairstall ??= 0; S.fair ??= { stock: {} }; S.fair.pm ??= {};
 if (!S.fair.crates) { S.fair.crates = []; for (const [c, n0] of Object.entries(S.fair.stock || {})) for (let n = n0; n > 0; n -= CRATE) S.fair.crates.push({ id: c, n: Math.min(CRATE, n) }); }   // ящики — явным списком
 syncFair(); syncSpecial();   // особые находки и кубки конкурсов   // товары, снятые с продажи (копятся для заказов и производства)
 S.up.nests ??= 0; S.up.rooster ??= 0; S.up.yard ??= 0;
@@ -616,7 +637,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.27';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.28';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -709,7 +730,7 @@ let tasks = [], path = [];
 let floats = [];
 
 // ================== ПРАВИЛА ==================
-const visitorsPerDay = (d = S.day) => cal(d).dow === 6 ? 0 : Math.round((10 + d + S.up.ads * 3 + prestigeGuests()) * (cal(d).dow === 5 ? 1.6 : 1));   // суббота — ярмарка, воскресенье — выходной   // день 1 → 11 покупателей (~1 каждые 14 сек)
+const visitorsPerDay = (d = S.day) => cal(d).dow === 6 ? 0 : Math.round((10 + d + S.up.ads * 3 + prestigeGuests()) * (cal(d).dow === 5 ? 2.4 : 1));   // на ярмарке народу много — часть идёт к соседям   // суббота — ярмарка, воскресенье — выходной   // день 1 → 11 покупателей (~1 каждые 14 сек)
 const growMult = () => 1 + S.up.fert * 0.2;
 // ---------- Календарь: неделя из 7 дней, сезон — 4 недели (28 дней), год — 4 сезона ----------
 const WEEKDAYS = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'], WD = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -847,7 +868,19 @@ function spawnVisitor() {
   if (S.up.bakery) for (const r in BAKE) if (canMake(r)) pool.push(r);
   const spSale = Object.keys(GOODS).filter(id => GOODS[id].sp && onSale(id) && S.inv[id] > 0);
   if (spSale.length && Math.random() < .15) pool.length = 0, pool.push(pick(spSale));   // за выставленной находкой приходит особый покупатель
-  if (fairOn()) { const fs = Object.keys(S.fair.stock).filter(c => S.fair.stock[c] > 0); if (fs.length) pool.length = 0, fs.forEach(c => pool.push(...Array(Math.min(48, S.fair.stock[c])).fill(c))); }   // чего привезли больше — то и спрашивают чаще   // на ярмарке спрашивают то, что привезли
+  if (fairOn()) {   // ярмарка: спрашивают то, что есть у кого-нибудь; идут туда, где дешевле
+    const R = rivals(), tot = {};
+    for (const [c, n] of Object.entries(S.fair.stock)) tot[c] = (tot[c] || 0) + n;
+    R.forEach(x => { for (const [c, n] of Object.entries(x.stock)) if (n > 0) tot[c] = (tot[c] || 0) + n; });
+    const gs = Object.keys(tot); if (!gs.length) return;
+    pool.length = 0; gs.forEach(c => pool.push(...Array(Math.min(40, tot[c])).fill(c)));
+    const g = pick(pool), offers = [];
+    if (S.fair.stock[g] > 0) offers.push({ who: -1, p: myFairPrice(g) });
+    R.forEach((x, i) => { if (x.stock[g] > 0) offers.push({ who: i, p: x.price[g] }); });
+    const best = offers.map(o => ({ ...o, e: o.p * (.88 + Math.random() * .24) })).sort((a, b) => a.e - b.e)[0];
+    if (best.who >= 0) { rivalSale(best.who, g); S.spawned++; return; }
+    pool.length = 0; pool.push(g);
+  }
   const shown = fairOn() ? pool : pool.filter(onSale);
   const crop = pick(shown.length && Math.random() < .85 ? shown : pool);   // спрашивают в основном выставленное
   const base = GOODS[crop].price;
@@ -1891,7 +1924,7 @@ function step(dt) {
     while (S.spawned < due) {
       // решает, остаться ли, сам покупатель — когда дойдёт до конца очереди (см. updateVisitors);
       // здесь — только предел на число людей на дороге
-      if (fairOn() && !Object.keys(S.fair.stock).length) { S.spawned++; continue; }   // на ярмарке всё распродано — за нашим товаром больше не идут
+      if (fairOn() && !fairAnyStock()) { S.spawned++; continue; }   // на ярмарке всё распродано — за нашим товаром больше не идут
       if (queueCount() >= MAX_QUEUE + 3) { S.spawned++; S.stats.missed++; toast('😤 Очередь полная, покупатель ушёл'); }
       else spawnVisitor();
     }
@@ -2517,46 +2550,40 @@ function drawOutsideTrees() { outTrees.sort((a, b) => (a.x + a.y) - (b.x + b.y))
 
 // ---------- Ярмарка за дорогой: по субботам — шатры, флажки, народ; в другие дни — табличка ----------
 const FAIR = { x: 5, y: 23 };   // площадь ярмарки — в трёх клетках от дороги, вход — арка у дороги
-function fairTent(x0, y0, w, d, cA, cB, goods, face = 'y', zh = 40, ah = 104) {   // большой полосатый шатёр с прилавком; face — сторона входа (+y или +x)
-  const X = x0 + w, Y = y0 + d, apex = lift(x0 + w / 2, y0 + d / 2, ah);
-  softShadow(x0, y0, X, Y, .25);
-  const n = 8, m = 6;
-  for (let k = 0; k < n; k++) gface(fY(x0 + w * k / n, x0 + w * (k + 1) / n, Y, 0, zh), k % 2 ? cB : cA, k % 2 ? cB : darken(cA, .9), INK, 1.1);
-  for (let k = 0; k < m; k++) gface(fX(X, y0 + d * k / m, y0 + d * (k + 1) / m, 0, zh), darken(k % 2 ? cB : cA, .85), darken(k % 2 ? cB : cA, .75), INK, 1.1);
-  if (face === 'x') gface(fX(X, y0 + d * .36, y0 + d * .64, 0, zh * .78), '#4a2f1b', '#2e1d10', INK, 1.1);   // вход
-  else gface(fY(x0 + w * .36, x0 + w * .64, Y, 0, zh * .78), '#5b3a22', '#3b2416', INK, 1.1);
-  const o = .15, b0 = lift(x0 - o, Y + o, zh), b1 = lift(X + o, Y + o, zh), b2 = lift(X + o, y0 - o, zh);
-  for (let k = 0; k < n; k++) gface([mix(b0, b1, k / n), mix(b0, b1, (k + 1) / n), apex], k % 2 ? cB : cA, k % 2 ? darken(cB, .92) : darken(cA, .85), INK, 1.1);
-  for (let k = 0; k < m; k++) gface([mix(b1, b2, k / m), mix(b1, b2, (k + 1) / m), apex], darken(k % 2 ? cB : cA, .85), darken(k % 2 ? cB : cA, .7), INK, 1.1);
-  for (let k = 0; k <= n; k++) { const p = mix(b0, b1, k / n); circle(p.x, p.y + 2, 2.2, k % 2 ? cA : cB); }   // фестончики
-  seg(apex, { x: apex.x, y: apex.y - 16 }, INK, 1.6); gface([{ x: apex.x, y: apex.y - 16 }, { x: apex.x + 12, y: apex.y - 12 }, { x: apex.x, y: apex.y - 8 }], cA, cA, INK, 1);
-  const CB = [['#d9a066', '#b07a45'], ['#b8834d', '#8f5b2b'], ['#f0c98e', '#dcae70']];
-  if (face === 'x') {   // прилавки по бокам от входа — на стороне +x
-    toonBox(X + .14, y0 + d * .08, .36, d * .26, 9, ...CB, 0, 1.1); toonBox(X + .14, y0 + d * .66, .36, d * .26, 9, ...CB, 0, 1.1);
-    goods.forEach((e, k) => { const p = lift(X + .32, y0 + d * [.15, .27, .73, .85][k], 11); emoji(e, p.x, p.y - 5, 13); });
-  } else {
-    toonBox(x0 + w * .08, Y + .14, w * .26, .36, 9, ...CB, 0, 1.1); toonBox(x0 + w * .66, Y + .14, w * .26, .36, 9, ...CB, 0, 1.1);
-    goods.forEach((e, k) => { const p = lift(x0 + w * [.15, .27, .73, .85][k], Y + .32, 11); emoji(e, p.x, p.y - 5, 13); });
-  }
-}
 const BOOTHS = [{ x0: 17.2, x1: 19.8, c: '#3e9b3a', sign: 'ФЕРМА' }, { x0: 20.0, x1: 22.1, c: '#e07a2f' }, { x0: 22.3, x1: 24.4, c: '#8e5bd0' }];
-function drawBooth(k = 0) {   // лоток фермы: навес на столбах, прилавок с товаром из ящиков
-  const B = BOOTHS[k], x0 = B.x0, x1 = B.x1, y0 = 22.75, y1 = 24.3, H = 76;
+// ларьки на площади: соседи-конкуренты (r) и просто торговцы (npc) — такие же, как лотки фермы
+const FAIR_STALLS = [
+  { x0: 4.8, x1: 6.9, y0: 22.75, c: '#e05a4a', npc: ['🎈', '🎈', '🎈'] },
+  { x0: 7.1, x1: 9.3, y0: 22.75, c: '#4f8fe0', r: 0 },
+  { x0: 14.6, x1: 16.7, y0: 22.75, c: '#d65db1', npc: ['🍭', '🎁', '🍭'] },
+  { x0: 25.4, x1: 27.6, y0: 22.75, c: '#8e5bd0', r: 1 },
+  { x0: 5.0, x1: 7.2, y0: 27.4, c: '#f0b429', r: 2 },
+  { x0: 7.6, x1: 9.7, y0: 27.4, c: '#c98a3a', npc: ['🍞', '🥧', '🍞'] },
+  { x0: 12.6, x1: 14.7, y0: 27.4, c: '#6cc08b', npc: ['🧸', '🎁', '🧸'] },
+  { x0: 25.4, x1: 27.6, y0: 27.4, c: '#e8a33a', npc: ['🍯', '🍎', '🍯'] },
+];
+function drawFairStall(B, goods, sign, signCol = '#2f7d2c') {   // навес на столбах, прилавок, товар, вывеска
+  const x0 = B.x0, x1 = B.x1, y0 = B.y0, y1 = y0 + 1.55, H = 76;
   softShadow(x0, y0, x1, y1, .22);
   for (const [x, y] of [[x0, y0], [x1, y0]]) toonPost(x, y, 0, H + 8, .07);
-  toonBox(x0 + .1, 24.0, x1 - x0 - .2, .36, 13, ['#e0b47a', '#b8834d'], ['#b8834d', '#8f5b2b'], ['#f6d39a', '#e0b47a'], 0, 1.2);
-  const per = k ? 3 : 4, goods = Object.keys(S.fair.stock).filter(id => S.fair.stock[id] > 0).slice(k ? 4 + (k - 1) * 3 : 0).slice(0, per);
-  goods.forEach((id, j) => { const p = lift(x0 + .4 + j * .55, 24.18, 15); emoji(GOODS[id].e, p.x, p.y - 6, 15); });
+  toonBox(x0 + .1, y1 - .3, x1 - x0 - .2, .36, 13, ['#e0b47a', '#b8834d'], ['#b8834d', '#8f5b2b'], ['#f6d39a', '#e0b47a'], 0, 1.2);
+  goods.forEach((e, j) => { const p = lift(x0 + .4 + j * .55, y1 - .12, 15); emoji(e, p.x, p.y - 6, 15); });
   for (const [x, y] of [[x0, y1], [x1, y1]]) toonPost(x, y, 0, H - 4, .07);
-  const n = k ? 6 : 8;
-  for (let i = 0; i < n; i++) {   // полосатый навес
+  const n = Math.max(6, Math.round((x1 - x0) * 3));
+  for (let i = 0; i < n; i++) {
     const xa = x0 - .1 + (x1 - x0 + .2) * i / n, xb = x0 - .1 + (x1 - x0 + .2) * (i + 1) / n, c = i % 2 ? '#fffaf0' : B.c;
     gface([lift(xa, y0 - .1, H + 8), lift(xb, y0 - .1, H + 8), lift(xb, y1 + .2, H - 4), lift(xa, y1 + .2, H - 4)], c, darken(c, .9), INK, 1);
     gface(fY(xa, xb, y1 + .2, H - 10, H - 4), c, darken(c, .85), INK, 1);
   }
   gface(fX(x1 + .1, y0 - .1, y1 + .2, H - 4, H + 8), darken(B.c, .8), darken(B.c, .65), INK, 1);
-  if (B.sign) { gface(fY(x0 + .4, x1 - .4, y0 - .1, H + 8, H + 21), '#fffaf0', '#f0dfb8', '#7a4a2a', 1.6); textOnX(x0 + .4, y0 - .1, H + 14.5, x1 - x0 - .8, B.sign, '#2f7d2c', 9); }   // вывеска
+  if (sign) { gface(fY(x0 + .25, x1 - .25, y0 - .1, H + 8, H + 21), '#fffaf0', '#f0dfb8', '#7a4a2a', 1.6); textOnX(x0 + .25, y0 - .1, H + 14.5, x1 - x0 - .5, sign, signCol, sign.length > 7 ? 6.5 : 8.5); }
 }
+function drawBooth(k = 0) {   // лоток фермы: товар из ящиков
+  const B = { ...BOOTHS[k], y0: 22.75 }, per = k ? 3 : 4;
+  const goods = Object.keys(S.fair.stock).filter(id => S.fair.stock[id] > 0).slice(k ? 4 + (k - 1) * 3 : 0).slice(0, per).map(id => GOODS[id].e);
+  drawFairStall(B, goods, B.sign, '#2f7d2c');
+}
+const stallGoods = B => B.npc || Object.keys(rivals()[B.r].stock).filter(g => rivals()[B.r].stock[g] > 0).map(g => GOODS[g].e);
 function drawWheel(t) {   // колесо обозрения — медленно крутится
   const base = iso(WHEEL.x, WHEEL.y), R = 48, hub = { x: base.x, y: base.y - 84 }, a0 = t * .25;
   ctx.fillStyle = 'rgba(30,50,15,.22)'; ctx.beginPath(); ctx.ellipse(base.x, base.y, 46, 14, 0, 0, 7); ctx.fill();
@@ -2576,16 +2603,14 @@ function drawWheel(t) {   // колесо обозрения — медленн�
 }
 const WHEEL = { x: 21, y: 30.3 };
 const FAIR_OBJS = [
-  { kind: 'ftent', x0: 5.6, y0: 24.6, w: 3.4, d: 4.8, cA: '#e05a4a', cB: '#fff4e6', goods: ['🍎', '🧀', '🥧', '🍯'], face: 'x' },
-  { kind: 'ftent', x0: 25.6, y0: 23.8, w: 4.6, d: 3.4, cA: '#4f8fe0', cB: '#fff4e6', goods: ['🍞', '🥛', '🍓', '🌽'] },
-  { kind: 'ftent', x0: 12.6, y0: 29.2, w: 5, d: 3.4, cA: '#f0b429', cB: '#fff4e6', goods: ['🎈', '🍭', '🧸', '🎁'] },
+  ...FAIR_STALLS.map(B => ({ kind: 'fstall', B })),
   { kind: 'booth', k: 0 }, { kind: 'booth', k: 1 }, { kind: 'booth', k: 2 }, { kind: 'wheel' },
-].map(o => ({ ...o, z: o.kind === 'ftent' ? o.x0 + o.w + o.y0 + o.d / 2 + .2 : o.kind === 'booth' ? (BOOTHS[o.k].x0 + BOOTHS[o.k].x1) / 2 + 24.4 : WHEEL.x + WHEEL.y + .3 }));
+].map(o => ({ ...o, z: o.kind === 'fstall' ? (o.B.x0 + o.B.x1) / 2 + o.B.y0 + 1.65 : o.kind === 'booth' ? (BOOTHS[o.k].x0 + BOOTHS[o.k].x1) / 2 + 24.4 : WHEEL.x + WHEEL.y + .3 }));
 function fairDrawList(list, t) {
   for (const o of FAIR_OBJS) {
     if (o.kind === 'wheel') list.push({ z: o.z, f: () => drawWheel(t) });
     else if (o.kind === 'booth') { if (o.k <= (S.up.fairstall || 0)) list.push({ z: o.z, f: () => drawSprite(o, () => drawBooth(o.k), Object.keys(S.fair.stock).join(), t) }); }
-    else list.push({ z: o.z, f: () => drawSprite(o, () => fairTent(o.x0, o.y0, o.w, o.d, o.cA, o.cB, o.goods, o.face), '', t) });
+    else list.push({ z: o.z, f: () => { const g = stallGoods(o.B), nm = o.B.r != null ? RIVALS_DEF[o.B.r].name.toUpperCase() : ''; drawSprite(o, () => drawFairStall(o.B, g, nm, '#7a3a1a'), g.join(), t); } });
   }
   for (const f of fairFolk) list.push({ z: f.x + f.y, f: () => {
     if (!f.kid) { drawPerson(f, f.look); return; }
@@ -2594,7 +2619,7 @@ function fairDrawList(list, t) {
 }
 // гости ярмарки: семьи приходят по дороге, гуляют между шатрами, катаются на колесе и уходят
 let fairFolk = [], fairSpawnT = 0;
-const FAIR_SPOTS = [[10.6, 26.6], [10.8, 29.0], [20.6, 31.6], [22.4, 31.2], [27.8, 28.3], [15.2, 33.4], [18.4, 27.6], [12.4, 27.2], [24.0, 28.6]];
+const FAIR_SPOTS = [[10.8, 26.3], [11.2, 30.4], [19.8, 31.8], [22.6, 31.6], [28.6, 30.6], [15.6, 30.8], [18.6, 28.4], [12.2, 26.4], [24.0, 28.6], [6.2, 30.9], [8.6, 30.6], [26.4, 30.4]];
 const FAIR_ENTR = [10.1, 10.7, 11.3];   // все — через арку у дороги
 function spawnFamily() {
   const fromLeft = Math.random() < .5, sx = fromLeft ? -3 : W + 3, ex = fromLeft ? W + 3 : -3, n = 2 + Math.floor(Math.random() * 3);
@@ -2603,7 +2628,7 @@ function spawnFamily() {
     const kid = i >= 2 || (i === 1 && Math.random() < .35), shirt = pick(SHIRTS), ox = [0, -.4, -.2, -.6][i], oy = [0, .15, .4, .3][i];
     const wps = [{ x: ent + ox, y: ry + oy * .4 }, { x: ent + ox, y: 23.3 + oy }, { x: ent + ox, y: 26.4 + oy }, ...stops.map(st => ({ x: st[0] + ox, y: st[1] + oy, wait: 3 + Math.random() * 5 })),
       { x: ent2 + ox, y: 26.4 + oy }, { x: ent2 + ox, y: 23.3 + oy }, { x: ent2 + ox, y: ry + oy * .4 }, { x: ex, y: ry + oy * .4 }];
-    fairFolk.push({ x: sx + (fromLeft ? -i * .6 : i * .6), y: ry + oy * .4, wps, kid, phase: i * 1.7, moving: true, flip: false, wait: 0,
+    fairFolk.push({ fam: 1, x: sx + (fromLeft ? -i * .6 : i * .6), y: ry + oy * .4, wps, kid, phase: i * 1.7, moving: true, flip: false, wait: 0,
       look: { shirt, shirtDark: darken(shirt, .8), pants: pick(['#3b4a6b', '#5a4632', '#2f2f3a', '#6b6b6b']), skin: pick(SKINS), hair: pick(HAIRS), hat: Math.random() < .3 ? 'cap' : null, capColor: pick(SHIRTS) } });
   }
 }
@@ -2622,7 +2647,7 @@ function updateFair(dt) {
     for (let k = 0; k < 3; k++) { const n0 = fairFolk.length; spawnFamily(); const g = fairFolk.slice(n0); for (let i = 0; i < 40 + k * 22; i++) moveFolk(.25, g); }
     fairFolk = fairFolk.filter(f => !f.done);
   }
-  if ((fairSpawnT -= dt) <= 0 && fairFolk.length < 10) { spawnFamily(); fairSpawnT = 4 + Math.random() * 5; }
+  if ((fairSpawnT -= dt) <= 0 && fairFolk.filter(f => f.fam).length < 10) { spawnFamily(); fairSpawnT = 4 + Math.random() * 5; }
   moveFolk(dt);
 }
 // площадь ярмарки видна всегда: утоптанная земля, дорожки от дороги, места под шатры, настил под лотки, круг под колесо
@@ -2646,7 +2671,8 @@ function drawFairPlaza() {
     for (const [px, py] of [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]) { const q = iso(px, py); ctx.fillStyle = '#6b4327'; ctx.fillRect(q.x - 1.5, q.y - 6, 3, 6); }
   };
   const padC = win ? 'rgba(150,160,165,.35)' : 'rgba(150,105,55,.28)', padL = win ? 'rgba(110,120,125,.5)' : 'rgba(110,70,35,.5)';
-  pad(5.4, 24.4, 9.2, 29.6, padC, padL); pad(12.4, 29.0, 17.8, 32.8, padC, padL); pad(25.4, 23.6, 30.4, 27.4, padC, padL);
+  for (const B of FAIR_STALLS) { const x0 = B.x0 - .15, x1 = B.x1 + .15, y0 = B.y0 - .15, y1 = B.y0 + 1.8;   // настил под ларьками соседей
+    shape([iso(x0, y0), iso(x1, y0), iso(x1, y1), iso(x0, y1)]); ctx.fillStyle = win ? '#d8d0c2' : '#cfa877'; ctx.fill(); ctx.strokeStyle = padL; ctx.lineWidth = 1.2; ctx.stroke(); }
   // настил под лотки фермы: купленные — доски, следующий — пунктир с замочком
   BOOTHS.forEach((B, k) => {
     const x0 = B.x0 - .15, x1 = B.x1 + .15, y0 = 22.6, y1 = 24.55, own = k <= (S.up.fairstall || 0);
@@ -2695,10 +2721,19 @@ function drawFairGround() {
     }
   }
   { const A = lift(ax0, ay, 50), B = lift(ax1, ay, 50); for (let j = 0; j < 12; j++) { const P0 = mix(A, B, j / 12), P1 = mix(A, B, (j + 1) / 12); gface([P0, P1, { x: (P0.x + P1.x) / 2, y: (P0.y + P1.y) / 2 + 7 }], LIGHT_COLORS[j % 4], darken(LIGHT_COLORS[j % 4], .85), INK, .7); } }
-  for (const [bx, by, c] of [[x + 7.0, y + 10.1, '#e05a4a'], [x + 7.3, y + 9.9, '#4f8fe0'], [x + 6.8, y + 10.0, '#f0b429']]) {   // шарики у жёлтого шатра
-    const a = lift(bx, by, 14), b = lift(bx, by, 40 + (bx - x - 6.8) * 30); seg(a, b, 'rgba(60,40,20,.6)', .8);
-    ctx.beginPath(); ctx.ellipse(b.x, b.y - 5, 5, 6.5, 0, 0, 7); ctx.fillStyle = c; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1; ctx.stroke(); circle(b.x - 1.8, b.y - 7.5, 1.4, 'rgba(255,255,255,.7)');
-  }
+
+}
+function rivalSale(i, g) {   // покупатель ушёл к соседу: идёт к его ларьку, стоит у прилавка и уходит
+  const x = rivals()[i], B = FAIR_STALLS.find(t => t.r === i);
+  const q = Math.min(x.stock[g], 1 + Math.floor(Math.random() * 3));
+  x.stock[g] -= q;
+  if (!x.stock[g]) setTimeout(() => toast(`😮 У «${RIVALS_DEF[i].name}» кончилось: ${GOODS[g].e} ${GOODS[g].name.toLowerCase()}`), 400);
+  const fromLeft = Math.random() < .5, ry = ROAD + 1.25, ent = pick(FAIR_ENTR), cx = (B.x0 + B.x1) / 2 + (Math.random() - .5) * .8, fy = B.y0 + 2.15;
+  const shirt = pick(SHIRTS), lane = fy < 26 ? 26.1 : 30.6;
+  fairFolk.push({ x: fromLeft ? -2 : W + 2, y: ry, kid: false, phase: Math.random() * 6, moving: true, flip: false, wait: 0,
+    wps: [{ x: ent, y: ry }, { x: ent, y: 23.3 }, { x: ent, y: lane }, { x: cx, y: lane }, { x: cx, y: fy, wait: 2.5 }, { x: cx, y: lane }, { x: ent, y: lane }, { x: ent, y: 23.3 }, { x: ent, y: ry }, { x: fromLeft ? W + 3 : -3, y: ry }],
+    look: { shirt, shirtDark: darken(shirt, .8), pants: pick(['#3b4a6b', '#5a4632', '#2f2f3a', '#6b6b6b']), skin: pick(SKINS), hair: pick(HAIRS), hat: Math.random() < .3 ? 'cap' : null, capColor: pick(SHIRTS) } });
+  save();
 }
 // ---------- Земля: кочки травы, цветы, камешки, колеи и кромка тропинок ----------
 function grassTuft(x, y, s, dark = '#4f9a3c', light = '#7fcf5f') {   // кочка: три заострённых травинки
@@ -4452,17 +4487,22 @@ function openFairPack(sel) {
   const lock = fairOn(), tot = fairCrates(), days = (5 - cal().dow + 7) % 7;
   if (!lock) syncFair();
   if (sel !== undefined) crateSel = sel;
-  if (lock || crateSel == null || crateSel >= tot) crateSel = lock ? null : Math.max(0, Math.min(tot - 1, S.fair.crates.findIndex(c => !c) < 0 ? (S.fair.crates.length < tot ? S.fair.crates.length : 0) : S.fair.crates.findIndex(c => !c)));
+  if (lock && (crateSel == null || !S.fair.crates[crateSel])) crateSel = S.fair.crates.findIndex(c => c) >= 0 ? S.fair.crates.findIndex(c => c) : null;
+  else if (!lock && (crateSel == null || crateSel >= tot)) crateSel = Math.max(0, Math.min(tot - 1, S.fair.crates.findIndex(c => !c) < 0 ? (S.fair.crates.length < tot ? S.fair.crates.length : 0) : S.fair.crates.findIndex(c => !c)));
   const used = cratesUsed(), when = days === 0 ? 'сегодня' : days === 1 ? 'завтра' : `через ${days} ${days < 5 ? 'дня' : 'дней'}`, pct = Math.round((fairMult() - 1) * 100);
-  let h = `<h2>🎪 Ярмарка ${lock ? 'идёт!' : when}</h2><div class="fpinfo">${lock ? 'Пополнить ящики уже нельзя. Вечером непроданное вернётся на склад.'
-    : `Выбери ящик и положи в него товар — до ${CRATE} шт. одного вида.`}</div><div class="cgrid">`;
+  let h = `<h2>🎪 Ярмарка ${lock ? 'идёт!' : when}</h2><div class="fpinfo">${lock ? 'Пополнить ящики уже нельзя, но цену менять можно — тапни на ящик. Вечером непроданное вернётся на склад.'
+    : `Выбери ящик и положи в него товар — до ${CRATE} шт. одного вида. Рядом торгуют соседи: покупатель идёт туда, где дешевле.`}</div><div class="cgrid">`;
   for (let i = 0; i < 12; i++) {
     const c = S.fair.crates[i], on = i === crateSel ? ' sel' : '';
     if (i >= tot) { if (i < tot + 4 && (S.up.fairstall || 0) < 2) h += `<button class="crate lockd" onclick="toast('🔒 Ещё 4 ящика — ночью: «Улучшения» → «Ферма» → 🎪 «Место на ярмарке»')"><span class="ce">🔒</span><small>купить место</small></button>`; continue; }
-    h += c ? `<button class="crate full${on}" ${lock ? '' : `onclick="openFairPack(${i})"`}><span class="ce">${GOODS[c.id].e}</span><b id="crB${i}">${c.n}<i>/${CRATE}</i></b></button>`
+    h += c ? `<button class="crate full${on}" onclick="openFairPack(${i})"><span class="ce">${GOODS[c.id].e}</span><b id="crB${i}">${c.n}<i>/${CRATE}</i></b></button>`
       : `<button class="crate${on}" ${lock ? 'disabled' : `onclick="openFairPack(${i})"`}><span class="ce plus">＋</span><small>пустой</small></button>`;
   }
   h += `</div>`;
+  if (lock && crateSel != null) {   // ярмарка идёт: товар не добавить, но цену поменять можно
+    const c = S.fair.crates[crateSel];
+    h += `<div class="cpanel"><div class="cptitle">📦 Ящик ${crateSel + 1}: <b>${GOODS[c.id].e} ${GOODS[c.id].name}</b> — осталось ${c.n}</div>${priceBlock(c.id)}</div>`;
+  }
   if (!lock) {
     const i = crateSel, c = S.fair.crates[i], ids = Object.keys(GOODS).filter(id => !GOODS[id].sp && ((S.inv[id] || 0) > 0 || c?.id === id));
     h += `<div class="cpanel"><div class="cptitle">📦 Ящик ${i + 1}: ${c ? `<b>${GOODS[c.id].name}</b>` : 'выбери товар'}</div>`;
@@ -4471,8 +4511,8 @@ function openFairPack(sel) {
     if (c) {
       const max = Math.min(CRATE, c.n + (S.inv[c.id] || 0));
       h += `<div class="crow"><button class="alt" onclick="setCrate(${i}, S.fair.crates[${i}].n - 1)">−</button><input type="range" id="crRange" min="0" max="${max}" value="${c.n}" oninput="setCrate(${i}, +this.value)" onchange="save()"><button class="alt" onclick="setCrate(${i}, S.fair.crates[${i}].n + 1)">＋</button><b id="crNum">${c.n}</b></div>
-        <div class="cpsub" id="crInv">в ящике ${c.n} · на складе ${S.inv[c.id] || 0} · ${Math.round(sellPrice(c.id) * fairMult())}💰 за шт. на ярмарке</div>
-        <div class="cquick"><button class="alt" onclick="setCrate(${i}, 0); openFairPack(${i})">Пусто</button><button class="alt" onclick="setCrate(${i}, ${max})">Полный</button></div>`;
+        <div class="cpsub" id="crInv">в ящике ${c.n} · на складе ${S.inv[c.id] || 0}</div>
+        <div class="cquick"><button class="alt" onclick="setCrate(${i}, 0); openFairPack(${i})">Пусто</button><button class="alt" onclick="setCrate(${i}, ${max})">Полный</button></div>${priceBlock(c.id)}`;
     }
     h += `</div>`;
   }
@@ -4482,6 +4522,12 @@ function openFairPack(sel) {
   $('sheet').dataset.view = 'fairpack'; $('sheet').innerHTML = h; $('overlay').classList.add('show'); $('sheet').scrollTop = top;
 }
 const openCrate = i => openFairPack(i);
+function priceBlock(id) {   // своя цена и что у соседей
+  const pm = S.fair.pm[id] ?? 0, R = rivals(), near = R.map((x, k) => x.price[id] != null ? `${RIVALS_DEF[k].name} — ${x.stock[id] > 0 ? `${x.price[id]}💰` : '<b style="color:#b0503a">кончилось</b>'}` : '').filter(Boolean);
+  return `<div class="pmrow">${PM_NAME.map((n, k) => `<button class="${pm === k - 1 ? '' : 'alt'}" onclick="setPm('${id}', ${k - 1})">${n}</button>`).join('')}</div>
+    <div class="cpsub">Твоя цена: <b>${myFairPrice(id)}💰</b> за шт. · ${near.length ? 'у соседей: ' + near.join(', ') : 'у соседей такого нет — покупатели твои'}</div>`;
+}
+function setPm(id, v) { S.fair.pm[id] = v; save(); openFairPack(crateSel ?? undefined); }
 function fillCrate(i, id) {
   const old = S.fair.crates[i]; if (old) { S.inv[old.id] = (S.inv[old.id] || 0) + old.n; }
   const n = Math.min(CRATE, S.inv[id] || 0); S.inv[id] -= n;
@@ -4495,7 +4541,7 @@ function setCrate(i, v) {   // ползунок / число: переклады
   if ($('crRange')) $('crRange').value = v; if ($('crNum')) $('crNum').textContent = v;
   if ($('gc_' + c.id)) $('gc_' + c.id).textContent = S.inv[c.id] || 0;
   if ($('crB' + i)) $('crB' + i).innerHTML = `${v}<i>/${CRATE}</i>`;
-  if ($('crInv')) $('crInv').textContent = `в ящике ${v} · на складе ${S.inv[c.id] || 0} · ${Math.round(sellPrice(c.id) * fairMult())}💰 за шт. на ярмарке`;
+  if ($('crInv')) $('crInv').textContent = `в ящике ${v} · на складе ${S.inv[c.id] || 0}`;
   S.fair.stock = {}; for (const x of S.fair.crates) if (x && x.n > 0) S.fair.stock[x.id] = (S.fair.stock[x.id] || 0) + x.n;   // без чистки пустых, пока ящик открыт
   renderUI();
 }
