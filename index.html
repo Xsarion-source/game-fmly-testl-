@@ -109,6 +109,17 @@
   .tabs button { flex: 1; padding: 9px 4px; border-radius: 12px; border: 1.5px solid #ecdcb8; background: #f3e8cf; color: #6b5440; font-weight: 800; font-size: 14px; box-shadow: none; position: relative; }
   .tabs button.on { background: #fff; color: var(--ink); border-color: #f0c24a; box-shadow: 0 2px 0 #dba93c; }
   .tabs .n { position: absolute; top: -7px; right: -4px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: var(--accent); color: #fff; font-size: 12px; line-height: 20px; }
+  .calnav { display: flex; align-items: center; justify-content: space-between; margin: 10px 0 6px; font-size: 16px; }
+  .calnav button { width: 40px; height: 34px; padding: 0; border-radius: 10px; font-size: 20px; }
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cal .wd { text-align: center; font-size: 11px; font-weight: 800; color: #7a6650; }
+  .cal .cd { position: relative; min-height: 50px; border-radius: 9px; background: #fffaf0; border: 1.5px solid #ecdcb8; padding: 2px 3px; display: flex; flex-direction: column; align-items: center; cursor: pointer; }
+  .cal .cd.we { background: #fff3dc; }
+  .cal .cd.past { background: #efe6d2; color: #8d7a63; }
+  .cal .cd.today { border-color: #f0a020; box-shadow: 0 0 0 2px #f4c048; background: #fff3c4; }
+  .cal .n { font-size: 12px; font-weight: 800; align-self: flex-start; }
+  .cal .ev { font-size: 13px; line-height: 1.1; }
+  .cal .m { font-size: 10px; font-weight: 800; color: #3e7d32; margin-top: auto; }
   .stallg { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
   .stallg .sg { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 8px 4px; border-radius: 14px; border: 1.5px solid #ecdcb8; background: #f3ead6; color: #7a6650; box-shadow: none; font-weight: 600; }
   .stallg .sg .e { font-size: 28px; filter: grayscale(.7); opacity: .7; }
@@ -518,7 +529,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-15.8';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.1';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -613,10 +624,32 @@ let floats = [];
 // ================== ПРАВИЛА ==================
 const visitorsPerDay = (d = S.day) => 10 + d + S.up.ads * 3;   // день 1 → 11 покупателей (~1 каждые 14 сек)
 const growMult = () => 1 + S.up.fert * 0.2;
+// ---------- Календарь: неделя из 7 дней, сезон — 4 недели (28 дней), год — 4 сезона ----------
+const WEEKDAYS = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'], WD = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+const SEASON_LEN = 28;
+const SEASONS = [
+  { id: 'spring', name: 'Весна', e: '🌸', grow: { wheat: 1.25, carrot: 1.25, sunflower: 1.25 }, price: {}, text: '🌾 пшеница, 🥕 морковь и 🌻 подсолнухи растут на 25% быстрее' },
+  { id: 'summer', name: 'Лето',  e: '☀️', grow: { tomato: 1.25, strawberry: 1.25 }, price: { strawberry: 1.2, milk: 1.15 }, text: '🍅 помидоры и 🍓 клубника растут на 25% быстрее, 🍓 и 🥛 в цене' },
+  { id: 'autumn', name: 'Осень', e: '🍂', grow: {}, price: { pumpkin: 1.3, corn: 1.25, apple: 1.25, pie: 1.15 }, text: '🎃 тыквы, 🌽 кукуруза, 🍎 яблоки и 🥧 пироги дороже' },
+  { id: 'winter', name: 'Зима',  e: '❄️', grow: { field: .8 }, price: { milk: 1.2, cheese: 1.2, bread: 1.2, pie: 1.2, pizza: 1.2, cake: 1.2 }, text: 'на грядках всё растёт на 20% медленнее (теплица — как обычно), молоко, сыр и выпечка дороже' },
+];
+const cal = (d = S.day) => { const i = d - 1; return { dow: i % 7, week: Math.floor(i / 7) % 4 + 1, sday: i % SEASON_LEN + 1, si: Math.floor(i / SEASON_LEN) % 4, year: Math.floor(i / (SEASON_LEN * 4)) + 1 }; };
+const season = (d = S.day) => SEASONS[cal(d).si];
+const seasonGrow = (id, gh) => (season().grow[id] || 1) * (gh ? 1 : season().grow.field || 1);
+const seasonPrice = id => season().price[id] || 1;
+// как выглядит сезон: трава на ферме и вокруг, кроны деревьев (осенью — разные), фон
+const LOOKS = {
+  spring: { g: ['#8fd068', '#89c962'], out: ['#7ebf5a', '#79b855'], crowns: [['#5cb24c', '#46913a', '#90d874'], ['#62b850', '#4a963c', '#9ade7c'], ['#f2a7c3', '#d07a9c', '#ffe0ea']], bg: '#5a9a48', bush: ['#56a646', '#62b452'] },
+  summer: { g: ['#7cc35e', '#76bc58'], out: ['#6db151', '#68aa4c'], crowns: [['#4a9a42', '#3a7f35', '#6fc05f']], bg: '#4e8c41', bush: ['#4f9a40', '#5aa64a'] },
+  autumn: { g: ['#a9bb5c', '#a2b457'], out: ['#9cad52', '#96a64d'], crowns: [['#e0892f', '#b8651c', '#f4b45e'], ['#d8b23a', '#ad8a24', '#f0d26a'], ['#c9542f', '#9e3b1f', '#e88a5e'], ['#7aa046', '#5d8236', '#9cc062']], bg: '#7d8c40', bush: ['#b8862e', '#c9963a'] },
+  winter: { g: ['#eaf0f4', '#e2e9ee'], out: ['#dbe4ea', '#d4dde4'], crowns: [['#4f8466', '#3c6b51', '#f4f8fb']], bg: '#b7c6d0', bush: ['#9fb4bf', '#b2c4cd'] },
+};
+const look = () => LOOKS[season().id];
+function applySeasonBg() { const c = look().bg; document.body.style.background = c; $('app').style.background = c; }
 const priceMult = () => 1 + S.up.sign * 0.1 + (S.up.cozy || 0) * 0.05;
 const homeMult = () => 1 + (S.up.house || 0) * 0.2;   // дом: помощники сыты и работают быстрее
 const patience = () => 30 + S.up.bench * 5;
-const sellPrice = c => Math.round(GOODS[c].price * priceMult());
+const sellPrice = c => Math.round(GOODS[c].price * priceMult() * seasonPrice(c));
 // Экономика: за день (S.stats) и за всё время (S.life) — выручка по товарам и траты по статьям
 const SPEND = { seeds: '🌱 Семена', up: '⬆️ Улучшения', crops: '🔓 Новые культуры', trees: '🌳 Саженцы' };
 function spend(n, cat) {
@@ -636,6 +669,7 @@ function startDay() {
   if (shouldAutoStart()) beginClock();
   else toast('🌅 Рассвет. Посади семечко (или нажми на солнце) — и день начнётся');
   if (coopMsg) setTimeout(() => toast(coopMsg), 1700);
+  if (cal().sday === 1 && S.day > 1) setTimeout(() => toast(`${season().e} Наступила ${season().name.toLowerCase()}: ${season().text}`), coopMsg ? 3400 : 1700);
   save(); renderUI();
 }
 
@@ -1670,8 +1704,8 @@ function step(dt) {
   if (!S.night && !S.started && shouldAutoStart()) beginClock();
   if (!S.night && S.started) {
     S.t += dt;
-    for (const p of S.plots) if (p.crop && p.prog < 1) p.prog = Math.min(1, p.prog + dt * growMult() / CROP[p.crop].grow);
-    for (const p of S.gh) if (p.crop && p.prog < 1) p.prog = Math.min(1, p.prog + dt * growMult() / (CROP[p.crop].grow * GH_SLOW));
+    for (const p of S.plots) if (p.crop && p.prog < 1) p.prog = Math.min(1, p.prog + dt * growMult() * seasonGrow(p.crop) / CROP[p.crop].grow);
+    for (const p of S.gh) if (p.crop && p.prog < 1) p.prog = Math.min(1, p.prog + dt * growMult() * seasonGrow(p.crop, true) / (CROP[p.crop].grow * GH_SLOW));
     for (const t of S.trees) if (t.kind) {
       const T = TREES[t.kind];
       if (t.grow < 1) t.grow = Math.min(1, t.grow + dt * growMult() / T.mature);
@@ -2115,7 +2149,7 @@ const zoomSettled = now => { const k = dpr * zoom; if (k !== zoomK) { zoomK = k;
 const bg = { cv: document.createElement('canvas'), key: '', r: null, ox: 0, oy: 0 };
 function groundSig() {   // всё, от чего зависит земля (кроме мигания)
   const pl = a => a.map(p => p.crop ? (p.prog < 1 ? 'w' : 'r') : '-').join('');
-  return [JSON.stringify(S.up), pl(S.plots), pl(S.gh), S.trees.map(t => t.kind ? 1 : 0).join(''), hens(), cows()].join('|');
+  return [season().id, JSON.stringify(S.up), pl(S.plots), pl(S.gh), S.trees.map(t => t.kind ? 1 : 0).join(''), hens(), cows()].join('|');
 }
 function viewRect(pad = 0) { const hw = cw / 2 / zoom + pad, hh = ch / 2 / zoom + pad; return { x0: cam.x - hw, x1: cam.x + hw, y0: cam.y - hh, y1: cam.y + hh }; }
 function panRect() {   // всё, что камера может показать (см. clampCam)
@@ -2135,7 +2169,7 @@ function drawBackdrop(now) {
     const w = Math.ceil(R.x1 * k) - bg.ox, h = Math.ceil(R.y1 * k) - bg.oy;
     if (bg.cv.width !== w || bg.cv.height !== h) { bg.cv.width = w; bg.cv.height = h; }
     const main = ctx; ctx = bg.cv.getContext('2d');
-    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#4e8c41'; ctx.fillRect(0, 0, w, h);
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = look().bg; ctx.fillRect(0, 0, w, h);
     ctx.setTransform(k, 0, 0, k, -bg.ox, -bg.oy);
     try { drawOutside(R); drawGround(0); drawPaths(); } finally { ctx = main; }
   }
@@ -2180,7 +2214,7 @@ const SPRITE_ANIM = new Set(['house', 'stall', 'bakery', 'dairy', 'doghouse', 'b
 const SPRITE_KEY = {
   house: () => '', stall: () => Object.keys(GOODS).filter(id => S.inv[id] > 0 && onSale(id)).join(), bakery: () => S.bake.q.length + ',' + S.started, dairy: () => (S.prod.dairy.q > 0) + ',' + S.started,
   doghouse: () => '', billboard: () => '', mill: () => (S.prod.mill.q > 0) + ',' + S.started,
-  tree: () => '', flowers: () => '', well: () => '', fence: () => hens() + ',' + cows(), coop: () => S.coop.eggs + ',' + (S.coop.gold || 0) + ',' + hens(), barn: () => cows(),
+  tree: () => season().id, flowers: () => '', well: () => '', fence: () => hens() + ',' + cows(), coop: () => S.coop.eggs + ',' + (S.coop.gold || 0) + ',' + hens(), barn: () => cows(),
   trough: () => cows() + ',' + cowsFedToday(), mailbox: () => JSON.stringify(S.order), sack: () => '', bench: () => '', glass: () => '', ghroof: () => '',
 };
 const mctx = document.createElement('canvas').getContext('2d');
@@ -2241,7 +2275,7 @@ function drawSprite(d, fn, key, now, o, raw) {
 }
 function draw(t) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = '#4e8c41'; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.fillStyle = look().bg; ctx.fillRect(0, 0, cv.width, cv.height);
   setWorld();
   drawBackdrop(t);
   drawGroundGlow(t);
@@ -2294,13 +2328,13 @@ function drawOutside(V = viewRect()) {
     const c = iso(x + .5, y + .5);
     if (c.x < V.x0 - TW || c.x > V.x1 + TW || c.y > V.y1 + 80 || c.y < V.y0 - 140) continue;
     const road = (y === ROAD || y === ROAD + 1) && (x >= W || x < 0), h = hash(x, y);
-    const col = road ? ((x + y) % 2 ? '#d8bf8a' : '#d3b983') : (x + y) % 2 ? '#6db151' : '#68aa4c';
+    const col = road ? ((x + y) % 2 ? '#d8bf8a' : '#d3b983') : look().out[(x + y) % 2];
     poly(tilePts(x, y), col, col);
     if (road) { seg(iso(x, y + .5), iso(x + 1, y + .5), 'rgba(150,110,65,.16)', 4); if (h > .88) pebble(c.x + (h - .94) * 60, c.y, 1.6, '#cdbb98'); continue; }
     const behind = x < 0 || y < 0 || (x >= W && y < ROAD);   // за фермой и справа — лес, перед ней — открытый луг
     if (behind && h > (x < -2 || y < -2 || x > W + 1 ? 0.25 : 0.5)) trees.push({ x, y, s: 0.8 + hash(y, x) * 0.45 });
-    else if (h > .82) circle(c.x + (h - .9) * 40, c.y, 2.2, ['#ffffff', '#ffd84d', '#ff8fb1'][Math.floor(h * 1000) % 3]);
-    else if (!behind && h < .06) { circle(c.x - 5, c.y - 5, 7, '#4f9a40'); circle(c.x + 5, c.y - 4, 6, '#5aa64a'); }   // кусты
+    else if (h > .82 && season().id !== 'winter') circle(c.x + (h - .9) * 40, c.y, 2.2, season().id === 'autumn' ? ['#e0892f', '#d8b23a', '#c9542f'][Math.floor(h * 1000) % 3] : ['#ffffff', '#ffd84d', '#ff8fb1'][Math.floor(h * 1000) % 3]);
+    else if (!behind && h < .06) { circle(c.x - 5, c.y - 5, 7, look().bush[0]); circle(c.x + 5, c.y - 4, 6, look().bush[1]); }   // кусты
   }
   trees.sort((a, b) => (a.x + a.y) - (b.x + b.y)).forEach(drawTree);
 }
@@ -2320,6 +2354,14 @@ function pebble(x, y, r, col = '#c9bfae') {
   circle(x - r * .45, y - r * .35, r * .35, 'rgba(255,255,255,.6)');
 }
 function groundDeco(x, y, c, u, h) {
+  const sid = season().id;
+  if (sid === 'winter') {   // снег: редкие травинки торчат, голубые тени сугробов
+    if (h < .14) { ctx.fillStyle = 'rgba(170,195,215,.35)'; ctx.beginPath(); ctx.ellipse(c.x + (h - .07) * 120, c.y, 16, 6, 0, 0, 7); ctx.fill(); }
+    if (u > .8) grassTuft(c.x + (u - .75) * 34, c.y + (h - .5) * 6, .8, '#8aa08a', '#b9c9b9');
+    if (h > .2 && h < .25) pebble(c.x + (u - .5) * 24, c.y + 3, 2.4, '#bdb6a8');
+    return;
+  }
+  if (sid === 'autumn' && u > .55 && u < .62) for (let k = 0; k < 3; k++) circle(c.x + (hash(x + k, y) - .5) * 40, c.y + (hash(y, x + k) - .5) * 12, 2, ['#e0892f', '#d8b23a', '#c9542f'][k]);   // опавшие листья
   if (h < .14) {   // светлое пятно солнечной травы
     ctx.fillStyle = 'rgba(190,240,140,.22)'; ctx.beginPath(); ctx.ellipse(c.x + (h - .07) * 120, c.y, 18, 7, 0, 0, 7); ctx.fill();
   }
@@ -2356,14 +2398,14 @@ function drawPaths() {   // вторым проходом — чтобы кро�
 function drawGround(t) {
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const g = ground[y][x], pts = tilePts(x, y);
-    const grass = (x + y) % 2 ? '#7cc35e' : '#76bc58';
+    const LK = look().g, grass = (x + y) % 2 ? LK[0] : LK[1];
     let col = grass;
     if (g === 'r') col = (x + y) % 2 ? '#d8bf8a' : '#d3b983';
     else if (g === 'p') col = '#cfae78';
     else if (g === 'w') col = '#5bb0e0';
-    else if (g === 'o') col = (x + y) % 2 ? '#84c260' : '#7ebc5b';
+    else if (g === 'o') col = season().id === 'summer' ? ((x + y) % 2 ? '#84c260' : '#7ebc5b') : grass;
     else if (g === 'y') col = hens() ? ((x + y) % 2 ? '#cfae78' : '#c9a771') : grass;
-    else if (g === 'm') col = cows() ? (S.up.clover ? ((x + y) % 2 ? '#7fd46a' : '#76cc61') : ((x + y) % 2 ? '#93d36b' : '#8bcc63')) : grass;
+    else if (g === 'm') col = season().id === 'winter' ? grass : cows() ? (S.up.clover ? ((x + y) % 2 ? '#7fd46a' : '#76cc61') : ((x + y) % 2 ? '#93d36b' : '#8bcc63')) : grass;
     else if (g === 's' || (g === 'h' && S.up.greenhouse)) {
       const arr = g === 's' ? S.plots : S.gh, i = g === 's' ? slotAt(x, y) : ghAt(x, y);
       if (i < arr.length) col = arr[i].crop && arr[i].prog < 1 ? '#6b4327' : '#8a5a36';
@@ -3105,7 +3147,8 @@ function drawTree(d) {
   const c = iso(d.x + .5, d.y + .5), s = d.s;
   ctx.fillStyle = 'rgba(30,50,15,.25)'; ctx.beginPath(); ctx.ellipse(c.x + 3, c.y + 1, 17 * s, 7.5 * s, 0, 0, 7); ctx.fill();
   toonTrunk(c.x, c.y, 3.6 * s, 24 * s);
-  toonCrown([[c.x - 10 * s, c.y - 28 * s, 12 * s], [c.x + 10 * s, c.y - 28 * s, 12 * s], [c.x, c.y - 40 * s, 15 * s]], '#4a9a42', '#3a7f35', '#6fc05f');
+  const cr = look().crowns, k = cr[Math.floor(hash(d.x * 3 + 1, d.y * 5 + 2) * cr.length) % cr.length];
+  toonCrown([[c.x - 10 * s, c.y - 28 * s, 12 * s], [c.x + 10 * s, c.y - 28 * s, 12 * s], [c.x, c.y - 40 * s, 15 * s]], k[0], k[1], k[2]);
 }
 function drawOrchardTree(i, t) {
   const tr = S.trees[i], s = ORCHARD_SLOTS[i], c = iso(s.x + .5, s.y + .5), T = TREES[tr.kind];
@@ -3447,7 +3490,7 @@ function renderHud() {
   else { [, label, sky] = PHASES.find(p => frac < p[0]); }
   box.style.background = sky;
   box.classList.toggle('dark', S.night);
-  $('phase').textContent = `День ${S.day} · ${label}` + (timeScale > 1 ? ` ⏩${timeScale}` : '');
+  $('phase').textContent = `День ${S.day} · ${WD[cal().dow]}` + (timeScale > 1 ? ` ⏩${timeScale}` : ''); box.title = `${WEEKDAYS[cal().dow]} · ${label} · ${season().name}` + (timeScale > 1 ? ` ⏩${timeScale}` : '');
   if (S.night) { icon.textContent = '🌙'; icon.style.left = '66px'; icon.style.top = '18px'; return; }
   const a = Math.PI * (1 - frac);
   icon.textContent = '☀️';
@@ -3456,7 +3499,7 @@ function renderHud() {
 }
 
 function renderUI() {
-  hudSig = ''; hudCoins = null;
+  hudSig = ''; hudCoins = null; applySeasonBg();
   $('nightBtn').style.display = S.night ? '' : 'none';
   $('plantAll').style.display = S.night ? 'none' : '';
   $('dayBtn').style.display = S.night ? '' : 'none';
@@ -3471,7 +3514,7 @@ function renderUI() {
     d.className = 'seed' + (S.sel === id ? ' sel' : '') + (S.coins < c.seed ? ' dis' : '');
     const gh = GH_CROPS.includes(id);
     d.innerHTML = `<div class="e">${c.e}</div><div class="c">${c.seed ? c.seed + '💰' : 'даром'}</div>${gh ? '<span class="ghb">🏡</span>' : ''}`;
-    d.onclick = () => { S.sel = id; toast(`${c.e} ${c.name}: семена ${c.seed ? c.seed + '💰' : 'даром'} → продажа ${sellPrice(id)}💰 · растёт ${Math.round(c.grow * (gh ? GH_SLOW : 1) / growMult())}с${gh ? ` · только в теплице 🏡, гроздь ×${GH_YIELD}` : ''}`); renderUI(); };
+    d.onclick = () => { S.sel = id; toast(`${c.e} ${c.name}: семена ${c.seed ? c.seed + '💰' : 'даром'} → продажа ${sellPrice(id)}💰 · растёт ${Math.round(c.grow * (gh ? GH_SLOW : 1) / growMult() / seasonGrow(id, gh))}с${seasonGrow(id, gh) > 1 ? ' ' + season().e : ''}${gh ? ` · только в теплице 🏡, гроздь ×${GH_YIELD}` : ''}`); renderUI(); };
     s.appendChild(d);
   }
   renderHud();
@@ -3565,6 +3608,7 @@ function openMenu() {
   $('sheet').dataset.view = ''; $('sheet').innerHTML = `<h2>☰ Меню</h2><div class="menu">
       <button onclick="${S.night ? 'openNight(false)' : "toast('🌙 Улучшения покупаются ночью')"}">⬆️ Улучшения ${S.night ? '' : '<small style="color:#7a6650">— ночью</small>'}</button>
       ${S.up.helper ? '<button onclick="openHelpers()">🧑‍🌾 Помощники</button>' : ''}
+      <button onclick="openCalendar()">📅 Календарь <small style="color:#7a6650">— ${WEEKDAYS[cal().dow].toLowerCase()}, ${season().name.toLowerCase()}</small></button>
       <button onclick="openProfile()">👤 Профиль</button>
       <button onclick="openSaves()">💾 Сохранения <small style="color:#7a6650">— ${esc(slotNames()[SLOT - 1])}</small></button>
       <button onclick="openEconomy()">💰 Экономика</button>
@@ -3852,6 +3896,43 @@ function setUpTab(t) {
   openNight(v === 'night-sum');
   const an = $('shopAnchor'); if (an) sh.scrollTop = Math.min(top, sh.scrollTop + an.getBoundingClientRect().top - sh.getBoundingClientRect().top);
 }
+// ---------- Календарь ----------
+let calSeason = null;   // какой сезон смотрим (номер от начала игры)
+function dayEvents(d) {   // значки событий на день: новые события добавляются сюда
+  const ev = [];
+  if (S.order && S.order.due === d) ev.push(['📬', `Срок заказа: ${S.order.from}`]);
+  if (cal(d).sday === 1) ev.push([SEASONS[cal(d).si].e, `Начало сезона: ${SEASONS[cal(d).si].name.toLowerCase()}`]);
+  if (d % 30 === 0) ev.push(['🎂', `Ферме ${d} дней`]);
+  return ev;
+}
+function openCalendar(si) {
+  const cur = Math.floor((S.day - 1) / SEASON_LEN);
+  calSeason = si ?? calSeason ?? cur; if (si === undefined && $('sheet').dataset.view !== 'cal') calSeason = cur;
+  const first = calSeason * SEASON_LEN + 1, se = SEASONS[calSeason % 4], year = Math.floor(calSeason / 4) + 1;
+  const hist = Object.fromEntries((S.hist || []).map(h => [h.d, h]));
+  let h = `<h2>📅 Календарь</h2>
+    <div class="summary">Сегодня: <b>${WEEKDAYS[cal().dow]}, день ${S.day}</b> · ${season().e} ${season().name}, неделя ${cal().week} из 4${cal().year > 1 ? `, год ${cal().year}` : ''}<br><small>${season().e} ${season().text}</small></div>
+    <div class="calnav"><button ${calSeason <= 0 ? 'disabled' : ''} onclick="openCalendar(${calSeason - 1})">‹</button><b>${se.e} ${se.name}${year > 1 ? ` · год ${year}` : ''}</b><button onclick="openCalendar(${calSeason + 1})">›</button></div>
+    <div class="cal">${WD.map(w => `<div class="wd">${w}</div>`).join('')}`;
+  for (let d = first; d < first + SEASON_LEN; d++) {
+    const past = d < S.day, today = d === S.day, ev = dayEvents(d), x = hist[d];
+    const earned = today ? S.stats.earned || 0 : x ? x.e : null;
+    h += `<div class="cd ${past ? 'past' : ''} ${today ? 'today' : ''} ${cal(d).dow >= 5 ? 'we' : ''}" onclick="calDay(${d})"><span class="n">${d}</span>${ev.length ? `<span class="ev">${ev.map(e => e[0]).join('')}</span>` : ''}${earned != null && (past || today) ? `<span class="m">${earned ? '+' + (earned >= 10000 ? Math.round(earned / 1000) + 'k' : earned) : '—'}</span>` : ''}</div>`;
+  }
+  h += `</div><div id="calInfo" style="font-size:13px;color:#7a6650;min-height:18px;margin-top:8px">Тапни на день — подробности</div>
+    <button class="wide" style="width:100%;margin-top:8px" onclick="S.night ? openNight(false) : closeNight()">Закрыть</button>`;
+  $('sheet').dataset.view = 'cal'; $('sheet').innerHTML = h; $('overlay').classList.add('show');
+}
+function calDay(d) {
+  const x = (S.hist || []).find(h => h.d === d), c = cal(d), ev = dayEvents(d);
+  let t = `<b>${WEEKDAYS[c.dow]}, день ${d}</b>`;
+  if (d === S.day) t += ` — сегодня: заработано ${S.stats.earned || 0}💰, обслужено ${S.stats.served || 0}`;
+  else if (x) t += ` — заработано ${x.e}💰, потрачено ${x.s || 0}💰, обслужено ${x.sv ?? '?'}, ушли ни с чем ${x.m ?? '?'}`;
+  else if (d < S.day) t += ' — нет записей';
+  else t += d === S.day + 1 ? ' — завтра' : ` — через ${d - S.day} дн.`;
+  if (ev.length) t += '<br>' + ev.map(e => e.join(' ')).join(' · ');
+  $('calInfo').innerHTML = t;
+}
 // ---------- Прилавок: что выставлено на продажу ----------
 function openStall() {
   const has = { apple: S.up.orchard, egg: hens(), milk: cows(), flour: S.up.mill, cheese: S.up.dairy, bread: S.up.bakery, pie: S.up.bakery, pizza: S.up.bakery, cake: S.up.bakery };
@@ -3944,6 +4025,7 @@ $('menuBtn').onclick = openMenu;
 // ================== ЧИТ-МЕНЮ (тройной тап по «День N») ==================
 const CHEATS = {
   money:   ['💰 +1000', () => { S.coins += 1000; }],
+  season:  ['🍂 Следующий сезон', () => { S.day = (Math.floor((S.day - 1) / SEASON_LEN) + 1) * SEASON_LEN + 1; toast(`${season().e} ${season().name}: ${season().text}`); }],
   money2:  ['💰 +10 000', () => { S.coins += 10000; }],
   goods:   ['📦 +10 всего', () => { for (const id of [...S.unlocked, 'apple', 'egg', 'milk', 'flour', 'cheese', ...(S.up.bakery ? Object.keys(BAKE) : [])]) S.inv[id] = (S.inv[id] || 0) + 10; }],
   grow:    ['🌱 Всё созрело', () => { [...S.plots, ...S.gh].forEach(p => { if (p.crop) p.prog = 1; }); S.trees.forEach(t => { if (t.kind) { t.grow = 1; t.fruit = 1; } }); if (hens()) S.coop.eggs += 5; if (cows()) S.barn.milk += 3; for (const k in PROD) if (S.up[k]) S.prod[k].out += 3; if (S.up.bakery) S.bake.out[S.bake.sel] = (S.bake.out[S.bake.sel] || 0) + 3; }],
@@ -3977,7 +4059,7 @@ function openCheats() {
   $('overlay').classList.add('show');
 }
 $('helperBtn').onclick = openHelpers;
-$('sunbox').onclick = () => { if (!S.night && !S.started) beginClock(); else if (!S.night) toast(`Покупателей сегодня: ${S.spawned} из ${S.toSpawn}`); };
+$('sunbox').onclick = () => { if (!S.night && !S.started) beginClock(); else openCalendar(); };
 $('overlay').onclick = e => { if (e.target.id === 'overlay') closeNight(); };
 
 // ================== СТАРТ ==================
