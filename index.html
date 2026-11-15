@@ -75,16 +75,22 @@
   .recipe .rt { flex: 1; font-size: 14px; line-height: 1.35; }
   .recipe .rt small { font-size: 12px; color: #7a6650; }
   .recipe .rn { color: #3e9b3a; }
-  .oven { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 16px; background: linear-gradient(#8a4b32, #6e3826); color: #fff6ea; box-shadow: inset 0 -4px 0 rgba(0,0,0,.2); }
-  .ov-mouth { position: relative; width: 84px; height: 70px; flex: none; border-radius: 42px 42px 10px 10px; background: #2b1a14; border: 4px solid #c46a4a; display: flex; align-items: center; justify-content: center; }
-  .oven.hot .ov-mouth { background: radial-gradient(circle at 50% 85%, #ffb347, #c4451c 60%, #3a1d12); }
+  .oven { padding: 12px; border-radius: 16px; background: linear-gradient(#8a4b32, #6e3826); color: #fff6ea; box-shadow: inset 0 -4px 0 rgba(0,0,0,.2); }
+  .ov-top { font-size: 16px; line-height: 1.3; margin-bottom: 10px; }
+  .ov-top small { display: block; font-size: 13px; opacity: .85; margin-top: 2px; }
+  .ov-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .ov-cell { display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 0; background: none; color: inherit; font: inherit; font-weight: 400; text-align: center; }
+  .ov-cell small { font-size: 12px; opacity: .9; }
+  .ov-mouth { position: relative; height: 74px; border-radius: 40px 40px 10px 10px; background: #2b1a14; border: 4px solid #c46a4a; display: flex; align-items: center; justify-content: center; }
+  .oven.hot .ov-cell .ov-mouth { background: radial-gradient(circle at 50% 85%, #ffb347, #c4451c 60%, #3a1d12); }
+  .oven.hot .ov-cell:not(:has(.ov-item)) .ov-mouth { background: #2b1a14; }
   .ov-item { font-size: 36px; }
+  .ov-n { position: absolute; right: 8px; top: 6px; font-size: 15px; color: #ffe28f; }
+  .ov-x { position: absolute; left: 10px; top: 6px; font-style: normal; font-size: 11px; opacity: .7; }
   .ov-fire { position: absolute; bottom: -4px; font-size: 16px; animation: ovf .6s ease-in-out infinite alternate; }
   @keyframes ovf { to { transform: scale(1.25) translateY(-2px); } }
-  .ov-info { flex: 1; min-width: 0; font-size: 16px; line-height: 1.3; }
-  .ov-info small { display: block; font-size: 13px; opacity: .85; margin-top: 4px; }
-  .ov-bar { height: 10px; border-radius: 5px; background: rgba(0,0,0,.35); margin-top: 7px; overflow: hidden; }
-  .ov-bar i { display: block; height: 100%; background: #ffd34d; border-radius: 5px; }
+  .ov-bar { height: 8px; border-radius: 4px; background: rgba(0,0,0,.35); overflow: hidden; }
+  .ov-bar i { display: block; height: 100%; background: #ffd34d; border-radius: 4px; }
   .shelf { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; padding: 9px 12px; background: #f0e5cb; border-radius: 12px; font-size: 14px; }
   .shelf small { color: #7a6650; font-size: 12px; }
   .shelf button { flex: none; padding: 9px 16px; }
@@ -342,7 +348,8 @@ const BAKE = {
   pizza: { in: { flour: 2, cheese: 1, tomato: 3 }, time: 45 },
   cake:  { in: { flour: 2, strawberry: 4, egg: 2, milk: 2 }, time: 60 },
 };
-const BAKE_CAP = 6, BAKE_SPOT = at('home', 4, 4);
+const BAKE_CAP = 6, BAKE_SPOT = at('home', 4, 4);   // BAKE_CAP — мест в очереди (ждут, пока освободится отделение)
+const OVENS = 2, trayN = () => 1 + (S.up.trays || 0);   // в печи два отделения; противни — по 2–3 штуки в отделение
 const MAIL = at('mail', 4, 5), MAIL_SPOT = at('mail', 5, 5);   // почтовый ящик у тропинки
 // Уют: что появляется у дома на каждом уровне
 const COZY = ['🌷 Клумбы у сада', '🐕 Собака и будка', '🪣 Колодец', '🌳 Качели у лавки', '🐓 Флюгер и фонарики на доме'];
@@ -376,6 +383,7 @@ const UPGRADES = {
   mill:   { name: 'Мельница',          ico: '🌬️', desc: l => l === 0 ? 'Мелет пшеницу: 3 🌾 → 1 🍚 мука (продаётся за 30💰)' : 'Мелет вдвое быстрее', cost: l => [3500, 5500][l], max: 2, need: () => S.up.clear >= 1, needText: 'Откроется, когда расчистишь лес 🪓' },
   dairy:  { name: 'Сыроварня',         ico: '🧀', desc: l => l === 0 ? 'Варит сыр: 2 🥛 → 1 🧀 (продаётся за 85💰)' : 'Варит вдвое быстрее', cost: l => [5000, 8000][l], max: 2, need: () => S.up.clear >= 2, needText: 'Откроется, когда расчистишь второй участок леса 🪓' },
   house:  { name: 'Дом фермера',       ico: '🏠', desc: l => l === 0 ? 'Веранда и кухня: помощники сыты и работают на 20% быстрее' : 'Второй этаж: помощники работают ещё на 20% быстрее (всего +40%)', cost: l => [3000, 7000][l], max: 2 },
+  trays:  { name: 'Противни',          ico: '🍪', desc: l => `В каждое отделение печи — по ${l + 2} одинаковых штуки за раз (сейчас по ${l + 1})`, cost: l => [3000, 6000][l], max: 2, need: () => S.up.bakery >= 1, needText: 'Откроется, когда пристроишь пекарню 🥖' },
   bakery: { name: 'Пекарня',           ico: '🥖', desc: l => l === 0 ? 'Пристройка к дому. Печёт из 🍚 муки и продуктов фермы: 🍞 хлеб, 🥧 пирог, 🍕 пиццу и 🎂 торт' : 'Печёт вдвое быстрее', cost: l => [6000, 9000][l], max: 2, need: () => S.up.mill >= 1, needText: 'Откроется после новой постройки в лесу 🪓' },
   cozy:   { name: 'Уют',               ico: '🌷', desc: l => `${COZY[l]}. Покупателям нравится — платят на 5% больше (+${l * 5}% → +${(l + 1) * 5}%)`, cost: l => [600, 1200, 2000, 3200, 5000][l], max: 5 },
   ads:    { name: 'Реклама',           ico: '📣', desc: l => `+3 покупателя в день`,           cost: l => 30 + l*35,           max: 10 },
@@ -604,7 +612,7 @@ function newState() {
     day: 1, t: 0, night: false, coins: 30, farmId: Math.random().toString(36).slice(2, 10),
     plots: Array.from({ length: 8 }, () => ({ crop: null, prog: 0 })),
     inv: {}, unlocked: ['sunflower', 'wheat'], sel: 'wheat',
-    up: { land: 0, ads: 0, fert: 0, sign: 0, bench: 0, helper: 0, orchard: 0, coop: 0, barn: 0, greenhouse: 0, clear: 0, mill: 0, dairy: 0, house: 0, bakery: 0, cozy: 0, nests: 0, rooster: 0, yard: 0, milker: 0, clover: 0, hay: 0, pasture: 0 },
+    up: { land: 0, ads: 0, fert: 0, sign: 0, bench: 0, helper: 0, orchard: 0, coop: 0, barn: 0, greenhouse: 0, clear: 0, mill: 0, dairy: 0, house: 0, bakery: 0, trays: 0, cozy: 0, nests: 0, rooster: 0, yard: 0, milker: 0, clover: 0, hay: 0, pasture: 0 },
     bake: { sel: 'bread', q: [], t: 0, out: {} }, order: null, orderNext: 3,
     trees: [], coop: { fedDay: 0, fedHens: 0, eggs: 0, layT: 0, gold: 0, extra: 0, chicks: 0 },
     barn: { fedDay: 0, fedCows: 0, milk: 0, milkT: 0 },
@@ -633,6 +641,8 @@ S.up.nests ??= 0; S.up.rooster ??= 0; S.up.yard ??= 0;
 S.up.milker ??= 0; S.up.clover ??= 0; S.up.hay ??= 0; S.up.pasture ??= 0;
 S.coop.gold ??= 0; S.coop.extra ??= 0; S.coop.chicks ??= 0;
 S.bake ??= { sel: 'bread', q: [], t: 0, out: {} };
+S.up.trays ??= 0;
+if (!S.bake.ov) { S.bake.ov = [null, null]; fillOven(); if (S.bake.ov[0]) S.bake.ov[0].t = S.bake.t || 0; }   // печь из одного места → два отделения
 if (S.order === undefined) { S.order = null; S.orderNext = S.day; }   // почта: первый заказ — в ближайшее утро
 S.prod ??= {}; for (const k in PROD) S.prod[k] ??= { q: 0, t: 0, out: 0 };   // q — загружено партий, out — готово
 S.up.helper ??= 0;
@@ -673,7 +683,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.45';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.46';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1224,11 +1234,35 @@ function canMake(g) {
 const bakeOut = () => Object.values(S.bake.out).reduce((a, b) => a + b, 0);
 const bakeHave = r => Math.min(...Object.entries(BAKE[r].in).map(([g, n]) => Math.floor((S.inv[g] || 0) / n)));
 const bakeNeed = r => Object.entries(BAKE[r].in).map(([g, n]) => `${n} ${GOODS[g].e}`).join(' + ');
-function loadBake(r) {
-  const st = S.bake, n = Math.min(BAKE_CAP - st.q.length, bakeHave(r));
+// очередь — штуки, которые ждут; отделение берёт из неё одинаковые штуки, сколько влезет на противень
+function fillOven(q = S.bake.q, ov = S.bake.ov) {
+  for (let i = 0; i < OVENS; i++) {
+    const o = ov[i];
+    if (o && o.t > 0) continue;   // уже печётся — не докладываем
+    const r = o ? o.r : q[0]; if (!r) continue;
+    let n = o ? o.n : 0;
+    for (let j = 0; j < q.length && n < trayN();) if (q[j] === r) { q.splice(j, 1); n++; } else j++;
+    if (n) ov[i] = { r, n, t: 0 };
+  }
+}
+function bakeRoom(r, want) {   // сколько штук r ещё поместится (в отделения и очередь)
+  let n = 0;
+  while (n < want) {
+    const q = [...S.bake.q, ...Array(n + 1).fill(r)], ov = S.bake.ov.map(o => o && { ...o });
+    fillOven(q, ov);
+    if (q.length > BAKE_CAP) break;
+    n++;
+  }
+  return n;
+}
+const bakeLoaded = () => S.bake.ov.filter(Boolean);
+const bakeBusy = () => bakeLoaded().length + S.bake.q.length > 0;
+function loadBake(r, want = Infinity) {
+  const n = bakeRoom(r, Math.min(want, bakeHave(r)));
   if (n <= 0) return 0;
   for (const [g, k] of Object.entries(BAKE[r].in)) S.inv[g] -= n * k;
-  for (let i = 0; i < n; i++) st.q.push(r);
+  for (let i = 0; i < n; i++) S.bake.q.push(r);
+  fillOven();
   addFloat(BAKE_SPOT.x + .5, BAKE_SPOT.y + .5, `в печь ${n} ${GOODS[r].e}`);
   return n;
 }
@@ -1245,7 +1279,7 @@ function bakeAct(byHelper) {   // забрать готовое и постав�
   if (!S.up.bakery) return false;
   const r = S.bake.sel, got = collectBake(), n = loadBake(r);
   if (!got && !n) {
-    if (!byHelper) toast(S.bake.q.length >= BAKE_CAP ? `🥖 Печь занята — ${S.bake.q.length} в работе` : `🥖 Для ${GOODS[r].e} нужно ${bakeNeed(r)}`);
+    if (!byHelper) toast(S.bake.q.length >= BAKE_CAP ? `🥖 Печь и очередь заняты` : `🥖 Для ${GOODS[r].e} нужно ${bakeNeed(r)}`);
     return false;
   }
   if (n && !byHelper) toast(`🥖 В печи ${n} ${GOODS[r].e}${S.night ? ' — испечётся утром' : ''}`);
@@ -1254,10 +1288,15 @@ function bakeAct(byHelper) {   // забрать готовое и постав�
 }
 function updateBake(dt) {
   const st = S.bake;
-  if (!S.up.bakery || !st.q.length) { st.t = 0; return; }
+  if (!S.up.bakery) return;
+  fillOven();
   if (bakeOut() >= 20) return;   // полки заставлены — ждёт, пока заберут
-  st.t += dt * S.up.bakery;
-  while (st.q.length && st.t >= BAKE[st.q[0]].time) { st.t -= BAKE[st.q[0]].time; const r = st.q.shift(); st.out[r] = (st.out[r] || 0) + 1; }
+  st.ov.forEach((o, i) => {
+    if (!o) return;
+    o.t += dt * S.up.bakery;
+    if (o.t >= BAKE[o.r].time) { st.out[o.r] = (st.out[o.r] || 0) + o.n; st.ov[i] = null; }
+  });
+  fillOven();
 }
 function tapBakery() {
   if (!S.up.bakery) { toast(upLocked('bakery') ? '❓ Здесь пока пусто' : '🥖 Ночью тапни сюда — пристроишь пекарню'); return; }
@@ -1265,73 +1304,74 @@ function tapBakery() {
 }
 function setBake(r) { S.bake.sel = r; save(); openBakery(); }
 // ---- окно пекарни: в центре печь, под ней очередь и рецепты ----
-const bakeLeft = () => {   // секунд до конца текущего и всей очереди
-  const sp = S.up.bakery || 1, q = S.bake.q;
-  if (!q.length) return [0, 0];
-  const cur = Math.max(0, BAKE[q[0]].time - S.bake.t) / sp;
-  return [cur, cur + q.slice(1).reduce((a, r) => a + BAKE[r].time, 0) / sp];
-};
 const fmtSec = s => s >= 60 ? `${Math.floor(s / 60)} мин ${String(Math.ceil(s % 60)).padStart(2, '0')} сек` : `${Math.ceil(s)} сек`;
+const ovLeft = o => Math.max(0, BAKE[o.r].time - o.t) / (S.up.bakery || 1);
 const bakeHelper = () => S.helpers.some(c => c.stations.includes('bakery'));
 function bakeState() {   // что сейчас с печью — одной фразой
-  const q = S.bake.q;
-  if (!q.length) return { hot: false, t: 'Печь пустая', s: 'Добавь рецепт из списка ниже — он встанет в очередь' };
+  if (!bakeBusy()) return { hot: false, t: 'Печь пустая', s: 'Добавь рецепт из списка ниже — он сразу ляжет в свободное отделение' };
   if (bakeOut() >= 20) return { hot: false, t: 'Полка заставлена', s: 'Печь ждёт: забери готовое, и она продолжит' };
   if (S.night) return { hot: false, t: '🌙 Ночью печь не топят', s: 'Утром, когда начнётся день, она продолжит' };
   if (!S.started) return { hot: false, t: '☀️ Печь ждёт начала дня', s: 'Как только день начнётся, она затопится' };
-  const [cur, all] = bakeLeft();
-  return { hot: true, t: `Печётся ${GOODS[q[0]].name.toLowerCase()}`, s: `ещё ${fmtSec(cur)}${q.length > 1 ? ` · вся очередь — ${fmtSec(all)}` : ''}` };
+  return { hot: true, t: 'Печь топится', s: `Оба отделения пекут одновременно${trayN() > 1 ? `, в каждом до ${trayN()} шт.` : ''}` };
 }
 function addBake(r, n) {
-  const st = S.bake; n = Math.min(n, BAKE_CAP - st.q.length, bakeHave(r));
-  if (n <= 0) return;
-  for (const [g, k] of Object.entries(BAKE[r].in)) S.inv[g] -= n * k;
-  for (let i = 0; i < n; i++) st.q.push(r);
-  addFloat(BAKE_SPOT.x + .5, BAKE_SPOT.y + .5, `в печь ${n} ${GOODS[r].e}`);
+  if (loadBake(r, n) && !S.night) beginClock();
   save(); renderUI(); openBakery();
 }
 function unBake(i) {   // убрать из очереди — продукты возвращаются на склад
   const st = S.bake, r = st.q[i];
   if (!r) return;
   for (const [g, k] of Object.entries(BAKE[r].in)) S.inv[g] = (S.inv[g] || 0) + k;
-  st.q.splice(i, 1); if (i === 0) st.t = 0;
+  st.q.splice(i, 1);
   toast(`↩️ ${GOODS[r].e} убран из очереди, продукты вернулись на склад`);
   save(); renderUI(); openBakery();
 }
-function bakeSig() { const st = S.bake; return [st.q.join(), Object.entries(st.out).join(), S.night, S.started, bakeOut() >= 20].join('|'); }
-function bakeLive() {   // окно открыто — двигаем полоску, перерисовываем при переменах
+function unOven(i) {   // вынуть из отделения недопечённое — продукты возвращаются
+  const st = S.bake, o = st.ov[i];
+  if (!o) return;
+  for (const [g, k] of Object.entries(BAKE[o.r].in)) S.inv[g] = (S.inv[g] || 0) + k * o.n;
+  st.ov[i] = null; fillOven();
+  toast(`↩️ ${o.n} ${GOODS[o.r].e} вынуты из печи, продукты вернулись на склад`);
+  save(); renderUI(); openBakery();
+}
+function bakeSig() { const st = S.bake; return [st.q.join(), st.ov.map(o => o ? o.r + o.n : '-').join(), Object.entries(st.out).join(), S.night, S.started, bakeOut() >= 20, S.up.trays].join('|'); }
+function bakeLive() {   // окно открыто — двигаем полоски, перерисовываем при переменах
   const sh = $('sheet');
   if (sh.dataset.view !== 'bakery' || !$('overlay').classList.contains('show')) return;
   if (sh.dataset.sig !== bakeSig()) { const top = sh.scrollTop; openBakery(); sh.scrollTop = top; return; }
-  const q = S.bake.q, bar = $('ovBar'), sub = $('ovSub');
-  if (bar && q.length) bar.style.width = Math.min(100, 100 * S.bake.t / BAKE[q[0]].time) + '%';
-  if (sub) sub.textContent = bakeState().s;
+  S.bake.ov.forEach((o, i) => {
+    const bar = $('ovBar' + i), tt = $('ovT' + i);
+    if (!o || !bar) return;
+    bar.style.width = Math.min(100, 100 * o.t / BAKE[o.r].time) + '%';
+    tt.textContent = 'ещё ' + fmtSec(ovLeft(o));
+  });
 }
 function openBakery() {
+  fillOven();
   const st = S.bake, q = st.q, ov = bakeState(), free = BAKE_CAP - q.length, sp = S.up.bakery || 1;
   const cnt = o => Object.entries(o).filter(([, k]) => k).map(([g, k]) => `${k} ${GOODS[g].e}`).join('  ');
   let h = `<h2>🥖 Пекарня${sp >= 2 ? ' <small style="font-size:13px;color:#3e9b3a">печёт вдвое быстрее</small>' : ''}</h2>
-    <div class="oven${ov.hot ? ' hot' : ''}">
-      <div class="ov-mouth"><span class="ov-item">${q.length ? GOODS[q[0]].e : ''}</span><span class="ov-fire">${ov.hot ? '🔥' : ''}</span></div>
-      <div class="ov-info"><b>${ov.t}</b>
-        ${q.length ? `<div class="ov-bar"><i id="ovBar" style="width:${Math.min(100, 100 * st.t / BAKE[q[0]].time)}%"></i></div>` : ''}
-        <small id="ovSub">${ov.s}</small></div>
-    </div>
+    <div class="oven${ov.hot ? ' hot' : ''}"><div class="ov-top"><b>${ov.t}</b><small>${ov.s}</small></div><div class="ov-row">`;
+  st.ov.forEach((o, i) => {
+    h += o ? `<button class="ov-cell" onclick="unOven(${i})"><div class="ov-mouth"><span class="ov-item">${GOODS[o.r].e}</span>${o.n > 1 ? `<b class="ov-n">×${o.n}</b>` : ''}<span class="ov-fire">${ov.hot ? '🔥' : ''}</span><i class="ov-x">✕</i></div>
+        <div class="ov-bar"><i id="ovBar${i}" style="width:${Math.min(100, 100 * o.t / BAKE[o.r].time)}%"></i></div><small id="ovT${i}">ещё ${fmtSec(ovLeft(o))}</small></button>`
+      : `<div class="ov-cell"><div class="ov-mouth"></div><div class="ov-bar"></div><small>свободно</small></div>`;
+  });
+  h += `</div></div>
     <div class="shelf"><span>🧺 Готово: ${bakeOut() ? `<b>${cnt(st.out)}</b>` : 'пока пусто'}${bakeOut() ? `<br><small>лежит в пекарне, ${bakeOut()} из 20 мест</small>` : ''}</span>
       ${bakeOut() ? `<button onclick="closeNight(); setTasks([{ ...BAKE_SPOT, fn: collectBake }])">Забрать</button>` : ''}</div>
-    <h3 class="bk-h">Очередь <small>${q.length} из ${BAKE_CAP} · печётся по порядку слева направо</small></h3>
+    <h3 class="bk-h">Очередь <small>${q.length} из ${BAKE_CAP} · ждут, пока освободится отделение</small></h3>
     <div class="bq">`;
   for (let i = 0; i < BAKE_CAP; i++) h += q[i]
-    ? `<button class="bq-s${i ? '' : ' cur'}" onclick="unBake(${i})"><span>${GOODS[q[i]].e}</span><small>${i ? (i + 1) + '-й' : 'в печи'}</small><i>✕</i></button>`
+    ? `<button class="bq-s" onclick="unBake(${i})"><span>${GOODS[q[i]].e}</span><small>${i + 1}-й</small><i>✕</i></button>`
     : `<div class="bq-s empty">${i === q.length ? '+' : ''}</div>`;
-  h += `</div><div class="bk-note">${q.length ? 'Нажми на рецепт в очереди, чтобы убрать его — продукты вернутся на склад.' : 'Пока очередь пустая, печь стоит.'}</div>
-    <h3 class="bk-h">Добавить в очередь${free ? '' : ' <small style="color:#b0503a">— очередь полная</small>'}</h3>`;
+  h += `</div><div class="bk-note">Нажми на штуку в печи или в очереди, чтобы убрать её — продукты вернутся на склад.${!S.up.trays && !upLocked('trays') ? ' Улучшение 🍪 «Противни» кладёт в отделение по 2–3 одинаковых штуки.' : ''}</div>
+    <h3 class="bk-h">Добавить</h3>`;
   for (const r in BAKE) {
-    const ok = canMake(r), have = bakeHave(r), n = ok ? Math.min(free, have) : 0;
+    const ok = canMake(r), have = bakeHave(r), n = ok ? bakeRoom(r, have) : 0;
     const raw = Object.entries(BAKE[r].in).reduce((a, [g, k]) => a + k * sellPrice(g), 0), gain = sellPrice(r) - raw;
     const ing = Object.entries(BAKE[r].in).map(([g, k]) => `<span class="${(S.inv[g] || 0) >= k ? 'ok' : 'no'}">${k}${GOODS[g].e}<sub>${S.inv[g] || 0}</sub></span>`).join(' ');
-    const why = !ok ? `Нужен источник: ${Object.keys(BAKE[r].in).filter(g => !canMake(g)).map(g => GOODS[g].e).join(' ')}`
-      : !have ? 'Не хватает продуктов' : '';
+    const why = !ok ? `Нужен источник: ${Object.keys(BAKE[r].in).filter(g => !canMake(g)).map(g => GOODS[g].e).join(' ')}` : !have ? 'Не хватает продуктов' : '';
     h += `<div class="bk-r${ok ? '' : ' off'}"><span class="re">${GOODS[r].e}</span>
       <div class="rt"><b>${GOODS[r].name}</b> <small>· продаётся за ${sellPrice(r)}💰 · ${fmtSec(BAKE[r].time / sp)}</small>
         <div class="ing">${ing}</div>
@@ -1342,7 +1382,7 @@ function openBakery() {
     <h3 class="bk-h">🧑‍🌾 Помощник</h3>`;
   h += bakeHelper()
     ? `<div class="bk-note">Помощник на станции 🥖 сам забирает готовое и доливает очередь этим рецептом:</div><div class="chips">${Object.keys(BAKE).filter(canMake).map(r => `<button class="chip${r === st.sel ? ' on' : ''}" onclick="setBake('${r}')">${GOODS[r].e} ${GOODS[r].name}</button>`).join('')}</div>`
-    : `<div class="bk-note">Без помощника всё делаешь сам: добавляешь рецепты в очередь и забираешь готовое кнопкой «Забрать». ${S.up.helper ? 'Поставь помощника на станцию 🥖 — он будет делать это сам.' : 'Когда наймёшь помощника, его можно поставить на станцию 🥖.'}</div>
+    : `<div class="bk-note">Без помощника всё делаешь сам: добавляешь рецепты и забираешь готовое кнопкой «Забрать». ${S.up.helper ? 'Поставь помощника на станцию 🥖 — он будет делать это сам.' : 'Когда наймёшь помощника, его можно поставить на станцию 🥖.'}</div>
       ${S.up.helper ? '<button class="wide alt" style="width:100%;margin-top:6px" onclick="openHelpers()">🧑‍🌾 Помощники</button>' : ''}`;
   h += `<button class="wide alt" style="width:100%;margin-top:12px" onclick="closeNight()">Закрыть</button>`;
   $('sheet').dataset.view = 'bakery'; $('sheet').dataset.sig = bakeSig(); $('sheet').innerHTML = h;
@@ -1516,6 +1556,7 @@ function buyUpgrade(key) {
     mill: S.up.mill === 1 ? '🌬️ Мельница готова! Тапни на неё — фермер засыплет пшеницу' : '🌬️ Мельница мелет вдвое быстрее',
     dairy: S.up.dairy === 1 ? '🧀 Сыроварня готова! Тапни на неё — фермер принесёт молоко' : '🧀 Сыроварня варит вдвое быстрее',
     house: S.up.house === 1 ? '🏠 У дома веранда и кухня — помощники работают быстрее' : '🏠 Второй этаж готов! Помощники ещё быстрее',
+    trays: `🍪 Противни — теперь в каждое отделение печи по ${trayN()} штуки за раз`,
     bakery: S.up.bakery === 1 ? '🥖 Пекарня готова! Тапни на неё и выбери, что печь' : '🥖 Пекарня печёт вдвое быстрее',
     cozy: `${COZY[S.up.cozy - 1]} — покупатели платят на ${S.up.cozy * 5}% больше`,
     nests: S.up.nests === 1 ? '🪺 В вольере соломенные гнёзда — куры несутся чаще' : `🪺 Ещё гнёзда — яиц на ${S.up.nests * 20}% больше`,
@@ -1541,7 +1582,7 @@ function upSpot(key) {
   return {
     land: PLOT_SLOTS[Math.min(S.plots.length, MAX_PLOTS - 1)], orchard: ORCHARD_SLOTS[Math.min(S.trees.length, 3)],
     coop: at('coop', 8, 10), nests: at('coop', 8.6, 9), rooster: at('coop', 6.6, 10.2), yard: at('coop', 9.4, 11), barn: at('barn', 14, 5), milker: at('barn', 16.4, 2.6), clover: at('barn', 15, 4), hay: at('barn', 13, 1.4), pasture: at('barn', 12.5, 6), clear: S.up.clear ? at('dairy', 18, 9) : at('mill', 18, 5), mill: at('mill', 18, 5), dairy: at('dairy', 17, 9), greenhouse: at('gh', 14, S.up.greenhouse ? 9 : 8), helper: at('home', 3, 3),
-    house: at('home', 2, 2), bakery: at('home', 4, 3), cozy: COZY_SPOTS[Math.min(l, 4)], ads: at('ads', 12, 10),
+    house: at('home', 2, 2), bakery: at('home', 4, 3), trays: at('home', 4, 2), cozy: COZY_SPOTS[Math.min(l, 4)], ads: at('ads', 12, 10),
     fert: at('fert', 12, 2 + Math.min(l, 4)), sign: at('stall', 4, 10), fairstall: { x: 21 + 2 * Math.min(l, 1), y: 23 }, bench: BENCHES[Math.min(l, BENCHES.length - 1)],
   }[key];
 }
@@ -1554,7 +1595,7 @@ function upAt(x, y) {   // какое улучшение относится к �
   if (inBarnArea(x, y)) return 'barn';
   const in_ = (g, x0, y0, x1, y1) => { const [dx, dy] = LAYOUT[g]; return x - dx >= x0 && x - dx <= x1 && y - dy >= y0 && y - dy <= y1; };
   if (in_('home', 2, 2, 3, 3)) return S.up.house < UPGRADES.house.max ? 'house' : 'helper';
-  if (in_('home', 4, 2, 4, 3)) return 'bakery';
+  if (in_('home', 4, 2, 4, 3)) return S.up.bakery < UPGRADES.bakery.max || upLocked('trays') || S.up.trays >= UPGRADES.trays.max ? 'bakery' : 'trays';
   if (in_('flowers', 4, 6, 4, 7) || in_('well', 4, 8, 4, 8) || in_('dog', 1, 4, 1, 4) || in_('swing', 1, 9, 2, 9)) return 'cozy';
   if (in_('stall', 3, 10, 4, 10)) return 'sign';
   if (in_('ads', 12, 9, 12, 11) || in_('ads', 13, 10, 13, 11)) return 'ads';
@@ -1574,7 +1615,7 @@ function drawUpBadges(t) {
   for (const [key, u] of Object.entries(UPGRADES)) {
     const l = S.up[key]; if (l >= u.max || upLocked(key)) continue;
     const s = upSpot(key), ok = S.coins >= u.cost(l);
-    const c = lift(s.x + .5, s.y + .5, { helper: 80, house: 100, bakery: 52, cozy: 30, sign: 86, ads: 74, coop: 30, nests: 14, rooster: 20, yard: 10, milker: 24, clover: 12, hay: 30, pasture: 12, barn: 30, greenhouse: 56, clear: 62, mill: 84, dairy: 58 }[key] || 30);
+    const c = lift(s.x + .5, s.y + .5, { helper: 80, house: 100, bakery: 52, trays: 70, cozy: 30, sign: 86, ads: 74, coop: 30, nests: 14, rooster: 20, yard: 10, milker: 24, clover: 12, hay: 30, pasture: 12, barn: 30, greenhouse: 56, clear: 62, mill: 84, dairy: 58 }[key] || 30);
     const y = c.y + Math.sin(t * 3 + s.x) * 2.5;
     
     // плашка «⬆ цена»: это предложение купить улучшение, а не уведомление о состоянии
@@ -1612,7 +1653,8 @@ function openUpgrade(key) {
   if (key === 'coop' && hens()) h += `<button class="wide alt" ${fedTomorrow() >= hens() ? 'disabled' : ''} onclick="closeNight(); setTasks([{ ...COOP_SPOT, fn: feedHens }])">🌾 Покормить</button>`;
   if (key === 'barn' && cows()) h += `<button class="wide alt" ${cowsFedTomorrow() >= cows() ? 'disabled' : ''} onclick="closeNight(); setTasks([{ ...BARN_SPOT, fn: feedCows }])">🌻 Покормить</button>`;
   if (key === 'house') h += `<button class="wide alt" onclick="openUpgrade('helper')">🧑‍🌾 Нанять помощника</button>`;
-  if (key === 'bakery' && l) h += `<button class="wide alt" onclick="openBakery()">🥖 Рецепты</button>`;
+  if ((key === 'bakery' || key === 'trays') && S.up.bakery) h += `<button class="wide alt" onclick="openBakery()">🥖 Пекарня</button>`;
+  if (key === 'bakery' && S.up.bakery && S.up.trays < UPGRADES.trays.max) h += `<button class="wide alt" onclick="openUpgrade('trays')">🍪 Противни</button>`;
   if (PROD[key] && l) { const st = S.prod[key]; h += `<button class="wide alt" onclick="closeNight(); setTasks([{ ...PROD['${key}'].spot, fn: () => prodAct('${key}') }])">${GOODS[PROD[key].in].e} Загрузить${st.out ? ' и забрать' : ''}</button>`; }
   h += maxed ? `<button class="wide" disabled>✔ Максимум</button>`
     : upLocked(key) ? `<button class="wide" disabled>🔒 ${u.needText}</button>`
@@ -1844,7 +1886,7 @@ function helperJobs(cfg) {
     const st = S.prod[k];
     if (st.out > 0 || (st.q < PROD[k].cap && prodHave(k, true) >= PROD[k].n)) jobs.push({ ...PROD[k].spot, act: () => prodAct(k, true) });
   }
-  if (has('bakery') && S.up.bakery && (bakeOut() > 0 || (S.bake.q.length < BAKE_CAP && bakeHave(S.bake.sel) > 0))) jobs.push({ ...BAKE_SPOT, act: () => bakeAct(true) });
+  if (has('bakery') && S.up.bakery && (bakeOut() > 0 || (bakeHave(S.bake.sel) > 0 && bakeRoom(S.bake.sel, 1) > 0))) jobs.push({ ...BAKE_SPOT, act: () => bakeAct(true) });
   if (has('orchard')) S.trees.forEach((t, i) => { if (treeReady(t)) jobs.push({ x: ORCHARD_SLOTS[i].x, y: ORCHARD_SLOTS[i].y, act: () => treeAct(i, 'harvest') }); });
   if (has('coop')) {
     if (coopReady() > 0) jobs.push({ ...COOP_SPOT, act: collectEggs });
@@ -2540,7 +2582,7 @@ const NOOP = (() => {
 })();
 const SPRITE_ANIM = new Set(['house', 'stall', 'bakery', 'dairy', 'doghouse', 'billboard', 'mill']);
 const SPRITE_KEY = {
-  house: () => '', stall: () => ((isRest() || isFair()) && !S.night) + '' + isFair() + Object.keys(GOODS).filter(id => S.inv[id] > 0 && onSale(id)).join(), bakery: () => S.bake.q.length + ',' + S.started, dairy: () => (S.prod.dairy.q > 0) + ',' + S.started,
+  house: () => '', stall: () => ((isRest() || isFair()) && !S.night) + '' + isFair() + Object.keys(GOODS).filter(id => S.inv[id] > 0 && onSale(id)).join(), bakery: () => bakeLoaded().length + ',' + S.started, dairy: () => (S.prod.dairy.q > 0) + ',' + S.started,
   doghouse: () => '', billboard: () => '', mill: () => (S.prod.mill.q > 0) + ',' + S.started,
   tree: () => season().id, flowers: () => '', well: () => '', fence: () => hens() + ',' + cows(), coop: () => S.coop.eggs + ',' + (S.coop.gold || 0) + ',' + hens(), barn: () => cows(),
   trough: () => cows() + ',' + cowsFedToday(), mailbox: () => JSON.stringify(S.order), trophies: () => S.trophies.map(t => t.p).join(), sack: () => '', bench: () => '', glass: () => '', ghroof: () => '',
@@ -3188,7 +3230,7 @@ function drawProdBubbles() {
   if (S.up.bakery) {   // пекарня: готовое или чего не хватает
     const n = bakeOut(), sel = GOODS[S.bake.sel].e;
     if (n) drawBubbleAt(liftG('home', 4.5, 3, 66), `${Object.keys(S.bake.out).filter(g => S.bake.out[g]).map(g => GOODS[g].e)[0]}${n}`, true);
-    else if (!S.bake.q.length && !S.night && bakeHave(S.bake.sel) > 0) drawBubbleAt(liftG('home', 4.5, 3, 66), `${sel}?`, false);
+    else if (!bakeBusy() && !S.night && bakeHave(S.bake.sel) > 0) drawBubbleAt(liftG('home', 4.5, 3, 66), `${sel}?`, false);
   }
   if (S.order && (!S.order.seen || orderReady())) drawBubbleAt(liftG('mail', 4.5, 5.5, 50), orderReady() ? '📦✔' : '✉️', orderReady());
   for (const k in PROD) {
@@ -3417,7 +3459,7 @@ function drawBakery(d, t) {
   ctx.restore();
   gface(fY(4.25, 4.7, Y, 0, 19), '#b07a46', '#7e5230', '#5b3a22', 2.2);   // дверь
   const dk = lift(4.62, Y, 9); circle(dk.x, dk.y, 1.6, '#ffd54a');
-  const baking = S.bake.q.length && S.started && !S.night;
+  const baking = bakeLoaded().length && S.started && !S.night;
   toonWin('x', X, 2.4, 3.2, 7, 18, false, S.night ? null : baking ? ['#ffe0a0', '#ff9a3c'] : null);
   for (let i = 0; i < 6; i++) {   // полосатый козырёк над окном
     const a = 2.32 + i * .16, b = a + .16;
@@ -4024,10 +4066,11 @@ function drawBars() {
     rr(c.x - 15, c.y - 27, 30, 6, 3, INK);
     rr(c.x - 14, c.y - 26, 28 * p.prog, 4, 2, '#9be15d');
   });
-  if (S.up.bakery && S.bake.q.length) {   // пекарня: текущий рецепт
-    const c = liftG('home', 4.5, 4.25, 2), T = BAKE[S.bake.q[0]].time;
-    rr(c.x - 16, c.y, 32, 5, 2.5, 'rgba(0,0,0,.35)'); rr(c.x - 16, c.y, 32 * Math.min(1, S.bake.t / T), 5, 2.5, '#ffd34d');
-  }
+  if (S.up.bakery) S.bake.ov.forEach((o, i) => {   // пекарня: по полоске на отделение
+    if (!o) return;
+    const c = liftG('home', 4.5, 4.25, 2);
+    rr(c.x - 16, c.y + i * 7, 32, 5, 2.5, 'rgba(0,0,0,.35)'); rr(c.x - 16, c.y + i * 7, 32 * Math.min(1, o.t / BAKE[o.r].time), 5, 2.5, '#ffd34d');
+  });
   for (const k in PROD) {   // мельница и сыроварня: прогресс текущей партии
     const st = S.prod[k]; if (!S.up[k] || !st.q) continue;
     const c = lift(PROD[k].spot.x + .5, PROD[k].spot.y + (k === 'mill' ? -.3 : .7), k === 'mill' ? 14 : 8);
