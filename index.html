@@ -427,6 +427,10 @@ for (const [x, y] of treeSpots) {
   decor.push({ kind: 'tree', x, y, s: 0.85 + rnd() * 0.35, z: x + y + 1, lot: lot >= 0 ? lot : null });
   blocked[y][x] = true;
 }
+// лес сразу за правым краем фермы — среди построек, чтобы правильно перекрываться с лесом внутри
+const edgeTree = (x, y) => x >= W && x < W + 4 && y >= -1 && y < ROAD;
+{ const hs = (x, y) => { const v = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return v - Math.floor(v); };   // как hash() ниже
+  for (let x = W; x < W + 4; x++) for (let y = -1; y < ROAD; y++) if (hs(x, y) > (x > W + 1 ? 0.25 : 0.5)) decor.push({ kind: 'tree', x, y, s: 0.8 + hs(y, x) * 0.45, z: x + y + 1, lot: null }); }
 // вырубленные участки проходимы, кроме места под построенным зданием
 function applyLots() {
   LOTS.forEach((L, k) => {
@@ -529,7 +533,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.2';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.3';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -2164,7 +2168,7 @@ function panRect() {   // всё, что камера может показат�
 }
 const inside = (a, b) => a.x0 >= b.x0 && a.x1 <= b.x1 && a.y0 >= b.y0 && a.y1 <= b.y1;
 function drawBackdrop(now) {
-  if (!zoomSettled(now)) { drawOutside(viewRect()); drawGround(0); drawPaths(); drawPicnic(); return; }   // зум пальцами — напрямую
+  if (!zoomSettled(now)) { drawOutside(viewRect()); drawGround(0); drawPaths(); drawPicnic(); drawOutsideTrees(); return; }   // зум пальцами — напрямую
   const k = dpr * zoom, key = k + '/' + groundSig(), view = viewRect();
   if (key !== bg.key || !bg.r || !inside(view, bg.r)) {
     let R = panRect();
@@ -2176,7 +2180,7 @@ function drawBackdrop(now) {
     const main = ctx; ctx = bg.cv.getContext('2d');
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = look().bg; ctx.fillRect(0, 0, w, h);
     ctx.setTransform(k, 0, 0, k, -bg.ox, -bg.oy);
-    try { drawOutside(R); drawGround(0); drawPaths(); drawPicnic(); } finally { ctx = main; }
+    try { drawOutside(R); drawGround(0); drawPaths(); drawPicnic(); drawOutsideTrees(); } finally { ctx = main; }
   }
   const T = camT();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -2327,8 +2331,9 @@ function draw(t) {
 
 // Мир вокруг фермы: лес позади, луг впереди, дорога уходит за край — экран заполнен на любом устройстве
 const hash = (x, y) => { const v = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return v - Math.floor(v); };
+let outTrees = [];
 function drawOutside(V = viewRect()) {
-  const R = 30, trees = [];
+  const R = 30, trees = outTrees = [];
   for (let y = -R; y < H + R; y++) for (let x = -R; x < W + R; x++) {
     if (x >= 0 && y >= 0 && x < W && y < H) continue;
     const c = iso(x + .5, y + .5);
@@ -2338,13 +2343,13 @@ function drawOutside(V = viewRect()) {
     poly(tilePts(x, y), col, col);
     if (road) { seg(iso(x, y + .5), iso(x + 1, y + .5), 'rgba(150,110,65,.16)', 4); if (h > .88) pebble(c.x + (h - .94) * 60, c.y, 1.6, '#cdbb98'); continue; }
     const behind = x < 0 || y < 0 || (x >= W && y < ROAD);   // за фермой и справа — лес, перед ней — открытый луг
-    if (behind && h > (x < -2 || y < -2 || x > W + 1 ? 0.25 : 0.5)) trees.push({ x, y, s: 0.8 + hash(y, x) * 0.45 });
+    if (behind && !edgeTree(x, y) && h > (x < -2 || y < -2 || x > W + 1 ? 0.25 : 0.5)) trees.push({ x, y, s: 0.8 + hash(y, x) * 0.45 });
     else if (h > .82 && season().id !== 'winter') circle(c.x + (h - .9) * 40, c.y, 2.2, season().id === 'autumn' ? ['#e0892f', '#d8b23a', '#c9542f'][Math.floor(h * 1000) % 3] : ['#ffffff', '#ffd84d', '#ff8fb1'][Math.floor(h * 1000) % 3]);
     else if (!behind && h < .06) { circle(c.x - 5, c.y - 5, 7, look().bush[0]); circle(c.x + 5, c.y - 4, 6, look().bush[1]); }   // кусты
   }
-  trees.sort((a, b) => (a.x + a.y) - (b.x + b.y)).forEach(drawTree);
-  drawFairGround();
 }
+// деревья вокруг фермы — после земли фермы, иначе её клетки перекрывают стволы и кроны
+function drawOutsideTrees() { outTrees.sort((a, b) => (a.x + a.y) - (b.x + b.y)).forEach(drawTree); drawFairGround(); }
 
 // ---------- Ярмарка за дорогой: по субботам — шатры, флажки, народ; в другие дни — табличка ----------
 const FAIR = { x: 6, y: 21 };
