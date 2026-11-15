@@ -167,7 +167,7 @@
   #toast { position: fixed; left: calc(50% - 30px); top: 20%; transform: translateX(-50%); background: rgba(40,30,20,.9); color: #fff;
            padding: 8px 14px; border-radius: 18px; font-size: 14px; font-weight: 700; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 20;
            width: max-content; max-width: calc(100% - 100px); text-align: center; }
-  #toast.show { opacity: 1; }
+  #toast.show { opacity: 1; pointer-events: auto; cursor: pointer; }
   @keyframes up { from { transform: translateY(100%) } to { transform: none } }
 </style>
 </head>
@@ -575,7 +575,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.18';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.19';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -4479,7 +4479,12 @@ function resetGame(btn) {
 }
 
 let toastT;
-function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 1600); }
+// подсказка висит тем дольше, чем она длиннее (≈ время прочитать), тап — закрыть сразу
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT);
+  toastT = setTimeout(() => t.classList.remove('show'), Math.min(7000, Math.max(2500, 1200 + String(msg).length * 60)));
+}
+$('toast').onclick = () => { clearTimeout(toastT); $('toast').classList.remove('show'); };
 
 $('harvestAll').onclick = () => { if (harvestRoute(false)) autoHarvest = true; };
 function harvestRoute(again) {   // грядки, яблони и гнездо — по кратчайшему маршруту
