@@ -75,6 +75,39 @@
   .recipe .rt { flex: 1; font-size: 14px; line-height: 1.35; }
   .recipe .rt small { font-size: 12px; color: #7a6650; }
   .recipe .rn { color: #3e9b3a; }
+  .oven { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 16px; background: linear-gradient(#8a4b32, #6e3826); color: #fff6ea; box-shadow: inset 0 -4px 0 rgba(0,0,0,.2); }
+  .ov-mouth { position: relative; width: 84px; height: 70px; flex: none; border-radius: 42px 42px 10px 10px; background: #2b1a14; border: 4px solid #c46a4a; display: flex; align-items: center; justify-content: center; }
+  .oven.hot .ov-mouth { background: radial-gradient(circle at 50% 85%, #ffb347, #c4451c 60%, #3a1d12); }
+  .ov-item { font-size: 36px; }
+  .ov-fire { position: absolute; bottom: -4px; font-size: 16px; animation: ovf .6s ease-in-out infinite alternate; }
+  @keyframes ovf { to { transform: scale(1.25) translateY(-2px); } }
+  .ov-info { flex: 1; min-width: 0; font-size: 16px; line-height: 1.3; }
+  .ov-info small { display: block; font-size: 13px; opacity: .85; margin-top: 4px; }
+  .ov-bar { height: 10px; border-radius: 5px; background: rgba(0,0,0,.35); margin-top: 7px; overflow: hidden; }
+  .ov-bar i { display: block; height: 100%; background: #ffd34d; border-radius: 5px; }
+  .shelf { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; padding: 9px 12px; background: #f0e5cb; border-radius: 12px; font-size: 14px; }
+  .shelf small { color: #7a6650; font-size: 12px; }
+  .shelf button { flex: none; padding: 9px 16px; }
+  .bk-h { margin: 14px 0 6px; font-size: 17px; }
+  .bk-h small { font-weight: normal; font-size: 12px; color: #7a6650; }
+  .bk-note { font-size: 12px; color: #7a6650; margin: 6px 0; line-height: 1.4; }
+  .bq { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; }
+  .bq-s { position: relative; height: 58px; padding: 2px; border-radius: 12px; background: #fff; border: 2px solid var(--line); display: flex; flex-direction: column; align-items: center; justify-content: center; font: inherit; color: inherit; }
+  .bq-s span { font-size: 24px; line-height: 1; }
+  .bq-s small { font-size: 10px; color: #7a6650; margin-top: 3px; }
+  .bq-s i { position: absolute; top: 1px; right: 4px; font-style: normal; font-size: 10px; color: #b0503a; }
+  .bq-s.cur { border-color: #e0873a; background: #fff1de; }
+  .bq-s.empty { background: transparent; border-style: dashed; color: #b9a684; font-size: 22px; }
+  .bk-r { display: flex; align-items: center; gap: 10px; padding: 9px 10px; margin: 6px 0; background: #f6eedb; border-radius: 12px; }
+  .bk-r.off { opacity: .55; }
+  .bk-r .re { font-size: 30px; }
+  .bk-r .rt { flex: 1; min-width: 0; font-size: 14px; line-height: 1.35; }
+  .bk-r .rt small { font-size: 12px; color: #7a6650; }
+  .bk-r .ing { margin: 3px 0 2px; display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 15px; }
+  .bk-r .ing sub { font-size: 10px; margin-left: 2px; }
+  .bk-r .ing .ok sub { color: #3e9b3a; } .bk-r .ing .no { color: #b0503a; }
+  .bk-b { display: flex; flex-direction: column; gap: 5px; flex: none; }
+  .bk-b button { min-width: 50px; padding: 8px 6px; }
   .cheats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
   .cheats button { padding: 9px 6px; font-size: 14px; }
   .cheats button.on { background: #3e9b3a; color: #fff; }
@@ -640,7 +673,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.44';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.45';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1231,27 +1264,88 @@ function tapBakery() {
   openBakery();
 }
 function setBake(r) { S.bake.sel = r; save(); openBakery(); }
+// ---- окно пекарни: в центре печь, под ней очередь и рецепты ----
+const bakeLeft = () => {   // секунд до конца текущего и всей очереди
+  const sp = S.up.bakery || 1, q = S.bake.q;
+  if (!q.length) return [0, 0];
+  const cur = Math.max(0, BAKE[q[0]].time - S.bake.t) / sp;
+  return [cur, cur + q.slice(1).reduce((a, r) => a + BAKE[r].time, 0) / sp];
+};
+const fmtSec = s => s >= 60 ? `${Math.floor(s / 60)} мин ${String(Math.ceil(s % 60)).padStart(2, '0')} сек` : `${Math.ceil(s)} сек`;
+const bakeHelper = () => S.helpers.some(c => c.stations.includes('bakery'));
+function bakeState() {   // что сейчас с печью — одной фразой
+  const q = S.bake.q;
+  if (!q.length) return { hot: false, t: 'Печь пустая', s: 'Добавь рецепт из списка ниже — он встанет в очередь' };
+  if (bakeOut() >= 20) return { hot: false, t: 'Полка заставлена', s: 'Печь ждёт: забери готовое, и она продолжит' };
+  if (S.night) return { hot: false, t: '🌙 Ночью печь не топят', s: 'Утром, когда начнётся день, она продолжит' };
+  if (!S.started) return { hot: false, t: '☀️ Печь ждёт начала дня', s: 'Как только день начнётся, она затопится' };
+  const [cur, all] = bakeLeft();
+  return { hot: true, t: `Печётся ${GOODS[q[0]].name.toLowerCase()}`, s: `ещё ${fmtSec(cur)}${q.length > 1 ? ` · вся очередь — ${fmtSec(all)}` : ''}` };
+}
+function addBake(r, n) {
+  const st = S.bake; n = Math.min(n, BAKE_CAP - st.q.length, bakeHave(r));
+  if (n <= 0) return;
+  for (const [g, k] of Object.entries(BAKE[r].in)) S.inv[g] -= n * k;
+  for (let i = 0; i < n; i++) st.q.push(r);
+  addFloat(BAKE_SPOT.x + .5, BAKE_SPOT.y + .5, `в печь ${n} ${GOODS[r].e}`);
+  save(); renderUI(); openBakery();
+}
+function unBake(i) {   // убрать из очереди — продукты возвращаются на склад
+  const st = S.bake, r = st.q[i];
+  if (!r) return;
+  for (const [g, k] of Object.entries(BAKE[r].in)) S.inv[g] = (S.inv[g] || 0) + k;
+  st.q.splice(i, 1); if (i === 0) st.t = 0;
+  toast(`↩️ ${GOODS[r].e} убран из очереди, продукты вернулись на склад`);
+  save(); renderUI(); openBakery();
+}
+function bakeSig() { const st = S.bake; return [st.q.join(), Object.entries(st.out).join(), S.night, S.started, bakeOut() >= 20].join('|'); }
+function bakeLive() {   // окно открыто — двигаем полоску, перерисовываем при переменах
+  const sh = $('sheet');
+  if (sh.dataset.view !== 'bakery' || !$('overlay').classList.contains('show')) return;
+  if (sh.dataset.sig !== bakeSig()) { const top = sh.scrollTop; openBakery(); sh.scrollTop = top; return; }
+  const q = S.bake.q, bar = $('ovBar'), sub = $('ovSub');
+  if (bar && q.length) bar.style.width = Math.min(100, 100 * S.bake.t / BAKE[q[0]].time) + '%';
+  if (sub) sub.textContent = bakeState().s;
+}
 function openBakery() {
-  const st = S.bake, sel = st.sel;
-  const cnt = o => Object.entries(o).filter(([, k]) => k).map(([g, k]) => `${k} ${GOODS[g].e}`).join(', ');
-  const inQ = cnt(st.q.reduce((o, r) => (o[r] = (o[r] || 0) + 1, o), {}));
-  let h = `<h2>🥖 Пекарня</h2>
-    <div class="summary">В печи: <b>${st.q.length} из ${BAKE_CAP}</b>${inQ ? ` — ${inQ}` : ''}<br>Готово: <b>${bakeOut() ? cnt(st.out) : 'пока ничего'}</b>${S.up.bakery >= 2 ? ' · печёт вдвое быстрее' : ''}</div>
-    <h3 style="margin:10px 0 4px">Что печь</h3>`;
+  const st = S.bake, q = st.q, ov = bakeState(), free = BAKE_CAP - q.length, sp = S.up.bakery || 1;
+  const cnt = o => Object.entries(o).filter(([, k]) => k).map(([g, k]) => `${k} ${GOODS[g].e}`).join('  ');
+  let h = `<h2>🥖 Пекарня${sp >= 2 ? ' <small style="font-size:13px;color:#3e9b3a">печёт вдвое быстрее</small>' : ''}</h2>
+    <div class="oven${ov.hot ? ' hot' : ''}">
+      <div class="ov-mouth"><span class="ov-item">${q.length ? GOODS[q[0]].e : ''}</span><span class="ov-fire">${ov.hot ? '🔥' : ''}</span></div>
+      <div class="ov-info"><b>${ov.t}</b>
+        ${q.length ? `<div class="ov-bar"><i id="ovBar" style="width:${Math.min(100, 100 * st.t / BAKE[q[0]].time)}%"></i></div>` : ''}
+        <small id="ovSub">${ov.s}</small></div>
+    </div>
+    <div class="shelf"><span>🧺 Готово: ${bakeOut() ? `<b>${cnt(st.out)}</b>` : 'пока пусто'}${bakeOut() ? `<br><small>лежит в пекарне, ${bakeOut()} из 20 мест</small>` : ''}</span>
+      ${bakeOut() ? `<button onclick="closeNight(); setTasks([{ ...BAKE_SPOT, fn: collectBake }])">Забрать</button>` : ''}</div>
+    <h3 class="bk-h">Очередь <small>${q.length} из ${BAKE_CAP} · печётся по порядку слева направо</small></h3>
+    <div class="bq">`;
+  for (let i = 0; i < BAKE_CAP; i++) h += q[i]
+    ? `<button class="bq-s${i ? '' : ' cur'}" onclick="unBake(${i})"><span>${GOODS[q[i]].e}</span><small>${i ? (i + 1) + '-й' : 'в печи'}</small><i>✕</i></button>`
+    : `<div class="bq-s empty">${i === q.length ? '+' : ''}</div>`;
+  h += `</div><div class="bk-note">${q.length ? 'Нажми на рецепт в очереди, чтобы убрать его — продукты вернутся на склад.' : 'Пока очередь пустая, печь стоит.'}</div>
+    <h3 class="bk-h">Добавить в очередь${free ? '' : ' <small style="color:#b0503a">— очередь полная</small>'}</h3>`;
   for (const r in BAKE) {
-    const ok = canMake(r), have = bakeHave(r);
-    const raw = Object.entries(BAKE[r].in).reduce((a, [g, n]) => a + n * sellPrice(g), 0), gain = sellPrice(r) - raw;
-    const ing = Object.entries(BAKE[r].in).map(([g, n]) => `<span style="color:${(S.inv[g] || 0) >= n ? '#3e9b3a' : '#b0503a'}">${n}${GOODS[g].e}</span>`).join(' + ');
-    h += `<div class="recipe${r === sel ? ' on' : ''}${ok ? '' : ' off'}" onclick="setBake('${r}')"><span class="re">${GOODS[r].e}</span>
-      <div class="rt"><b>${GOODS[r].name}</b> · ${sellPrice(r)}💰<br><small>${ing} · ${Math.round(BAKE[r].time / S.up.bakery)} сек${gain > 0 ? ` · <b style="color:#3e9b3a">+${gain}💰</b> выгоды` : ''}</small>
-      ${ok ? '' : `<br><small style="color:#b0503a">Не хватает источника: ${Object.keys(BAKE[r].in).filter(g => !canMake(g)).map(g => GOODS[g].e).join(' ')}</small>`}</div>
-      <b class="rn">${have ? '×' + Math.min(have, BAKE_CAP) : ''}</b></div>`;
+    const ok = canMake(r), have = bakeHave(r), n = ok ? Math.min(free, have) : 0;
+    const raw = Object.entries(BAKE[r].in).reduce((a, [g, k]) => a + k * sellPrice(g), 0), gain = sellPrice(r) - raw;
+    const ing = Object.entries(BAKE[r].in).map(([g, k]) => `<span class="${(S.inv[g] || 0) >= k ? 'ok' : 'no'}">${k}${GOODS[g].e}<sub>${S.inv[g] || 0}</sub></span>`).join(' ');
+    const why = !ok ? `Нужен источник: ${Object.keys(BAKE[r].in).filter(g => !canMake(g)).map(g => GOODS[g].e).join(' ')}`
+      : !have ? 'Не хватает продуктов' : '';
+    h += `<div class="bk-r${ok ? '' : ' off'}"><span class="re">${GOODS[r].e}</span>
+      <div class="rt"><b>${GOODS[r].name}</b> <small>· продаётся за ${sellPrice(r)}💰 · ${fmtSec(BAKE[r].time / sp)}</small>
+        <div class="ing">${ing}</div>
+        <small>${why ? `<span style="color:#b0503a">${why}</span>` : `хватит на ${have} шт.`}${gain > 0 ? ` · <b style="color:#3e9b3a">+${gain}💰</b> к цене продуктов` : ''}</small></div>
+      <div class="bk-b"><button ${n ? '' : 'disabled'} onclick="addBake('${r}',1)">+1</button>${n > 1 ? `<button onclick="addBake('${r}',${n})">+${n}</button>` : ''}</div></div>`;
   }
-  const can = bakeHave(sel) > 0 && st.q.length < BAKE_CAP;
-  h += `<div class="row"><button class="wide" ${can || bakeOut() ? '' : 'disabled'} onclick="closeNight(); setTasks([{ ...BAKE_SPOT, fn: () => bakeAct() }])">${can ? `Испечь ${GOODS[sel].e}` : ''}${can && bakeOut() ? ' и забрать' : bakeOut() ? 'Забрать готовое' : can ? '' : `Нужно ${bakeNeed(sel)}`}</button></div>
-    <div style="font-size:12px;color:#7a6650;margin-top:6px">Помощник на станции 🥖 печёт выбранный рецепт и забирает готовое. Печь работает днём.</div>
-    <button class="wide alt" style="width:100%;margin-top:10px" onclick="closeNight()">Закрыть</button>`;
-  $('sheet').dataset.view = ''; $('sheet').innerHTML = h;
+  h += `<div class="bk-note" style="margin-top:4px">Цифры у продуктов: сколько нужно на одну штуку, а маленькие — сколько есть на складе. Печь работает только днём.</div>
+    <h3 class="bk-h">🧑‍🌾 Помощник</h3>`;
+  h += bakeHelper()
+    ? `<div class="bk-note">Помощник на станции 🥖 сам забирает готовое и доливает очередь этим рецептом:</div><div class="chips">${Object.keys(BAKE).filter(canMake).map(r => `<button class="chip${r === st.sel ? ' on' : ''}" onclick="setBake('${r}')">${GOODS[r].e} ${GOODS[r].name}</button>`).join('')}</div>`
+    : `<div class="bk-note">Без помощника всё делаешь сам: добавляешь рецепты в очередь и забираешь готовое кнопкой «Забрать». ${S.up.helper ? 'Поставь помощника на станцию 🥖 — он будет делать это сам.' : 'Когда наймёшь помощника, его можно поставить на станцию 🥖.'}</div>
+      ${S.up.helper ? '<button class="wide alt" style="width:100%;margin-top:6px" onclick="openHelpers()">🧑‍🌾 Помощники</button>' : ''}`;
+  h += `<button class="wide alt" style="width:100%;margin-top:12px" onclick="closeNight()">Закрыть</button>`;
+  $('sheet').dataset.view = 'bakery'; $('sheet').dataset.sig = bakeSig(); $('sheet').innerHTML = h;
   $('overlay').classList.add('show');
 }
 
@@ -1918,6 +2012,7 @@ function tick(now) {
   requestAnimationFrame(tick);
 }
 function step(dt) {
+  bakeLive();
   updatePlayer(dt);
   updateVisitors(dt);
   updateFair(dt);
@@ -3970,7 +4065,6 @@ function drawLighting() {
     if (S.up.dairy) glows.push([liftG('dairy', 18.5, 10, 26), 50]);
     if (S.up.ads) glows.push([liftG('ads', 12.55, 10.5, S.up.ads >= 3 ? 42 : 24), S.up.ads >= 5 ? 85 : S.up.ads >= 3 ? 65 : 42, .6]);   // подсветка щита
     if (S.up.greenhouse) glows.push([liftG('gh', 14.5, 9, 30), 60]);
-    if (S.up.bakery) glows.push([liftG('home', 4.95, 2.8, 14), 45]);
     if (S.up.house >= 2) glows.push([liftG('home', 4, 2.9, 54), 55], [liftG('home', 3, 4, 54), 50]);
     if (S.up.cozy >= 5) glows.push([liftG('home', 2.35, 4.05, 24), 38, .5], [liftG('home', 3.3, 4.05, 24), 38, .5]);
     for (const [p, r, a = .35] of glows) {
