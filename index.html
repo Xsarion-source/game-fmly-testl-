@@ -3588,46 +3588,120 @@ function openSaves() {
 // ---------- Код фермы: запасная копия текстом (сжатая) — работает без облака и без памяти браузера ----------
 const b64 = u8 => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode(...u8.subarray(i, i + 0x8000)); return btoa(s); };
 const unb64 = t => Uint8Array.from(atob(t), c => c.charCodeAt(0));
+// Распаковка gzip своим кодом — для старых iPhone, где нет DecompressionStream
+function inflateRaw(src) {
+  let pos = 0, bit = 0, out = new Uint8Array(src.length * 6 + 1024), n = 0;
+  const need = k => { if (n + k > out.length) { const t = new Uint8Array((n + k) * 2); t.set(out); out = t; } };
+  const bits = k => { let v = 0; for (let i = 0; i < k; i++) { if (pos >= src.length) throw new Error('short'); v |= ((src[pos] >> bit) & 1) << i; if (++bit === 8) { bit = 0; pos++; } } return v; };
+  const table = lens => { const cnt = new Uint16Array(16), offs = new Uint16Array(16), sym = new Uint16Array(lens.length);
+    for (const l of lens) cnt[l]++; cnt[0] = 0; for (let i = 1; i < 16; i++) offs[i] = offs[i - 1] + cnt[i - 1];
+    lens.forEach((l, i) => { if (l) sym[offs[l]++] = i; }); return { cnt, sym }; };
+  const decode = t => { let code = 0, first = 0, idx = 0; for (let l = 1; l < 16; l++) { code |= bits(1); const c = t.cnt[l]; if (code - c < first) return t.sym[idx + code - first]; idx += c; first += c; first <<= 1; code <<= 1; } throw new Error('bad'); };
+  const LB = [3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,59,67,83,99,115,131,163,195,227,258], LE = [0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0];
+  const DB = [1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577], DE = [0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13];
+  let last;
+  do {
+    last = bits(1); const type = bits(2);
+    if (type === 0) { if (bit) { bit = 0; pos++; } const len = src[pos] | src[pos + 1] << 8; pos += 4; if (pos + len > src.length) throw new Error('short'); need(len); out.set(src.subarray(pos, pos + len), n); n += len; pos += len; continue; }
+    let lt, dt;
+    if (type === 1) { const l = new Array(288); for (let i = 0; i < 288; i++) l[i] = i < 144 ? 8 : i < 256 ? 9 : i < 280 ? 7 : 8; lt = table(l); dt = table(new Array(30).fill(5)); }
+    else if (type === 2) {
+      const hl = bits(5) + 257, hd = bits(5) + 1, hc = bits(4) + 4, ord = [16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15], cl = new Array(19).fill(0);
+      for (let i = 0; i < hc; i++) cl[ord[i]] = bits(3); const ct = table(cl), l = [];
+      while (l.length < hl + hd) { const sy = decode(ct); if (sy < 16) l.push(sy); else if (sy === 16) { const pv = l[l.length - 1]; for (let r = bits(2) + 3; r--;) l.push(pv); } else for (let r = sy === 17 ? bits(3) + 3 : bits(7) + 11; r--;) l.push(0); }
+      lt = table(l.slice(0, hl)); dt = table(l.slice(hl));
+    } else throw new Error('bad');
+    for (;;) { const sy = decode(lt); if (sy < 256) { need(1); out[n++] = sy; } else if (sy === 256) break; else { const len = LB[sy - 257] + bits(LE[sy - 257]), ds = decode(dt), d = DB[ds] + bits(DE[ds]); if (d > n) throw new Error('bad'); need(len); for (let i = 0; i < len; i++, n++) out[n] = out[n - d]; } }
+  } while (!last);
+  return out.subarray(0, n);
+}
+function gunzip(b) {
+  if (b[0] !== 31 || b[1] !== 139) throw new Error('bad');
+  const f = b[3]; let i = 10;
+  if (f & 4) i += 2 + (b[i] | b[i + 1] << 8); if (f & 8) while (b[i++]); if (f & 16) while (b[i++]); if (f & 2) i += 2;
+  return inflateRaw(b.subarray(i));
+}
 async function farmCode(o) {
   const raw = new TextEncoder().encode(JSON.stringify(o));
+  let body = 'FARM0:' + b64(raw);
   if (window.CompressionStream) {
-    try { const z = new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer()); return 'FARM1:' + b64(z); } catch {}
+    try { const z = new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer()); body = 'FARM1:' + b64(z); } catch {}
   }
-  return 'FARM0:' + b64(raw);
+  const t = body.slice(6);
+  return body.slice(0, 6) + t.length + ':' + t + '.';   // длина внутри кода — видно, если он дошёл не целиком
 }
 async function parseFarmCode(code) {
-  code = code.replace(/\s+/g, '');
-  const m = code.match(/FARM([01]):([A-Za-z0-9+/=]+)/); if (!m) throw new Error('bad');
-  let bytes = unb64(m[2]);
-  if (m[1] === '1') bytes = new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer());
-  const o = JSON.parse(new TextDecoder().decode(bytes));
-  if (!o || typeof o.day !== 'number' || !Array.isArray(o.plots)) throw new Error('bad');
+  code = String(code || '').replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/');
+  const m = code.match(/FARM([01]):(?:(\d+):)?([A-Za-z0-9+/=]*)(\.?)/i);
+  if (!m) throw new Error(code.length ? 'nocode' : 'empty');
+  const want = m[2] ? +m[2] : 0, got = m[3].length;
+  if (want && got < want) throw new Error('short:' + got + ':' + want);
+  let bytes; try { bytes = unb64(want ? m[3].slice(0, want) : m[3]); } catch { throw new Error('broken'); }
+  if (m[1] === '1') {
+    let ok = null;
+    if (window.DecompressionStream) { try { ok = new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer()); } catch {} }
+    if (!ok) { try { ok = gunzip(bytes); } catch (e) { throw new Error(!want && e.message === 'short' ? 'short' : 'broken'); } }
+    bytes = ok;
+  }
+  let o; try { o = JSON.parse(new TextDecoder().decode(bytes)); } catch { throw new Error('broken'); }
+  if (!o || typeof o.day !== 'number' || !Array.isArray(o.plots)) throw new Error('broken');
   return o;
+}
+function codeErr(e) {
+  const m = String(e && e.message || '');
+  if (m === 'empty') return 'Поле пустое — сначала вставь код';
+  if (m === 'nocode') return 'Это не код фермы — он начинается с «FARM»';
+  if (m.startsWith('short:')) { const [, g, w] = m.split(':'); return `Код дошёл не целиком: ${g} из ${w} символов. Скопируй его ещё раз`; }
+  if (m === 'short') return 'Код дошёл не целиком — скопируй его ещё раз';
+  return 'Код повреждён — скопируй его заново кнопкой «📤 Скопировать код»';
+}
+function copyText(t) {   // iPhone не копирует из поля «только чтение» — копируем через временное поле
+  const ta = document.createElement('textarea'); ta.value = t; ta.setAttribute('inputmode', 'none');
+  ta.style.cssText = 'position:fixed;top:0;left:0;width:2px;height:2px;opacity:0;font-size:16px';
+  document.body.appendChild(ta); ta.focus(); ta.select(); ta.setSelectionRange(0, t.length);
+  let ok = false; try { ok = document.execCommand('copy'); } catch {}
+  ta.remove(); return ok;
+}
+async function copyCode(t) {
+  try { await navigator.clipboard.writeText(t); return true; } catch {}
+  return copyText(t);
 }
 async function exportCode() {
   save();
   const code = await farmCode(S);
-  let copied = false;
-  try { await navigator.clipboard.writeText(code); copied = true; } catch {}
+  const copied = await copyCode(code);
+  window._farmCode = code;
   $('sheet').dataset.view = ''; $('sheet').innerHTML = `<h2>📤 Код фермы</h2>
-    <div class="summary">${copied ? '✓ Код скопирован. ' : ''}Сохрани его в Заметки или отправь себе сообщением. День ${S.day} · 💰 ${S.coins}</div>
-    <textarea id="codeBox" readonly style="width:100%;height:140px;font:12px monospace;border-radius:10px;border:1.5px solid #d9c49a;padding:8px;background:#fffaf0;word-break:break-all">${code}</textarea>
-    <div class="row" style="margin-top:8px"><button class="wide" onclick="const t=$('codeBox');t.select();t.setSelectionRange(0,1e9);try{navigator.clipboard.writeText(t.value).then(()=>toast('✓ Скопировано'),()=>{document.execCommand('copy');toast('✓ Скопировано')})}catch{document.execCommand('copy');toast('✓ Скопировано')}">📋 Скопировать ещё раз</button>
+    <div class="summary">${copied ? '✓ Код скопирован. ' : ''}Сохрани его в Заметки или отправь себе сообщением. День ${S.day} · 💰 ${S.coins} · в коде ${code.length} символов</div>
+    <textarea id="codeBox" readonly onfocus="this.setSelectionRange(0,1e9)" style="width:100%;height:140px;font:12px monospace;border-radius:10px;border:1.5px solid #d9c49a;padding:8px;background:#fffaf0;word-break:break-all">${code}</textarea>
+    <div class="row" style="margin-top:8px">${navigator.share ? `<button class="wide" onclick="navigator.share({text:window._farmCode}).catch(e=>{if(e&&e.name!=='AbortError')copyCode(window._farmCode).then(ok=>toast(ok?'✓ Скопировано':'Не получилось — выдели код пальцем'))})">📨 Отправить</button>` : ''}
+    <button class="wide" onclick="copyCode(window._farmCode).then(ok=>toast(ok?'✓ Скопировано':'Не получилось — выдели код пальцем'))">📋 Скопировать</button>
     <button class="wide alt" onclick="openSaves()">Назад</button></div>`;
   $('overlay').classList.add('show');
   try { localStorage.setItem('farm-code-at', String(S.day)); } catch {}
   S.codeDay = S.day;
 }
+async function pasteCode() {
+  try { const t = await navigator.clipboard.readText(); if (t) { $('codeIn').value = t; codeCheck(); return; } } catch {}
+  toast('Нажми на поле и выбери «Вставить»'); $('codeIn').focus();
+}
+function codeCheck() {
+  const v = $('codeIn').value, el = $('codeInfo'); if (!el) return;
+  if (!v.trim()) { el.textContent = ''; return; }
+  parseFarmCode(v).then(o => { el.style.color = '#2f6b2a'; el.textContent = `✓ Код целый: день ${o.day} · 💰 ${o.coins}`; },
+    e => { el.style.color = '#b0503a'; el.textContent = codeErr(e); });
+}
 let importArmed = null;
 function importCodeUI() {
   $('sheet').dataset.view = ''; $('sheet').innerHTML = `<h2>📥 Вставить код фермы</h2>
     <div class="summary">Вставь сюда код, который ты сохранял. Ферма из кода появится в свободной ячейке (или заменит пустую новую ферму).</div>
-    <textarea id="codeIn" placeholder="FARM1:…" style="width:100%;height:140px;font:12px monospace;border-radius:10px;border:1.5px solid #d9c49a;padding:8px;background:#fffaf0;word-break:break-all"></textarea>
-    <div class="row" style="margin-top:8px"><button class="wide" id="codeGo" onclick="importCode($('codeIn').value)">📥 Загрузить ферму</button><button class="wide alt" onclick="openSaves()">Назад</button></div>`;
+    <textarea id="codeIn" placeholder="FARM1:…" oninput="codeCheck()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="width:100%;height:120px;font:12px monospace;border-radius:10px;border:1.5px solid #d9c49a;padding:8px;background:#fffaf0;word-break:break-all"></textarea>
+    <div id="codeInfo" style="font-size:13px;font-weight:700;min-height:18px;margin:4px 2px"></div>
+    <div class="row" style="margin-top:4px"><button class="wide alt" onclick="pasteCode()">📋 Вставить из буфера</button><button class="wide" id="codeGo" onclick="importCode($('codeIn').value)">📥 Загрузить ферму</button><button class="wide alt" onclick="openSaves()">Назад</button></div>`;
   $('overlay').classList.add('show');
 }
 async function importCode(code) {
-  let o; try { o = await parseFarmCode(code); } catch { toast('Код не подходит — проверь, что скопирован целиком'); return; }
+  let o; try { o = await parseFarmCode(code); } catch (e) { toast(codeErr(e)); return; }
   o.savedAt = Date.now();
   // куда: пустая новая ферма — заменяем её; иначе — в свободную ячейку; иначе — заменить текущую после подтверждения
   let target = trivialFarm(S) ? SLOT : 0;
