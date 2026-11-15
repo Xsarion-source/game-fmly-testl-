@@ -124,6 +124,14 @@
   .crates i { width: 22px; height: 18px; border-radius: 4px; background: #efe6d2; border: 1.5px dashed #cdb994; }
   .crates i.on { background: linear-gradient(#e0b47a, #b8834d); border: 1.5px solid #7a4a2a; }
   .crates b { margin-left: 6px; font-size: 14px; }
+  .fpinfo { font-size: 15px; line-height: 1.4; color: #5a4632; margin: -2px 0 10px; }
+  .fphead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; margin: 4px 0 6px; }
+  .fpprice { font-size: 14px; background: #fff3c4; border: 1.5px solid #f0c24a; border-radius: 999px; padding: 4px 10px; cursor: pointer; }
+  .pack .t .pr { font-size: 13px; font-weight: 700; color: #7a6650; margin-left: 4px; }
+  .pack .nums { display: flex; align-items: center; gap: 6px; margin-top: 2px; font-size: 16px; }
+  .pack .nums b { font-size: 20px; } .pack .nums .arr { color: #b8a27e; font-weight: 800; }
+  .pack .nums .n2 { opacity: .45; } .pack .nums .n2.on { opacity: 1; color: #b0503a; }
+  .pack .pbtn { display: flex; gap: 4px; }
   .pack { display: flex; align-items: center; gap: 5px; padding: 6px 0; border-bottom: 1px dashed var(--line); }
   .pack .e { font-size: 26px; width: 32px; text-align: center; } .pack .t { flex: 1; font-size: 13px; line-height: 1.25; } .pack .t > b { display: block; font-size: 14px; } .pack .t small { color: #7a6650; }
   .pack button { min-width: 0; padding: 7px 6px; font-size: 13px; border-radius: 10px; }
@@ -564,7 +572,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.16';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.17';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -4386,18 +4394,20 @@ function openStall() {
 // ---------- Ярмарка: сборы в ящики ----------
 function openFairPack() {
   const lock = fairOn(), used = cratesUsed(), tot = fairCrates(), days = (5 - cal().dow + 7) % 7;
-  let h = `<h2>🎪 Товары на ярмарку</h2><div style="font-size:13px;color:#7a6650;margin:-2px 0 8px">${lock ? '<b>Ярмарка идёт — дополнить уже нельзя.</b> Вечером непроданное вернётся на склад.'
-    : `Ярмарка — ${days ? `в субботу, через ${days} дн.` : 'в субботу'}. Собери ящики заранее: в 1 ящике — один вид товара, до ${CRATE} шт. Собранное ждёт на складе ярмарки, в лавке не продаётся. В субботу дополнить будет нельзя.`}</div>`;
-  h += `<div class="summary" style="margin:4px 0">🏅 Престиж фермы: <b>${prestigePts()}</b> ${prestigePts() % 10 === 1 && prestigePts() % 100 !== 11 ? 'очко' : [2, 3, 4].includes(prestigePts() % 10) && ![12, 13, 14].includes(prestigePts() % 100) ? 'очка' : 'очков'} → на ярмарке цены <b>+${Math.round((fairMult() - 1) * 100)}%</b><br><small>Очки: кубки 🥇3 🥈2 🥉1 + уровни уюта 🌷. Каждое очко — ещё +3% (до +50%)</small></div>`;
-  h += `<div class="crates">${Array.from({ length: tot }, (_, i) => `<i class="${i < used ? 'on' : ''}"></i>`).join('')}<b>Ящиков: ${used} из ${tot}</b></div>`;
-  if (!lock && (S.up.fairstall || 0) < 2) h += `<div style="font-size:12px;color:#7a6650;margin:2px 0 6px">Больше ящиков — ночью: «Улучшения» → «Ферма» → 🎪 «Место на ярмарке»</div>`;
+  const when = days === 0 ? 'сегодня' : days === 1 ? 'завтра' : `через ${days} ${days < 5 ? 'дня' : 'дней'}`, pct = Math.round((fairMult() - 1) * 100);
+  let h = `<h2>🎪 Товары на ярмарку</h2><div class="fpinfo">${lock ? '<b>Ярмарка идёт!</b> Пополнить ящики уже нельзя. Вечером непроданное вернётся на склад.'
+    : `<b>Ярмарка!</b> Проходит по субботам. Следующая ярмарка — <b>${when}</b>.<br>Собери ящики заранее: в 1 ящике — один вид товара, до ${CRATE} шт. Собранное ждёт на складе ярмарки и не продаётся в лавке. Пополнение в субботу невозможно.`}</div>`;
+  h += `<div class="fphead"><div class="crates">${Array.from({ length: tot }, (_, i) => `<i class="${i < used ? 'on' : ''}"></i>`).join('')}<b>${used} из ${tot} ящиков</b></div>
+    <div class="fpprice" onclick="toast('🏅 Престиж: ${prestigePts()}. Очки — кубки 🥇3 🥈2 🥉1 и уровни уюта 🌷. Каждое очко — ещё +3% на ярмарке (до +50%)')">🏅 Цены на ярмарке <b>+${pct}%</b> ⓘ</div></div>`;
+  if (!lock && (S.up.fairstall || 0) < 2 && used >= tot) h += `<div style="font-size:13px;color:#7a6650;margin:2px 0 6px">Нужно больше ящиков? Ночью: «Улучшения» → «Ферма» → 🎪 «Место на ярмарке»</div>`;
   const ids = Object.keys(GOODS).filter(id => !GOODS[id].sp && ((S.inv[id] || 0) > 0 || (S.fair.stock[id] || 0) > 0));
   if (!ids.length) h += `<div class="summary">Пока нечего везти — собери урожай.</div>`;
   for (const id of ids) {
     const g = GOODS[id], inv = S.inv[id] || 0, st = S.fair.stock[id] || 0;
     if (lock && !st) continue;
-    h += `<div class="pack"><span class="e">${g.e}</span><div class="t"><b>${g.name}</b><small>${lock ? `осталось ${st}` : `на складе ${inv} · на ярмарку <b>${st}</b>${st ? ` (${Math.ceil(st / CRATE)} ящ.)` : ''}`} · <s style="opacity:.6">${sellPrice(id)}</s> <b>${Math.round(sellPrice(id) * fairMult())}💰</b></small></div>
-      ${lock ? '' : `<button class="alt" ${st ? '' : 'disabled'} onclick="packFair('${id}',-${CRATE})">−${CRATE}</button><button class="alt" ${st ? '' : 'disabled'} onclick="packFair('${id}',-1)">−1</button><button ${inv && canPack(id, 1) ? '' : 'disabled'} onclick="packFair('${id}',1)">+1</button><button ${inv && canPack(id, 1) ? '' : 'disabled'} onclick="packFair('${id}',${CRATE})">+${CRATE}</button>`}</div>`;
+    h += `<div class="pack"><span class="e">${g.e}</span><div class="t"><b>${g.name} <span class="pr">${Math.round(sellPrice(id) * fairMult())}💰</span></b>
+      <div class="nums">${lock ? `<span class="n2">🎪 <b>${st}</b></span>` : `<span class="n1">🏠 <b>${inv}</b></span><span class="arr">→</span><span class="n2 ${st ? 'on' : ''}">🎪 <b>${st}</b></span>`}</div></div>
+      ${lock ? '' : `<div class="pbtn"><button class="alt" ${st ? '' : 'disabled'} onclick="packFair('${id}',-${CRATE})">−${CRATE}</button><button class="alt" ${st ? '' : 'disabled'} onclick="packFair('${id}',-1)">−1</button><button ${inv && canPack(id, 1) ? '' : 'disabled'} onclick="packFair('${id}',1)">+1</button><button ${inv && canPack(id, 1) ? '' : 'disabled'} onclick="packFair('${id}',${CRATE})">+${CRATE}</button></div>`}</div>`;
   }
   if (!lock && used) h += `<button class="wide alt" style="width:100%;margin-top:8px" onclick="packFair(null)">↩️ Вернуть всё на склад</button>`;
   h += `<button class="wide" style="width:100%;margin-top:10px" onclick="S.night ? openNight(false) : closeNight()">Готово</button>`;
