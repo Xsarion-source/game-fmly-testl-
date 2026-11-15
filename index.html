@@ -639,7 +639,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.37';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.38';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1053,7 +1053,7 @@ const coopReady = () => S.coop.eggs + (S.coop.gold || 0);
 const layMult = () => 1 + .2 * (S.up.nests || 0);
 function layEgg() {   // одна «кладка»: обычное яйцо, иногда двойное (с петухом) или золотое
   const C = S.coop; if (coopReady() >= 30) return;
-  if (Math.random() < (S.up.rooster ? 1 / 25 : 1 / 40)) { C.gold = (C.gold || 0) + 1; return; }
+  if (Math.random() < (S.up.rooster ? 1 / 120 : 1 / 200)) { C.gold = (C.gold || 0) + 1; return; }
   C.eggs++;
   if (S.up.rooster && Math.random() < .25 && coopReady() < 30) C.eggs++;
 }
@@ -4539,7 +4539,7 @@ function openStall() {
   if (fairOn()) { openFairPack(); return; }
   const has = { apple: S.up.orchard, egg: hens(), goldegg: hens(), chick: S.up.rooster, milk: cows(), flour: S.up.mill, cheese: S.up.dairy, bread: S.up.bakery, pie: S.up.bakery, pizza: S.up.bakery, cake: S.up.bakery };
   // в списке всё, что ферма умеет производить или когда-либо было на складе — даже если сейчас 0 шт.
-  const known = Object.keys(GOODS).filter(id => !GOODS[id].sp && (S.inv[id] > 0 || S.stallOff.includes(id) || S.unlocked.includes(id) || has[id] || S.seenGoods.includes(id)));
+  const known = Object.keys(GOODS).filter(id => !GOODS[id].sp && (S.inv[id] > 0 || S.stallOff.includes(id) || S.unlocked.includes(id) || has[id] || S.seenGoods.includes(id) || (S.life.sold || {})[id]));
   let h = `<h2>🏪 Прилавок</h2><div style="font-size:13px;color:#7a6650;margin:-2px 0 8px">Фермер и продавец продают только выставленное. Снятое копится на складе — для заказов, мельницы, сыроварни и пекарни. Менять можно в любой момент.</div>
     <button class="wide" style="width:100%;margin-bottom:8px;background:#ffe28f" onclick="openFairPack()">🎪 Товары на ярмарку — ящиков ${cratesUsed()} из ${fairCrates()}${isFair(S.day + 1) || (isFair() && S.night) ? ' · ярмарка завтра!' : ''}</button>
     <div class="row" style="margin-bottom:6px"><button class="wide alt" onclick="stallAll(true)">✔ Выставить всё</button><button class="wide alt" onclick="stallAll(false)">✖ Убрать всё</button></div>
@@ -4640,6 +4640,7 @@ function packFair(id, d) {   // «вернуть всё»; и для тесто�
   syncFair(); save(); renderUI(); if ($('sheet').dataset.view === 'fairpack') openFairPack(crateSel ?? undefined);
 }
 function toggleSale(id) {
+  if (!S.seenGoods.includes(id) && !GOODS[id].sp) S.seenGoods.push(id);   // раз трогали — товар остаётся в списке навсегда
   const L = GOODS[id].sp ? S.spOn : S.stallOff, i = L.indexOf(id); if (i >= 0) L.splice(i, 1); else L.push(id);
   save(); renderUI(); const top = $('sheet').scrollTop; openStall(); $('sheet').scrollTop = top;
 }
@@ -4687,11 +4688,21 @@ function prestigeInfo() {
   infoBox(`<h3>🏅 Престиж фермы: ${n}</h3>На ярмарке цены выше на <b>${pct}%</b>.<br><br>Очки престижа дают:<br>🥇 золотой кубок — 3<br>🥈 серебряный — 2<br>🥉 бронзовый — 1<br>🌷 каждый уровень уюта — 1<br><br>Каждое очко — ещё <b>+3%</b> к ценам на ярмарке (всего до +50%).`);
 }
 // подсказка висит тем дольше, чем она длиннее (≈ время прочитать), тап — закрыть сразу
+function placeToast() {   // над кнопками; если открыто меню — над его краем, а если меню почти во весь экран — у самого верха
+  const t = $('toast');
+  let top = [...$('actions').querySelectorAll('button')].filter(b => b.offsetParent).reduce((m, b) => Math.min(m, b.getBoundingClientRect().top), innerHeight);
+  if ($('overlay').classList.contains('show')) top = Math.min(top, $('sheet').offsetTop);   // offsetTop — без учёта анимации выезда меню
+  const bottom = innerHeight - top + 10;
+  if (top < t.offsetHeight + 70) { t.style.bottom = 'auto'; t.style.top = 'calc(6px + env(safe-area-inset-top))'; }
+  else { t.style.top = 'auto'; t.style.bottom = Math.max(90, bottom) + 'px'; }
+}
 function toast(msg) {
   const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT);
-  { const top = [...$('actions').querySelectorAll('button')].filter(b => b.offsetParent).reduce((m, b) => Math.min(m, b.getBoundingClientRect().top), innerHeight); t.style.bottom = Math.max(90, innerHeight - top + 10) + 'px'; }   // над кнопками, какие бы сейчас ни были
+  placeToast();
   toastT = setTimeout(() => t.classList.remove('show'), Math.min(7000, Math.max(2500, 1200 + String(msg).length * 60)));
 }
+new MutationObserver(() => { if ($('toast').classList.contains('show')) placeToast(); }).observe($('overlay'), { attributes: true, attributeFilter: ['class'] });   // меню открылось/закрылось — подсказка переезжает
+new MutationObserver(() => { if ($('toast').classList.contains('show')) requestAnimationFrame(placeToast); }).observe($('sheet'), { childList: true });
 $('toast').onclick = () => { clearTimeout(toastT); $('toast').classList.remove('show'); };
 
 $('harvestAll').onclick = () => { if (harvestRoute(false)) autoHarvest = true; };
