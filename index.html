@@ -36,6 +36,7 @@
   #coins { cursor: pointer; pointer-events: auto; }
   #fairBtn { position: absolute; right: 6px; top: calc(60px + env(safe-area-inset-top)); width: 52px; height: 52px; padding: 0; border-radius: 50%; pointer-events: auto;
              background: radial-gradient(circle at 50% 40%, #fffbe8, #ffe9a8); border: 2px solid #f0c24a; box-shadow: 0 3px 0 rgba(0,0,0,.2); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 30px; line-height: 1; }
+  #fairBtn:not(.soon) .glow { display: none; }
   #fairBtn .glow { position: absolute; inset: -2px; border-radius: 50%; pointer-events: none;
                     box-shadow: 0 0 10px 5px rgba(255,200,40,.85), 0 0 22px 10px rgba(255,220,90,.5); animation: fglow 2.4s ease-in-out infinite; }
   @keyframes fglow { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
@@ -615,7 +616,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.25';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.26';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3895,7 +3896,7 @@ function renderUI() {
   { const d = (5 - cal().dow + 7) % 7, used = cratesUsed(), fb = $('fairBtn');   // кнопка ярмарки: когда и сколько ящиков собрано
     const when = d === 0 ? (S.night ? 'через неделю' : 'сегодня!') : d === 1 ? 'завтра' : `через ${d} ${d < 5 ? 'дня' : 'дней'}`;
     fb.innerHTML = `<i class="glow"></i>🎪<small>${d === 0 ? (S.night ? '7 дн.' : 'сегодня') : d === 1 ? 'завтра' : d + ' дн.'}</small>`; fb.title = `Ярмарка ${when} · ящиков ${used} из ${fairCrates()}`;
-    fb.classList.toggle('hot', !used && (d === 1 || d === 2)); }   // пятница-четверг, а ящики пустые — мигает
+    fb.classList.toggle('hot', !used && (d === 1 || d === 2)); fb.classList.toggle('soon', d === 1 || d === 2 || (d === 0 && !S.night)); }   // светится за 2 дня и в сам день ярмарки; рамка — если ящики пустые
   const s = $('seeds'); s.innerHTML = '';
   for (const id of S.unlocked) {
     const c = CROP[id], d = document.createElement('div');
