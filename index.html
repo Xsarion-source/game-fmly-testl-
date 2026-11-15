@@ -639,7 +639,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.42';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.43';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -4824,8 +4824,17 @@ applyYard(); applyPasture(); syncHelpers(); syncTrees(); syncHens(); syncCows();
 new ResizeObserver(resize).observe($('stage'));
 // iPhone после поворота иногда оставляет страницу прокрученной — возвращаем на место
 const unshift = () => { if (scrollX || scrollY) scrollTo(0, 0); if (document.scrollingElement) document.scrollingElement.scrollTop = 0; };
-addEventListener('orientationchange', () => [0, 100, 300, 700].forEach(t => setTimeout(unshift, t)));
-addEventListener('resize', unshift); addEventListener('scroll', unshift, { passive: true });
+// приложение с экрана «Домой» на новых iPhone (iOS 26) иногда получает высоту меньше экрана:
+// снизу остаётся зелёная полоса, сверху — размытая. В режиме приложения игра всегда на весь дисплей.
+const fitApp = () => {
+  if (!navigator.standalone || !/iPhone/.test(navigator.userAgent)) return;   // только iPhone: на iPad окно бывает меньше экрана
+  const land = innerWidth > innerHeight, full = land ? Math.min(screen.width, screen.height) : Math.max(screen.width, screen.height);
+  const a = $('app'), gap = full - innerHeight, h = gap > 0 && gap <= 80 ? full + 'px' : '';   // недобор в пару десятков точек — это та самая полоса
+  a.style.bottom = h ? 'auto' : ''; a.style.height = h;
+  document.documentElement.style.height = document.body.style.height = h;
+};
+addEventListener('orientationchange', () => [0, 100, 300, 700].forEach(t => setTimeout(() => { fitApp(); unshift(); }, t)));
+addEventListener('resize', () => { fitApp(); unshift(); }); fitApp(); addEventListener('scroll', unshift, { passive: true });
 resize();
 if (tablet) { centerCam(); clampCam(); }   // на планшете — вся ферма
 else { const a = iso(5, 15), b = iso(11, 6); cam.x = (a.x + b.x) / 2; cam.y = (a.y + b.y) / 2 - 10; clampCam(); }   // на телефоне — поле и лавка в кадре
