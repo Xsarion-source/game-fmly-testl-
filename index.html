@@ -155,6 +155,7 @@
   .crow button { min-width: 40px; padding: 6px 0; font-size: 20px; font-weight: 900; }
   #crNum { min-width: 34px; font-size: 22px; text-align: right; }
   .cpsub { font-size: 13px; color: #7a6650; margin-top: 4px; }
+  .fres { display: flex; gap: 8px; padding: 5px 0; border-bottom: 1px dashed var(--line); font-size: 15px; } .fres span:first-child { flex: 1; }
   .pmrow { display: flex; gap: 6px; margin-top: 10px; } .pmrow button { flex: 1; padding: 8px 2px; font-size: 13px; }
   .cedit { display: flex; align-items: center; gap: 12px; margin: 4px 0 10px; } .cedit .ce { font-size: 48px; } .cedit b { display: block; font-size: 18px; } .cedit small { display: block; color: #7a6650; font-size: 13px; }
   .crow { display: flex; align-items: center; gap: 10px; } .crow input[type=range] { flex: 1; height: 34px; accent-color: #f4a92b; }
@@ -638,7 +639,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.35';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.36';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -836,17 +837,19 @@ function beginClock() {
 }
 
 function endDay() {
-  if (isFair()) {   // ярмарка закрылась — непроданное едет домой
+  let fairRes = null;
+  if (isFair()) {   // ярмарка закрылась — непроданное едет домой, показываем итоги
     const left = Object.entries(S.fair.stock).filter(([, n]) => n > 0);
     left.forEach(([c, n]) => S.inv[c] = (S.inv[c] || 0) + n); S.fair.stock = {}; S.fair.crates = [];
-    if (left.length) setTimeout(() => toast(`🎪 Ярмарка закрылась. Непроданное вернулось на склад: ${left.map(([c, n]) => n + ' ' + GOODS[c].e).join(', ')}`), 1500);
+    fairRes = { ...(S.fair.log?.d === S.day ? S.fair.log : fairLogNew()), left };
   }
   const waiting = visitors.filter(v => v.state !== 'leaving');
   S.stats.missed += waiting.length + (S.toSpawn - S.spawned);
   waiting.forEach(v => leave(v, null));
   S.night = true;
   if (S.up.hay && cows() && cowFoodStock() >= feedPerCow()) setTimeout(() => { if (S.night && cowsFedTomorrow() < cows()) { feedCows('hay'); refreshSheet(); } }, 900);   // сеновал кормит сам
-  save(); renderUI(); openNight(true);
+  save(); renderUI();
+  if (fairRes) openFairResult(fairRes); else openNight(true);
 }
 
 // ---------- Покупатели ----------
@@ -930,6 +933,7 @@ function sell(v) {
   const money = v.qty * unitPrice(v.crop) + tip;
   S.coins += money; S.stats.earned += money; S.stats.served++; S.life.earned += money; S.life.served++;
   for (const o of [S.stats, S.life]) { o.sold ??= {}; o.sold[v.crop] = (o.sold[v.crop] || 0) + money; }
+  if (fairOn()) { const L = fairLog(); L.money += money; L.served++; const q = L.sold[v.crop] ??= { n: 0, m: 0 }; q.n += v.qty; q.m += money; }
   if (GOODS[v.crop].sp) {   // продаём самую маленькую находку — лучшая остаётся для конкурса
     const list = S.special.map((x, i) => ({ ...x, i })).filter(x => x.k === GOODS[v.crop].sp).sort((a, b) => a.q - b.q);
     if (list[0]) S.special.splice(list[0].i, 1);
@@ -1782,11 +1786,11 @@ function updateHelper(h, dt) {
   h.think = 0.5;
   if (isRest() && !S.night) {   // воскресенье: станции не трогаем, команда отдыхает (у дома, а в пикник — у пледа); в понедельник — снова за работу
     const pic = S.picnic === S.day, C = pic ? PICNIC : REST.idle;
-    const spots = [[1, 0], [-1, 0], [0, 1], [1, 1], [-1, 1], [2, 0]], [dx, dy] = spots[h.id % spots.length];
+    const spots = pic ? PIC_SPOTS.map(q => [q.dx, q.dy]) : [[1, 0], [-1, 0], [0, 1], [1, 1], [-1, 1], [2, 0]], [dx, dy] = spots[h.id % spots.length];
     let tx = C.x + dx, ty = C.y + dy; if (!walkable(tx, ty)) { tx = C.x; ty = C.y + 1; }
     if (!walkable(tx, ty)) { tx = C.x; ty = C.y; }
     if (Math.floor(h.x) !== tx || Math.floor(h.y) !== ty) h.path = findPath(Math.floor(h.x), Math.floor(h.y), tx, ty) || [];
-    else h.flip = h.x > C.x + .5;
+    else h.flip = pic && PIC_SPOTS[h.id % 6].pose === 'talk' ? PIC_SPOTS[h.id % 6].face < 0 : h.x > C.x + .5;
     return;
   }
   const hx = Math.floor(h.x), hy = Math.floor(h.y), stall = fairOn() ? FAIR_HELP : STATIONS.stall.idle;
@@ -2525,7 +2529,7 @@ function draw(t) {
   S.plots.forEach((p, i) => { if (p.crop) { const s = PLOT_SLOTS[i]; list.push({ z: s.x + s.y + 1, f: () => drawCrop(i, t) }); } });
   S.gh.forEach((p, i) => { if (p.crop) { const s = GH_SLOTS[i]; list.push({ z: s.x + s.y + 1, f: () => drawCrop(i, t, true) }); } });
   list.push({ z: P.x + P.y + 0.01, f: () => drawPerson(P, PLAYER_LOOK) });
-  for (const h of helpers) list.push({ z: h.x + h.y, f: () => { drawPerson(h, h.look); const c = iso(h.x, h.y); const cfg = S.helpers[h.id] || { stations: [] }, st = cfg.stations;
+  for (const h of helpers) list.push({ z: h.x + h.y, f: () => { const pose = picPose(h); if (pose) { drawHelperPose(h, pose, t); return; } drawPerson(h, h.look); const c = iso(h.x, h.y); const cfg = S.helpers[h.id] || { stations: [] }, st = cfg.stations;
     const fieldIco = !cfg.replant ? '🧺' : cfg.seed === 'same' ? '🔁' : CROP[cfg.seed]?.e || '🧺';   // только сбор — корзинка, посев — значок культуры
     const icons = isRest() && !S.night ? [S.picnic === S.day ? '🧺' : REST.ico] : st.length ? st.map(k => k === 'field' ? (!cfg.zones.length ? '❓' : fieldIco) : k === 'gh' && cfg.ghReplant && cfg.ghSeed !== 'same' ? CROP[cfg.ghSeed].e : STATIONS[k].ico) : [REST.ico];
     if (h.broke) icons.push('💰');
@@ -2753,10 +2757,23 @@ function drawFairGround() {
   { const A = lift(ax0, ay, 50), B = lift(ax1, ay, 50); for (let j = 0; j < 12; j++) { const P0 = mix(A, B, j / 12), P1 = mix(A, B, (j + 1) / 12); gface([P0, P1, { x: (P0.x + P1.x) / 2, y: (P0.y + P1.y) / 2 + 7 }], LIGHT_COLORS[j % 4], darken(LIGHT_COLORS[j % 4], .85), INK, .7); } }
 
 }
+function fairLogNew() { return { d: S.day, money: 0, served: 0, sold: {}, rv: [0, 0, 0], out: [] }; }
+function fairLog() { if (S.fair.log?.d !== S.day) S.fair.log = fairLogNew(); return S.fair.log; }
+function openFairResult(r) {
+  const sold = Object.entries(r.sold).sort((a, b) => b[1].m - a[1].m), all = [{ name: 'Твоя ферма', m: r.money, me: true }, ...RIVALS_DEF.map((x, i) => ({ name: x.name, m: r.rv[i] || 0 }))].sort((a, b) => b.m - a.m);
+  let h = `<h2>🎪 Итоги ярмарки</h2><div class="summary" style="font-size:16px">Заработано на ярмарке: <b>${r.money}💰</b> · покупателей: <b>${r.served}</b></div>`;
+  h += `<h3 style="margin:10px 0 4px">Что продали</h3>` + (sold.length ? sold.map(([g, q]) => `<div class="fres"><span>${GOODS[g].e} ${GOODS[g].name}</span><span>${q.n} шт</span><b>${q.m}💰</b></div>`).join('') : '<div style="color:#7a6650">Ничего — в следующий раз собери ящики заранее</div>');
+  if (r.left.length) h += `<div class="fres" style="color:#7a6650"><span>↩️ Вернулось на склад</span><span style="flex:2;text-align:right">${r.left.map(([c, n]) => n + ' ' + GOODS[c].e).join('  ')}</span></div>`;
+  h += `<h3 style="margin:12px 0 4px">Кто сколько наторговал</h3>` + all.map((x, k) => `<div class="fres"${x.me ? ' style="font-weight:800;color:#2f6b2a"' : ''}><span>${['🥇', '🥈', '🥉', '4.'][k]} ${x.name}</span><b>${x.m}💰</b></div>`).join('');
+  if (r.out.length) h += `<div style="font-size:13px;color:#7a6650;margin-top:6px">У соседей кончилось: ${r.out.map(o => `${GOODS[o.g].e} у «${RIVALS_DEF[o.i].name}»`).join(', ')}</div>`;
+  h += `<button class="wide" style="width:100%;margin-top:14px" onclick="openNight(true)">🌙 Дальше</button>`;
+  $('sheet').dataset.view = 'fairres'; $('sheet').innerHTML = h; $('overlay').classList.add('show');
+}
 function rivalSale(i, g) {   // покупатель ушёл к соседу: идёт к его ларьку, стоит у прилавка и уходит
   const x = rivals()[i], B = FAIR_STALLS.find(t => t.r === i);
   const q = Math.min(x.stock[g], 1 + Math.floor(Math.random() * 3));
   x.stock[g] -= q;
+  { const L = fairLog(); L.rv[i] = (L.rv[i] || 0) + q * x.price[g]; if (!x.stock[g]) L.out.push({ i, g }); }
   if (!x.stock[g]) setTimeout(() => toast(`😮 У «${RIVALS_DEF[i].name}» кончилось: ${GOODS[g].e} ${GOODS[g].name.toLowerCase()}`), 400);
   const fromLeft = Math.random() < .5, ry = ROAD + 1.25, ent = pick(FAIR_ENTR), cx = (B.x0 + B.x1) / 2 + (Math.random() - .5) * .8, fy = B.y0 + 2.15;
   const shirt = pick(SHIRTS), lane = fy < 26 ? LANE_A : LANE_B, cross = CROSS[0];
@@ -2824,6 +2841,12 @@ function drawPicnic() {   // плед с корзинкой у пруда в д�
   shape(pts); ctx.fillStyle = '#fff4e6'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1; ctx.stroke();
   for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) if ((i + j) % 2 === 0) { shape([iso(x + i * .225, y + j * .2), iso(x + (i + 1) * .225, y + j * .2), iso(x + (i + 1) * .225, y + (j + 1) * .2), iso(x + i * .225, y + (j + 1) * .2)]); ctx.fillStyle = '#e05a4a'; ctx.fill(); }
   const c = iso(x + .55, y + .35); emoji('🧺', c.x, c.y - 6, 14); const d = iso(x + .25, y + .55); emoji('🍉', d.x, d.y - 3, 10);
+  PIC_SPOTS.slice(0, S.up.helper || 0).forEach((q, k) => {   // свои коврики у тех, кто сидит и лежит
+    if (q.pose === 'talk') return;
+    const mx = PICNIC.x + q.dx + .15, my = PICNIC.y + q.dy + .15, col = ['#6cb4e8', '#f2a6c4', '#9ad67a', '#f0c24a'][k % 4];
+    shape([iso(mx, my), iso(mx + .7, my), iso(mx + .7, my + .7), iso(mx, my + .7)]); ctx.fillStyle = col; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1; ctx.stroke();
+    for (let j = 1; j < 4; j++) seg(iso(mx + j * .175, my), iso(mx + j * .175, my + .7), 'rgba(255,255,255,.55)', 1.2);
+  });
 }
 function drawPaths() {   // вторым проходом — чтобы кромку не перекрыли соседние клетки
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const g = ground[y][x]; if (pathLike(g)) pathDeco(x, y, iso(x + .5, y + .5), g, hash(x, y)); }
@@ -4382,7 +4405,27 @@ function openSunday() {
     <button class="wide alt" style="width:100%;margin-top:10px" onclick="closeNight()">🌾 Заняться фермой</button>`;
   $('sheet').dataset.view = 'sunday'; $('sheet').innerHTML = h; $('overlay').classList.add('show');
 }
-const PICNIC = at('pond', 8, 10);   // плед у пруда
+const PICNIC = at('pond', 8, 10);
+// на пикнике у каждого своё занятие: сидит или лежит на своём коврике, двое болтают у пруда
+const PIC_SPOTS = [{ dx: -1, dy: 0, pose: 'sit' }, { dx: 1, dy: 1, pose: 'lie' }, { dx: 4, dy: 0, pose: 'talk', face: 1 }, { dx: 5, dy: 0, pose: 'talk', face: -1 }, { dx: -1, dy: 1, pose: 'sit' }, { dx: -2, dy: 0, pose: 'lie' }];
+const picPose = h => { if (S.picnic !== S.day || S.night || h.path.length || h.moving) return null; const q = PIC_SPOTS[h.id % 6];
+  return Math.floor(h.x) === PICNIC.x + q.dx && Math.floor(h.y) === PICNIC.y + q.dy ? q.pose : null; };
+function drawHelperPose(h, pose, t) {
+  const c = iso(h.x, h.y);
+  if (pose === 'lie') {   // лежит на спине, руки за головой
+    ctx.save(); ctx.translate(c.x, c.y - 2); ctx.scale(1, .55); ctx.rotate(h.id % 2 ? -1.45 : 1.45); ctx.translate(-c.x, -c.y);
+    drawPerson({ ...h, moving: false }, h.look); ctx.restore();
+    if (Math.sin(t * 1.3 + h.id) > .3) emoji('💤', c.x + 14, c.y - 22 - (t * 6 % 6), 10);
+  } else if (pose === 'sit') {   // сидит, подогнув ноги
+    ctx.save(); ctx.beginPath(); ctx.rect(c.x - 30, c.y - 90, 60, 86); ctx.clip();   // ноги «под» собой — прячем нижние 6 px
+    ctx.translate(0, 6); drawPerson({ ...h, moving: false }, h.look); ctx.restore();
+    ctx.fillStyle = h.look.pants; ctx.beginPath(); ctx.ellipse(c.x + (h.flip ? -5 : 5), c.y - 3, 7, 3, 0, 0, 7); ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke();   // колени
+  } else {
+    drawPerson({ ...h, moving: false }, h.look);
+    const q = PIC_SPOTS[h.id % 6], my = Math.floor(t / 2.2) % 2 === (q.face > 0 ? 0 : 1);   // болтают по очереди
+    if (my) { rr(c.x - 11, c.y - 70, 22, 16, 8, 'rgba(255,253,246,.95)'); emoji(['💬', '😄', '🍉', '☀️'][Math.floor(t / 4.4 + h.id) % 4], c.x, c.y - 62, 11); }
+  }
+}   // плед у пруда
 function goFair() {   // фермер идёт в шатёр фермы на ярмарке; уже там — выбор товаров
   if (!fairOn()) { openTrophies(); return; }
   if (Math.floor(P.x) === FAIR_SELL.x && Math.floor(P.y) === FAIR_SELL.y && !path.length) { openFairPack(); return; }
