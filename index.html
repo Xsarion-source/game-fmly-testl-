@@ -34,8 +34,8 @@
   #menuBtn { font-size: 22px; font-weight: 900; }
   .hudrow { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 700; }
   #coins { cursor: pointer; pointer-events: auto; }
-  #fairBtn { pointer-events: auto; margin-top: 6px; padding: 5px 12px; border-radius: 999px; font-size: 14px; font-weight: 800; background: linear-gradient(#fff3c4, #ffe28f); border: 1.5px solid #f0c24a; color: #6b4a1a; box-shadow: 0 2px 0 #dba93c; }
-  #fairBtn.hot { animation: pulse 1.6s infinite; background: linear-gradient(#ffd34d, #f4a92b); }
+  #fairBtn { pointer-events: auto; margin-top: 4px; padding: 2px 9px; border-radius: 999px; font-size: 13px; font-weight: 800; background: rgba(255,248,231,.88); border: none; color: var(--ink); box-shadow: 0 1px 0 rgba(0,0,0,.15); }
+  #fairBtn.hot { box-shadow: inset 0 0 0 2px #f4a92b; }
   .ebar { display: flex; align-items: center; gap: 6px; font-size: 13px; margin: 3px 0; }
   .ebar .el { flex: 0 0 38%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ebar .et { flex: 1; height: 10px; background: #efe3c8; border-radius: 5px; overflow: hidden; }
@@ -101,6 +101,10 @@
   button.wide { flex: 1; }
   button.alt { background: #e9dcbc; }
 
+  #infoBox { position: fixed; inset: 0; z-index: 30; display: none; align-items: center; justify-content: center; background: rgba(10,15,35,.35); padding: 24px; }
+  #infoBox.show { display: flex; }
+  #infoBox > div { background: var(--panel); border-radius: 18px; padding: 16px; max-width: 360px; width: 100%; box-shadow: 0 10px 30px rgba(0,0,0,.3); font-size: 15px; line-height: 1.45; }
+  #infoText h3 { margin: 0 0 6px; font-size: 18px; }
   #overlay { position: fixed; inset: 0; background: rgba(10,15,35,.55); display: none; align-items: flex-end; justify-content: center; z-index: 10; }
   #overlay.show { display: flex; }
   #sheet { width: 100%; max-width: 640px; max-height: 86%; overflow-y: auto; background: var(--panel); border-radius: 18px 18px 0 0;
@@ -227,6 +231,7 @@
 
 <div id="overlay"><div id="sheet"></div></div>
 <div id="toast"></div>
+<div id="infoBox" onclick="if (event.target === this) closeInfo()"><div><div id="infoText"></div><button class="wide" style="width:100%;margin-top:12px" onclick="closeInfo()">ОК</button></div></div>
 
 <script>
 // ================== ДАННЫЕ ==================
@@ -604,7 +609,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.22';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.23';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3883,7 +3888,7 @@ function renderUI() {
   $('inv').innerHTML = items.length ? items.join('') : '<span style="opacity:.75">Склад пуст</span>';
   { const d = (5 - cal().dow + 7) % 7, used = cratesUsed(), fb = $('fairBtn');   // кнопка ярмарки: когда и сколько ящиков собрано
     const when = d === 0 ? (S.night ? 'через неделю' : 'сегодня!') : d === 1 ? 'завтра' : `через ${d} ${d < 5 ? 'дня' : 'дней'}`;
-    fb.textContent = `🎪 Ярмарка ${when} · 📦 ${used}/${fairCrates()}`;
+    fb.textContent = `🎪 ${d === 0 ? (S.night ? '7 дн.' : 'сегодня') : d === 1 ? 'завтра' : d + ' дн.'}`; fb.title = `Ярмарка ${when} · ящиков ${used} из ${fairCrates()}`;
     fb.classList.toggle('hot', !used && (d === 1 || d === 2)); }   // пятница-четверг, а ящики пустые — мигает
   const s = $('seeds'); s.innerHTML = '';
   for (const id of S.unlocked) {
@@ -4457,7 +4462,7 @@ function openFairPack(sel) {
     }
     h += `</div>`;
   }
-  h += `<div class="fphead"><b>📦 ${used} из ${tot} ящиков</b><div class="fpprice" onclick="toast('🏅 Престиж: ${prestigePts()}. Очки — кубки 🥇3 🥈2 🥉1 и уровни уюта 🌷. Каждое очко — ещё +3% на ярмарке (до +50%)')">🏅 Цены <b>+${pct}%</b> ⓘ</div></div>`;
+  h += `<div class="fphead"><b>📦 ${used} из ${tot} ящиков</b><div class="fpprice" onclick="prestigeInfo()">🏅 Цены <b>+${pct}%</b> ⓘ</div></div>`;
   h += `<div class="row" style="margin-top:8px">${!lock && used ? `<button class="wide alt" onclick="packFair(null)">↩️ Всё на склад</button>` : ''}<button class="wide" onclick="save(); S.night ? openNight(false) : closeNight()">Готово</button></div>`;
   const top = $('sheet').dataset.view === 'fairpack' ? $('sheet').scrollTop : 0;
   $('sheet').dataset.view = 'fairpack'; $('sheet').innerHTML = h; $('overlay').classList.add('show'); $('sheet').scrollTop = top;
@@ -4534,6 +4539,13 @@ function resetGame(btn) {
 }
 
 let toastT;
+// окно-пояснение по центру с кнопкой ОК (для «подробнее»), простые подсказки — всплывающие
+function infoBox(html) { $('infoText').innerHTML = html; $('infoBox').classList.add('show'); }
+function closeInfo() { $('infoBox').classList.remove('show'); }
+function prestigeInfo() {
+  const n = prestigePts(), pct = Math.round((fairMult() - 1) * 100);
+  infoBox(`<h3>🏅 Престиж фермы: ${n}</h3>На ярмарке цены выше на <b>${pct}%</b>.<br><br>Очки престижа дают:<br>🥇 золотой кубок — 3<br>🥈 серебряный — 2<br>🥉 бронзовый — 1<br>🌷 каждый уровень уюта — 1<br><br>Каждое очко — ещё <b>+3%</b> к ценам на ярмарке (всего до +50%).`);
+}
 // подсказка висит тем дольше, чем она длиннее (≈ время прочитать), тап — закрыть сразу
 function toast(msg) {
   const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT);
