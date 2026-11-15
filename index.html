@@ -34,6 +34,8 @@
   #menuBtn { font-size: 22px; font-weight: 900; }
   .hudrow { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 700; }
   #coins { cursor: pointer; pointer-events: auto; }
+  #fairBtn { pointer-events: auto; margin-top: 6px; padding: 5px 12px; border-radius: 999px; font-size: 14px; font-weight: 800; background: linear-gradient(#fff3c4, #ffe28f); border: 1.5px solid #f0c24a; color: #6b4a1a; box-shadow: 0 2px 0 #dba93c; }
+  #fairBtn.hot { animation: pulse 1.6s infinite; background: linear-gradient(#ffd34d, #f4a92b); }
   .ebar { display: flex; align-items: center; gap: 6px; font-size: 13px; margin: 3px 0; }
   .ebar .el { flex: 0 0 38%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ebar .et { flex: 1; height: 10px; background: #efe3c8; border-radius: 5px; overflow: hidden; }
@@ -184,6 +186,7 @@
         <div class="hr"><span class="pill" id="coins">💰 0</span><button class="round" id="menuBtn" title="Меню">☰</button></div>
       </div>
       <div id="inv" onclick="openStall()"></div>
+      <button id="fairBtn" onclick="openFairPack()"></button>
     </div>
     <div id="seeds"></div>
     <div id="actions">
@@ -572,7 +575,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.17';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.18';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3851,6 +3854,10 @@ function renderUI() {
   const fs = Object.keys(S.fair.stock).filter(c => S.fair.stock[c] > 0);
   if (fs.length) items.unshift(`<span class="sp">🎪 ${fs.map(c => GOODS[c].e + S.fair.stock[c]).join(' ')}</span>`);   // собрано на ярмарку
   $('inv').innerHTML = items.length ? items.join('') : '<span style="opacity:.75">Склад пуст</span>';
+  { const d = (5 - cal().dow + 7) % 7, used = cratesUsed(), fb = $('fairBtn');   // кнопка ярмарки: когда и сколько ящиков собрано
+    const when = d === 0 ? (S.night ? 'через неделю' : 'сегодня!') : d === 1 ? 'завтра' : `через ${d} ${d < 5 ? 'дня' : 'дней'}`;
+    fb.textContent = `🎪 Ярмарка ${when} · 📦 ${used}/${fairCrates()}`;
+    fb.classList.toggle('hot', !used && (d === 1 || d === 2)); }   // пятница-четверг, а ящики пустые — мигает
   const s = $('seeds'); s.innerHTML = '';
   for (const id of S.unlocked) {
     const c = CROP[id], d = document.createElement('div');
