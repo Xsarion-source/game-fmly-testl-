@@ -639,7 +639,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.39';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.40';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1431,7 +1431,8 @@ function buyUpgrade(key) {
     hay: '🟨 Сеновал построен — каждую ночь сам кормит коров со склада',
     pasture: `🐄 Пастбище больше — места для ${3 + 2 * S.up.pasture} коров. Покупай коров в «Коровнике»`,
     fert: '🧪 Мешки удобрений у поля', sign: '🪧 Новая вывеска над лотком', bench: '🪑 Скамейка у очереди',
-  }[key];
+    fairstall: `🎪 Новый лоток на ярмарке — теперь ${fairCrates()} ящиков товара. Собирай их до субботы кнопкой 🎪`,
+  }[key] || `${u.ico} ${u.name} — готово!`;
   closeNight();
   focusOn(spot.x + .5, spot.y + .5);
   addFloat(spot.x + .5, spot.y + .5, '✨');
