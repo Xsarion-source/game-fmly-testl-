@@ -103,6 +103,10 @@
            padding: 14px 14px calc(14px + env(safe-area-inset-bottom)); animation: up .3s; }
   #sheet h2 { margin: 0 0 6px; font-size: 20px; }
   .summary { background: #f0e5cb; border-radius: 10px; padding: 8px 10px; font-size: 14px; margin-bottom: 10px; line-height: 1.5; }
+  .tabs { position: sticky; top: -14px; z-index: 2; display: flex; gap: 6px; margin: 12px -14px 4px; padding: 8px 14px; background: var(--panel); }
+  .tabs button { flex: 1; padding: 9px 4px; border-radius: 12px; border: 1.5px solid #ecdcb8; background: #f3e8cf; color: #6b5440; font-weight: 800; font-size: 14px; box-shadow: none; position: relative; }
+  .tabs button.on { background: #fff; color: var(--ink); border-color: #f0c24a; box-shadow: 0 2px 0 #dba93c; }
+  .tabs .n { position: absolute; top: -7px; right: -4px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: var(--accent); color: #fff; font-size: 12px; line-height: 20px; }
   .up { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px dashed var(--line); }
   .up .ico { font-size: 28px; width: 36px; text-align: center; }
   .up .txt { flex: 1; font-size: 14px; }
@@ -503,7 +507,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-15.5';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-15.6';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3788,29 +3792,49 @@ function openNight(withSummary) {
     h += `<h3 style="margin:10px 0 0">🐄 Коровник${S.helpers.some(c => c.feed && c.stations.includes('barn')) ? ' <small style="font-weight:400;color:#7a6650">— помощник кормит сам</small>' : ''}</h3><div class="up" data-why="${fed >= cows() ? '🐄 Коровы уже накормлены на завтра' : `Не хватает корма: нужно ${feedPerCow()} 🌻 или 🌾 на корову`}"><div class="ico">🐄</div><div class="txt"><b>Покормить коров на завтра</b><small>${status}</small></div>
       <button ${fed >= cows() || cowFoodStock() < feedPerCow() ? 'disabled' : ''} onclick="feedCows(); openNight(false)">Покормить</button></div>`;
   }
-  h += `<h3 style="margin:10px 0 0">Улучшения фермы</h3><small style="color:#7a6650">Можно и прямо на ферме: закрой меню и тапни на замочек или плашку ⬆ с ценой</small>`;
-  for (const [key, u] of Object.entries(UPGRADES)) {
-    const l = S.up[key], maxed = l >= u.max, cost = u.cost(l), lock = upLocked(key);
-    if (lock) {   // ещё не открыто — тайна, как у новых культур
-      h += `<div class="up" data-why="🔒 ${u.needText}"><div class="ico">❓</div><div class="txt"><b>???</b><small>${u.needText}</small></div><button disabled>???</button></div>`;
-      continue;
-    }
-    h += `<div class="up" data-why="${maxed ? (key === 'coop' && l < 8 ? 'Вольер полон — расширь его' : key === 'barn' && l < 7 ? 'Пастбище полное — расширь его' : u.max === 1 ? 'Это у вас уже есть' : 'Улучшено на максимум') : 'Недостаточно средств'}"><div class="ico">${u.ico}</div><div class="txt"><b>${u.name} <small>ур. ${l}/${u.max}</small></b><small>${maxed ? 'Максимум' : u.desc(l)}</small></div>
-      <button ${maxed || S.coins < cost ? 'disabled' : ''} onclick="buyUpgrade('${key}')">${maxed ? '✔' : cost + '💰'}</button></div>`;
-  }
-  h += `<h3 style="margin:14px 0 0">Новые культуры</h3>`;
-  for (const c of CROPS) {
-    if (S.unlocked.includes(c.id)) continue;
-    const early = S.day + 1 < c.unlockDay;
-    h += `<div class="up" data-why="${early ? `Откроется после ${c.unlockDay - 1}-го дня` : 'Недостаточно средств'}"><div class="ico">${early ? '❓' : c.e}</div><div class="txt"><b>${early ? '???' : c.name}</b>
-      <small>${early ? `Откроется после ${c.unlockDay - 1}-го дня` : `Семена ${c.seed}💰 · продаётся за ${c.price}💰 · ${GH_CROPS.includes(c.id) ? `🏡 только в теплице: растёт ${c.grow * GH_SLOW}с, гроздь ×${GH_YIELD}` : `растёт ${c.grow}с`}`}</small></div>
-      <button ${early || S.coins < c.unlockCost ? 'disabled' : ''} onclick="unlockCrop('${c.id}')">${c.unlockCost}💰</button></div>`;
-  }
+  h += shopTabs();
   h += `<div class="row" style="margin-top:14px"><button class="wide alt" onclick="closeNight()">🌾 К грядкам</button>
         <button class="wide" style="background:#ffd34d" onclick="morning()">☀️ Начать день ${S.day + 1}</button></div>
 `;
   $('sheet').dataset.view = withSummary ? 'night-sum' : 'night'; $('sheet').innerHTML = h;
   $('overlay').classList.add('show');
+}
+// Магазин ночью — три вкладки; в каждой сначала то, что можно купить, потом дорогое, потом тайны «???», в конце — купленное
+const FARM_UPS = ['land', 'fert', 'ads', 'sign', 'bench', 'helper', 'cozy'];
+let upTab = 'farm';
+function shopRows() {
+  const rows = { farm: [], crops: [], build: [] };
+  Object.entries(UPGRADES).forEach(([key, u], i) => {
+    const tab = FARM_UPS.includes(key) ? 'farm' : 'build';
+    const l = S.up[key], maxed = l >= u.max, cost = u.cost(l), lock = upLocked(key);
+    if (lock) { rows[tab].push({ rank: 2, i, h: `<div class="up" data-why="🔒 ${u.needText}"><div class="ico">❓</div><div class="txt"><b>???</b><small>${u.needText}</small></div><button disabled>???</button></div>` }); return; }
+    rows[tab].push({ rank: maxed ? 3 : S.coins >= cost ? 0 : 1, cost, i, h: `<div class="up" data-why="${maxed ? (key === 'coop' && l < 8 ? 'Вольер полон — расширь его' : key === 'barn' && l < 7 ? 'Пастбище полное — расширь его' : u.max === 1 ? 'Это у вас уже есть' : 'Улучшено на максимум') : 'Недостаточно средств'}"><div class="ico">${u.ico}</div><div class="txt"><b>${u.name} <small>ур. ${l}/${u.max}</small></b><small>${maxed ? 'Максимум' : u.desc(l)}</small></div>
+      <button ${maxed || S.coins < cost ? 'disabled' : ''} onclick="buyUpgrade('${key}')">${maxed ? '✔' : cost + '💰'}</button></div>` });
+  });
+  CROPS.forEach((c, i) => {
+    if (S.unlocked.includes(c.id)) return;
+    const early = S.day + 1 < c.unlockDay;
+    rows.crops.push({ rank: early ? 2 : S.coins >= c.unlockCost ? 0 : 1, cost: c.unlockCost, i, h: `<div class="up" data-why="${early ? `Откроется после ${c.unlockDay - 1}-го дня` : 'Недостаточно средств'}"><div class="ico">${early ? '❓' : c.e}</div><div class="txt"><b>${early ? '???' : c.name}</b>
+      <small>${early ? `Откроется после ${c.unlockDay - 1}-го дня` : `Семена ${c.seed}💰 · продаётся за ${c.price}💰 · ${GH_CROPS.includes(c.id) ? `🏡 только в теплице: растёт ${c.grow * GH_SLOW}с, гроздь ×${GH_YIELD}` : `растёт ${c.grow}с`}`}</small></div>
+      <button ${early || S.coins < c.unlockCost ? 'disabled' : ''} onclick="unlockCrop('${c.id}')">${c.unlockCost}💰</button></div>` });
+  });
+  for (const k in rows) rows[k].sort((a, b) => a.rank - b.rank || (a.rank < 2 ? a.cost - b.cost : 0) || a.i - b.i);
+  return rows;
+}
+function shopTabs() {
+  const rows = shopRows(), names = { farm: '🚜 Ферма', crops: '🌱 Культуры', build: '🏠 Здания' };
+  let h = `<div id="shopAnchor"></div><div class="tabs" id="shopTabs">` + Object.keys(names).map(t => {
+    const n = rows[t].filter(r => r.rank === 0).length;
+    return `<button class="${t === upTab ? 'on' : ''}" onclick="setUpTab('${t}')">${names[t]}${n ? `<span class="n">${n}</span>` : ''}</button>`;
+  }).join('') + `</div>`;
+  if (upTab === 'farm') h += `<small style="color:#7a6650">Можно и прямо на ферме: закрой меню и тапни на замочек или плашку ⬆ с ценой</small>`;
+  if (upTab === 'crops' && !rows.crops.length) h += `<div class="summary">🎉 Все культуры уже открыты</div>`;
+  return h + rows[upTab].map(r => r.h).join('');
+}
+function setUpTab(t) {
+  upTab = t; const sh = $('sheet'), v = sh.dataset.view, top = sh.scrollTop;
+  openNight(v === 'night-sum');
+  const an = $('shopAnchor'); if (an) sh.scrollTop = Math.min(top, sh.scrollTop + an.getBoundingClientRect().top - sh.getBoundingClientRect().top);
 }
 // меню ночи или улучшения открыто, а помощник что-то поменял (покормил) — перерисовать, сохранив прокрутку
 function refreshSheet() {
