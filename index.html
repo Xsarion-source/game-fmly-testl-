@@ -390,6 +390,7 @@ const UPGRADES = {
   fert:   { name: 'Удобрения',         ico: '🧪', desc: l => `Рост быстрее (+${l*20}% → +${(l+1)*20}%)`, cost: l => 50 + l*60, max: 5 },
   sign:   { name: 'Красивая вывеска',  ico: '🪧', desc: l => `Цены выше (+${l*10}% → +${(l+1)*10}%)`, cost: l => 60 + l*70, max: 6 },
   helper: { name: 'Помощник',         ico: '🧑‍🌾', desc: l => `Работает на одной или нескольких станциях: поле, сад, курятник, коровник, лавка (помощников: ${l} → ${l+1})`, cost: l => [120, 280, 520, 800, 1150, 1600, 2100, 2700, 3400, 4200][l], max: 10 },
+  fairbake:  { name: 'Хлебный лоток',     ico: '🥐', desc: l => `Свой лоток для выпечки на ярмарке: ещё ${BAKE_CRATES} ящика — только под 🍞🥧🍕🎂`, cost: l => [2500][l], max: 1, need: () => S.up.bakery >= 1, needText: 'Откроется, когда пристроишь пекарню 🥖' },
   fairstall: { name: 'Место на ярмарке', ico: '🎪', desc: l => `Ещё один лоток рядом с шатром фермы: +${CRATES_PER} ящика товара на ярмарку (сейчас ${fairCrates()})`, cost: l => [600, 1500][l], max: 2 },
   bench:  { name: 'Скамейка',          ico: '🪑', desc: l => `Покупатели ждут дольше (+5 сек)`, cost: l => 25 + l*30, max: 5 },
 };
@@ -456,6 +457,7 @@ function rivals() {
 const fairAnyStock = () => Object.keys(S.fair.stock).length > 0 || rivals().some(R => Object.values(R.stock).some(n => n > 0));
 // товары на ярмарку собирают заранее, в ящики: 1 ящик — один вид товара, до CRATE штук; в субботу дополнить нельзя
 const CRATE = 20, CRATES_PER = 4;
+const BAKE_CRATE0 = 12, BAKE_CRATES = 4;   // хлебный лоток: ящики 12–15, только для выпечки
 // престиж фермы: очки за кубки (🥇3 🥈2 🥉1) + уровни уюта → наценка на ярмарке
 const prestigePts = () => S.trophies.reduce((a, t) => a + (4 - t.p), 0) + (S.up.cozy || 0);
 const fairMult = () => 1 + Math.min(.5, .05 + prestigePts() * .03);
@@ -463,6 +465,8 @@ const PM = [.9, 1, 1.15], PM_NAME = ['Дешевле −10%', 'Обычная', 
 const myFairPrice = c => Math.round(sellPrice(c) * fairMult() * PM[(S.fair.pm?.[c] ?? 0) + 1]);   // своя цена на ярмарке: базовая × престиж × выбранная
 const unitPrice = c => fairOn() ? myFairPrice(c) : sellPrice(c);
 const fairCrates = () => CRATES_PER * (1 + (S.up.fairstall || 0));
+const bakeCrates = () => S.up.fairbake ? BAKE_CRATES : 0, allCrates = () => fairCrates() + bakeCrates();
+const isBakeCrate = i => i >= BAKE_CRATE0;
 const cratesUsed = () => S.fair.crates.filter(c => c && c.id && c.n > 0).length;
 function syncFair() {   // S.fair.stock — сумма по ящикам (из неё продаём и рисуем)
   S.fair.crates = S.fair.crates.map(c => c && c.id && c.n > 0 ? c : null);
@@ -634,7 +638,7 @@ S.life ??= { earned: 0, served: 0, harvested: 0, eggs: 0 };
 S.life.milk ??= 0; S.hist ??= []; S.life.flour ??= 0; S.life.cheese ??= 0;
 S.up.clear ??= 0; S.up.mill ??= 0; S.up.dairy ??= 0;
 S.up.house ??= 0; S.up.bakery ??= 0; S.up.cozy ??= 0;
-S.stallOff ??= []; S.picnic ??= 0; S.special ??= []; S.trophies ??= []; S.contestDay ??= 0; S.spOn ??= []; S.seenGoods ??= []; S.up.fairstall ??= 0; S.fair ??= { stock: {} }; S.fair.pm ??= {};
+S.stallOff ??= []; S.picnic ??= 0; S.special ??= []; S.trophies ??= []; S.contestDay ??= 0; S.spOn ??= []; S.seenGoods ??= []; S.up.fairstall ??= 0; S.up.fairbake ??= 0; S.fair ??= { stock: {} }; S.fair.pm ??= {};
 if (!S.fair.crates) { S.fair.crates = []; for (const [c, n0] of Object.entries(S.fair.stock || {})) for (let n = n0; n > 0; n -= CRATE) S.fair.crates.push({ id: c, n: Math.min(CRATE, n) }); }   // ящики — явным списком
 syncFair(); syncSpecial();   // особые находки и кубки конкурсов   // товары, снятые с продажи (копятся для заказов и производства)
 S.up.nests ??= 0; S.up.rooster ??= 0; S.up.yard ??= 0;
@@ -683,7 +687,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.46';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.47';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1567,6 +1571,7 @@ function buyUpgrade(key) {
     hay: '🟨 Сеновал построен — каждую ночь сам кормит коров со склада',
     pasture: `🐄 Пастбище больше — места для ${3 + 2 * S.up.pasture} коров. Покупай коров в «Коровнике»`,
     fert: '🧪 Мешки удобрений у поля', sign: '🪧 Новая вывеска над лотком', bench: '🪑 Скамейка у очереди',
+    fairbake: `🥐 Хлебный лоток на ярмарке — ещё ${BAKE_CRATES} ящика для выпечки. Собирай их до субботы кнопкой 🎪`,
     fairstall: `🎪 Новый лоток на ярмарке — теперь ${fairCrates()} ящиков товара. Собирай их до субботы кнопкой 🎪`,
   }[key] || `${u.ico} ${u.name} — готово!`;
   closeNight();
@@ -1583,7 +1588,7 @@ function upSpot(key) {
     land: PLOT_SLOTS[Math.min(S.plots.length, MAX_PLOTS - 1)], orchard: ORCHARD_SLOTS[Math.min(S.trees.length, 3)],
     coop: at('coop', 8, 10), nests: at('coop', 8.6, 9), rooster: at('coop', 6.6, 10.2), yard: at('coop', 9.4, 11), barn: at('barn', 14, 5), milker: at('barn', 16.4, 2.6), clover: at('barn', 15, 4), hay: at('barn', 13, 1.4), pasture: at('barn', 12.5, 6), clear: S.up.clear ? at('dairy', 18, 9) : at('mill', 18, 5), mill: at('mill', 18, 5), dairy: at('dairy', 17, 9), greenhouse: at('gh', 14, S.up.greenhouse ? 9 : 8), helper: at('home', 3, 3),
     house: at('home', 2, 2), bakery: at('home', 4, 3), trays: at('home', 4, 2), cozy: COZY_SPOTS[Math.min(l, 4)], ads: at('ads', 12, 10),
-    fert: at('fert', 12, 2 + Math.min(l, 4)), sign: at('stall', 4, 10), fairstall: { x: 21 + 2 * Math.min(l, 1), y: 23 }, bench: BENCHES[Math.min(l, BENCHES.length - 1)],
+    fert: at('fert', 12, 2 + Math.min(l, 4)), sign: at('stall', 4, 10), fairstall: { x: 21 + 2 * Math.min(l, 1), y: 23 }, fairbake: { x: 16, y: 28 }, bench: BENCHES[Math.min(l, BENCHES.length - 1)],
   }[key];
 }
 function upAt(x, y) {   // какое улучшение относится к клетке
@@ -2191,7 +2196,7 @@ function onTap(sx, sy) {
   if (cows() && hit('barn', 14, 1, 16, 3, 58)) { tapBarn(); return; }
   const fx = (wx / (TW / 2) + wy / (TH / 2)) / 2, fy = (wy / (TH / 2) - wx / (TW / 2)) / 2;
   const tx = Math.floor(fx), ty = Math.floor(fy);
-  if (fairOn() && tx >= 17 && tx <= 19 + 2 * (S.up.fairstall || 0) && ty >= 22 && ty <= 25) { goFair(); return; }   // лотки фермы
+  if (fairOn() && ((tx >= 17 && tx <= 19 + 2 * (S.up.fairstall || 0) && ty >= 22 && ty <= 25) || (S.up.fairbake && tx >= 15 && tx <= 17 && ty >= 27 && ty <= 28))) { goFair(); return; }   // лотки фермы
   if (tx >= 3 && tx <= 33 && ty >= 19 && ty <= 34) { openTrophies(); return; }   // ярмарка за дорогой
   if (tx < 0 || ty < 0 || tx >= W || ty >= H) return;
   if (S.night) { const k = upAtNight(tx, ty); if (k) { openUpgrade(k); return; } }
@@ -2766,13 +2771,15 @@ function drawWheel(t) {   // колесо обозрения — медленн�
   circle(hub.x, hub.y, 5, INK); circle(hub.x, hub.y, 3.4, '#ffd34d');
 }
 const WHEEL = { x: 21, y: 30.3 };
+const BREAD_BOOTH = { x0: 15.3, x1: 17.3, y0: 27.4, c: '#d9822b' };   // хлебный лоток фермы — напротив шатра
 const FAIR_OBJS = [
   ...FAIR_STALLS.map(B => ({ kind: 'fstall', B })),
-  { kind: 'booth', k: 0 }, { kind: 'booth', k: 1 }, { kind: 'booth', k: 2 }, { kind: 'wheel' },
-].map(o => ({ ...o, z: o.kind === 'fstall' ? (o.B.x0 + o.B.x1) / 2 + o.B.y0 + 1.65 : o.kind === 'booth' ? (BOOTHS[o.k].x0 + BOOTHS[o.k].x1) / 2 + 24.4 : WHEEL.x + WHEEL.y + .3 }));
+  { kind: 'booth', k: 0 }, { kind: 'booth', k: 1 }, { kind: 'booth', k: 2 }, { kind: 'wheel' }, { kind: 'bread', B: BREAD_BOOTH },
+].map(o => ({ ...o, z: o.kind === 'fstall' || o.kind === 'bread' ? (o.B.x0 + o.B.x1) / 2 + o.B.y0 + 1.65 : o.kind === 'booth' ? (BOOTHS[o.k].x0 + BOOTHS[o.k].x1) / 2 + 24.4 : WHEEL.x + WHEEL.y + .3 }));
 function fairDrawList(list, t) {
   for (const o of FAIR_OBJS) {
     if (o.kind === 'wheel') list.push({ z: o.z, f: () => drawWheel(t) });
+    else if (o.kind === 'bread') { if (S.up.fairbake) list.push({ z: o.z, f: () => { const g = S.fair.crates.slice(BAKE_CRATE0).filter(c => c && c.n > 0).map(c => GOODS[c.id].e).slice(0, 3); drawSprite(o, () => drawFairStall(BREAD_BOOTH, g, 'ХЛЕБ', '#8a4a1a'), g.join(), t); } }); }
     else if (o.kind === 'booth') { if (o.k <= (S.up.fairstall || 0)) list.push({ z: o.z, f: () => drawSprite(o, () => drawBooth(o.k), Object.keys(S.fair.stock).join(), t) }); }
     else list.push({ z: o.z, f: () => { const g = stallGoods(o.B), nm = o.B.r != null ? RIVALS_DEF[o.B.r].name.toUpperCase() : ''; drawSprite(o, () => drawFairStall(o.B, g, nm, '#7a3a1a'), g.join(), t); } });
   }
@@ -2857,6 +2864,11 @@ function drawFairPlaza() {
       const q = iso((x0 + x1) / 2, (y0 + y1) / 2); ctx.globalAlpha = .8; emoji('🔒', q.x, q.y - 3, 12); ctx.globalAlpha = 1;
     }
   });
+  if (S.up.bakery) {   // место под хлебный лоток
+    const B = BREAD_BOOTH, x0 = B.x0 - .15, x1 = B.x1 + .15, y0 = B.y0 - .15, y1 = B.y0 + 1.8;
+    if (S.up.fairbake) { shape([iso(x0, y0), iso(x1, y0), iso(x1, y1), iso(x0, y1)]); ctx.fillStyle = win ? '#cfc2ad' : '#c99a62'; ctx.fill(); ctx.strokeStyle = '#7a4a2a'; ctx.lineWidth = 1.4; ctx.stroke(); for (let py = y0 + .3; py < y1; py += .3) seg(iso(x0, py), iso(x1, py), 'rgba(110,65,30,.35)', 1); }
+    else { ctx.setLineDash([4, 4]); shape([iso(x0, y0), iso(x1, y0), iso(x1, y1), iso(x0, y1)]); ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 1.4; ctx.stroke(); ctx.setLineDash([]); const q = iso((x0 + x1) / 2, (y0 + y1) / 2); ctx.globalAlpha = .8; emoji('🔒', q.x, q.y - 3, 12); ctx.globalAlpha = 1; }
+  }
   // каменный круг под колесом обозрения
   const w = iso(WHEEL.x, WHEEL.y); ctx.beginPath(); ctx.ellipse(w.x, w.y, 52, 22, 0, 0, 7); ctx.fillStyle = win ? '#cdd3d6' : '#c4b49a'; ctx.fill(); ctx.strokeStyle = 'rgba(90,80,65,.5)'; ctx.lineWidth = 1.5; ctx.stroke();
   for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 2; circle(w.x + Math.cos(a) * 48, w.y + Math.sin(a) * 20, 2.6, win ? '#b8c0c3' : '#a8977a'); }
@@ -4171,7 +4183,7 @@ function renderUI() {
   $('inv').innerHTML = items.length ? items.join('') : '<span style="opacity:.75">Склад пуст</span>';
   { const d = (5 - cal().dow + 7) % 7, used = cratesUsed(), fb = $('fairBtn');   // кнопка ярмарки: когда и сколько ящиков собрано
     const when = d === 0 ? (S.night ? 'через неделю' : 'сегодня!') : d === 1 ? 'завтра' : `через ${d} ${d < 5 ? 'дня' : 'дней'}`;
-    fb.innerHTML = `<i class="glow"></i>🎪<small>${d === 0 ? (S.night ? '7 дн.' : 'сегодня') : d === 1 ? 'завтра' : d + ' дн.'}</small>`; fb.title = `Ярмарка ${when} · ящиков ${used} из ${fairCrates()}`;
+    fb.innerHTML = `<i class="glow"></i>🎪<small>${d === 0 ? (S.night ? '7 дн.' : 'сегодня') : d === 1 ? 'завтра' : d + ' дн.'}</small>`; fb.title = `Ярмарка ${when} · ящиков ${used} из ${allCrates()}`;
     fb.classList.toggle('hot', !used && (d === 1 || d === 2)); fb.classList.toggle('soon', d === 1 || d === 2 || (d === 0 && !S.night)); }   // светится за 2 дня и в сам день ярмарки; рамка — если ящики пустые
   const s = $('seeds'); s.innerHTML = '';
   for (const id of S.unlocked) {
@@ -4502,7 +4514,7 @@ function openNight(withSummary) {
   let h = `<h2>🌙 Ночь ${S.day}</h2>`;
   if (withSummary) {
     h += `<div class="summary">За день: заработано <b>${st.earned}💰</b><br>Обслужено: <b>${st.served}</b> · Ушли ни с чем: <b>${st.missed}</b><br>
-      ${isRest(S.day + 1) ? 'Завтра <b>воскресенье — выходной</b> 🧺 лавка закрыта' : `Завтра придёт ~<b>${visitorsPerDay(S.day + 1)}</b> покупателей${isFair(S.day + 1) ? ` — <b>ярмарка</b> 🎪<br>📦 Собрано ящиков: <b>${cratesUsed()} из ${fairCrates()}</b> — <a href="#" onclick="event.preventDefault();openFairPack()" style="color:#b0503a;font-weight:800">собрать товары</a><br>${contestReminder()}` : ''}`}</div>`;
+      ${isRest(S.day + 1) ? 'Завтра <b>воскресенье — выходной</b> 🧺 лавка закрыта' : `Завтра придёт ~<b>${visitorsPerDay(S.day + 1)}</b> покупателей${isFair(S.day + 1) ? ` — <b>ярмарка</b> 🎪<br>📦 Собрано ящиков: <b>${cratesUsed()} из ${allCrates()}</b> — <a href="#" onclick="event.preventDefault();openFairPack()" style="color:#b0503a;font-weight:800">собрать товары</a><br>${contestReminder()}` : ''}`}</div>`;
   }
   h += `<div style="font-weight:700;margin:6px 0 2px">У тебя: 💰 ${S.coins}</div>`;
   if (EMBED && CLOUD.state !== 'ok' && CLOUD.state !== 'wait' && S.day >= 2 && (S.codeDay || 0) < S.day)   // облака нет — Safari может стереть ферму
@@ -4529,7 +4541,7 @@ function openNight(withSummary) {
   $('overlay').classList.add('show');
 }
 // Магазин ночью — три вкладки; в каждой сначала то, что можно купить, потом дорогое, потом тайны «???», в конце — купленное
-const FARM_UPS = ['land', 'fert', 'ads', 'sign', 'bench', 'helper', 'cozy', 'fairstall'];
+const FARM_UPS = ['land', 'fert', 'ads', 'sign', 'bench', 'helper', 'cozy', 'fairstall', 'fairbake'];
 let upTab = 'farm';
 function shopRows() {
   const rows = { farm: [], crops: [], build: [] };
@@ -4719,7 +4731,7 @@ function openStall() {
   // в списке всё, что ферма умеет производить или когда-либо было на складе — даже если сейчас 0 шт.
   const known = Object.keys(GOODS).filter(id => !GOODS[id].sp && (S.inv[id] > 0 || S.stallOff.includes(id) || S.unlocked.includes(id) || has[id] || S.seenGoods.includes(id) || (S.life.sold || {})[id]));
   let h = `<h2>🏪 Прилавок</h2><div style="font-size:13px;color:#7a6650;margin:-2px 0 8px">Фермер и продавец продают только выставленное. Снятое копится на складе — для заказов, мельницы, сыроварни и пекарни. Менять можно в любой момент.</div>
-    <button class="wide" style="width:100%;margin-bottom:8px;background:#ffe28f" onclick="openFairPack()">🎪 Товары на ярмарку — ящиков ${cratesUsed()} из ${fairCrates()}${isFair(S.day + 1) || (isFair() && S.night) ? ' · ярмарка завтра!' : ''}</button>
+    <button class="wide" style="width:100%;margin-bottom:8px;background:#ffe28f" onclick="openFairPack()">🎪 Товары на ярмарку — ящиков ${cratesUsed()} из ${allCrates()}${isFair(S.day + 1) || (isFair() && S.night) ? ' · ярмарка завтра!' : ''}</button>
     <div class="row" style="margin-bottom:6px"><button class="wide alt" onclick="stallAll(true)">✔ Выставить всё</button><button class="wide alt" onclick="stallAll(false)">✖ Убрать всё</button></div>
     <div class="stallg">`;
   for (const id of known) {
@@ -4746,7 +4758,7 @@ function openFairPack(sel) {
   if (!lock) syncFair();
   if (sel !== undefined) crateSel = sel;
   if (lock && (crateSel == null || !S.fair.crates[crateSel])) crateSel = S.fair.crates.findIndex(c => c) >= 0 ? S.fair.crates.findIndex(c => c) : null;
-  else if (!lock && (crateSel == null || crateSel >= tot)) crateSel = Math.max(0, Math.min(tot - 1, S.fair.crates.findIndex(c => !c) < 0 ? (S.fair.crates.length < tot ? S.fair.crates.length : 0) : S.fair.crates.findIndex(c => !c)));
+  else if (!lock && (crateSel == null || (crateSel >= tot && !(isBakeCrate(crateSel) && crateSel < BAKE_CRATE0 + bakeCrates())))) crateSel = Math.max(0, Math.min(tot - 1, S.fair.crates.findIndex(c => !c) < 0 ? (S.fair.crates.length < tot ? S.fair.crates.length : 0) : S.fair.crates.findIndex(c => !c)));
   const used = cratesUsed(), when = days === 0 ? 'сегодня' : days === 1 ? 'завтра' : `через ${days} ${days < 5 ? 'дня' : 'дней'}`, pct = Math.round((fairMult() - 1) * 100);
   let h = `<h2>🎪 Ярмарка ${lock ? 'идёт!' : when}</h2><div class="fpinfo">${lock ? 'Пополнить ящики уже нельзя, но цену менять можно — тапни на ящик. Вечером непроданное вернётся на склад.'
     : `Выбери ящик и положи в него товар — до ${CRATE} шт. одного вида. Рядом торгуют соседи: покупатель идёт туда, где дешевле.`}</div><div class="cgrid">`;
@@ -4757,15 +4769,25 @@ function openFairPack(sel) {
       : `<button class="crate${on}" ${lock ? 'disabled' : `onclick="openFairPack(${i})"`}><span class="ce plus">＋</span><small>пустой</small></button>`;
   }
   h += `</div>`;
+  if (S.up.bakery) {   // хлебный лоток — свои ящики только под выпечку
+    h += `<div class="fpinfo" style="margin-top:-2px">🥐 <b>Хлебный лоток</b> — ящики только для выпечки</div><div class="cgrid">`;
+    if (!S.up.fairbake) h += `<button class="crate lockd" onclick="toast('🔒 Ночью: «Улучшения» → «Ферма» → 🥐 «Хлебный лоток»')"><span class="ce">🔒</span><small>купить лоток</small></button>`;
+    else for (let i = BAKE_CRATE0; i < BAKE_CRATE0 + BAKE_CRATES; i++) {
+      const c = S.fair.crates[i], on = i === crateSel ? ' sel' : '';
+      h += c ? `<button class="crate full${on}" onclick="openFairPack(${i})"><span class="ce">${GOODS[c.id].e}</span><b id="crB${i}">${c.n}<i>/${CRATE}</i></b></button>`
+        : `<button class="crate${on}" ${lock ? 'disabled' : `onclick="openFairPack(${i})"`}><span class="ce plus">＋</span><small>для выпечки</small></button>`;
+    }
+    h += `</div>`;
+  }
   if (lock && crateSel != null) {   // ярмарка идёт: товар не добавить, но цену поменять можно
     const c = S.fair.crates[crateSel];
-    h += `<div class="cpanel"><div class="cptitle">📦 Ящик ${crateSel + 1}: <b>${GOODS[c.id].e} ${GOODS[c.id].name}</b> — осталось ${c.n}</div>${priceBlock(c.id)}</div>`;
+    h += `<div class="cpanel"><div class="cptitle">📦 ${isBakeCrate(crateSel) ? 'Хлебный ящик' : `Ящик ${crateSel + 1}`}: <b>${GOODS[c.id].e} ${GOODS[c.id].name}</b> — осталось ${c.n}</div>${priceBlock(c.id)}</div>`;
   }
   if (!lock) {
-    const i = crateSel, c = S.fair.crates[i], ids = Object.keys(GOODS).filter(id => !GOODS[id].sp && ((S.inv[id] || 0) > 0 || c?.id === id));
-    h += `<div class="cpanel"><div class="cptitle">📦 Ящик ${i + 1}: ${c ? `<b>${GOODS[c.id].name}</b>` : 'выбери товар'}</div>`;
+    const i = crateSel, c = S.fair.crates[i], ids = Object.keys(GOODS).filter(id => !GOODS[id].sp && (!isBakeCrate(i) || BAKE[id]) && ((S.inv[id] || 0) > 0 || c?.id === id));
+    h += `<div class="cpanel"><div class="cptitle">📦 ${isBakeCrate(i) ? `Хлебный ящик ${i - BAKE_CRATE0 + 1}` : `Ящик ${i + 1}`}: ${c ? `<b>${GOODS[c.id].name}</b>` : 'выбери товар'}</div>`;
     h += ids.length ? `<div class="gchips">` + ids.map(id => `<button class="gchip${c?.id === id ? ' on' : ''}" onclick="fillCrate(${i},'${id}')"><span>${GOODS[id].e}</span><small id="gc_${id}">${S.inv[id] || 0}</small></button>`).join('') + `</div>`
-      : `<div class="summary">На складе пусто — сначала собери урожай.</div>`;
+      : `<div class="summary">${isBakeCrate(i) ? 'Выпечки на складе нет — испеки её в пекарне 🥖' : 'На складе пусто — сначала собери урожай.'}</div>`;
     if (c) {
       const max = Math.min(CRATE, c.n + (S.inv[c.id] || 0));
       h += `<div class="crow"><button class="alt" onclick="setCrate(${i}, S.fair.crates[${i}].n - 1)">−</button><input type="range" id="crRange" min="0" max="${max}" value="${c.n}" oninput="setCrate(${i}, +this.value)" onchange="save()"><button class="alt" onclick="setCrate(${i}, S.fair.crates[${i}].n + 1)">＋</button><b id="crNum">${c.n}</b></div>
@@ -4774,7 +4796,7 @@ function openFairPack(sel) {
     }
     h += `</div>`;
   }
-  h += `<div class="fphead"><b>📦 ${used} из ${tot} ящиков</b><div class="fpprice" onclick="prestigeInfo()">🏅 Цены <b>+${pct}%</b> ⓘ</div></div>`;
+  h += `<div class="fphead"><b>📦 ${used} из ${allCrates()} ящиков</b><div class="fpprice" onclick="prestigeInfo()">🏅 Цены <b>+${pct}%</b> ⓘ</div></div>`;
   h += `<div class="row" style="margin-top:8px">${!lock && used ? `<button class="wide alt" onclick="packFair(null)">↩️ Всё на склад</button>` : ''}<button class="wide" onclick="save(); S.night ? openNight(false) : closeNight()">Готово</button></div>`;
   const top = $('sheet').dataset.view === 'fairpack' ? $('sheet').scrollTop : 0;
   $('sheet').dataset.view = 'fairpack'; $('sheet').innerHTML = h; $('overlay').classList.add('show'); $('sheet').scrollTop = top;
@@ -4787,6 +4809,7 @@ function priceBlock(id) {   // своя цена и что у соседей
 }
 function setPm(id, v) { S.fair.pm[id] = v; save(); openFairPack(crateSel ?? undefined); }
 function fillCrate(i, id) {
+  if (isBakeCrate(i) && !BAKE[id]) return;
   const old = S.fair.crates[i]; if (old) { S.inv[old.id] = (S.inv[old.id] || 0) + old.n; }
   const n = Math.min(CRATE, S.inv[id] || 0); S.inv[id] -= n;
   while (S.fair.crates.length <= i) S.fair.crates.push(null);
