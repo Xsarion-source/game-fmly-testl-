@@ -125,7 +125,7 @@
   .crates i.on { background: linear-gradient(#e0b47a, #b8834d); border: 1.5px solid #7a4a2a; }
   .crates b { margin-left: 6px; font-size: 14px; }
   .pack { display: flex; align-items: center; gap: 5px; padding: 6px 0; border-bottom: 1px dashed var(--line); }
-  .pack .e { font-size: 26px; width: 32px; text-align: center; } .pack .t { flex: 1; font-size: 13px; line-height: 1.25; } .pack .t b:first-child { display: block; font-size: 14px; } .pack .t small { color: #7a6650; }
+  .pack .e { font-size: 26px; width: 32px; text-align: center; } .pack .t { flex: 1; font-size: 13px; line-height: 1.25; } .pack .t > b { display: block; font-size: 14px; } .pack .t small { color: #7a6650; }
   .pack button { min-width: 0; padding: 7px 6px; font-size: 13px; border-radius: 10px; }
   .stallg { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
   .stallg .sg { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 8px 4px; border-radius: 14px; border: 1.5px solid #ecdcb8; background: #f3ead6; color: #7a6650; box-shadow: none; font-weight: 600; }
@@ -347,7 +347,11 @@ const FAIR_GATE = 12, FAIR_SELL = { x: 12, y: 20 }, FAIR_HELP = { x: 13, y: 20 }
 const FAIR_QUEUE = [[12.5, 22.2], [13.5, 22.45], [14.5, 22.45], [15.5, 22.45], [16.5, 22.45]].map(([x, y]) => ({ x, y }));
 const fairOn = () => isFair() && !S.night;
 // товары на ярмарку собирают заранее, в ящики: 1 ящик — один вид товара, до CRATE штук; в субботу дополнить нельзя
-const CRATE = 12, CRATES_PER = 4;
+const CRATE = 20, CRATES_PER = 4;
+// престиж фермы: очки за кубки (🥇3 🥈2 🥉1) + уровни уюта → наценка на ярмарке
+const prestigePts = () => S.trophies.reduce((a, t) => a + (4 - t.p), 0) + (S.up.cozy || 0);
+const fairMult = () => 1 + Math.min(.5, .05 + prestigePts() * .03);
+const unitPrice = c => fairOn() ? Math.round(sellPrice(c) * fairMult()) : sellPrice(c);
 const fairCrates = () => CRATES_PER * (1 + (S.up.fairstall || 0));
 const cratesUsed = () => Object.values(S.fair.stock).reduce((a, n) => a + Math.ceil(n / CRATE), 0);
 const stockOf = c => fairOn() ? S.fair.stock[c] || 0 : S.inv[c] || 0;   // откуда продаём сейчас
@@ -560,7 +564,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.10';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.11';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -835,8 +839,8 @@ function sell(v) {
   if (have < v.qty) { toast(`Нужно ${v.qty} ${GOODS[v.crop].e}, есть ${have}${fairOn() ? ' на ярмарке' : ''}`); return; }
   if (fairOn()) { S.fair.stock[v.crop] = have - v.qty; if (!S.fair.stock[v.crop]) delete S.fair.stock[v.crop]; }
   else S.inv[v.crop] = have - v.qty;
-  const tip = v.pat / v.max > 0.6 ? Math.ceil(v.qty * sellPrice(v.crop) * 0.2) : 0;   // чаевые за скорость
-  const money = v.qty * sellPrice(v.crop) + tip;
+  const tip = v.pat / v.max > 0.6 ? Math.ceil(v.qty * unitPrice(v.crop) * 0.2) : 0;   // чаевые за скорость
+  const money = v.qty * unitPrice(v.crop) + tip;
   S.coins += money; S.stats.earned += money; S.stats.served++; S.life.earned += money; S.life.served++;
   for (const o of [S.stats, S.life]) { o.sold ??= {}; o.sold[v.crop] = (o.sold[v.crop] || 0) + money; }
   if (GOODS[v.crop].sp) {   // продаём самую маленькую находку — лучшая остаётся для конкурса
@@ -4109,7 +4113,7 @@ function openHelp() {
     🏡 🍅 Помидоры и 🍓 клубника растут только в теплице — построй её ночью.<br>
     🪓 Ночью расчисти лес справа и построй 🌬️ мельницу (3 🌾 → 🍚 мука) и 🧀 сыроварню (2 🥛 → сыр). Тапни на здание — фермер загрузит сырьё и заберёт готовое.<br>
     🥖 Пекарня — пристройка к дому (нужна мельница): выбери рецепт — 🍞 хлеб, 🥧 пирог, 🍕 пиццу или 🎂 торт.<br>
-    🎪 В субботу лавка закрыта: фермер торгует в шатре фермы на ярмарке. Товары собери заранее — «Прилавок» → «Товары на ярмарку» (в ящик — один товар, до 12 шт.); в субботу дополнить нельзя. Больше ящиков — «Место на ярмарке».<br>
+    🎪 В субботу лавка закрыта: фермер торгует в шатре фермы на ярмарке. Товары собери заранее — «Прилавок» → «Товары на ярмарку» (в ящик — один товар, до 20 шт.). На ярмарке цены выше — чем больше престиж фермы (кубки и уют), тем дороже; в субботу дополнить нельзя. Больше ящиков — «Место на ярмарке».<br>
     🏆 Иногда случается чудо: гигантская тыква, королевский початок, золотая клубника или отборный сыр. Выставь находку на субботний конкурс — кубок встанет на доску почёта у дома, а цены вырастут.<br>
     📅 Неделя: по субботам 🎪 ярмарка за дорогой — покупателей больше, и берут больше. Воскресенье — выходной: лавка закрыта, можно устроить 🧺 пикник (помощники неделю работают быстрее) или отдохнуть до понедельника. Сезоны меняются каждые 4 недели — тапни на солнышко, там календарь.<br>
     📬 С 3-го дня в почтовый ящик у тропинки приходят заказы: собери товар за 3 дня — заплатят в 1,6 раза больше лотка.<br>
@@ -4237,7 +4241,7 @@ function openTrophies() {
   const k = contestOf(), sp = SPECIAL[k], days = (5 - cal().dow + 7) % 7, done = S.contestDay === S.day;
   let h = `<h2>🏆 Трофеи и конкурс</h2>`;
   const pr = Math.round(prestige() * 100), g = prestigeGuests();
-  h += `<div class="summary">Кубков у дома: <b>${S.trophies.length}</b>${S.trophies.length ? ` (${[1, 2, 3].map(p => S.trophies.filter(t => t.p === p).length ? MEDAL[p].e + '×' + S.trophies.filter(t => t.p === p).length : '').filter(Boolean).join(' ')})` : ''}<br>Престиж фермы: цены <b>+${pr}%</b>${g ? `, гостей <b>+${g}</b> в день` : ''}</div>`;
+  h += `<div class="summary">Кубков у дома: <b>${S.trophies.length}</b>${S.trophies.length ? ` (${[1, 2, 3].map(p => S.trophies.filter(t => t.p === p).length ? MEDAL[p].e + '×' + S.trophies.filter(t => t.p === p).length : '').filter(Boolean).join(' ')})` : ''}<br>Престиж фермы: цены <b>+${pr}%</b>${g ? `, гостей <b>+${g}</b> в день` : ''}<br>🏅 Очки престижа: <b>${prestigePts()}</b> — на ярмарке цены <b>+${Math.round((fairMult() - 1) * 100)}%</b></div>`;
   h += `<h3 style="margin:10px 0 4px">${sp.e} Конкурс ${sp.what} — ${isFair() ? '<b>сегодня!</b>' : days ? `в субботу (через ${days} дн.)` : 'в субботу'}</h3>`;
   if (isFair() && !S.night) {
     if (done) h += `<div class="summary">Ты уже выступил сегодня — приходи в следующую субботу.</div>`;
@@ -4340,6 +4344,7 @@ function openFairPack() {
   const lock = fairOn(), used = cratesUsed(), tot = fairCrates(), days = (5 - cal().dow + 7) % 7;
   let h = `<h2>🎪 Товары на ярмарку</h2><div style="font-size:13px;color:#7a6650;margin:-2px 0 8px">${lock ? '<b>Ярмарка идёт — дополнить уже нельзя.</b> Вечером непроданное вернётся на склад.'
     : `Ярмарка — ${days ? `в субботу, через ${days} дн.` : 'в субботу'}. Собери ящики заранее: в 1 ящике — один вид товара, до ${CRATE} шт. Собранное ждёт на складе ярмарки, в лавке не продаётся. В субботу дополнить будет нельзя.`}</div>`;
+  h += `<div class="summary" style="margin:4px 0">🏅 Престиж фермы: <b>${prestigePts()}</b> ${prestigePts() % 10 === 1 && prestigePts() % 100 !== 11 ? 'очко' : [2, 3, 4].includes(prestigePts() % 10) && ![12, 13, 14].includes(prestigePts() % 100) ? 'очка' : 'очков'} → на ярмарке цены <b>+${Math.round((fairMult() - 1) * 100)}%</b><br><small>Очки: кубки 🥇3 🥈2 🥉1 + уровни уюта 🌷. Каждое очко — ещё +3% (до +50%)</small></div>`;
   h += `<div class="crates">${Array.from({ length: tot }, (_, i) => `<i class="${i < used ? 'on' : ''}"></i>`).join('')}<b>Ящиков: ${used} из ${tot}</b></div>`;
   if (!lock && (S.up.fairstall || 0) < 2) h += `<div style="font-size:12px;color:#7a6650;margin:2px 0 6px">Больше ящиков — ночью: «Улучшения» → «Ферма» → 🎪 «Место на ярмарке»</div>`;
   const ids = Object.keys(GOODS).filter(id => !GOODS[id].sp && ((S.inv[id] || 0) > 0 || (S.fair.stock[id] || 0) > 0));
@@ -4347,7 +4352,7 @@ function openFairPack() {
   for (const id of ids) {
     const g = GOODS[id], inv = S.inv[id] || 0, st = S.fair.stock[id] || 0;
     if (lock && !st) continue;
-    h += `<div class="pack"><span class="e">${g.e}</span><div class="t"><b>${g.name}</b><small>${lock ? `осталось ${st}` : `на складе ${inv} · на ярмарку <b>${st}</b>${st ? ` (${Math.ceil(st / CRATE)} ящ.)` : ''}`} · ${sellPrice(id)}💰</small></div>
+    h += `<div class="pack"><span class="e">${g.e}</span><div class="t"><b>${g.name}</b><small>${lock ? `осталось ${st}` : `на складе ${inv} · на ярмарку <b>${st}</b>${st ? ` (${Math.ceil(st / CRATE)} ящ.)` : ''}`} · <s style="opacity:.6">${sellPrice(id)}</s> <b>${Math.round(sellPrice(id) * fairMult())}💰</b></small></div>
       ${lock ? '' : `<button class="alt" ${st ? '' : 'disabled'} onclick="packFair('${id}',-${CRATE})">−${CRATE}</button><button class="alt" ${st ? '' : 'disabled'} onclick="packFair('${id}',-1)">−1</button><button ${inv && canPack(id, 1) ? '' : 'disabled'} onclick="packFair('${id}',1)">+1</button><button ${inv && canPack(id, 1) ? '' : 'disabled'} onclick="packFair('${id}',${CRATE})">+${CRATE}</button>`}</div>`;
   }
   if (!lock && used) h += `<button class="wide alt" style="width:100%;margin-top:8px" onclick="packFair(null)">↩️ Вернуть всё на склад</button>`;
