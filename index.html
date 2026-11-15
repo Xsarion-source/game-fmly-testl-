@@ -405,6 +405,8 @@ const FOOT = { mill: shiftR('mill', { x0: 18, y0: 5, x1: 19, y1: 6 }), dairy: sh
 const lotAt = (x, y) => LOTS.findIndex(L => x >= L.x0 && x <= L.x1 && y >= L.y0 && y <= L.y1);
 const prodAt = (x, y) => Object.keys(FOOT).find(k => x >= FOOT[k].x0 && x <= FOOT[k].x1 && y >= FOOT[k].y0 && y <= FOOT[k].y1) || null;
 deco('mail', { kind: 'mailbox', z: 4 + 5 + 1 }); blocked[MAIL.y][MAIL.x] = true;
+const TROPHY = at('mail', 6, 6);   // доска почёта с кубками — через тропинку от почтового ящика
+decor.push({ kind: 'trophies', x: TROPHY.x, y: TROPHY.y, z: TROPHY.x + TROPHY.y + 1 }); blocked[TROPHY.y][TROPHY.x] = true;
 deco('home', { kind: 'bakery', z: 4 + 1 + 2 + 2 - 1.01 });   // пристройка справа от дома (клетки 4 × 2–3)
 deco('flowers', { kind: 'flowers', z: 4 + 6 + .9 });
 deco('dog', { kind: 'doghouse', z: 1 + 4 + 1 });
@@ -488,7 +490,7 @@ S.life ??= { earned: 0, served: 0, harvested: 0, eggs: 0 };
 S.life.milk ??= 0; S.hist ??= []; S.life.flour ??= 0; S.life.cheese ??= 0;
 S.up.clear ??= 0; S.up.mill ??= 0; S.up.dairy ??= 0;
 S.up.house ??= 0; S.up.bakery ??= 0; S.up.cozy ??= 0;
-S.stallOff ??= []; S.picnic ??= 0;   // товары, снятые с продажи (копятся для заказов и производства)
+S.stallOff ??= []; S.picnic ??= 0; S.special ??= []; S.trophies ??= []; S.contestDay ??= 0;   // особые находки и кубки конкурсов   // товары, снятые с продажи (копятся для заказов и производства)
 S.up.nests ??= 0; S.up.rooster ??= 0; S.up.yard ??= 0;
 S.up.milker ??= 0; S.up.clover ??= 0; S.up.hay ??= 0; S.up.pasture ??= 0;
 S.coop.gold ??= 0; S.coop.extra ??= 0; S.coop.chicks ??= 0;
@@ -533,7 +535,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.3';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.4';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -626,7 +628,7 @@ let tasks = [], path = [];
 let floats = [];
 
 // ================== ПРАВИЛА ==================
-const visitorsPerDay = (d = S.day) => cal(d).dow === 6 ? 0 : Math.round((10 + d + S.up.ads * 3) * (cal(d).dow === 5 ? 1.6 : 1));   // суббота — ярмарка, воскресенье — выходной   // день 1 → 11 покупателей (~1 каждые 14 сек)
+const visitorsPerDay = (d = S.day) => cal(d).dow === 6 ? 0 : Math.round((10 + d + S.up.ads * 3 + prestigeGuests()) * (cal(d).dow === 5 ? 1.6 : 1));   // суббота — ярмарка, воскресенье — выходной   // день 1 → 11 покупателей (~1 каждые 14 сек)
 const growMult = () => 1 + S.up.fert * 0.2;
 // ---------- Календарь: неделя из 7 дней, сезон — 4 недели (28 дней), год — 4 сезона ----------
 const WEEKDAYS = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'], WD = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -642,6 +644,35 @@ const season = (d = S.day) => SEASONS[cal(d).si];
 const seasonGrow = (id, gh) => (season().grow[id] || 1) * (gh ? 1 : season().grow.field || 1);
 const seasonPrice = id => season().price[id] || 1;
 const isFair = (d = S.day) => cal(d).dow === 5, isRest = (d = S.day) => cal(d).dow === 6;
+// ---------- Конкурс на ярмарке: особые находки, соперники, кубки и престиж ----------
+const SPECIAL = {   // шанс — на один сбор/одну головку сыра; q 0–100 → размер в своих единицах
+  pumpkin:    { e: '🎃', name: 'Гигантская тыква',     what: 'тыкв',      chance: 1 / 300, unit: q => `${Math.round(25 + q * .45)} кг` },
+  strawberry: { e: '🍓', name: 'Золотая клубника',     what: 'клубники',  chance: 1 / 400, unit: q => `${Math.round(40 + q * 1.2)} г` },
+  corn:       { e: '🌽', name: 'Королевский початок',  what: 'кукурузы',  chance: 1 / 300, unit: q => `${Math.round(30 + q * .3)} см` },
+  cheese:     { e: '🧀', name: 'Отборный сыр',         what: 'сыров',     chance: 1 / 150, unit: q => '★'.repeat(1 + Math.min(4, Math.floor(q / 20))) + ` (${Math.round(q)})` },
+  goldegg:    { e: '🟡', name: 'Золотое яйцо',         what: 'золотых яиц', chance: 0, unit: q => `блеск ${Math.round(q)}%` },
+};
+const CONTEST_ORDER = ['pumpkin', 'cheese', 'corn', 'goldegg', 'strawberry'];
+const contestOf = (d = S.day) => CONTEST_ORDER[Math.floor((d - 1) / 7) % CONTEST_ORDER.length];   // своя категория у каждой недели
+const MEDAL = { 1: { e: '🥇', name: 'золото', col: ['#ffe27a', '#e0a91a'], price: .03, week: .10 }, 2: { e: '🥈', name: 'серебро', col: ['#f2f4f7', '#a9b0bb'], price: .015, week: .06 }, 3: { e: '🥉', name: 'бронза', col: ['#f2b37a', '#b86a2e'], price: .008, week: .03 } };
+const prestige = () => Math.min(.2, S.trophies.reduce((a, t) => a + (MEDAL[t.p]?.price || 0), 0))   // кубки у дома — гостям нравится, цены выше
+  + (() => { const t = S.trophies[S.trophies.length - 1]; return t && S.day - t.d >= 0 && S.day - t.d < 7 ? MEDAL[t.p]?.week || 0 : 0; })();   // свежая победа — неделю ещё дороже
+const prestigeGuests = () => Math.min(6, S.trophies.filter(t => t.p === 1).length);
+function rollSpecial(k) {   // редкая находка — СОБЫТИЕ
+  const sp = SPECIAL[k]; if (!sp || Math.random() >= sp.chance) return;
+  const q = Math.min(100, 25 + Math.random() * 60 + S.up.fert * 2 + (S.up.cozy || 0) * 1.5);
+  S.special.push({ k, q: Math.round(q), d: S.day });
+  specialFound(k, q);
+}
+function specialFound(k, q) {
+  const sp = SPECIAL[k];
+  setTimeout(() => {
+    $('sheet').dataset.view = ''; $('sheet').innerHTML = `<div style="text-align:center"><div style="font-size:64px;line-height:1.1;margin:6px 0">${sp.e}</div>
+      <h2 style="margin:4px 0">🌟 Невероятно! ${sp.name}!</h2><div class="summary" style="font-size:16px"><b>${sp.unit(q)}</b> — такое бывает очень редко.<br>Она не продаётся: выставь её на 🏆 конкурс ${SPECIAL[k].what} на субботней ярмарке.</div></div>
+      <div class="row"><button class="wide" onclick="openTrophies()">🏆 Трофеи и конкурс</button><button class="wide alt" onclick="S.night ? openNight(false) : closeNight()">Ура!</button></div>`;
+    $('overlay').classList.add('show');
+  }, 500);
+}
 const picnicOn = () => !!S.picnic && S.day - S.picnic >= 0 && S.day - S.picnic <= 6;   // пикник в воскресенье — бонус помощникам на неделю
 // как выглядит сезон: трава на ферме и вокруг, кроны деревьев (осенью — разные), фон
 const LOOKS = {
@@ -652,7 +683,7 @@ const LOOKS = {
 };
 const look = () => LOOKS[season().id];
 function applySeasonBg() { const c = look().bg; document.body.style.background = c; $('app').style.background = c; }
-const priceMult = () => 1 + S.up.sign * 0.1 + (S.up.cozy || 0) * 0.05;
+const priceMult = () => 1 + S.up.sign * 0.1 + (S.up.cozy || 0) * 0.05 + prestige();
 const homeMult = () => 1 + (S.up.house || 0) * 0.2 + (picnicOn() ? 0.15 : 0);   // дом: помощники сыты и работают быстрее
 const patience = () => 30 + S.up.bench * 5;
 const sellPrice = c => Math.round(GOODS[c].price * priceMult() * seasonPrice(c));
@@ -677,7 +708,7 @@ function startDay() {
   else toast('🌅 Рассвет. Посади семечко (или нажми на солнце) — и день начнётся');
   if (coopMsg) setTimeout(() => toast(coopMsg), 1700);
   if (cal().sday === 1 && S.day > 1) setTimeout(() => toast(`${season().e} Наступила ${season().name.toLowerCase()}: ${season().text}`), coopMsg ? 3400 : 1700);
-  if (isFair()) setTimeout(() => toast('🎪 Сегодня ярмарка! Покупателей больше, и берут они больше'), 900);
+  if (isFair()) setTimeout(() => toast(`🎪 Ярмарка! Сегодня конкурс ${SPECIAL[contestOf()].what} ${SPECIAL[contestOf()].e} — тапни на ярмарку`), 900);
   if (isRest()) setTimeout(openSunday, 600);
   save(); renderUI();
 }
@@ -787,6 +818,7 @@ function harvestBed(p, s, gh) {   // в теплице — гроздь из GH_
   const n = gh ? GH_YIELD : 1;
   S.inv[p.crop] = (S.inv[p.crop] || 0) + n; S.life.harvested += n;
   addFloat(s.x + .5, s.y + .5, `+${n} ${CROP[p.crop].e}`);
+  if (p.crop === 'pumpkin' || p.crop === 'corn' || (gh && p.crop === 'strawberry')) rollSpecial(p.crop);
   p.last = p.crop; p.crop = null; p.prog = 0;
 }
 function plotAct(i, mode, gh, crop) {
@@ -968,6 +1000,7 @@ function collectProd(k) {
   const P = PROD[k], st = S.prod[k];
   if (!st.out) return false;
   S.inv[P.out] = (S.inv[P.out] || 0) + st.out; S.life[P.out] = (S.life[P.out] || 0) + st.out;
+  if (P.out === 'cheese') for (let i = 0; i < st.out; i++) rollSpecial('cheese');
   addFloat(P.spot.x + .5, P.spot.y - .5, `+${st.out} ${GOODS[P.out].e}`);
   st.out = 0; save(); renderUI(); return true;
 }
@@ -1834,8 +1867,10 @@ function onTap(sx, sy) {
   if (bv) { tapVisitor(bv); return; }
   const fx = (wx / (TW / 2) + wy / (TH / 2)) / 2, fy = (wy / (TH / 2) - wx / (TW / 2)) / 2;
   const tx = Math.floor(fx), ty = Math.floor(fy);
+  if (tx >= FAIR.x - 1 && tx <= FAIR.x + 10 && ty >= FAIR.y - 1 && ty <= FAIR.y + 4) { openTrophies(); return; }   // ярмарка за дорогой
   if (tx < 0 || ty < 0 || tx >= W || ty >= H) return;
   if (S.night) { const k = upAtNight(tx, ty); if (k) { openUpgrade(k); return; } }
+  if (tx === TROPHY.x && ty === TROPHY.y) { openTrophies(); return; }
   if (tx === MAIL.x && ty === MAIL.y) { openMail(); return; }
   { const b = at('home', 4, 2); if (tx === b.x && (ty === b.y || ty === b.y + 1)) { tapBakery(); return; } }
   const si = slotAt(tx, ty);
@@ -2224,7 +2259,7 @@ const SPRITE_KEY = {
   house: () => '', stall: () => (isRest() && !S.night) + Object.keys(GOODS).filter(id => S.inv[id] > 0 && onSale(id)).join(), bakery: () => S.bake.q.length + ',' + S.started, dairy: () => (S.prod.dairy.q > 0) + ',' + S.started,
   doghouse: () => '', billboard: () => '', mill: () => (S.prod.mill.q > 0) + ',' + S.started,
   tree: () => season().id, flowers: () => '', well: () => '', fence: () => hens() + ',' + cows(), coop: () => S.coop.eggs + ',' + (S.coop.gold || 0) + ',' + hens(), barn: () => cows(),
-  trough: () => cows() + ',' + cowsFedToday(), mailbox: () => JSON.stringify(S.order), sack: () => '', bench: () => '', glass: () => '', ghroof: () => '',
+  trough: () => cows() + ',' + cowsFedToday(), mailbox: () => JSON.stringify(S.order), trophies: () => S.trophies.map(t => t.p).join(), sack: () => '', bench: () => '', glass: () => '', ghroof: () => '',
 };
 const mctx = document.createElement('canvas').getContext('2d');
 function syncState(dst, src) {   // перенести настройки линий и шрифта, которые предметы наследуют от основного холста
@@ -2294,7 +2329,7 @@ function draw(t) {
   drawMarker(t);
 
   const list = [];
-  const DRAW = { tree: d => d.lot == null || S.up.clear <= d.lot ? drawTree(d) : (!prodAt(d.x, d.y) || !S.up[prodAt(d.x, d.y)]) && drawStump(d), mill: drawMill, dairy: drawDairy, house: drawHouse, bakery: drawBakery, mailbox: drawMailbox, flowers: drawFlowers, doghouse: drawDoghouse, well: drawWell, swing: drawSwing, stall: drawStall, coop: drawCoop, barn: drawBarn, trough: drawTrough, fence: drawFence, billboard: drawBillboard, sack: drawSack, bench: drawBench, glass: drawGlass, ghroof: drawGhRoof };
+  const DRAW = { tree: d => d.lot == null || S.up.clear <= d.lot ? drawTree(d) : (!prodAt(d.x, d.y) || !S.up[prodAt(d.x, d.y)]) && drawStump(d), mill: drawMill, dairy: drawDairy, house: drawHouse, bakery: drawBakery, mailbox: drawMailbox, trophies: drawTrophies, flowers: drawFlowers, doghouse: drawDoghouse, well: drawWell, swing: drawSwing, stall: drawStall, coop: drawCoop, barn: drawBarn, trough: drawTrough, fence: drawFence, billboard: drawBillboard, sack: drawSack, bench: drawBench, glass: drawGlass, ghroof: drawGhRoof };
   for (const d of decor) {   // постройка рисуется в своих координатах, сдвинутая на смещение группы (LAYOUT)
     const sk = SPRITE_KEY[d.kind], o = d.g ? isoG(d.g, 0, 0) : null, raw = () => DRAW[d.kind](d, t);
     const moved = o ? () => { ctx.save(); ctx.translate(o.x, o.y); try { raw(); } finally { ctx.restore(); } } : raw;
@@ -2955,6 +2990,26 @@ function drawBakery(d, t) {
 // Почтовый ящик: флажок поднят, когда есть заказ
 function toonPost(x, y, z0, z1, w = .07, c = ['#c99a62', '#9e7140']) {   // тонкий брус
   toonBox(x - w, y - w, w * 2, w * 2, z1 - z0, c, [darken(c[0], .85), darken(c[1], .85)], [c[0], c[0]], z0, 1.1);
+}
+function drawTrophies(d) {   // доска почёта: две полки, кубки по местам
+  const x = d.x, y = d.y;
+  softShadow(x + .1, y + .2, x + .9, y + .8, .25);
+  toonPost(x + .15, y + .5, 0, 44); toonPost(x + .85, y + .5, 0, 44);
+  gface(fY(x + .05, x + .95, y + .5, 22, 46), '#c99a62', '#9e7140', INK, 1.4);   // задник
+  gface(fY(x + .1, x + .9, y + .5, 40, 45.5), '#2f6b2a', '#24561f', INK, 1);   // табличка
+  textOnX(x + .1, y + .5, 42.7, .8, 'ПОЧЁТ', '#ffe9a8', 5.5);
+  for (const z of [22, 31]) toonBox(x + .05, y + .5, .9, .22, 2, ['#e0b47a', '#b8834d'], ['#b8834d', '#8f5b2b'], ['#f0c98e', '#dcae70'], z, 1);
+  const cups = S.trophies.slice(-8);
+  if (!cups.length) { const p = lift(x + .5, y + .62, 26); ctx.globalAlpha = .45; emoji('🏆', p.x, p.y - 2, 10); ctx.globalAlpha = 1; return; }
+  cups.forEach((t, k) => {
+    const row = k < 4 ? 1 : 0, col = k % 4, p = lift(x + .2 + col * .2, y + .61, row ? 33 : 24), M = MEDAL[t.p], s = t.p === 1 ? 1.15 : 1;
+    ctx.fillStyle = INK; ctx.fillRect(p.x - 3 * s, p.y - 2, 6 * s, 2.5);   // подставка
+    ctx.beginPath(); ctx.moveTo(p.x - 4.2 * s, p.y - 9 * s); ctx.quadraticCurveTo(p.x - 4 * s, p.y - 3 * s, p.x, p.y - 3 * s); ctx.quadraticCurveTo(p.x + 4 * s, p.y - 3 * s, p.x + 4.2 * s, p.y - 9 * s); ctx.closePath();
+    const g = ctx.createLinearGradient(p.x - 4, 0, p.x + 4, 0); g.addColorStop(0, M.col[0]); g.addColorStop(1, M.col[1]);
+    ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = .9; ctx.stroke();
+    seg({ x: p.x, y: p.y - 3 * s }, { x: p.x, y: p.y - 1 }, M.col[1], 1.6);
+    circle(p.x - 1.6 * s, p.y - 7.5 * s, .9, 'rgba(255,255,255,.8)');
+  });
 }
 function drawMailbox() {
   softShadow(4.3, 5.3, 4.7, 5.7, .25);
@@ -3681,6 +3736,7 @@ function openMenu() {
   $('sheet').dataset.view = ''; $('sheet').innerHTML = `<h2>☰ Меню</h2><div class="menu">
       <button onclick="${S.night ? 'openNight(false)' : "toast('🌙 Улучшения покупаются ночью')"}">⬆️ Улучшения ${S.night ? '' : '<small style="color:#7a6650">— ночью</small>'}</button>
       ${S.up.helper ? '<button onclick="openHelpers()">🧑‍🌾 Помощники</button>' : ''}
+      <button onclick="openTrophies()">🏆 Трофеи и конкурс${S.trophies.length ? ` <small style="color:#7a6650">— кубков: ${S.trophies.length}</small>` : ''}</button>
       <button onclick="openCalendar()">📅 Календарь <small style="color:#7a6650">— ${WEEKDAYS[cal().dow].toLowerCase()}, ${season().name.toLowerCase()}</small></button>
       <button onclick="openProfile()">👤 Профиль</button>
       <button onclick="openSaves()">💾 Сохранения <small style="color:#7a6650">— ${esc(slotNames()[SLOT - 1])}</small></button>
@@ -3894,6 +3950,7 @@ function openHelp() {
     🏡 🍅 Помидоры и 🍓 клубника растут только в теплице — построй её ночью.<br>
     🪓 Ночью расчисти лес справа и построй 🌬️ мельницу (3 🌾 → 🍚 мука) и 🧀 сыроварню (2 🥛 → сыр). Тапни на здание — фермер загрузит сырьё и заберёт готовое.<br>
     🥖 Пекарня — пристройка к дому (нужна мельница): выбери рецепт — 🍞 хлеб, 🥧 пирог, 🍕 пиццу или 🎂 торт.<br>
+    🏆 Иногда случается чудо: гигантская тыква, королевский початок, золотая клубника или отборный сыр. Выставь находку на субботний конкурс — кубок встанет на доску почёта у дома, а цены вырастут.<br>
     📅 Неделя: по субботам 🎪 ярмарка за дорогой — покупателей больше, и берут больше. Воскресенье — выходной: лавка закрыта, можно устроить 🧺 пикник (помощники неделю работают быстрее) или отдохнуть до понедельника. Сезоны меняются каждые 4 недели — тапни на солнышко, там календарь.<br>
     📬 С 3-го дня в почтовый ящик у тропинки приходят заказы: собери товар за 3 дня — заплатят в 1,6 раза больше лотка.<br>
     🏠 Дом улучшается ночью: веранда и второй этаж ускоряют помощников. 🌷 Уют — клумбы, собака, колодец, качели — поднимает цены.<br>
@@ -4000,13 +4057,63 @@ function restDay() {
   let n = 0; while (!S.night && n++ < 4000) step(0.25);   // прокручиваем остаток воскресенья
   if (!S.night) endDay();
 }
+// ---------- Трофеи и конкурс ----------
+const RIVALS = ['Ферма «Ромашка»', 'Хутор дяди Пети', 'Ферма «Солнышко»', 'Усадьба Кузнецовых', 'Ферма «Берёзка»', 'Хутор у реки'];
+function rivalsFor(d) {   // соперники недели: с каждой неделей сильнее
+  const w = Math.floor((d - 1) / 7), r = k => Math.abs(Math.sin(w * 31.7 + k * 7.13) * 9301.17) % 1;
+  const base = Math.min(78, 38 + w * 1.6);
+  return [0, 1, 2].map(k => ({ name: RIVALS[(w * 2 + k) % RIVALS.length], q: Math.round(Math.max(10, Math.min(97, base + (r(k) - .5) * 34))) }));
+}
+function contestPick(k) {   // что можно выставить: особые находки категории или золотые яйца
+  if (k === 'goldegg') return S.inv.goldegg > 0 ? [{ k, q: null }] : [];
+  return S.special.map((x, i) => ({ ...x, i })).filter(x => x.k === k).sort((a, b) => b.q - a.q);
+}
+function openTrophies() {
+  const k = contestOf(), sp = SPECIAL[k], days = (5 - cal().dow + 7) % 7, done = S.contestDay === S.day;
+  let h = `<h2>🏆 Трофеи и конкурс</h2>`;
+  const pr = Math.round(prestige() * 100), g = prestigeGuests();
+  h += `<div class="summary">Кубков у дома: <b>${S.trophies.length}</b>${S.trophies.length ? ` (${[1, 2, 3].map(p => S.trophies.filter(t => t.p === p).length ? MEDAL[p].e + '×' + S.trophies.filter(t => t.p === p).length : '').filter(Boolean).join(' ')})` : ''}<br>Престиж фермы: цены <b>+${pr}%</b>${g ? `, гостей <b>+${g}</b> в день` : ''}</div>`;
+  h += `<h3 style="margin:10px 0 4px">${sp.e} Конкурс ${sp.what} — ${isFair() ? '<b>сегодня!</b>' : days ? `в субботу (через ${days} дн.)` : 'в субботу'}</h3>`;
+  if (isFair() && !S.night) {
+    if (done) h += `<div class="summary">Ты уже выступил сегодня — приходи в следующую субботу.</div>`;
+    else {
+      const items = contestPick(k);
+      h += `<div style="font-size:13px;color:#7a6650;margin-bottom:4px">Соперники: ${rivalsFor(S.day).map(r => `${r.name} — ${sp.unit(r.q)}`).join(' · ')}</div>`;
+      if (!items.length) h += `<div class="summary">Выставить нечего: ${k === 'goldegg' ? 'нужно золотое яйцо 🟡 со склада' : `нужна особая находка — ${sp.name.toLowerCase()} ${sp.e}. Они попадаются очень редко`}. Без штрафа — просто посмотри, кто победит.</div>`;
+      else items.slice(0, 4).forEach(x => h += `<div class="up"><div class="ico">${sp.e}</div><div class="txt"><b>${sp.name}</b><small>${x.q == null ? 'Блеск узнаем на конкурсе' : sp.unit(x.q)}${x.d ? ` · найдена в день ${x.d}` : ''}</small></div><button onclick="enterContest(${x.i ?? -1})">Выставить</button></div>`);
+    }
+  } else h += `<div style="font-size:13px;color:#7a6650">Ярмарка — по субботам, за дорогой. Конкурсы по очереди: ${CONTEST_ORDER.map(c => SPECIAL[c].e).join(' ')}. Особые находки попадаются очень редко — при сборе тыкв, кукурузы, клубники в теплице и на сыроварне.</div>`;
+  const mine = S.special.slice().sort((a, b) => b.q - a.q);
+  h += `<h3 style="margin:12px 0 4px">🌟 Особые находки</h3>` + (mine.length || S.inv.goldegg ? `<div style="font-size:14px;line-height:1.6">${mine.map(x => `${SPECIAL[x.k].e} ${SPECIAL[x.k].name} — ${SPECIAL[x.k].unit(x.q)}`).join('<br>')}${S.inv.goldegg ? `${mine.length ? '<br>' : ''}🟡 Золотых яиц на складе: ${S.inv.goldegg}` : ''}</div>` : `<div style="font-size:13px;color:#7a6650">Пока нет — удача ещё улыбнётся!</div>`);
+  if (S.trophies.length) h += `<h3 style="margin:12px 0 4px">🏆 Кубки</h3><div style="font-size:14px;line-height:1.6">${S.trophies.slice().reverse().map(t => `${MEDAL[t.p].e} ${SPECIAL[t.k].name.split(' ').pop()} — ${MEDAL[t.p].name}, день ${t.d} (${SPECIAL[t.k].unit(t.q)})`).join('<br>')}</div>`;
+  h += `<button class="wide alt" style="width:100%;margin-top:12px" onclick="S.night ? openNight(false) : closeNight()">Закрыть</button>`;
+  $('sheet').dataset.view = 'trophies'; $('sheet').innerHTML = h; $('overlay').classList.add('show');
+}
+function enterContest(i) {
+  if (!isFair() || S.night || S.contestDay === S.day) return;
+  const k = contestOf(), sp = SPECIAL[k];
+  let q;
+  if (k === 'goldegg') { if (!(S.inv.goldegg > 0)) return; S.inv.goldegg--; q = Math.round(Math.min(100, 30 + Math.random() * 65 + (S.up.cozy || 0))); }
+  else { const x = S.special[i]; if (!x || x.k !== k) return; q = x.q; S.special.splice(i, 1); }
+  S.contestDay = S.day;
+  const table = [...rivalsFor(S.day), { name: 'Твоя ферма', q, me: true }].sort((a, b) => b.q - a.q || (a.me ? -1 : 1));
+  const place = table.findIndex(r => r.me) + 1;
+  if (place <= 3) S.trophies.push({ k, p: place, d: S.day, q });
+  save(); renderUI();
+  const head = place === 1 ? '🥇 Победа! Первое место!' : place === 2 ? '🥈 Второе место!' : place === 3 ? '🥉 Третье место!' : '🙂 Четвёртое место — в этот раз без кубка';
+  $('sheet').dataset.view = ''; $('sheet').innerHTML = `<h2>${head}</h2><div class="summary">${table.map((r, n) => `${n + 1}. ${r.me ? '<b>' : ''}${r.name} — ${sp.unit(r.q)}${r.me ? '</b>' : ''}`).join('<br>')}</div>
+    ${place <= 3 ? `<div style="font-size:14px;margin:6px 0">Кубок встанет на доску почёта у дома. Престиж фермы растёт: цены выше навсегда, а всю неделю — ещё на ${Math.round(MEDAL[place].week * 100)}%${place === 1 ? ', и гостей больше' : ''}.</div>` : '<div style="font-size:14px;margin:6px 0">Ничего страшного — в следующую субботу новый конкурс.</div>'}
+    <button class="wide" style="width:100%" onclick="closeNight()">Ура!</button>`;
+  $('overlay').classList.add('show');
+  if (place <= 3) setTimeout(() => { const c = iso(TROPHY.x + .5, TROPHY.y + .5); cam.x = c.x; cam.y = c.y; clampCam(); }, 50);
+}
 // ---------- Календарь ----------
 let calSeason = null;   // какой сезон смотрим (номер от начала игры)
 function dayEvents(d) {   // значки событий на день: новые события добавляются сюда
   const ev = [];
   if (S.order && S.order.due === d) ev.push(['📬', `Срок заказа: ${S.order.from}`]);
   if (cal(d).sday === 1) ev.push([SEASONS[cal(d).si].e, `Начало сезона: ${SEASONS[cal(d).si].name.toLowerCase()}`]);
-  if (isFair(d)) ev.push(['🎪', 'Ярмарка: покупателей больше']);
+  if (isFair(d)) ev.push(['🎪', `Ярмарка: покупателей больше · 🏆 конкурс ${SPECIAL[contestOf(d)].what} ${SPECIAL[contestOf(d)].e}`]);
   if (isRest(d)) ev.push(['🧺', 'Выходной: лавка закрыта']);
   if (d % 30 === 0) ev.push(['🎂', `Ферме ${d} дней`]);
   return ev;
@@ -4131,6 +4238,7 @@ $('menuBtn').onclick = openMenu;
 // ================== ЧИТ-МЕНЮ (тройной тап по «День N») ==================
 const CHEATS = {
   money:   ['💰 +1000', () => { S.coins += 1000; }],
+  special: ['🌟 Особая находка', () => { const k = contestOf() === 'goldegg' ? 'pumpkin' : contestOf(); const q = Math.round(40 + Math.random() * 55); S.special.push({ k, q, d: S.day }); specialFound(k, q); }],
   season:  ['🍂 Следующий сезон', () => { S.day = (Math.floor((S.day - 1) / SEASON_LEN) + 1) * SEASON_LEN + 1; toast(`${season().e} ${season().name}: ${season().text}`); }],
   money2:  ['💰 +10 000', () => { S.coins += 10000; }],
   goods:   ['📦 +10 всего', () => { for (const id of [...S.unlocked, 'apple', 'egg', 'milk', 'flour', 'cheese', ...(S.up.bakery ? Object.keys(BAKE) : [])]) S.inv[id] = (S.inv[id] || 0) + 10; }],
