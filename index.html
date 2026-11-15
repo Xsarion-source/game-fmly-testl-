@@ -639,7 +639,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.40';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.41';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -4439,7 +4439,7 @@ function openSunday() {
   if (!isRest() || S.night) return;
   const r = weekReport(), done = S.picnic === S.day;
   let h = `<h2>🧺 Воскресенье — выходной</h2><div style="font-size:13px;color:#7a6650;margin:-2px 0 8px">Лавка сегодня закрыта. Грядки растут, куры несутся — можно спокойно поработать или отдохнуть.</div>`;
-  if (r.n) h += `<div class="summary">📬 <b>Итоги недели</b><br>Заработано: <b>${r.earned}💰</b>${r.spent ? ` · потрачено ${r.spent}💰` : ''}<br>Покупателей: <b>${r.served}</b>${r.missed ? ` · ушли ни с чем ${r.missed}` : ''}${r.best ? `<br>Лучший день: <b>${WEEKDAYS[cal(r.best.d).dow].toLowerCase()}</b> — ${r.best.e}💰` : ''}${r.top ? `<br>Больше всего принёс: ${GOODS[r.top[0]].e} <b>${GOODS[r.top[0]].name.toLowerCase()}</b> — ${r.top[1]}💰` : ''}</div>`;
+  if (r.n) h += `<div class="summary">📬 <b>Итоги недели</b><br>Заработано: <b>${r.earned}💰</b>${r.spent ? ` · потрачено ${r.spent}💰` : ''}<br>Покупателей: <b>${r.served}</b>${r.missed ? ` · ушли ни с чем ${r.missed}` : ''}${r.best ? `<br>Лучший день: <b>${WEEKDAYS[cal(r.best.d).dow].toLowerCase()}</b> — ${r.best.e}💰` : ''}${r.top ? `<br>Больше всего принесли: ${GOODS[r.top[0]] ? `${GOODS[r.top[0]].e} <b>${GOODS[r.top[0]].name.toLowerCase()}</b>` : r.top[0] === 'order' ? '📬 <b>заказы по почте</b>' : '<b>' + r.top[0] + '</b>'} — ${r.top[1]}💰` : ''}</div>`;
   h += `<div class="up" data-why="🧺 Пикник уже был — помощники отдохнули"><div class="ico">🧺</div><div class="txt"><b>Пикник у пруда</b><small>${done ? 'Отдохнули! Всю неделю помощники работают на 15% быстрее' : 'Вся команда отдыхает — всю неделю помощники работают на 15% быстрее'}</small></div><button ${done ? 'disabled' : ''} onclick="picnic()">${done ? '✔' : 'Пойти'}</button></div>
     <div class="up" data-why=""><div class="ico">😴</div><div class="txt"><b>Отдохнуть до понедельника</b><small>День пройдёт сразу: всё вырастет, яйца и молоко соберутся как обычно</small></div><button onclick="restDay()">Спать</button></div>
     <button class="wide alt" style="width:100%;margin-top:10px" onclick="closeNight()">🌾 Заняться фермой</button>`;
