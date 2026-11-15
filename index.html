@@ -637,7 +637,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.29';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.30';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1968,7 +1968,7 @@ function resize() {
 function clampCam() {
   const hw = cw / 2 / zoom, hh = ch / 2 / zoom;
   const minX = -H * TW / 2 - 340, maxX = W * TW / 2 + 90,   // запас: край карты можно вытащить из-под кнопок
-        minY = -70, maxY = (W + H) * TH / 2 + 260;
+        minY = -70 - 180 / zoom, maxY = (W + H) * TH / 2 + 260 + 110 / zoom;   // запас под верхнюю панель и нижние кнопки — на любом масштабе
   cam.x = hw * 2 >= maxX - minX ? (minX + maxX) / 2 : Math.max(minX + hw, Math.min(maxX - hw, cam.x));
   cam.y = hh * 2 >= maxY - minY ? (minY + maxY) / 2 : Math.max(minY + hh, Math.min(maxY - hh, cam.y));
 }
@@ -2370,7 +2370,7 @@ function groundSig() {   // всё, от чего зависит земля (к�
 }
 function viewRect(pad = 0) { const hw = cw / 2 / zoom + pad, hh = ch / 2 / zoom + pad; return { x0: cam.x - hw, x1: cam.x + hw, y0: cam.y - hh, y1: cam.y + hh }; }
 function panRect() {   // всё, что камера может показать (см. clampCam)
-  const hw = cw / 2 / zoom, hh = ch / 2 / zoom, minX = -H * TW / 2 - 340, maxX = W * TW / 2 + 90, minY = -70, maxY = (W + H) * TH / 2 + 260;
+  const hw = cw / 2 / zoom, hh = ch / 2 / zoom, minX = -H * TW / 2 - 340, maxX = W * TW / 2 + 90, minY = -70 - 180 / zoom, maxY = (W + H) * TH / 2 + 260 + 110 / zoom;
   const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
   return { x0: Math.min(minX, cx - hw) - 8, x1: Math.max(maxX, cx + hw) + 8, y0: Math.min(minY, cy - hh) - 8, y1: Math.max(maxY, cy + hh) + 8 };
 }
