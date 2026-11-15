@@ -224,12 +224,12 @@
     </div>
     <div id="seeds"></div>
     <div id="actions">
+      <button class="wide sunrise" id="restBtn" style="display:none;background:#9ad67a" onclick="openSunday()">🏖 Выходной — чем заняться?</button>
       <button class="wide sunrise" id="dayBtn" style="display:none">☀️ Начать день 2</button>
       <div class="arow">
         <button class="act" id="harvestAll"><span>🧺</span>Собрать</button>
         <button class="act" id="plantAll"><span>🌱</span>Засеять</button>
         <button class="act" id="nightBtn" style="display:none"><span>⬆️</span>Улучшить</button>
-        <button class="act" id="restBtn" style="display:none" onclick="openSunday()"><span>🧺</span>Выходной</button>
         <button class="act" id="stallBtn" onclick="openStall()"><span>🏪</span>Прилавок</button>
         <button class="act" id="bakeBtn" style="display:none" onclick="openBakery()"><span>🥖</span>Пекарня</button>
         <button class="act" id="helperBtn" style="display:none"><span>🧑‍🌾</span>Команда</button>
@@ -638,7 +638,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.34';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.35';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3965,7 +3965,7 @@ function renderUI() {
   $('helperBtn').style.display = S.up.helper > 0 ? '' : 'none';
   setTimeout(() => { const n = [...document.querySelectorAll('.arow .act')].filter(b => b.style.display !== 'none').length; const r = document.querySelector('.arow'); r.style.setProperty('--n', Math.max(5, n)); r.style.gap = n > 5 ? '6px' : ''; });
   $('bakeBtn').style.display = S.up.bakery > 0 ? '' : 'none';
-  $('restBtn').style.display = isRest() && !S.night ? '' : 'none';   // воскресенье: пикник / отдых / итоги недели
+  $('restBtn').style.display = isRest() && !S.night && S.picnic !== S.day ? '' : 'none';   // воскресенье: пикник / отдых / итоги недели
   const items = Object.keys(GOODS).filter(id => S.inv[id]).map(id => `<span class="${GOODS[id].sp ? 'sp' : onSale(id) ? '' : 'off'}">${GOODS[id].sp ? '🌟' : ''}${GOODS[id].e} ${S.inv[id]}</span>`);
   $('inv').innerHTML = items.length ? items.join('') : '<span style="opacity:.75">Склад пуст</span>';
   { const d = (5 - cal().dow + 7) % 7, used = cratesUsed(), fb = $('fairBtn');   // кнопка ярмарки: когда и сколько ящиков собрано
@@ -4643,6 +4643,7 @@ function prestigeInfo() {
 // подсказка висит тем дольше, чем она длиннее (≈ время прочитать), тап — закрыть сразу
 function toast(msg) {
   const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT);
+  { const top = [...$('actions').querySelectorAll('button')].filter(b => b.offsetParent).reduce((m, b) => Math.min(m, b.getBoundingClientRect().top), innerHeight); t.style.bottom = Math.max(90, innerHeight - top + 10) + 'px'; }   // над кнопками, какие бы сейчас ни были
   toastT = setTimeout(() => t.classList.remove('show'), Math.min(7000, Math.max(2500, 1200 + String(msg).length * 60)));
 }
 $('toast').onclick = () => { clearTimeout(toastT); $('toast').classList.remove('show'); };
