@@ -126,6 +126,8 @@
   .stallg .sg b { font-size: 13px; color: var(--ink); } .stallg .sg small { font-size: 11px; } .stallg .sg i { font-style: normal; font-size: 12px; font-weight: 800; margin-top: 2px; }
   .stallg .sg.on { background: linear-gradient(#fff3c4, #ffe28f); border-color: #f0c24a; box-shadow: 0 3px 0 #dba93c; color: #6b4a1a; }
   .stallg .sg.on .e { filter: none; opacity: 1; }
+  .stallg .sg.sp { border-color: #e8c25a; background: #fbf3dc; } .stallg .sg.sp .e { filter: none; opacity: 1; }
+  #inv span.sp { box-shadow: inset 0 0 0 2px #f0c24a; }
   .up { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px dashed var(--line); }
   .up .ico { font-size: 28px; width: 36px; text-align: center; }
   .up .txt { flex: 1; font-size: 14px; }
@@ -223,6 +225,11 @@ const GOODS = {
   pie:   { e: '🥧', name: 'Яблочный пирог', price: 170 },
   pizza: { e: '🍕', name: 'Пицца',   price: 270 },
   cake:  { e: '🎂', name: 'Клубничный торт', price: 380 },
+  // особые находки: лежат в S.special (у каждой свой размер), на складе — только их число; продаются, лишь если выставить вручную
+  sp_pumpkin:    { e: '🎃', name: 'Гигантская тыква', price: 650, sp: 'pumpkin' },
+  sp_corn:       { e: '🌽', name: 'Королевский початок', price: 380, sp: 'corn' },
+  sp_strawberry: { e: '🍓', name: 'Золотая клубника', price: 450, sp: 'strawberry' },
+  sp_cheese:     { e: '🧀', name: 'Отборный сыр', price: 500, sp: 'cheese' },
 };
 // Планировка: каждая постройка нарисована в своих «старых» координатах и сдвинута на [dx, dy] клеток.
 // Чтобы раздвинуть или передвинуть что-то — поменяй смещение здесь (сохранения от этого не зависят).
@@ -490,7 +497,7 @@ S.life ??= { earned: 0, served: 0, harvested: 0, eggs: 0 };
 S.life.milk ??= 0; S.hist ??= []; S.life.flour ??= 0; S.life.cheese ??= 0;
 S.up.clear ??= 0; S.up.mill ??= 0; S.up.dairy ??= 0;
 S.up.house ??= 0; S.up.bakery ??= 0; S.up.cozy ??= 0;
-S.stallOff ??= []; S.picnic ??= 0; S.special ??= []; S.trophies ??= []; S.contestDay ??= 0;   // особые находки и кубки конкурсов   // товары, снятые с продажи (копятся для заказов и производства)
+S.stallOff ??= []; S.picnic ??= 0; S.special ??= []; S.trophies ??= []; S.contestDay ??= 0; S.spOn ??= []; syncSpecial();   // особые находки и кубки конкурсов   // товары, снятые с продажи (копятся для заказов и производства)
 S.up.nests ??= 0; S.up.rooster ??= 0; S.up.yard ??= 0;
 S.up.milker ??= 0; S.up.clover ??= 0; S.up.hay ??= 0; S.up.pasture ??= 0;
 S.coop.gold ??= 0; S.coop.extra ??= 0; S.coop.chicks ??= 0;
@@ -535,7 +542,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.4';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.5';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -658,10 +665,17 @@ const MEDAL = { 1: { e: '🥇', name: 'золото', col: ['#ffe27a', '#e0a91a'
 const prestige = () => Math.min(.2, S.trophies.reduce((a, t) => a + (MEDAL[t.p]?.price || 0), 0))   // кубки у дома — гостям нравится, цены выше
   + (() => { const t = S.trophies[S.trophies.length - 1]; return t && S.day - t.d >= 0 && S.day - t.d < 7 ? MEDAL[t.p]?.week || 0 : 0; })();   // свежая победа — неделю ещё дороже
 const prestigeGuests = () => Math.min(6, S.trophies.filter(t => t.p === 1).length);
+function contestReminder(d = S.day + 1) {   // накануне ярмарки: что за конкурс и как не продать то, что для него бережёшь
+  const k = contestOf(d), sp = SPECIAL[k];
+  if (k === 'goldegg') return S.inv.goldegg > 0 ? (onSale('goldegg') ? '🏆 Завтра конкурс золотых яиц — убери 🟡 с прилавка, чтобы не продать!' : '🏆 Завтра конкурс золотых яиц — 🟡 у тебя есть, береги его') : '🏆 Завтра конкурс золотых яиц 🟡';
+  const has = S.special.some(x => x.k === k);
+  return `🏆 Завтра конкурс ${sp.what} ${sp.e}` + (has ? (onSale('sp_' + k) ? ' — твоя находка стоит на прилавке, убери её!' : ' — твоя находка готова') : '');
+}
+function syncSpecial() { for (const id in GOODS) if (GOODS[id].sp) S.inv[id] = S.special.filter(x => x.k === GOODS[id].sp).length; }
 function rollSpecial(k) {   // редкая находка — СОБЫТИЕ
   const sp = SPECIAL[k]; if (!sp || Math.random() >= sp.chance) return;
   const q = Math.min(100, 25 + Math.random() * 60 + S.up.fert * 2 + (S.up.cozy || 0) * 1.5);
-  S.special.push({ k, q: Math.round(q), d: S.day });
+  S.special.push({ k, q: Math.round(q), d: S.day }); syncSpecial();
   specialFound(k, q);
 }
 function specialFound(k, q) {
@@ -710,6 +724,7 @@ function startDay() {
   if (cal().sday === 1 && S.day > 1) setTimeout(() => toast(`${season().e} Наступила ${season().name.toLowerCase()}: ${season().text}`), coopMsg ? 3400 : 1700);
   if (isFair()) setTimeout(() => toast(`🎪 Ярмарка! Сегодня конкурс ${SPECIAL[contestOf()].what} ${SPECIAL[contestOf()].e} — тапни на ярмарку`), 900);
   if (isRest()) setTimeout(openSunday, 600);
+  if (isFair(S.day + 1)) setTimeout(() => toast(contestReminder()), 2600);
   save(); renderUI();
 }
 
@@ -751,10 +766,12 @@ function spawnVisitor() {
   if (S.up.mill) pool.push('flour', 'flour');
   if (S.up.dairy) pool.push('cheese');
   if (S.up.bakery) for (const r in BAKE) if (canMake(r)) pool.push(r);
+  const spSale = Object.keys(GOODS).filter(id => GOODS[id].sp && onSale(id) && S.inv[id] > 0);
+  if (spSale.length && Math.random() < .15) pool.length = 0, pool.push(pick(spSale));   // за выставленной находкой приходит особый покупатель
   const shown = pool.filter(onSale);
   const crop = pick(shown.length && Math.random() < .85 ? shown : pool);   // спрашивают в основном выставленное
   const base = GOODS[crop].price;
-  const qty = crop === 'goldegg' ? 1 : 1 + Math.floor(Math.random() * (base < 15 ? 4 : base < 40 ? 3 : 2)) + (isFair() && Math.random() < .6 ? 1 : 0);   // на ярмарке берут больше
+  const qty = crop === 'goldegg' || GOODS[crop].sp ? 1 : 1 + Math.floor(Math.random() * (base < 15 ? 4 : base < 40 ? 3 : 2)) + (isFair() && Math.random() < .6 ? 1 : 0);   // на ярмарке берут больше
   const shirt = pick(SHIRTS);
   visitors.push({
     x: W + 1, y: ROAD + .5, state: 'coming', crop, qty, pat: patience(), max: patience(), wps: [],
@@ -778,7 +795,7 @@ function leave(v, mood) {
   v.wps = [{ x: v.x, y: ROAD + 1.2 }, { x: -2, y: ROAD + 1.2 }];
   retarget();
 }
-const onSale = id => !S.stallOff.includes(id);
+const onSale = id => GOODS[id]?.sp ? S.spOn.includes(id) : !S.stallOff.includes(id);   // находки — только если выставить вручную
 const canSell = v => onSale(v.crop) && (S.inv[v.crop] || 0) >= v.qty;   // фермер и продавец сами продают только выставленное
 const queueCount = () => visitors.filter(v => v.state !== 'leaving').length;
 
@@ -791,6 +808,11 @@ function sell(v) {
   const money = v.qty * sellPrice(v.crop) + tip;
   S.coins += money; S.stats.earned += money; S.stats.served++; S.life.earned += money; S.life.served++;
   for (const o of [S.stats, S.life]) { o.sold ??= {}; o.sold[v.crop] = (o.sold[v.crop] || 0) + money; }
+  if (GOODS[v.crop].sp) {   // продаём самую маленькую находку — лучшая остаётся для конкурса
+    const list = S.special.map((x, i) => ({ ...x, i })).filter(x => x.k === GOODS[v.crop].sp).sort((a, b) => a.q - b.q);
+    if (list[0]) S.special.splice(list[0].i, 1);
+    syncSpecial(); if (!S.inv[v.crop]) S.spOn = S.spOn.filter(x => x !== v.crop);
+  }
   addFloat(v.x, v.y, `+${money}💰`);
   leave(v, 'happy');
   save(); renderUI();
@@ -3634,7 +3656,7 @@ function renderUI() {
   $('dayBtn').textContent = `☀️ Начать день ${S.day + 1}`;
   $('helperBtn').style.display = S.up.helper > 0 ? '' : 'none';
   $('bakeBtn').style.display = S.up.bakery > 0 ? '' : 'none';
-  const items = Object.keys(GOODS).filter(id => S.inv[id]).map(id => `<span${onSale(id) ? '' : ' class="off"'}>${GOODS[id].e} ${S.inv[id]}</span>`);
+  const items = Object.keys(GOODS).filter(id => S.inv[id]).map(id => `<span class="${GOODS[id].sp ? 'sp' : onSale(id) ? '' : 'off'}">${GOODS[id].sp ? '🌟' : ''}${GOODS[id].e} ${S.inv[id]}</span>`);
   $('inv').innerHTML = items.length ? items.join('') : '<span style="opacity:.75">Склад пуст</span>';
   const s = $('seeds'); s.innerHTML = '';
   for (const id of S.unlocked) {
@@ -3964,7 +3986,7 @@ function openNight(withSummary) {
   let h = `<h2>🌙 Ночь ${S.day}</h2>`;
   if (withSummary) {
     h += `<div class="summary">За день: заработано <b>${st.earned}💰</b><br>Обслужено: <b>${st.served}</b> · Ушли ни с чем: <b>${st.missed}</b><br>
-      ${isRest(S.day + 1) ? 'Завтра <b>воскресенье — выходной</b> 🧺 лавка закрыта' : `Завтра придёт ~<b>${visitorsPerDay(S.day + 1)}</b> покупателей${isFair(S.day + 1) ? ' — <b>ярмарка</b> 🎪' : ''}`}</div>`;
+      ${isRest(S.day + 1) ? 'Завтра <b>воскресенье — выходной</b> 🧺 лавка закрыта' : `Завтра придёт ~<b>${visitorsPerDay(S.day + 1)}</b> покупателей${isFair(S.day + 1) ? ` — <b>ярмарка</b> 🎪<br>${contestReminder()}` : ''}`}</div>`;
   }
   h += `<div style="font-weight:700;margin:6px 0 2px">У тебя: 💰 ${S.coins}</div>`;
   if (EMBED && CLOUD.state !== 'ok' && CLOUD.state !== 'wait' && S.day >= 2 && (S.codeDay || 0) < S.day)   // облака нет — Safari может стереть ферму
@@ -4094,7 +4116,7 @@ function enterContest(i) {
   const k = contestOf(), sp = SPECIAL[k];
   let q;
   if (k === 'goldegg') { if (!(S.inv.goldegg > 0)) return; S.inv.goldegg--; q = Math.round(Math.min(100, 30 + Math.random() * 65 + (S.up.cozy || 0))); }
-  else { const x = S.special[i]; if (!x || x.k !== k) return; q = x.q; S.special.splice(i, 1); }
+  else { const x = S.special[i]; if (!x || x.k !== k) return; q = x.q; S.special.splice(i, 1); syncSpecial(); }
   S.contestDay = S.day;
   const table = [...rivalsFor(S.day), { name: 'Твоя ферма', q, me: true }].sort((a, b) => b.q - a.q || (a.me ? -1 : 1));
   const place = table.findIndex(r => r.me) + 1;
@@ -4154,18 +4176,26 @@ function openStall() {
     <div class="row" style="margin-bottom:6px"><button class="wide alt" onclick="stallAll(true)">✔ Выставить всё</button><button class="wide alt" onclick="stallAll(false)">✖ Убрать всё</button></div>
     <div class="stallg">`;
   for (const id of known) {
+    if (GOODS[id].sp) continue;
     const on = onSale(id), g = GOODS[id];
     h += `<button class="sg ${on ? 'on' : ''}" onclick="toggleSale('${id}')"><span class="e">${g.e}</span><b>${g.name}</b><small>${S.inv[id] || 0} шт · ${sellPrice(id)}💰</small><i>${on ? '✔ продаём' : '📦 копим'}</i></button>`;
   }
-  h += `</div><button class="wide" style="width:100%;margin-top:12px" onclick="S.night ? openNight(false) : closeNight()">Готово</button>`;
+  h += `</div>`;
+  const sps = Object.keys(GOODS).filter(id => GOODS[id].sp && S.inv[id] > 0);
+  if (sps.length) {
+    h += `<h3 style="margin:12px 0 2px">🌟 Особые находки</h3><div style="font-size:12px;color:#7a6650;margin-bottom:6px">Берегутся для конкурса. Выставишь — за ними придёт особый покупатель (продаётся самая маленькая).</div><div class="stallg">`;
+    for (const id of sps) { const on = onSale(id), g = GOODS[id]; h += `<button class="sg sp ${on ? 'on' : ''}" onclick="toggleSale('${id}')"><span class="e">${g.e}</span><b>${g.name}</b><small>${S.inv[id]} шт · ${sellPrice(id)}💰</small><i>${on ? '✔ продаём' : '🏆 бережём'}</i></button>`; }
+    h += `</div>`;
+  }
+  h += `<button class="wide" style="width:100%;margin-top:12px" onclick="S.night ? openNight(false) : closeNight()">Готово</button>`;
   $('sheet').dataset.view = 'stall'; $('sheet').innerHTML = h; $('overlay').classList.add('show');
 }
 function toggleSale(id) {
-  const i = S.stallOff.indexOf(id); if (i >= 0) S.stallOff.splice(i, 1); else S.stallOff.push(id);
+  const L = GOODS[id].sp ? S.spOn : S.stallOff, i = L.indexOf(id); if (i >= 0) L.splice(i, 1); else L.push(id);
   save(); renderUI(); const top = $('sheet').scrollTop; openStall(); $('sheet').scrollTop = top;
 }
 function stallAll(on) {
-  S.stallOff = on ? [] : Object.keys(GOODS);
+  S.stallOff = on ? [] : Object.keys(GOODS).filter(id => !GOODS[id].sp); if (!on) S.spOn = [];
   save(); renderUI(); openStall();
 }
 // меню ночи или улучшения открыто, а помощник что-то поменял (покормил) — перерисовать, сохранив прокрутку
@@ -4238,7 +4268,7 @@ $('menuBtn').onclick = openMenu;
 // ================== ЧИТ-МЕНЮ (тройной тап по «День N») ==================
 const CHEATS = {
   money:   ['💰 +1000', () => { S.coins += 1000; }],
-  special: ['🌟 Особая находка', () => { const k = contestOf() === 'goldegg' ? 'pumpkin' : contestOf(); const q = Math.round(40 + Math.random() * 55); S.special.push({ k, q, d: S.day }); specialFound(k, q); }],
+  special: ['🌟 Особая находка', () => { const k = contestOf() === 'goldegg' ? 'pumpkin' : contestOf(); const q = Math.round(40 + Math.random() * 55); S.special.push({ k, q, d: S.day }); syncSpecial(); specialFound(k, q); }],
   season:  ['🍂 Следующий сезон', () => { S.day = (Math.floor((S.day - 1) / SEASON_LEN) + 1) * SEASON_LEN + 1; toast(`${season().e} ${season().name}: ${season().text}`); }],
   money2:  ['💰 +10 000', () => { S.coins += 10000; }],
   goods:   ['📦 +10 всего', () => { for (const id of [...S.unlocked, 'apple', 'egg', 'milk', 'flour', 'cheese', ...(S.up.bakery ? Object.keys(BAKE) : [])]) S.inv[id] = (S.inv[id] || 0) + 10; }],
