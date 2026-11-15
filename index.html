@@ -637,7 +637,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.32';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.33';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1779,11 +1779,13 @@ function updateHelper(h, dt) {
   }
   if ((h.think -= dt) > 0) return;
   h.think = 0.5;
-  if (S.picnic === S.day && !S.night) {   // пикник: вся команда отдыхает у пруда
+  if (isRest() && !S.night) {   // воскресенье: станции не трогаем, команда отдыхает (у дома, а в пикник — у пледа); в понедельник — снова за работу
+    const pic = S.picnic === S.day, C = pic ? PICNIC : REST.idle;
     const spots = [[1, 0], [-1, 0], [0, 1], [1, 1], [-1, 1], [2, 0]], [dx, dy] = spots[h.id % spots.length];
-    let tx = PICNIC.x + dx, ty = PICNIC.y + dy; if (!walkable(tx, ty)) { tx = PICNIC.x; ty = PICNIC.y + 1; }
+    let tx = C.x + dx, ty = C.y + dy; if (!walkable(tx, ty)) { tx = C.x; ty = C.y + 1; }
+    if (!walkable(tx, ty)) { tx = C.x; ty = C.y; }
     if (Math.floor(h.x) !== tx || Math.floor(h.y) !== ty) h.path = findPath(Math.floor(h.x), Math.floor(h.y), tx, ty) || [];
-    else h.flip = h.x > PICNIC.x + .5;
+    else h.flip = h.x > C.x + .5;
     return;
   }
   const hx = Math.floor(h.x), hy = Math.floor(h.y), stall = fairOn() ? FAIR_HELP : STATIONS.stall.idle;
@@ -2524,7 +2526,7 @@ function draw(t) {
   list.push({ z: P.x + P.y + 0.01, f: () => drawPerson(P, PLAYER_LOOK) });
   for (const h of helpers) list.push({ z: h.x + h.y, f: () => { drawPerson(h, h.look); const c = iso(h.x, h.y); const cfg = S.helpers[h.id] || { stations: [] }, st = cfg.stations;
     const fieldIco = !cfg.replant ? '🧺' : cfg.seed === 'same' ? '🔁' : CROP[cfg.seed]?.e || '🧺';   // только сбор — корзинка, посев — значок культуры
-    const icons = S.picnic === S.day && !S.night ? ['🧺'] : st.length ? st.map(k => k === 'field' ? (!cfg.zones.length ? '❓' : fieldIco) : k === 'gh' && cfg.ghReplant && cfg.ghSeed !== 'same' ? CROP[cfg.ghSeed].e : STATIONS[k].ico) : [REST.ico];
+    const icons = isRest() && !S.night ? [S.picnic === S.day ? '🧺' : REST.ico] : st.length ? st.map(k => k === 'field' ? (!cfg.zones.length ? '❓' : fieldIco) : k === 'gh' && cfg.ghReplant && cfg.ghSeed !== 'same' ? CROP[cfg.ghSeed].e : STATIONS[k].ico) : [REST.ico];
     if (h.broke) icons.push('💰');
     rr(c.x - icons.length * 6.5 - 3, c.y - 69, icons.length * 13 + 6, 18, 9, 'rgba(255,253,246,.95)');
     icons.forEach((e, k) => emoji(e, c.x + (k - (icons.length - 1) / 2) * 13, c.y - 59.5, 11)); } });
