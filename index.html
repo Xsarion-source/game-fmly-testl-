@@ -412,7 +412,7 @@ const FOOT = { mill: shiftR('mill', { x0: 18, y0: 5, x1: 19, y1: 6 }), dairy: sh
 const lotAt = (x, y) => LOTS.findIndex(L => x >= L.x0 && x <= L.x1 && y >= L.y0 && y <= L.y1);
 const prodAt = (x, y) => Object.keys(FOOT).find(k => x >= FOOT[k].x0 && x <= FOOT[k].x1 && y >= FOOT[k].y0 && y <= FOOT[k].y1) || null;
 deco('mail', { kind: 'mailbox', z: 4 + 5 + 1 }); blocked[MAIL.y][MAIL.x] = true;
-const TROPHY = at('mail', 6, 6);   // доска почёта с кубками — через тропинку от почтового ящика
+const TROPHY = at('pond', 14, 12);   // доска почёта с кубками — у дороги, между прудом и рекламным щитом
 decor.push({ kind: 'trophies', x: TROPHY.x, y: TROPHY.y, z: TROPHY.x + TROPHY.y + 1 }); blocked[TROPHY.y][TROPHY.x] = true;
 deco('home', { kind: 'bakery', z: 4 + 1 + 2 + 2 - 1.01 });   // пристройка справа от дома (клетки 4 × 2–3)
 deco('flowers', { kind: 'flowers', z: 4 + 6 + .9 });
@@ -542,7 +542,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.5';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.6';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
