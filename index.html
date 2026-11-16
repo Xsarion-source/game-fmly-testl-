@@ -706,7 +706,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.53';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.54';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1198,7 +1198,7 @@ function tapCoop() {
 let hensState = [];
 let chicksState = [];
 function syncHens() {   // куры, петух (последний в списке) и цыплята, которые подрастают
-  const n = hens() + (S.up.rooster && hens() ? 1 : 0), mk = () => ({ ...at('coop', 7 + Math.random() * 2, 9.4 + Math.random() * 1.2), tx: 0, ty: 0, wait: Math.random() * 2, phase: 0, moving: false, flip: false });
+  const n = hens() + (S.up.rooster && hens() ? 1 : 0), mk = () => ({ x: YARD.x0 + .3 + Math.random() * (YARD.x1 - YARD.x0 - .6), y: YARD.y0 + .3 + Math.random() * (YARD.y1 - YARD.y0 - .6), tx: 0, ty: 0, wait: Math.random() * 8, phase: 0, moving: false, flip: false });
   while (hensState.length < n) hensState.push(mk());
   hensState.length = n;
   hensState.forEach((h, i) => h.rooster = !!S.up.rooster && i === n - 1);
@@ -1212,9 +1212,12 @@ function updateHens(dt) {
       const p = at('coop', 6.4 + i * 0.32, 9.35), done = stepToward(h, p.x, p.y, 0.8, dt);
       h.moving = !done; h.phase += dt * 10; return;
     }
-    if (h.wait > 0) { h.wait -= dt; h.moving = false; return; }
-    if (!h.moving) { h.tx = YARD.x0 + .3 + Math.random() * (YARD.x1 - YARD.x0 - .6); h.ty = YARD.y0 + .3 + Math.random() * (YARD.y1 - YARD.y0 - .6); h.moving = true; }
-    if (stepToward(h, h.tx, h.ty, 0.9, dt)) { h.moving = false; h.wait = 1 + Math.random() * 3; }
+    if (h.wait > 0) { h.wait -= dt; h.moving = false; if ((h.pt = (h.pt || 0) - dt) <= 0) { h.peck = !h.peck && Math.random() < .6; h.pt = h.peck ? .5 : 3 + Math.random() * 5; } return; }   // изредка клюёт
+    if (!h.moving) {   // короткий шажок рядом, потом долго стоит
+      const cl = (v, a, b) => Math.max(a, Math.min(b, v));
+      h.tx = cl(h.x + (Math.random() - .5) * 2, YARD.x0 + .3, YARD.x1 - .3); h.ty = cl(h.y + (Math.random() - .5) * 2, YARD.y0 + .3, YARD.y1 - .3); h.moving = true;
+    }
+    if (stepToward(h, h.tx, h.ty, 0.9, dt)) { h.moving = false; h.wait = 6 + Math.random() * 10; }
     h.phase += dt * 14;
   });
 }
@@ -1534,15 +1537,18 @@ function tapBarn() {
 }
 let cowsState = [];
 function syncCows() {
-  while (cowsState.length < cows()) cowsState.push({ ...at('barn', 13.6 + Math.random() * 1.8, 4 + Math.random() * 2.4), tx: 0, ty: 0, wait: Math.random() * 3, phase: 0, moving: false, flip: false });
+  while (cowsState.length < cows()) cowsState.push({ x: PASTURE.x0 + .6 + Math.random() * (PASTURE.x1 - PASTURE.x0 - 1.2), y: PASTURE.y0 + .7 + Math.random() * (PASTURE.y1 - PASTURE.y0 - 1.3), tx: 0, ty: 0, wait: Math.random() * 12, phase: 0, moving: false, flip: false });
   cowsState.length = cows();
 }
 function updateCows(dt) {
   cowsState.forEach((c, i) => {
     if (S.night) { const p = { x: PASTURE.x0 + .7 + (i % 4) * .75, y: PASTURE.y0 + .55 + Math.floor(i / 4) * .8 }, done = stepToward(c, p.x, p.y, 0.5, dt); c.moving = !done; c.phase += dt * 6; return; }   // ночью у ворот коровника
-    if (c.wait > 0) { c.wait -= dt; c.moving = false; return; }
-    if (!c.moving) { c.tx = PASTURE.x0 + .5 + Math.random() * (PASTURE.x1 - PASTURE.x0 - 1); c.ty = PASTURE.y0 + .6 + Math.random() * (PASTURE.y1 - PASTURE.y0 - 1.1); c.moving = true; }
-    if (stepToward(c, c.tx, c.ty, 0.45, dt)) { c.moving = false; c.wait = 2 + Math.random() * 4; }
+    if (c.wait > 0) { c.wait -= dt; c.moving = false; if ((c.gt = (c.gt || 0) - dt) <= 0) { c.graze = !c.graze; c.gt = 4 + Math.random() * 6; } return; }   // то щиплет траву, то стоит
+    if (!c.moving) {   // корова переходит недалеко и подолгу пасётся на месте
+      const cl = (v, a, b) => Math.max(a, Math.min(b, v));
+      c.tx = cl(c.x + (Math.random() - .5) * 2.4, PASTURE.x0 + .5, PASTURE.x1 - .5); c.ty = cl(c.y + (Math.random() - .5) * 2, PASTURE.y0 + .6, PASTURE.y1 - .5); c.moving = true;
+    }
+    if (stepToward(c, c.tx, c.ty, 0.45, dt)) { c.moving = false; c.wait = 12 + Math.random() * 14; }
     c.phase += dt * 7;
   });
 }
@@ -1667,7 +1673,7 @@ function drawUpBadges(t) {
     const l = S.up[key]; if (l >= u.max || upLocked(key)) continue;
     const s = upSpot(key), ok = S.coins >= u.cost(l);
     const c = lift(s.x + .5, s.y + .5, { helper: 80, house: 100, bakery: 52, trays: 70, cozy: 30, sign: 86, ads: 74, coop: 30, nests: 14, rooster: 20, yard: 10, milker: 24, clover: 12, hay: 30, pasture: 12, barn: 30, greenhouse: 56, clear: 62, mill: 84, dairy: 58 }[key] || 30);
-    const y = c.y + Math.sin(t * 3 + s.x) * 2.5;
+    const y = c.y;
     
     // плашка «⬆ цена»: это предложение купить улучшение, а не уведомление о состоянии
     const label = `▲ ${u.cost(l)}`, wTxt = (ctx.font = '800 10px system-ui, sans-serif', ctx.measureText(label).width), w = 22 + wTxt;
@@ -2667,11 +2673,11 @@ const NOOP = (() => {
     measureText: () => ({ width: 0 }), getTransform: () => new DOMMatrix(), getLineDash: () => [], isPointInPath: () => false, isPointInStroke: () => false });
   return o;
 })();
-const SPRITE_ANIM = new Set(['house', 'stall', 'bakery', 'dairy', 'doghouse', 'billboard', 'mill']);
+const SPRITE_ANIM = new Set(['house', 'bakery', 'dairy', 'mill']);   // поверх картинки — только дым и крылья мельницы
 const SPRITE_KEY = {
   house: () => '', stall: d => ((isRest() || isFair()) && !S.night) + '' + isFair() + (d.b ? 'b' + S.up.stall2 + upLocked('stall2') : shopN()) + (d.b ? S.shop.b : S.shop.a).map(id => id ? id + (S.inv[id] > 0) : '-').join(), season: () => S.up.seasonstand + '', bakery: () => bakeLoaded().length + ',' + S.started, dairy: () => (S.prod.dairy.q > 0) + ',' + S.started,
   doghouse: () => '', billboard: () => '', mill: () => (S.prod.mill.q > 0) + ',' + S.started,
-  tree: () => season().id, flowers: () => '', well: () => '', fence: () => hens() + ',' + cows(), coop: () => S.coop.eggs + ',' + (S.coop.gold || 0) + ',' + hens(), barn: () => cows(),
+  tree: () => season().id, flowers: () => '', well: () => '', swing: () => S.up.cozy + '', fence: () => hens() + ',' + cows(), coop: () => S.coop.eggs + ',' + (S.coop.gold || 0) + ',' + hens(), barn: () => cows(),
   trough: () => cows() + ',' + cowsFedToday(), mailbox: () => JSON.stringify(S.order), trophies: () => S.trophies.map(t => t.p).join(), sack: () => '', bench: () => '', glass: () => '', ghroof: () => '',
 };
 const mctx = document.createElement('canvas').getContext('2d');
@@ -2757,9 +2763,9 @@ function draw(t) {
     list.push({ z: d.z, f: sk ? () => drawSprite(d, moved, sk(d), t, o, raw) : moved });
   }
   S.trees.forEach((tr, i) => { if (tr.kind) { const s = ORCHARD_SLOTS[i]; list.push({ z: s.x + s.y + 1, f: () => drawOrchardTree(i, t) }); } });
-  for (const h of hensState) list.push({ z: h.x + h.y, f: () => drawHen(h, t) });
-  for (const h of chicksState) list.push({ z: h.x + h.y, f: () => drawChick(h, t) });
-  for (const c of cowsState) list.push({ z: c.x + c.y, f: () => drawCow(c, t) });
+  for (const h of hensState) list.push({ z: h.x + h.y, f: () => { const key = animKey(h, (h.rooster ? 'r' : '') + (h.peck ? 'p' : '')); drawCachedAt(h, key, 34, 40, 17, 32, o => drawHen({ ...o, phase: phaseOf(key) }, 0)); } });
+  for (const h of chicksState) list.push({ z: h.x + h.y, f: () => { const key = animKey(h, ''); drawCachedAt(h, key, 16, 18, 8, 13, o => drawChick({ ...o, phase: phaseOf(key) }, 0)); } });
+  for (const c of cowsState) list.push({ z: c.x + c.y, f: () => { const key = animKey(c, c.graze ? 'g' : ''); drawCachedAt(c, key, 70, 64, 35, 52, o => drawCow({ ...o, phase: phaseOf(key) }, 0)); } });
   S.plots.forEach((p, i) => { if (p.crop) { const s = PLOT_SLOTS[i]; list.push({ z: s.x + s.y + 1, f: () => drawCrop(i, t) }); } });
   S.gh.forEach((p, i) => { if (p.crop) { const s = GH_SLOTS[i]; list.push({ z: s.x + s.y + 1, f: () => drawCrop(i, t, true) }); } });
   list.push({ z: P.x + P.y + 0.01, f: () => S.picnic === S.day && !S.night && !path.length && !P.moving && Math.floor(P.x) === PICNIC.x && Math.floor(P.y) === PICNIC.y ? drawSitting(P, PLAYER_LOOK) : drawPersonC(P, PLAYER_LOOK) });   // на пикнике фермер сидит на пледе
@@ -2845,7 +2851,7 @@ function drawBooth(k = 0) {   // лоток фермы: товар из ящик
 }
 const stallGoods = B => B.npc || Object.keys(rivals()[B.r].stock).filter(g => rivals()[B.r].stock[g] > 0).map(g => GOODS[g].e);
 function drawWheel(t) {   // колесо обозрения — медленно крутится
-  const base = iso(WHEEL.x, WHEEL.y), R = 48, hub = { x: base.x, y: base.y - 84 }, a0 = t * .25;
+  const base = iso(WHEEL.x, WHEEL.y), R = 48, hub = { x: base.x, y: base.y - 84 }, a0 = .6;   // колесо стоит
   ctx.fillStyle = 'rgba(30,50,15,.22)'; ctx.beginPath(); ctx.ellipse(base.x, base.y, 46, 14, 0, 0, 7); ctx.fill();
   ctx.lineCap = 'round';
   for (const s of [-1, 1]) { seg({ x: base.x + s * 30, y: base.y + 4 }, hub, INK, 6); seg({ x: base.x + s * 30, y: base.y + 4 }, hub, '#d9534f', 3.4); }
@@ -3169,11 +3175,11 @@ function drawPondAt(t) {
   const P = [iso(10, 9), iso(12, 9), iso(12, 11), iso(10, 11)];
   gface(P, '#86cff2', '#3a8fcb', null);   // один градиент на весь пруд
   for (const [x, y] of [[10.5, 9.5], [11.5, 9.5], [10.5, 10.5], [11.5, 10.5]]) {   // рябь
-    const c = iso(x, y), o = Math.sin(t * 2 + x + y) * 3; seg({ x: c.x - 8 + o, y: c.y }, { x: c.x + 2 + o, y: c.y }, 'rgba(255,255,255,.55)', 1.2);
+    const c = iso(x, y), o = Math.sin(x + y) * 3; seg({ x: c.x - 8 + o, y: c.y }, { x: c.x + 2 + o, y: c.y }, 'rgba(255,255,255,.55)', 1.2);
   }
   shape(P); ctx.lineJoin = 'round'; ctx.strokeStyle = '#e8d6a0'; ctx.lineWidth = 5; ctx.stroke(); ctx.strokeStyle = INK; ctx.lineWidth = 1.4; ctx.stroke();
   for (const [x, y, r] of [[10.5, 9.6, 5], [11.4, 10.4, 4]]) {
-    const c = iso(x, y + Math.sin(t + x) * .02); ctx.fillStyle = INK; ctx.beginPath(); ctx.ellipse(c.x, c.y, r + 1, (r + 1) / 2, 0, 0, 7); ctx.fill();
+    const c = iso(x, y); ctx.fillStyle = INK; ctx.beginPath(); ctx.ellipse(c.x, c.y, r + 1, (r + 1) / 2, 0, 0, 7); ctx.fill();
     ctx.fillStyle = '#5fb04a'; ctx.beginPath(); ctx.ellipse(c.x, c.y, r, r / 2, 0, .3, 6.1); ctx.lineTo(c.x, c.y); ctx.fill();
   }
   const fl = iso(10.5, 9.6); circle(fl.x + 1, fl.y - 2, 2.2, '#ff9cc0'); circle(fl.x + 1, fl.y - 2, .9, '#ffe066');
@@ -3534,7 +3540,7 @@ function drawHouse(d, t) {
   if ((S.up.cozy || 0) >= 5) {
     const ap = lift(3, 3, hw + 34), tp = lift(3, 3, hw + 48);
     seg(ap, tp, '#3b2416', 1.8);
-    anim(() => emoji('🐓', tp.x + Math.sin(t * .7) * 2, tp.y - 5, 13));
+    emoji('🐓', tp.x, tp.y - 5, 13);
     for (const lx of [2.35, 3.3]) {
       const lp = lift(lx, 4.02, 23);
       seg(lift(lx, 4.02, 30), { x: lp.x, y: lp.y - 4 }, '#3b2416', 1);
@@ -3664,8 +3670,8 @@ function drawDoghouse(d, t) {   // уют 2: будка с двускатной 
   ctx.fillStyle = '#c98a4a'; ctx.beginPath(); ctx.ellipse(bw.x, bw.y - 2.6, 3.4, 1.4, 0, 0, 7); ctx.fill();
   const c = iso(1.95, 4.85);
   ctx.fillStyle = 'rgba(30,50,15,.25)'; ctx.beginPath(); ctx.ellipse(c.x, c.y, 9, 4, 0, 0, 7); ctx.fill();
-  anim(() => { if (S.night) emoji('💤', c.x + 8, c.y - 22, 10);
-    drawDog(c.x, c.y, t, S.night); });
+  if (S.night) emoji('💤', c.x + 8, c.y - 22, 10);
+  drawDog(c.x, c.y, 0, S.night);   // собака неподвижна
 }
 function drawDog(x, y, t, sleep) {   // собака у будки: сидит, виляет хвостом, дышит; ночью спит калачиком
   const FUR = '#e3b273', DARK = '#a8692f', LIGHT = '#f8e6c8';
@@ -3750,7 +3756,7 @@ function drawSwing(d, t) {   // уют 4: качели у лавки
   }
   const a = lift(1.0, y, z), b = lift(3.0, y, z);
   seg(a, b, INK, 6.5); seg(a, b, '#a87a48', 4.5); seg({ x: a.x, y: a.y - 1.2 }, { x: b.x, y: b.y - 1.2 }, 'rgba(255,230,190,.55)', 1.2);
-  const sw = S.night ? 0 : Math.sin(t * 2.2) * .22;
+  const sw = 0;   // качели неподвижны (анимации убраны — телефон меньше греется)
   for (const x of [1.6, 2.4]) seg(lift(x, y, z), lift(x, y + sw, 11), '#6b4a30', 1.4);
   toonBox(1.55, y + sw - .13, .9, .26, 2.5, ['#e2b679', '#b98a55'], ['#c99a62', '#9e7140'], ['#f0c98e', '#dcae70'], 9, 1.1);
 }
@@ -3806,10 +3812,10 @@ function drawStall(d, t) {
   gface(fY(xa, xb, 10.1, z0, z1), L ? '#fffaf0' : '#d0a26a', L ? '#f0dfb8' : '#a8784a', L >= 4 ? '#c99a1a' : INK, L >= 4 ? 3 : 1.6);
   textOnX(xa, 10.1, (z0 + z1) / 2 - 1, xb - xa, d.b ? (L ? 'ЛАВКА 2' : 'лавка 2') : L ? 'ФЕРМА' : 'лавка', L ? '#c0392b' : '#3b2416', d.b ? (L ? 9 : 7) : L ? 11 : 8);
   if (L >= 5) { const a = lift(xa + .12, 10.1, z1 - 4), b = lift(xb - .12, 10.1, z1 - 4); emoji('⭐', a.x, a.y, 7); emoji('⭐', b.x, b.y, 7); }
-  if (L >= 3) anim(() => { for (let k = 0; k <= 8; k++) {   // гирлянда
-    const p = lift(xa + k * (xb - xa) / 8, 10.1, z1 + 3), on = S.night || Math.sin(t * 3 + k) > -0.3;
-    circle(p.x, p.y, on ? 2.6 : 2, INK); circle(p.x, p.y, on ? 2 : 1.5, on ? LIGHT_COLORS[k % 4] : '#776655');
-  } });
+  if (L >= 3) for (let k = 0; k <= 8; k++) {   // гирлянда — горит ровно, без мигания
+    const p = lift(xa + k * (xb - xa) / 8, 10.1, z1 + 3);
+    circle(p.x, p.y, 2.6, INK); circle(p.x, p.y, 2, LIGHT_COLORS[k % 4]);
+  }
   // прилавок: доски, столешница с кромкой
   gface(fY(3, 5, 11, 0, 15), '#d9a066', '#a8743f'); gface(fX(5, 10, 11, 0, 15), '#b8834d', '#8f5b2b');
   for (const x of [3.4, 3.8, 4.2, 4.6]) seg(lift(x, 11, 1), lift(x, 11, 14), 'rgba(110,65,30,.35)', 1);
@@ -3946,7 +3952,7 @@ function drawOrchardTree(i, t) {
     const ripe = tr.fruit >= 1, n = ripe ? 8 : tr.fruit > .5 ? 5 : 0;
     const spots = [[-12, -30], [-4, -34], [6, -29], [11, -36], [-7, -42], [3, -45], [-1, -25], [9, -24]];
     for (let j = 0; j < n; j++) {
-      const x = c.x + spots[j][0], y = c.y + spots[j][1] + (ripe ? Math.sin(t * 2 + j) * .6 : 0), r = ripe ? 3.4 : 2.2;
+      const x = c.x + spots[j][0], y = c.y + spots[j][1], r = ripe ? 3.4 : 2.2;
       circle(x, y, r + 1, INK); circle(x, y, r, ripe ? T.fruitColor : '#a6d65a'); circle(x - r * .35, y - r * .35, r * .35, 'rgba(255,255,255,.7)');
     }
   }
@@ -3963,13 +3969,13 @@ function drawCow(c, t) {
     ctx.strokeStyle = '#3a2a22'; ctx.lineWidth = 2.6;
     for (const [x, k] of [[-8, 1], [-4, -1], [5, 1], [9, -1]]) { ctx.beginPath(); ctx.moveTo(x, by + 3); ctx.lineTo(x + sw * k, -1); ctx.stroke(); }
   }
-  ctx.strokeStyle = '#3a2a22'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(-12, by - 2); ctx.quadraticCurveTo(-16, by + 2, -15, by + 7 + Math.sin(t * 3 + c.x) * 1.5); ctx.stroke();   // хвост
+  ctx.strokeStyle = '#3a2a22'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(-12, by - 2); ctx.quadraticCurveTo(-16, by + 2, -15, by + 7); ctx.stroke();   // хвост
   ctx.fillStyle = '#fbfaf5'; ctx.beginPath(); ctx.ellipse(0, by, 13, 7.5, 0, 0, 7); ctx.fill();
   ctx.strokeStyle = INK; ctx.lineWidth = 1.3; ctx.stroke();
   ctx.fillStyle = '#2b2522';   // пятна
   for (const [x, y, rx, ry] of [[-5, -2, 4, 3], [4, 2, 3.5, 2.5], [-8, 3, 2.5, 2]]) { ctx.beginPath(); ctx.ellipse(x, by + y, rx, ry, .3, 0, 7); ctx.fill(); }
   if (!lie) { ctx.fillStyle = '#f2a7b5'; ctx.beginPath(); ctx.ellipse(1, by + 7, 3, 2, 0, 0, 7); ctx.fill(); }   // вымя
-  const graze = !c.moving && !lie && Math.sin(t * 1.3 + c.x * 3) > 0.4 ? 6 : 0;   // щиплет травку
+  const graze = !c.moving && !lie && c.graze ? 6 : 0;   // щиплет травку
   const hx = 13, hy = by - 5 + graze;
   ctx.fillStyle = '#fbfaf5'; ctx.beginPath(); ctx.ellipse(hx, hy, 5.5, 5, 0, 0, 7); ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.3; ctx.stroke();
   ctx.fillStyle = '#f2b8c2'; ctx.beginPath(); ctx.ellipse(hx + 3.5, hy + 2.5, 3.2, 2.6, 0, 0, 7); ctx.fill();
@@ -4005,7 +4011,7 @@ function drawHen(h, t) {
   ctx.fillStyle = h.rooster ? '#f7e1b5' : '#fbfaf5'; ctx.beginPath(); ctx.ellipse(0, by, 7, 5, 0, 0, 7); ctx.fill();
   ctx.strokeStyle = INK; ctx.lineWidth = 1.1; ctx.stroke();
   ctx.fillStyle = '#e9e3d6'; ctx.beginPath(); ctx.ellipse(-1, by, 4, 2.6, 0, 0, 7); ctx.fill();
-  const pk = !h.moving && !sleep && Math.sin(t * 3 + h.x * 5) > 0.7 ? 3 : 0;   // клюёт зёрнышки
+  const pk = !h.moving && !sleep && h.peck ? 3 : 0;   // клюёт зёрнышки
   circle(5, by - 5 + pk, 4.1, INK); circle(5, by - 5 + pk, 3.2, '#fbfaf5');
   circle(4.6, by - 8.6 + pk, 1.5, '#e0393e'); circle(6.2, by - 8.2 + pk, 1.3, '#e0393e');
   if (h.rooster) { circle(3.4, by - 9.4 + pk, 1.8, '#e0393e'); circle(5.2, by - 10 + pk, 1.9, '#e0393e'); circle(6.8, by - 9.2 + pk, 1.5, '#e0393e'); }
@@ -4040,24 +4046,24 @@ function drawBillboard(d, t) {
     rr(a.x - 5, a.y - 2, 10, 4, 2, '#444'); circle(a.x, a.y + 2, 2.5, '#fff6c0');
     ctx.globalAlpha = .28; poly([lift(x0, 10.5, zb), lift(x1, 10.5, zb), lift(x1, 10.5, zt), lift(x0, 10.5, zt)], '#ffe9a0'); ctx.globalAlpha = 1;
   }
-  if (L >= 5) anim(() => { for (let k = 0; k <= 6; k++) {   // лампочки по верхнему краю
-    const p = lift(x0 + w * k / 6, 10.5, zt + 2), on = (Math.floor(t * 3) + k) % 2;
-    circle(p.x, p.y, 2.2, on ? '#ffe066' : '#b88a2a');
-  } });
+  if (L >= 5) for (let k = 0; k <= 6; k++) {   // лампочки по верхнему краю — горят ровно
+    const p = lift(x0 + w * k / 6, 10.5, zt + 2);
+    circle(p.x, p.y, 2.2, '#ffe066');
+  }
   if (L >= 7) {   // флаг над щитом
     vline(13.0, 10.5, zt, zt + 26, '#6b4327', 2);
-    const a = lift(13.0, 10.5, zt + 26), wave = Math.sin(t * 4) * 2;
-    anim(() => { ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.quadraticCurveTo(a.x + 9, a.y + 2 + wave, a.x + 18, a.y + 5);
+    const a = lift(13.0, 10.5, zt + 26), wave = 1;
+    { ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.quadraticCurveTo(a.x + 9, a.y + 2 + wave, a.x + 18, a.y + 5);
     ctx.lineTo(a.x + 18, a.y + 15); ctx.quadraticCurveTo(a.x + 9, a.y + 12 + wave, a.x, a.y + 10); ctx.closePath();
-    ctx.fillStyle = L >= 10 ? '#e0b23a' : '#e0554a'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke(); });
+    ctx.fillStyle = L >= 10 ? '#e0b23a' : '#e0554a'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke(); }
   }
   const n = Math.min(L - 1, 9);   // шарики: по одному за каждый уровень рекламы после первого
-  anim(() => { for (let i = 0; i < n; i++) {
-    const top = lift(12.3, 10.5, zt), bx = top.x + (i - (n - 1) / 2) * 7 - 8, byy = top.y - 16 - (i % 3) * 6 + Math.sin(t * 2 + i) * 1.5;
+  for (let i = 0; i < n; i++) {   // шарики висят неподвижно
+    const top = lift(12.3, 10.5, zt), bx = top.x + (i - (n - 1) / 2) * 7 - 8, byy = top.y - 16 - (i % 3) * 6;
     ctx.strokeStyle = 'rgba(80,60,40,.6)'; ctx.lineWidth = .8; ctx.beginPath(); ctx.moveTo(top.x, top.y); ctx.lineTo(bx, byy + 5); ctx.stroke();
     ctx.fillStyle = LIGHT_COLORS[i % 4]; ctx.beginPath(); ctx.ellipse(bx, byy, 4, 5, 0, 0, 7); ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1; ctx.stroke();
     circle(bx - 1.3, byy - 1.8, 1.1, 'rgba(255,255,255,.75)');
-  } });
+  }
 }
 
 function drawSack(d) {
@@ -4108,7 +4114,7 @@ function drawCrop(i, t, gh) {
   const s = (gh ? GH_SLOTS : PLOT_SLOTS)[i], p = (gh ? S.gh : S.plots)[i], c = lift(s.x + .5, s.y + .5, 3.5);
   const leaf = (x, y, rx, ry, a, col) => { ctx.beginPath(); ctx.ellipse(x, y, rx, ry, a, 0, 7); ctx.fillStyle = col; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = .9; ctx.stroke(); };
   if (p.prog >= 1) {
-    const b = Math.sin(t * 4 + i) * 1.5;
+    const b = 0;   // созревшее не качается
     ctx.fillStyle = 'rgba(40,20,8,.3)'; ctx.beginPath(); ctx.ellipse(c.x, c.y, gh ? 14 : 11, gh ? 5 : 4, 0, 0, 7); ctx.fill();
     if (gh) for (const [ox, oy] of [[-9, -4], [9, -4], [0, -13], [-5, 4], [6, 4], [0, -4]]) emoji(CROP[p.crop].e, c.x + ox, c.y + oy - 6 + b, 15);   // гроздь
     else emoji(CROP[p.crop].e, c.x, c.y - 9 + b, 24);
@@ -4151,6 +4157,27 @@ function drawPersonC(p, L) {
   ctx.drawImage(img, Math.round(T.x + c.x * k - 15 * k - 1), Math.round(T.y + c.y * k - 53 * k - 1));
   setWorld();
 }
+// курицы, цыплята, коровы — тоже из готовых картинок (кэш на каждое животное: поза, фаза шага, сторона)
+function drawCachedAt(o, key, w, h, ax, ay, paint) {
+  const k = dpr * zoom;
+  if (ctx !== MAIN_CTX || !zoomSettled(performance.now() / 1000)) { paint(o); return; }
+  if (!o._dc || o._dc.k !== k) o._dc = { k, m: new Map() };
+  let img = o._dc.m.get(key);
+  if (!img) {
+    img = document.createElement('canvas'); img.width = Math.ceil(w * k) + 2; img.height = Math.ceil(h * k) + 2;
+    const c = img.getContext('2d'); c.setTransform(k, 0, 0, k, ax * k + 1, ay * k + 1);
+    const main = ctx; ctx = c;
+    try { paint({ ...o, x: 0, y: 0 }); } finally { ctx = main; }
+    if (o._dc.m.size > 80) o._dc.m.clear();
+    o._dc.m.set(key, img);
+  }
+  const c = iso(o.x, o.y), T = camT();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(img, Math.round(T.x + c.x * k - ax * k - 1), Math.round(T.y + c.y * k - ay * k - 1));
+  setWorld();
+}
+const animKey = (a, extra) => [a.moving ? Math.round(((a.phase % 6.2832) + 6.2832) % 6.2832 / 6.2832 * 16) % 16 : -1, a.flip ? 1 : 0, S.night ? 1 : 0, extra].join('|');
+const phaseOf = key => { const b = +key.split('|')[0]; return b >= 0 ? b * 6.2832 / 16 : 0; };
 function drawPerson(p, L, local) {
   const c = local ? { x: 0, y: 0 } : iso(p.x, p.y), sw = p.moving ? Math.sin(p.phase) : 0, bob = p.moving ? Math.abs(Math.cos(p.phase)) * 1.5 : 0;
   ctx.fillStyle = 'rgba(30,40,15,.28)'; ctx.beginPath(); ctx.ellipse(c.x, c.y, 10, 4.5, 0, 0, 7); ctx.fill();
@@ -4751,7 +4778,7 @@ function drawHelperPose(h, pose, t) {
   if (pose === 'lie') {   // лежит на спине, руки за головой
     ctx.save(); ctx.translate(c.x, c.y - 2); ctx.scale(1, .55); ctx.rotate(h.id % 2 ? -1.45 : 1.45); ctx.translate(-c.x, -c.y);
     drawPerson({ ...h, moving: false }, h.look); ctx.restore();
-    if (Math.sin(t * 1.3 + h.id) > .3) emoji('💤', c.x + 14, c.y - 22 - (t * 6 % 6), 10);
+    emoji('💤', c.x + 14, c.y - 24, 10);
   } else if (pose === 'sit') drawSitting(h, h.look);
   else {
     drawPerson({ ...h, moving: false }, h.look);
