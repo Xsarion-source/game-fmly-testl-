@@ -481,7 +481,9 @@ const FAIR_QUEUE = [[18.5, 25.2], [19.5, 25.45], [20.5, 25.45], [21.5, 25.45], [
 const fairOn = () => isFair() && !S.night;
 // соседи по ярмарке: у каждого свой ларёк, 3 товара с запасом на день и свои цены
 const RIVALS_DEF = [{ name: 'Ромашка' }, { name: 'Дядя Петя' }, { name: 'Солнышко' }];
-const nextFairDay = () => S.day + (5 - cal().dow + 7) % 7;
+// по календарю ярмарка — в субботу 1-й и 2-й недели месяца (3-я неделя спокойная); уровень фермы здесь не учитывается
+const fairCal = d => cal(d).dow === 5 && cal(d).week <= 2;
+const nextFairDay = (from = S.day) => { let d = from; while (!fairCal(d) && d < from + 30) d++; return d; };
 function rivals() {
   const fd = isFair() ? S.day : nextFairDay();
   if (S.fair.rv?.d === fd) return S.fair.rv.s;
@@ -739,7 +741,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.68';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.69';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -855,23 +857,23 @@ function showLevelUp(L0, L) {
 }
 function closeLvl() { $('lvlUp').classList.remove('show'); }
 function lvlNews(L) {   // что открывает уровень
-  return [...(L === FAIR_LVL ? ['🎪 Ярмарка по субботам'] : []), ...(L === MAIL_LVL ? ['📬 Заказы по почте'] : []), ...CROPS.filter(c => c.lvl === L).map(c => c.e + ' ' + c.name), ...Object.keys(UP_LVL).filter(k => UP_LVL[k] === L && L > 1 && !S.up[k] && UPGRADES[k]).map(k => UPGRADES[k].ico + ' ' + UPGRADES[k].name)].join(', ');
+  return [...(L === FAIR_LVL ? ['🎪 Ярмарка — две субботы в месяц'] : []), ...(L === MAIL_LVL ? ['📬 Заказы по почте'] : []), ...CROPS.filter(c => c.lvl === L).map(c => c.e + ' ' + c.name), ...Object.keys(UP_LVL).filter(k => UP_LVL[k] === L && L > 1 && !S.up[k] && UPGRADES[k]).map(k => UPGRADES[k].ico + ' ' + UPGRADES[k].name)].join(', ');
 }
 // покупателей в день растёт с уровнем, но не бесконечно; зато корзинка у каждого больше
 const visitorsBase = () => Math.min(30, 8 + Math.min(14, farmLevel()) + (S.up.ads || 0) + prestigeGuests());
 const basketMax = (L = farmLevel()) => L < 3 ? 1 : L < 6 ? 2 : L < 10 ? 3 : L < 15 ? 4 : 5;   // сколько разных товаров берёт один покупатель
 const visitorsPerDay = (d = S.day) => cal(d).dow === 6 ? 0 : Math.round(visitorsBase() * (isFair(d) ? 2.4 : 1));   // на ярмарке народу много — часть идёт к соседям   // суббота — ярмарка, воскресенье — выходной   // день 1 → 11 покупателей (~1 каждые 14 сек)
 const growMult = () => 1 + S.up.fert * 0.2;
-// ---------- Календарь: неделя из 7 дней, сезон — 4 недели (28 дней), год — 4 сезона ----------
+// ---------- Календарь: неделя из 7 дней, месяц (он же сезон) — 3 недели (21 день), год — 4 сезона ----------
 const WEEKDAYS = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'], WD = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-const SEASON_LEN = 28;
+const SEASON_LEN = 21;
 const SEASONS = [
   { id: 'spring', name: 'Весна', e: '🌸', grow: { wheat: 1.25, carrot: 1.25, sunflower: 1.25 }, price: {}, text: '🌾 пшеница, 🥕 морковь и 🌻 подсолнухи растут на 25% быстрее' },
   { id: 'summer', name: 'Лето',  e: '☀️', grow: { tomato: 1.25, strawberry: 1.25 }, price: { strawberry: 1.2, milk: 1.15 }, text: '🍅 помидоры и 🍓 клубника растут на 25% быстрее, 🍓 и 🥛 в цене' },
   { id: 'autumn', name: 'Осень', e: '🍂', grow: {}, price: { pumpkin: 1.3, corn: 1.25, apple: 1.25, pie: 1.15 }, text: '🎃 тыквы, 🌽 кукуруза, 🍎 яблоки и 🥧 пироги дороже' },
   { id: 'winter', name: 'Зима',  e: '❄️', grow: { field: .8 }, price: { milk: 1.2, cheese: 1.2, bread: 1.2, pie: 1.2, pizza: 1.2, cake: 1.2 }, text: 'на грядках всё растёт на 20% медленнее (теплица — как обычно), молоко, сыр и выпечка дороже' },
 ];
-const cal = (d = S.day) => { const i = d - 1; return { dow: i % 7, week: Math.floor(i / 7) % 4 + 1, sday: i % SEASON_LEN + 1, si: Math.floor(i / SEASON_LEN) % 4, year: Math.floor(i / (SEASON_LEN * 4)) + 1 }; };
+const cal = (d = S.day) => { const i = d - 1; return { dow: i % 7, week: Math.floor(i / 7) % 3 + 1, sday: i % SEASON_LEN + 1, si: Math.floor(i / SEASON_LEN) % 4, year: Math.floor(i / (SEASON_LEN * 4)) + 1 }; };
 const season = (d = S.day) => SEASONS[cal(d).si];
 const seasonGrow = (id, gh) => (season().grow[id] || 1) * (gh ? 1 : season().grow.field || 1);
 const seasonPrice = id => season().price[id] || 1;
@@ -879,8 +881,8 @@ const seasonPrice = id => season().price[id] || 1;
 const FAIR_LVL = 6, MAIL_LVL = 4;
 const fairUnlocked = () => farmLevel() >= FAIR_LVL;
 // сегодняшняя ярмарка решается утром (уровень посреди дня её не включит), будущие — по нынешнему уровню
-const isFair = (d = S.day) => cal(d).dow === 5 && (d === S.day ? S.fairDay === S.day : fairUnlocked()), isRest = (d = S.day) => cal(d).dow === 6;
-S.fairDay ??= cal().dow === 5 && fairUnlocked() ? S.day : 0;   // старое сохранение: идёт ли ярмарка сегодня
+const isFair = (d = S.day) => fairCal(d) && (d === S.day ? S.fairDay === S.day : fairUnlocked()), isRest = (d = S.day) => cal(d).dow === 6;
+S.fairDay ??= fairCal(S.day) && fairUnlocked() ? S.day : 0;   // старое сохранение: идёт ли ярмарка сегодня
 // ---------- Конкурс на ярмарке: особые находки, соперники, кубки и престиж ----------
 const SPECIAL = {   // шанс — на один сбор/одну головку сыра; q 0–100 → размер в своих единицах
   pumpkin:    { e: '🎃', name: 'Гигантская тыква',     what: 'тыкв',      chance: 1 / 300, unit: q => `${Math.round(25 + q * .45)} кг` },
@@ -890,7 +892,7 @@ const SPECIAL = {   // шанс — на один сбор/одну головк
   goldegg:    { e: '🟡', name: 'Золотое яйцо',         what: 'золотых яиц', chance: 0, unit: q => `блеск ${Math.round(q)}%` },
 };
 const CONTEST_ORDER = ['pumpkin', 'cheese', 'corn', 'goldegg', 'strawberry'];
-const contestOf = (d = S.day) => CONTEST_ORDER[Math.floor((d - 1) / 7) % CONTEST_ORDER.length];   // своя категория у каждой недели
+const contestOf = (d = nextFairDay()) => { const w = Math.floor((d - 1) / 7); return CONTEST_ORDER[(Math.floor(w / 3) * 2 + Math.min(w % 3, 2)) % CONTEST_ORDER.length]; };   // своя категория у каждой ярмарки, по очереди
 const MEDAL = { 1: { e: '🥇', name: 'золото', col: ['#ffe27a', '#e0a91a'], price: .03, week: .10 }, 2: { e: '🥈', name: 'серебро', col: ['#f2f4f7', '#a9b0bb'], price: .015, week: .06 }, 3: { e: '🥉', name: 'бронза', col: ['#f2b37a', '#b86a2e'], price: .008, week: .03 } };
 const prestige = () => Math.min(.2, S.trophies.reduce((a, t) => a + (MEDAL[t.p]?.price || 0), 0))   // кубки у дома — гостям нравится, цены выше
   + (() => { const t = S.trophies[S.trophies.length - 1]; return t && S.day - t.d >= 0 && S.day - t.d < 7 ? MEDAL[t.p]?.week || 0 : 0; })();   // свежая победа — неделю ещё дороже
@@ -940,7 +942,7 @@ function spend(n, cat) {
 const spentSum = o => Object.values(o.spent || {}).reduce((a, b) => a + b, 0);
 
 function startDay() {
-  S.fairDay = cal().dow === 5 && fairUnlocked() ? S.day : 0;
+  S.fairDay = fairCal(S.day) && fairUnlocked() ? S.day : 0;
   S.night = false; S.t = 0; S.spawned = 0; S.closing = false;
   S.toSpawn = visitorsPerDay();
   S.stats = { earned: 0, served: 0, missed: 0 };
@@ -3008,6 +3010,7 @@ function draw(t) {
   for (const v of visitors) list.push({ z: v.x + v.y, f: () => drawPersonC(v, v.look) });
   if (clerkOn()) list.push({ z: clerk.x + clerk.y, f: () => drawPersonC(clerk, CLERK_LOOK) });
   archSlices(list);
+  list.push({ z: CIRCUS.x + CIRCUS.y + .9, f: () => drawSprite(CIRCUS, drawCircus, (isFair() && !S.night) + season().id, t) });   // шатёр цирка у ярмарки
   if (fairOn()) fairDrawList(list, t);
   list.sort((a, b) => a.z - b.z).forEach(o => o.f());
 
@@ -3051,14 +3054,16 @@ function drawOutsideTrees(baked) {   // в картинку фона — лес 
 
 // ---------- Ярмарка за дорогой: по субботам — шатры, флажки, народ; в другие дни — табличка ----------
 const FAIR = { x: 5, y: 23 };   // площадь ярмарки — в трёх клетках от дороги, вход — арка у дороги
-const BOOTHS = [{ x0: 17.2, x1: 19.8, c: '#3e9b3a', sign: 'ФЕРМА' }, { x0: 20.0, x1: 22.1, c: '#e07a2f' }, { x0: 22.3, x1: 24.4, c: '#8e5bd0' }];
+// цвета на ярмарке: все наши лотки — зелёные, у каждого соседа свой цвет, декоративные палатки — в цвет темы конкурса
+const OUR_C = '#3e9b3a', THEME_C = { pumpkin: '#e8761e', cheese: '#f2c23a', corn: '#d9b52a', goldegg: '#e8a820', strawberry: '#e0475a' };
+const BOOTHS = [{ x0: 17.2, x1: 19.8, c: OUR_C, sign: 'ФЕРМА' }, { x0: 20.0, x1: 22.1, c: OUR_C }, { x0: 22.3, x1: 24.4, c: OUR_C }];
 // ларьки на площади: соседи-конкуренты (r) и просто торговцы (npc) — такие же, как лотки фермы
 const FAIR_STALLS = [
   { x0: 4.8, x1: 6.9, y0: 22.75, c: '#e05a4a', npc: ['🎈', '🎈', '🎈'] },
   { x0: 7.1, x1: 9.3, y0: 22.75, c: '#4f8fe0', r: 0 },
   { x0: 14.6, x1: 16.7, y0: 22.75, c: '#d65db1', npc: ['🍭', '🎁', '🍭'] },
   { x0: 25.4, x1: 27.6, y0: 22.75, c: '#8e5bd0', r: 1 },
-  { x0: 5.0, x1: 7.2, y0: 27.4, c: '#f0b429', r: 2 },
+  { x0: 5.0, x1: 7.2, y0: 27.4, c: '#3fb0b8', r: 2 },
   { x0: 7.6, x1: 9.7, y0: 27.4, c: '#c98a3a', npc: ['🍞', '🥧', '🍞'] },
   { x0: 12.6, x1: 14.7, y0: 27.4, c: '#6cc08b', npc: ['🧸', '🎁', '🧸'] },
   { x0: 25.4, x1: 27.6, y0: 27.4, c: '#e8a33a', npc: ['🍯', '🍎', '🍯'] },
@@ -3086,7 +3091,7 @@ function drawBooth(k = 0) {   // лоток фермы: товар из ящик
 }
 const stallGoods = B => B.npc || Object.keys(rivals()[B.r].stock).filter(g => rivals()[B.r].stock[g] > 0).map(g => GOODS[g].e);
 function drawWheel(t) {   // колесо обозрения — медленно крутится
-  const base = iso(WHEEL.x, WHEEL.y), R = 48, hub = { x: base.x, y: base.y - 84 }, a0 = .6;   // колесо стоит
+  const base = iso(WHEEL.x, WHEEL.y), R = 48, hub = { x: base.x, y: base.y - 84 }, a0 = .6 + (fairOn() ? t * .22 : 0);   // в ярмарку медленно крутится
   ctx.fillStyle = 'rgba(30,50,15,.22)'; ctx.beginPath(); ctx.ellipse(base.x, base.y, 46, 14, 0, 0, 7); ctx.fill();
   ctx.lineCap = 'round';
   for (const s of [-1, 1]) { seg({ x: base.x + s * 30, y: base.y + 4 }, hub, INK, 6); seg({ x: base.x + s * 30, y: base.y + 4 }, hub, '#d9534f', 3.4); }
@@ -3099,11 +3104,47 @@ function drawWheel(t) {   // колесо обозрения — медленн�
     seg(p, { x: p.x, y: p.y + 4 }, INK, 1.2);
     ctx.beginPath(); ctx.roundRect(p.x - 7, p.y + 3, 14, 10, [2, 2, 5, 5]); ctx.fillStyle = c; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke();
     ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.fillRect(p.x - 4.5, p.y + 5, 9, 3);
+    if (fairOn() && k % 2 === 0) {   // в кабинках катаются дети: голова и ручка из окошка
+      const L = KID_LOOKS[(k / 2) % KID_LOOKS.length];
+      circle(p.x, p.y + 1.5, 3.6, INK); circle(p.x, p.y + 1.5, 2.8, L.skin);
+      ctx.beginPath(); ctx.arc(p.x, p.y + 1, 3, Math.PI * 1.05, Math.PI * 1.95); ctx.fillStyle = L.hair; ctx.fill();
+      ctx.fillStyle = L.shirt; ctx.fillRect(p.x - 4.5, p.y + 5, 9, 3);
+    }
   }
   circle(hub.x, hub.y, 5, INK); circle(hub.x, hub.y, 3.4, '#ffd34d');
 }
 const WHEEL = { x: 21, y: 30.3 };
-const BREAD_BOOTH = { x0: 15.3, x1: 17.3, y0: 27.4, c: '#d9822b' };   // хлебный лоток фермы — напротив шатра
+const KID_LOOKS = [{ skin: '#f2c49b', hair: '#6b3e1f', shirt: '#e05a4a' }, { skin: '#a8714a', hair: '#111111', shirt: '#4f8fe0' }, { skin: '#f6d5b8', hair: '#c9a15a', shirt: '#f0b429' }, { skin: '#d9a37a', hair: '#b5462f', shirt: '#6cc08b' }];
+// большой шатёр цирка справа на площади: стоит всегда, в ярмарку вход открыт
+const CIRCUS = { x: 30.9, y: 29.6, r: 1.75 };
+function drawCircus() {
+  const { x: cx, y: cy, r } = CIRCUS, on = isFair() && !S.night, N = 16, H = 36, TOP = 104;
+  const P = (k, rr, z) => { const a = k / N * Math.PI * 2; return lift(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr, z); };
+  const front = k => { const a = (k + .5) / N * Math.PI * 2; return Math.cos(a) + Math.sin(a); };   // грань смотрит на нас
+  softShadow(cx - r - .2, cy - r - .2, cx + r + .4, cy + r + .5, .3);
+  const ks = [...Array(N).keys()].sort((a, b) => front(a) - front(b));
+  for (const k of ks) { if (front(k) < -.2) continue;   // стены в красно-белую полоску
+    const c = k % 2 ? '#fffaf0' : '#e0473e', f = .8 + .2 * front(k) / Math.SQRT2;
+    gface([P(k, r, 0), P(k + 1, r, 0), P(k + 1, r, H), P(k, r, H)], darken(c, f), darken(c, f * .9), INK, 1.1); }
+  // вход — к дорожке (на нас): тёмный проём, занавес подвязан в ярмарку и закрыт в другие дни
+  const e0 = 3.3, e1 = 4.7, door = [P(e0, r + .01, 0), P(e1, r + .01, 0), P(e1, r + .01, 26), P((e0 + e1) / 2, r + .01, 31), P(e0, r + .01, 26)];
+  gface(door, on ? '#3b2416' : '#c0392b', on ? '#24150c' : '#962a1f', INK, 1.4);
+  if (on) for (const [a, b] of [[e0, e0 + .45], [e1 - .45, e1]]) gface([P(a, r + .02, 0), P(b, r + .02, 0), P(b, r + .02, 26), P(a, r + .02, 28)], '#ffd84d', '#e0a020', INK, 1);
+  else { const m = P((e0 + e1) / 2, r + .02, 0), t = P((e0 + e1) / 2, r + .02, 30); seg(m, t, '#7a2a1f', 1.5); }
+  // купол: конус из полос, по краю — фестончики
+  const apex = lift(cx, cy, TOP);
+  for (const k of ks) { const c = k % 2 ? '#ffd84d' : '#e0473e', f = .85 + .15 * front(k) / Math.SQRT2;
+    gface([P(k, r + .2, H - 2), P(k + 1, r + .2, H - 2), apex], darken(c, f), darken(c, f * .92), INK, 1.2); }
+  for (let k = 0; k < N; k++) { if (front(k) < -.3) continue;   // фестоны
+    const a = P(k, r + .2, H - 2), b = P(k + 1, r + .2, H - 2), m = mix(a, b, .5);
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.quadraticCurveTo(m.x, m.y + 9, b.x, b.y); ctx.closePath(); ctx.fillStyle = k % 2 ? '#e0473e' : '#ffd84d'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1; ctx.stroke(); }
+  // флагшток с флажком и звёздочка над входом
+  const pt = lift(cx, cy, TOP + 18); seg(apex, pt, INK, 3); seg(apex, pt, '#f6f1e6', 1.6);
+  shape([pt, { x: pt.x + 16, y: pt.y + 4 }, { x: pt.x, y: pt.y + 9 }]); ctx.fillStyle = '#4f8fe0'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke();
+  const st = P(4, r + .25, 40); emoji('⭐', st.x, st.y, 13);
+  for (const k of [1, 7, 11]) { const q = P(k, r + .22, H - 2); seg(q, { x: q.x, y: q.y - 12 }, INK, 1.4); shape([{ x: q.x, y: q.y - 12 }, { x: q.x + 8, y: q.y - 10 }, { x: q.x, y: q.y - 7 }]); ctx.fillStyle = ['#6cc08b', '#4f8fe0', '#e07ab8'][k % 3]; ctx.fill(); }
+}
+const BREAD_BOOTH = { x0: 15.3, x1: 17.3, y0: 27.4, c: OUR_C };   // хлебный лоток фермы — напротив шатра
 const FAIR_OBJS = [
   ...FAIR_STALLS.map(B => ({ kind: 'fstall', B })),
   { kind: 'booth', k: 0 }, { kind: 'booth', k: 1 }, { kind: 'booth', k: 2 }, { kind: 'wheel' }, { kind: 'bread', B: BREAD_BOOTH },
@@ -3113,7 +3154,11 @@ function fairDrawList(list, t) {
     if (o.kind === 'wheel') list.push({ z: o.z, f: () => drawWheel(t) });
     else if (o.kind === 'bread') { if (S.up.fairbake) list.push({ z: o.z, f: () => { const g = S.fair.crates.slice(BAKE_CRATE0).filter(c => c && c.n > 0).map(c => GOODS[c.id].e).slice(0, 3); drawSprite(o, () => drawFairStall(BREAD_BOOTH, g, 'ХЛЕБ', '#8a4a1a'), g.join(), t); } }); }
     else if (o.kind === 'booth') { if (o.k <= (S.up.fairstall || 0)) list.push({ z: o.z, f: () => drawSprite(o, () => drawBooth(o.k), Object.keys(S.fair.stock).join(), t) }); }
-    else list.push({ z: o.z, f: () => { const g = stallGoods(o.B), nm = o.B.r != null ? RIVALS_DEF[o.B.r].name.toUpperCase() : ''; drawSprite(o, () => drawFairStall(o.B, g, nm, '#7a3a1a'), g.join(), t); } });
+    else list.push({ z: o.z, f: () => { const g = stallGoods(o.B), nm = o.B.r != null ? RIVALS_DEF[o.B.r].name.toUpperCase() : '', B = o.B.npc ? { ...o.B, c: THEME_C[contestOf()] || o.B.c } : o.B;
+      drawSprite(o, () => drawFairStall(B, g, nm, '#7a3a1a'), g.join() + B.c, t); } });
+  FAIR_STALLS.forEach((B, i) => { if (!B.npc) return;   // у декоративных палаток — неподвижные покупатели: живо, а телефону почти ничего не стоит
+    for (let j = 0; j < 1 + (i % 2); j++) { const f = FAIR_STAND[(i * 2 + j) % FAIR_STAND.length], x = B.x0 + .7 + j * .9, y = B.y0 + 2.4;
+      list.push({ z: x + y, f: () => drawPersonC({ x, y, moving: false, flip: j % 2 === 1, phase: 0 }, f) }); } });
   }
   for (const f of fairFolk) list.push({ z: f.x + f.y, f: () => {
     if (!f.kid) { drawPersonC(f, f.look); return; }
@@ -3122,6 +3167,7 @@ function fairDrawList(list, t) {
 }
 // гости ярмарки: семьи приходят по дороге, гуляют между шатрами, катаются на колесе и уходят
 let fairFolk = [], fairSpawnT = 0;
+const FAIR_STAND = Array.from({ length: 8 }, (_, i) => { const sh = SHIRTS[(i * 3) % SHIRTS.length]; return { shirt: sh, shirtDark: darken(sh, .8), pants: ['#3b4a6b', '#5a4632', '#2f2f3a', '#6b6b6b'][i % 4], skin: SKINS[(i * 2) % SKINS.length], hair: HAIRS[(i * 5) % HAIRS.length], hat: i % 3 === 0 ? 'cap' : null, capColor: SHIRTS[(i + 2) % SHIRTS.length] }; });
 // гости ходят только по «улицам» между рядами ларьков: верхняя (y 26.1) и нижняя (y 32.2), между ними — проходы x 11 и x 18
 const LANE_A = 26.1, LANE_B = 32.2, CROSS = [11.0, 18.2];
 const FAIR_SPOTS = [[12.4, LANE_A], [16.2, LANE_A], [24.6, LANE_A], [28.4, LANE_A], [6.2, LANE_B], [8.6, LANE_B], [15.6, LANE_B], [18.8, LANE_B], [24.6, LANE_B], [28.2, LANE_B], [6.0, LANE_A]];
@@ -3156,10 +3202,10 @@ function moveFolk(dt, list = fairFolk) {
 function updateFair(dt) {
   if (!fairOn()) { fairFolk = []; return; }
   if (!fairFolk.length) {   // ярмарка уже идёт — народ сразу на месте
-    for (let k = 0; k < 3; k++) { const n0 = fairFolk.length; spawnFamily(); const g = fairFolk.slice(n0); for (let i = 0; i < 40 + k * 22; i++) moveFolk(.25, g); }
+    for (let k = 0; k < 2; k++) { const n0 = fairFolk.length; spawnFamily(); const g = fairFolk.slice(n0); for (let i = 0; i < 40 + k * 22; i++) moveFolk(.25, g); }
     fairFolk = fairFolk.filter(f => !f.done);
   }
-  if ((fairSpawnT -= dt) <= 0 && fairFolk.filter(f => f.fam).length < 10) { spawnFamily(); fairSpawnT = 4 + Math.random() * 5; }
+  if ((fairSpawnT -= dt) <= 0 && fairFolk.filter(f => f.fam).length < 7) { spawnFamily(); fairSpawnT = 6 + Math.random() * 6; }   // гостей немного: две-три семьи одновременно
   moveFolk(dt);
 }
 // площадь ярмарки видна всегда: утоптанная земля, дорожки от дороги, места под шатры, настил под лотки, круг под колесо
@@ -3217,7 +3263,7 @@ function drawFairArch() {
   if (!on) {   // в будни — табличка под аркой
     seg(lift(11.1, ay, 44), lift(11.1, ay, 38), INK, 1); seg(lift(11.9, ay, 44), lift(11.9, ay, 38), INK, 1);
     gface(fY(10.85, 12.15, ay, 30, 38), '#fffaf0', '#f0dfb8', '#7a4a2a', 1.3);
-    textOnX(10.85, ay, 34, 1.3, 'ПО СУББОТАМ', '#3b2416', 5.5);
+    textOnX(10.85, ay, 34, 1.3, '2 СУББОТЫ В МЕС.', '#3b2416', 4.2);
   }
 }
 function archSlices(list) {
@@ -3273,6 +3319,7 @@ function rivalSale(i, g) {   // покупатель ушёл к соседу: �
   if (!x.stock[g]) setTimeout(() => toast(`😮 У «${RIVALS_DEF[i].name}» кончилось: ${GOODS[g].e} ${GOODS[g].name.toLowerCase()}`), 400);
   const fromLeft = Math.random() < .5, ry = ROAD + 1.25, ent = pick(FAIR_ENTR), cx = (B.x0 + B.x1) / 2 + (Math.random() - .5) * .8, fy = B.y0 + 2.15;
   const shirt = pick(SHIRTS), lane = fy < 26 ? LANE_A : LANE_B, cross = CROSS[0];
+  if (fairFolk.filter(f => !f.fam).length >= 4) { save(); return; }   // к соседям идут не больше четырёх человек сразу — остальные продажи «за кадром»
   fairFolk.push({ x: fromLeft ? -2 : W + 2, y: ry, kid: false, phase: Math.random() * 6, moving: true, flip: false, wait: 0,
     wps: [{ x: ent, y: ry }, { x: ent, y: 23.3 }, { x: ent, y: LANE_A }, ...(lane === LANE_B ? [{ x: cross, y: LANE_A }, { x: cross, y: LANE_B }] : []), { x: cx, y: lane }, { x: cx, y: fy, wait: 2.5 }, { x: cx, y: lane }, ...(lane === LANE_B ? [{ x: cross, y: LANE_B }, { x: cross, y: LANE_A }] : []), { x: ent, y: LANE_A }, { x: ent, y: 23.3 }, { x: ent, y: ry }, { x: fromLeft ? W + 3 : -3, y: ry }],
     look: { shirt, shirtDark: darken(shirt, .8), pants: pick(['#3b4a6b', '#5a4632', '#2f2f3a', '#6b6b6b']), skin: pick(SKINS), hair: pick(HAIRS), hat: Math.random() < .3 ? 'cap' : null, capColor: pick(SHIRTS) } });
@@ -4653,9 +4700,9 @@ function renderUI() {
   const items = Object.keys(GOODS).filter(id => S.inv[id]).map(id => `<span class="${GOODS[id].sp ? 'sp' : onSale(id) ? '' : 'off'}">${GOODS[id].sp ? '🌟' : ''}${GOODS[id].e} ${S.inv[id]}</span>`);
   $('inv').innerHTML = items.length ? items.join('') : '<span style="opacity:.75">Склад пуст</span>';
   $('fairBtn').style.display = fairUnlocked() || isFair() ? '' : 'none';   // до ярмарки ещё дорасти — кнопка не висит над головой
-  { const d = (5 - cal().dow + 7) % 7, used = cratesUsed(), fb = $('fairBtn');   // кнопка ярмарки: когда и сколько ящиков собрано
-    const when = d === 0 ? (S.night ? 'через неделю' : 'сегодня!') : d === 1 ? 'завтра' : `через ${d} ${d < 5 ? 'дня' : 'дней'}`;
-    fb.innerHTML = `<i class="glow"></i>🎪<small>${d === 0 ? (S.night ? '7 дн.' : 'сегодня') : d === 1 ? 'завтра' : d + ' дн.'}</small>`; fb.title = `Ярмарка ${when} · ящиков ${used} из ${allCrates()}`;
+  { const d = (S.night && fairCal(S.day) ? nextFairDay(S.day + 1) : nextFairDay()) - S.day, used = cratesUsed(), fb = $('fairBtn');   // кнопка ярмарки: когда и сколько ящиков собрано
+    const when = d === 0 ? 'сегодня!' : d === 1 ? 'завтра' : `через ${d} ${d < 5 ? 'дня' : 'дней'}`;
+    fb.innerHTML = `<i class="glow"></i>🎪<small>${d === 0 ? 'сегодня' : d === 1 ? 'завтра' : d + ' дн.'}</small>`; fb.title = `Ярмарка ${when} · ящиков ${used} из ${allCrates()}`;
     fb.classList.toggle('hot', !used && (d === 1 || d === 2)); fb.classList.toggle('soon', d === 1 || d === 2 || (d === 0 && !S.night)); }   // светится за 2 дня и в сам день ярмарки; рамка — если ящики пустые
   const s = $('seeds'); s.innerHTML = '';
   for (const id of S.unlocked) {
@@ -4987,9 +5034,9 @@ function openHelp() {
     🏡 🍅 Помидоры и 🍓 клубника растут только в теплице — построй её ночью.<br>
     🪓 Ночью расчисти лес справа и построй 🌬️ мельницу (3 🌾 → 🍚 мука) и 🧀 сыроварню (2 🥛 → сыр). Тапни на здание — фермер загрузит сырьё и заберёт готовое.<br>
     🥖 Пекарня — пристройка к дому (нужна мельница): выбери рецепт — 🍞 хлеб, 🥧 пирог, 🍕 пиццу или 🎂 торт.<br>
-    🎪 В субботу лавка закрыта: фермер торгует в шатре фермы на ярмарке. Товары собери заранее — «Прилавок» → «Товары на ярмарку» (в ящик — один товар, до 20 шт.). На ярмарке цены выше — чем больше престиж фермы (кубки и уют), тем дороже; в субботу дополнить нельзя. Больше ящиков — «Место на ярмарке».<br>
+    🎪 В ярмарочную субботу (1-я и 2-я неделя месяца) лавка закрыта: фермер торгует в шатре фермы на ярмарке. Товары собери заранее — «Прилавок» → «Товары на ярмарку» (в ящик — один товар, до 20 шт.). На ярмарке цены выше — чем больше престиж фермы (кубки и уют), тем дороже; в субботу дополнить нельзя. Больше ящиков — «Место на ярмарке».<br>
     🏆 Иногда случается чудо: гигантская тыква, королевский початок, золотая клубника или отборный сыр. Выставь находку на субботний конкурс — кубок встанет на доску почёта у дома, а цены вырастут.<br>
-    📅 Неделя: по субботам 🎪 ярмарка за дорогой — покупателей больше, и берут больше. Воскресенье — выходной: лавка закрыта, можно устроить 🧺 пикник (помощники неделю работают быстрее) или отдохнуть до понедельника. Сезоны меняются каждые 4 недели — тапни на солнышко, там календарь.<br>
+    📅 Месяц — 3 недели, он же сезон. В субботу 1-й и 2-й недели 🎪 ярмарка за дорогой — покупателей больше, и берут больше. Воскресенье — выходной: лавка закрыта, можно устроить 🧺 пикник (помощники неделю работают быстрее) или отдохнуть до понедельника. Сезоны меняются каждые 4 недели — тапни на солнышко, там календарь.<br>
     📬 С 3-го дня в почтовый ящик у тропинки приходят заказы: собери товар за 3 дня — заплатят в 1,6 раза больше лотка.<br>
     🏠 Дом улучшается ночью: веранда и второй этаж ускоряют помощников. 🌷 Уют — клумбы, собака, колодец, качели — поднимает цены.<br>
     🧑‍🌾 Помощникам назначай станции: поле (свои участки), теплица, сад, курятник, коровник или лавка.</div>
@@ -5112,7 +5159,7 @@ function drawHelperPose(h, pose, t) {
 }   // плед у пруда
 function fairLockedToast() {   // ярмарка ещё не открыта — только подсказка, без конкурса
   if (fairUnlocked() || S.trophies.length) return false;
-  toast(`🎪 Ярмарка по субботам откроется на ⭐ ${FAIR_LVL} уровне фермы`); return true;
+  toast(`🎪 Ярмарка откроется на ⭐ ${FAIR_LVL} уровне фермы`); return true;
 }
 function goFair() {   // фермер идёт в шатёр фермы на ярмарке; уже там — выбор товаров
   if (!fairOn()) { fairLockedToast() || openTrophies(); return; }
@@ -5142,20 +5189,20 @@ function contestPick(k) {   // что можно выставить: особы�
   return S.special.map((x, i) => ({ ...x, i })).filter(x => x.k === k).sort((a, b) => b.q - a.q);
 }
 function openTrophies() {
-  const k = contestOf(), sp = SPECIAL[k], days = (5 - cal().dow + 7) % 7, done = S.contestDay === S.day;
+  const k = contestOf(), sp = SPECIAL[k], days = nextFairDay() - S.day, done = S.contestDay === S.day;
   let h = `<h2>🏆 Трофеи и конкурс</h2>`;
   const pr = Math.round(prestige() * 100), g = prestigeGuests();
   h += `<div class="summary">Кубков у дома: <b>${S.trophies.length}</b>${S.trophies.length ? ` (${[1, 2, 3].map(p => S.trophies.filter(t => t.p === p).length ? MEDAL[p].e + '×' + S.trophies.filter(t => t.p === p).length : '').filter(Boolean).join(' ')})` : ''}<br>Престиж фермы: цены <b>+${pr}%</b>${g ? `, гостей <b>+${g}</b> в день` : ''}<br>🏅 Очки престижа: <b>${prestigePts()}</b> — на ярмарке цены <b>+${Math.round((fairMult() - 1) * 100)}%</b></div>`;
   h += `<h3 style="margin:10px 0 4px">${sp.e} Конкурс ${sp.what} — ${isFair() ? '<b>сегодня!</b>' : days ? `в субботу (через ${days} дн.)` : 'в субботу'}</h3>`;
   if (isFair() && !S.night) {
-    if (done) h += `<div class="summary">Ты уже выступил сегодня — приходи в следующую субботу.</div>`;
+    if (done) h += `<div class="summary">Ты уже выступил сегодня — приходи на следующую ярмарку.</div>`;
     else {
       const items = contestPick(k);
       h += `<div style="font-size:13px;color:#7a6650;margin-bottom:4px">Соперники: ${rivalsFor(S.day).map(r => `${r.name} — ${sp.unit(r.q)}`).join(' · ')}</div>`;
       if (!items.length) h += `<div class="summary">Выставить нечего: ${k === 'goldegg' ? 'нужно золотое яйцо 🟡 со склада' : `нужна особая находка — ${sp.name.toLowerCase()} ${sp.e}. Они попадаются очень редко`}. Без штрафа — просто посмотри, кто победит.</div>`;
       else items.slice(0, 4).forEach(x => h += `<div class="up"><div class="ico">${sp.e}</div><div class="txt"><b>${sp.name}</b><small>${x.q == null ? 'Блеск узнаем на конкурсе' : sp.unit(x.q)}${x.d ? ` · найдена в день ${x.d}` : ''}</small></div><button onclick="enterContest(${x.i ?? -1})">Выставить</button></div>`);
     }
-  } else h += `<div style="font-size:13px;color:#7a6650">Ярмарка — по субботам, за дорогой. Конкурсы по очереди: ${CONTEST_ORDER.map(c => SPECIAL[c].e).join(' ')}. Особые находки попадаются очень редко — при сборе тыкв, кукурузы, клубники в теплице и на сыроварне.</div>`;
+  } else h += `<div style="font-size:13px;color:#7a6650">Ярмарка — в первую и вторую субботу месяца, за дорогой. Конкурсы по очереди: ${CONTEST_ORDER.map(c => SPECIAL[c].e).join(' ')}. Особые находки попадаются очень редко — при сборе тыкв, кукурузы, клубники в теплице и на сыроварне.</div>`;
   const mine = S.special.slice().sort((a, b) => b.q - a.q);
   h += `<h3 style="margin:12px 0 4px">🌟 Особые находки</h3>` + (mine.length || S.inv.goldegg ? `<div style="font-size:14px;line-height:1.6">${mine.map(x => `${SPECIAL[x.k].e} ${SPECIAL[x.k].name} — ${SPECIAL[x.k].unit(x.q)}`).join('<br>')}${S.inv.goldegg ? `${mine.length ? '<br>' : ''}🟡 Золотых яиц на складе: ${S.inv.goldegg}` : ''}</div>` : `<div style="font-size:13px;color:#7a6650">Пока нет — удача ещё улыбнётся!</div>`);
   if (S.trophies.length) h += `<h3 style="margin:12px 0 4px">🏆 Кубки</h3><div style="font-size:14px;line-height:1.6">${S.trophies.slice().reverse().map(t => `${MEDAL[t.p].e} ${SPECIAL[t.k].name.split(' ').pop()} — ${MEDAL[t.p].name}, день ${t.d} (${SPECIAL[t.k].unit(t.q)})`).join('<br>')}</div>`;
@@ -5197,7 +5244,7 @@ function openCalendar(si) {
   const first = calSeason * SEASON_LEN + 1, se = SEASONS[calSeason % 4], year = Math.floor(calSeason / 4) + 1;
   const hist = Object.fromEntries((S.hist || []).map(h => [h.d, h]));
   let h = `<h2>📅 Календарь</h2>
-    <div class="summary">Сегодня: <b>${WEEKDAYS[cal().dow]}, день ${S.day}</b> · ${season().e} ${season().name}, неделя ${cal().week} из 4${cal().year > 1 ? `, год ${cal().year}` : ''}<br><small>${season().e} ${season().text}</small></div>
+    <div class="summary">Сегодня: <b>${WEEKDAYS[cal().dow]}, день ${S.day}</b> · ${season().e} ${season().name}, неделя ${cal().week} из 3${cal().year > 1 ? `, год ${cal().year}` : ''}<br><small>${season().e} ${season().text}</small></div>
     <div class="calnav"><button ${calSeason <= 0 ? 'disabled' : ''} onclick="openCalendar(${calSeason - 1})">‹</button><b>${se.e} ${se.name}${year > 1 ? ` · год ${year}` : ''}</b><button onclick="openCalendar(${calSeason + 1})">›</button></div>
     <div class="cal">${WD.map(w => `<div class="wd">${w}</div>`).join('')}`;
   for (let d = first; d < first + SEASON_LEN; d++) {
@@ -5281,7 +5328,7 @@ function setSlot(i, id) {   // поставить товар на место i; 
 let crateSel = null;
 // одно окно: сверху ящики, под ними — выбранный ящик: какой товар (ряд карточек) и сколько (ползунок, −/+)
 function openFairPack(sel) {
-  const lock = fairOn(), tot = fairCrates(), days = (5 - cal().dow + 7) % 7;
+  const lock = fairOn(), tot = fairCrates(), days = nextFairDay() - S.day;
   if (!lock) syncFair();
   if (sel !== undefined) crateSel = sel;
   if (lock && (crateSel == null || !S.fair.crates[crateSel])) crateSel = S.fair.crates.findIndex(c => c) >= 0 ? S.fair.crates.findIndex(c => c) : null;
