@@ -38,6 +38,18 @@
   #fairBtn { position: absolute; right: 6px; top: calc(60px + env(safe-area-inset-top)); width: 52px; height: 52px; padding: 0; border-radius: 50%; pointer-events: auto;
              background: radial-gradient(circle at 50% 40%, #fffbe8, #ffe9a8); border: 2px solid #f0c24a; box-shadow: 0 3px 0 rgba(0,0,0,.2); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 30px; line-height: 1; }
   #fairBtn:not(.soon) .glow { display: none; }
+  #goalBtn { position: absolute; right: 6px; top: calc(60px + env(safe-area-inset-top)); width: 52px; height: 52px; padding: 0; border-radius: 50%; pointer-events: auto;
+             background: radial-gradient(circle at 50% 40%, #fffbe8, #f6e2b0); border: 2px solid #c99a62; box-shadow: 0 3px 0 rgba(0,0,0,.2); display: flex; align-items: center; justify-content: center; font-size: 28px; line-height: 1; }
+  #goalBtn.low { top: calc(128px + env(safe-area-inset-top)); }
+  #goalBtn small { position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 11px; font-weight: 800; color: var(--ink); background: rgba(255,248,231,.95); border-radius: 8px; padding: 0 5px; }
+  .goals { display: flex; flex-direction: column; gap: 8px; }
+  .goal { background: #fffaf0; border: 1.5px solid #ecdcb8; border-radius: 14px; padding: 10px 12px; }
+  .goal .gt { display: block; font-size: 16px; font-weight: 800; }
+  .goal .gbar { height: 9px; border-radius: 5px; background: #ecdcb8; overflow: hidden; margin: 7px 0 5px; } .goal .gbar i { display: block; height: 100%; background: linear-gradient(#8fe07a, #4caf50); }
+  .goal .grow { display: flex; align-items: center; justify-content: space-between; gap: 8px; } .goal small { color: #7a6650; font-size: 13px; }
+  .goal .gswap { padding: 5px 10px; font-size: 13px; border-radius: 10px; background: #f3e8cf; border: 1.5px solid #e2cfa6; color: #7a5a3a; box-shadow: none; }
+  .goal.done { background: #e9f6df; border-color: #a8d68f; } .goal.done .gt { color: #3e7d32; }
+  .goal.lockd { opacity: .6; border-style: dashed; } .goal.lockd .gt { font-weight: 600; font-size: 14px; }
   #fairBtn .glow { position: absolute; inset: -2px; border-radius: 50%; pointer-events: none;
                     box-shadow: 0 0 10px 5px rgba(255,200,40,.85), 0 0 22px 10px rgba(255,220,90,.5); animation: fglow 2.4s ease-in-out infinite; }
   @keyframes fglow { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
@@ -316,6 +328,7 @@
       <div id="inv" onclick="openStall()"></div>
       <div id="need" onclick="openStall()"></div>
       <button id="fairBtn" onclick="openFairPack()"></button>
+      <button id="goalBtn" onclick="openGoals()"></button>
     </div>
     <div id="seeds"></div>
     <div id="actions">
@@ -674,6 +687,7 @@ function applyLots() {
   blocked[STALL2.y][STALL2.x] = blocked[STALL2.y][STALL2.x + 1] = !!S.up.stall2;   // вторая лавка
   blocked[SEASON_SPOT.y][SEASON_SPOT.x] = !!S.up.seasonstand;   // сезонная пристройка
   for (const [l, x, y] of COZY_CELLS) blocked[y][x] = (S.up.cozy || 0) >= l;   // будка, колодец, качели
+  for (const id of S.decor || []) for (const [x, y] of DECOR_CELLS[id] || [[DECOR_SPOT[id].x, DECOR_SPOT[id].y]]) blocked[y][x] = true;   // украшения из тетради
 }
 const tuft = Array.from({ length: H }, () => Array.from({ length: W }, () => rnd()));
 
@@ -778,7 +792,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.80';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.81';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -908,6 +922,132 @@ function showSeasonCard() {
 function lvlNews(L) {   // что открывает уровень
   return [...(L === FAIR_LVL ? ['🎪 Ярмарка — две субботы в месяц'] : []), ...(L === MAIL_LVL ? ['📬 Заказы по почте'] : []), ...CROPS.filter(c => c.lvl === L).map(c => c.e + ' ' + c.name), ...Object.keys(UP_LVL).filter(k => UP_LVL[k] === L && L > 1 && !S.up[k] && UPGRADES[k]).map(k => UPGRADES[k].ico + ' ' + UPGRADES[k].name)].join(', ');
 }
+// ---------- 📒 Тетрадь фермера: 5 целей на сезон, видно 3; за цель — монеты и опыт, за все пять — украшение фермы ----------
+const seasonIdx = (d = S.day) => Math.floor((d - 1) / SEASON_LEN);
+const DECOR = [
+  { id: 'flags', name: '🎏 Флажки над тропинкой' }, { id: 'pots', name: '🪴 Кадки с цветами у крыльца' }, { id: 'lamp', name: '🏮 Фонарь у тропинки' },
+  { id: 'scare', name: '🧑‍🌾 Пугало у поля' }, { id: 'bed', name: '🌼 Клумба у дома' }, { id: 'bird', name: '🐦 Скворечник' }, { id: 'pin', name: '🌀 Вертушка' },
+];
+// виды целей: что считаем, как пишем, можно ли сейчас (по тому, что открыто на ферме)
+const GOAL_KINDS = {
+  harvest: { can: () => true, make: (L, r) => { const c = S.unlocked.filter(id => !GH_CROPS.includes(id) || S.up.greenhouse); const id = c[Math.floor(r() * c.length)]; return { id, target: 12 + L * 2 + Math.floor(r() * 8) }; }, text: g => `Собери урожай: ${g.target} ${GOODS[g.id].e}` },
+  sell: { can: () => true, make: (L, r) => { const c = Object.keys(GOODS).filter(id => !GOODS[id].sp && id !== 'sunflower' && id !== 'chick' && id !== 'goldegg' && canMake(id)); const id = c[Math.floor(r() * c.length)]; return { id, target: 10 + L * 2 }; }, text: g => `Продай ${g.target} ${GOODS[g.id].e}` },
+  eggs: { can: () => hens() > 0, make: L => ({ id: 'egg', target: 15 + L * 2 }), text: g => `Собери ${g.target} 🥚 яиц`, ev: 'collect' },
+  milk: { can: () => cows() > 0, make: L => ({ id: 'milk', target: 12 + L * 2 }), text: g => `Надои ${g.target} 🥛 молока`, ev: 'collect' },
+  flour: { can: () => !!S.up.mill, make: L => ({ id: 'flour', target: 8 + L }), text: g => `Смели ${g.target} 🍚 муки`, ev: 'make' },
+  cheese: { can: () => !!S.up.dairy, make: L => ({ id: 'cheese', target: 5 + Math.floor(L / 2) }), text: g => `Свари ${g.target} 🧀 сыра`, ev: 'make' },
+  bake: { can: () => !!S.up.bakery, make: (L, r) => { const c = Object.keys(BAKE).filter(canMake); const id = c[Math.floor(r() * c.length)] || 'bread'; return { id, target: 6 + Math.floor(L / 2) }; }, text: g => `Испеки ${g.target} ${GOODS[g.id].e}`, ev: 'make' },
+  basket: { can: () => farmLevel() >= 3, make: L => ({ target: 8 + L }), text: g => `Обслужи ${g.target} покупателей с полной корзинкой 🧺` },
+  day: { can: () => (S.hist || []).length >= 2, make: () => { const h = (S.hist || []).slice(-5).map(x => x.e); const avg = h.reduce((a, b) => a + b, 0) / Math.max(1, h.length); return { target: Math.max(80, Math.round(avg * 1.3 / 10) * 10) }; }, text: g => `Заработай за один день ${g.target}💰`, max: true },
+  fair: { can: () => fairUnlocked(), make: () => { const h = (S.hist || []).slice(-5).map(x => x.e); const avg = h.reduce((a, b) => a + b, 0) / Math.max(1, h.length); return { target: Math.max(150, Math.round(avg * 1.5 / 10) * 10) }; }, text: g => `Заработай на одной ярмарке ${g.target}💰 🎪`, max: true },
+  upgrade: { can: () => true, make: L => ({ target: L < 6 ? 2 : 3 }), text: g => `Купи ${g.target} улучшения ⬆️` },
+};
+function seeded(n) { let a = n * 2654435761 >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function makeGoal(kind, r) { const L = farmLevel(), g = GOAL_KINDS[kind].make(L, r); return { kind, n: 0, done: false, ...g, coins: 40 + L * 25, xp: 15 + L * 6 }; }
+function newGoals() {
+  const r = seeded(S.farmId.length * 977 + seasonIdx() * 131 + S.day), kinds = Object.keys(GOAL_KINDS).filter(k => GOAL_KINDS[k].can()), list = [];
+  const pool = kinds.slice().sort(() => r() - .5);
+  while (list.length < 5) list.push(makeGoal(pool[list.length % pool.length], r));
+  S.goals = { si: seasonIdx(), list, swap: false, prize: false };
+}
+function ensureGoals() { if (!S.goals || S.goals.si !== seasonIdx()) newGoals(); }
+const activeGoals = () => S.goals ? S.goals.list.filter(g => !g.done).slice(0, 3) : [];
+// событие на ферме: засчитываем открытым целям того же вида
+function goalEv(type, id, n = 1) {
+  if (!S.goals || S.goals.si !== seasonIdx()) return;
+  for (const g of activeGoals()) {
+    const K = GOAL_KINDS[g.kind], ev = K.ev || g.kind;
+    if (ev !== type || (g.id && id !== g.id)) continue;
+    g.n = K.max ? Math.max(g.n, n) : g.n + n;
+    if (g.n >= g.target) goalDone(g);
+  }
+  if ($('sheet').dataset.view === 'goals') openGoals();
+  renderGoalBtn();
+}
+function goalDone(g) {
+  g.done = true; g.n = g.target;
+  S.coins += g.coins; gainXp(g.xp);
+  setTimeout(() => toast(`📒 Цель выполнена: ${GOAL_KINDS[g.kind].text(g)} · +${g.coins}💰 +${g.xp}⭐`), 200);
+  if (S.goals.list.every(x => x.done) && !S.goals.prize) {   // все пять — украшение фермы
+    S.goals.prize = true; S.decor ??= [];
+    const next = DECOR.find(d => !S.decor.includes(d.id));
+    if (next) { S.decor.push(next.id); applyLots(); setTimeout(() => showGoalPrize(next), 900); }
+    else { S.coins += 500; setTimeout(() => toast('📒 Все цели сезона выполнены! Все украшения уже есть — +500💰'), 900); }
+  }
+  save();
+}
+function showGoalPrize(d) {
+  luDress('🎉', '📒', 'Все цели сезона!', 'Ура!', '#f0b429'); $('luN').textContent = '';
+  $('luNews').innerHTML = `На ферме появилось украшение:<br><b>${d.name}</b>`; $('lvlUp').classList.add('show');
+}
+function swapGoal(i) {
+  const g = S.goals.list[i]; if (S.goals.swap || g.done) return;
+  const r = seeded(S.day * 31 + i * 7 + 3), used = S.goals.list.map(x => x.kind), kinds = Object.keys(GOAL_KINDS).filter(k => GOAL_KINDS[k].can() && !used.includes(k));
+  const k = kinds.length ? kinds[Math.floor(r() * kinds.length)] : g.kind;
+  S.goals.list[i] = makeGoal(k, r); S.goals.swap = true; save(); openGoals(); renderGoalBtn();
+}
+function openGoals() {
+  ensureGoals();
+  const G = S.goals, act = activeGoals(), done = G.list.filter(g => g.done).length, se = season();
+  let h = `<h2>📒 Тетрадь фермера</h2><div class="intro">Цели на сезон: всего пять, одновременно открыты три. Выполнил одну — открывается следующая. За каждую — монеты и опыт, за все пять — украшение фермы. Раз в сезон одну цель можно заменить. Невыполненные цели просто сменятся новыми в следующем сезоне.</div>
+    <div class="summary">${se.e} <b>${se.name}</b> · выполнено <b>${done} из 5</b>${G.prize ? ' · 🎉 украшение получено' : ` · за все пять — украшение`}</div><div class="goals">`;
+  G.list.forEach((g, i) => {
+    const K = GOAL_KINDS[g.kind], open = act.includes(g), pc = Math.min(100, g.n / g.target * 100);
+    if (g.done) h += `<div class="goal done"><span class="gt">✔ ${K.text(g)}</span><small>+${g.coins}💰 +${g.xp}⭐</small></div>`;
+    else if (open) h += `<div class="goal"><span class="gt">${K.text(g)}</span><div class="gbar"><i style="width:${pc}%"></i></div>
+      <div class="grow"><small>${K.max ? (g.n ? `лучший результат: ${g.n}💰` : 'пока не было') : `${g.n} из ${g.target}`} · награда +${g.coins}💰 +${g.xp}⭐</small>${G.swap ? '' : `<button class="gswap" onclick="swapGoal(${i})">↻ Заменить</button>`}</div></div>`;
+    else h += `<div class="goal lockd"><span class="gt">🔒 Откроется, когда выполнишь одну из целей</span></div>`;
+  });
+  h += `</div>`;
+  const got = (S.decor || []).map(id => DECOR.find(d => d.id === id)?.name).filter(Boolean);
+  if (got.length) h += `<h3 style="margin:12px 0 4px">Украшения фермы</h3><div style="font-size:14px;line-height:1.7">${got.join('<br>')}</div>`;
+  h += `<button class="wide" style="width:100%;margin-top:12px" onclick="S.night ? openNight(false) : closeNight()">Закрыть</button>`;
+  $('sheet').dataset.view = 'goals'; const top = $('sheet').scrollTop; $('sheet').innerHTML = h; $('overlay').classList.add('show'); $('sheet').scrollTop = top;
+}
+function renderGoalBtn() {
+  const b = $('goalBtn'); if (!b) return;
+  ensureGoals(); const left = S.goals.list.filter(g => !g.done).length;
+  b.innerHTML = `📒<small>${left ? `${5 - left}/5` : '✔'}</small>`;
+  b.classList.toggle('low', getComputedStyle($('fairBtn')).display !== 'none');
+}
+// украшения фермы — призы тетради: стоят на свободных клетках у тропинки, дома и поля
+const DECOR_SPOT = { flags: { x: 7, y: 10 }, pots: { x: 5, y: 5 }, lamp: { x: 6, y: 7 }, scare: { x: 15, y: 4 }, bed: { x: 4, y: 6 }, bird: { x: 5, y: 9 }, pin: { x: 10, y: 10 } };
+const DECOR_CELLS = { flags: [[6, 10], [8, 10]] };   // какие клетки занимает (по умолчанию — своя)
+function drawDecor(id) {
+  const q = DECOR_SPOT[id], c = iso(q.x + .5, q.y + .5);
+  if (id === 'flags') {   // два столбика и гирлянда флажков над тропинкой
+    toonPost(6.5, 10.5, 0, 36, .05); toonPost(8.5, 10.5, 0, 36, .05);
+    const a = lift(6.5, 10.5, 34), b = lift(8.5, 10.5, 34), m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 + 9 };
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.quadraticCurveTo(m.x, m.y, b.x, b.y); ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke();
+    for (let k = 1; k < 8; k++) { const t = k / 8, x = (1 - t) * (1 - t) * a.x + 2 * (1 - t) * t * m.x + t * t * b.x, y = (1 - t) * (1 - t) * a.y + 2 * (1 - t) * t * m.y + t * t * b.y;
+      shape([{ x: x - 3.5, y }, { x: x + 3.5, y }, { x, y: y + 8 }]); ctx.fillStyle = ['#e0473e', '#ffd84d', '#4f8fe0', '#6cc08b'][k % 4]; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = .8; ctx.stroke(); }
+  } else if (id === 'pots') {
+    for (const [dx, e] of [[-9, '🌷'], [8, '🌼']]) { const x = c.x + dx, y = c.y; ctx.fillStyle = 'rgba(30,40,15,.25)'; ctx.beginPath(); ctx.ellipse(x + 1, y + 1, 8, 3, 0, 0, 7); ctx.fill();
+      shape([{ x: x - 7, y: y - 12 }, { x: x + 7, y: y - 12 }, { x: x + 5, y }, { x: x - 5, y }]); ctx.fillStyle = '#c8673f'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke(); emoji(e, x, y - 19, 13); }
+  } else if (id === 'lamp') {
+    toonPost(q.x + .5, q.y + .5, 0, 40, .05, ['#4a4f58', '#2f333a']); const l = lift(q.x + .5, q.y + .5, 44);
+    ctx.beginPath(); ctx.roundRect(l.x - 5, l.y - 7, 10, 12, 2); ctx.fillStyle = S.night ? '#ffe28a' : '#f6e7b0'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.3; ctx.stroke();
+    shape([{ x: l.x - 7, y: l.y - 7 }, { x: l.x + 7, y: l.y - 7 }, { x: l.x, y: l.y - 13 }]); ctx.fillStyle = '#2f333a'; ctx.fill();
+  } else if (id === 'scare') {
+    toonPost(q.x + .5, q.y + .5, 0, 40, .05); const s1 = lift(q.x + .5, q.y + .5, 30);
+    seg({ x: s1.x - 14, y: s1.y }, { x: s1.x + 14, y: s1.y }, INK, 4); seg({ x: s1.x - 14, y: s1.y }, { x: s1.x + 14, y: s1.y }, '#c99a62', 2.2);
+    ctx.beginPath(); ctx.roundRect(s1.x - 7, s1.y - 3, 14, 16, 3); ctx.fillStyle = '#4f8fe0'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke();
+    const hd = lift(q.x + .5, q.y + .5, 44); circle(hd.x, hd.y, 6.5, INK); circle(hd.x, hd.y, 5.5, '#f6e2b8');
+    ctx.beginPath(); ctx.ellipse(hd.x, hd.y - 5, 10, 3, 0, 0, 7); ctx.fillStyle = '#e8c56a'; ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.roundRect(hd.x - 5, hd.y - 12, 10, 7, 2); ctx.fill(); ctx.stroke();
+  } else if (id === 'bed') {
+    ctx.beginPath(); ctx.ellipse(c.x, c.y, 18, 8, 0, 0, 7); ctx.fillStyle = '#8a5a36'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke();
+    for (const [dx, dy, e] of [[-9, -2, '🌷'], [0, -5, '🌼'], [9, -2, '🌷'], [-4, 3, '🌼'], [5, 3, '🌸']]) emoji(e, c.x + dx, c.y + dy - 6, 11);
+  } else if (id === 'bird') {
+    toonPost(q.x + .5, q.y + .5, 0, 38, .05); const b = lift(q.x + .5, q.y + .5, 44);
+    ctx.beginPath(); ctx.roundRect(b.x - 7, b.y - 4, 14, 13, 2); ctx.fillStyle = '#e2b679'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke();
+    shape([{ x: b.x - 9, y: b.y - 3 }, { x: b.x + 9, y: b.y - 3 }, { x: b.x, y: b.y - 12 }]); ctx.fillStyle = '#d4584a'; ctx.fill(); ctx.stroke(); circle(b.x, b.y + 3, 2.4, INK);
+  } else if (id === 'pin') {
+    toonPost(q.x + .5, q.y + .5, 0, 30, .04); const h = lift(q.x + .5, q.y + .5, 34);
+    for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + .4; shape([h, { x: h.x + Math.cos(a) * 11, y: h.y + Math.sin(a) * 11 }, { x: h.x + Math.cos(a + .9) * 7, y: h.y + Math.sin(a + .9) * 7 }]); ctx.fillStyle = ['#e0473e', '#ffd84d', '#4f8fe0', '#6cc08b'][k]; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1; ctx.stroke(); }
+    circle(h.x, h.y, 2, INK);
+  }
+}
+const DECOR_OBJ = Object.fromEntries(Object.keys(DECOR_SPOT).map(id => [id, { id }]));
 // покупателей в день растёт с уровнем, но не бесконечно; зато корзинка у каждого больше
 const visitorsBase = () => Math.min(30, 8 + Math.min(14, farmLevel()) + (S.up.ads || 0) + prestigeGuests());
 const basketMax = (L = farmLevel()) => L < 3 ? 1 : L < 6 ? 2 : L < 10 ? 3 : L < 15 ? 4 : 5;   // сколько разных товаров берёт один покупатель
@@ -994,6 +1134,7 @@ function spend(n, cat) {
 const spentSum = o => Object.values(o.spent || {}).reduce((a, b) => a + b, 0);
 
 function startDay() {
+  ensureGoals();
   S.fairDay = fairCal(S.day) && fairUnlocked() ? S.day : 0;
   S.night = false; S.t = 0; S.spawned = 0; S.closing = false;
   S.toSpawn = visitorsPerDay();
@@ -1035,6 +1176,7 @@ function endDay() {
   S.stats.missed += waiting.length + (S.toSpawn - S.spawned);
   waiting.forEach(v => leave(v, null));
   S.night = true;
+  goalEv('day', null, S.stats.earned || 0); if (fairRes) goalEv('fair', null, fairRes.money || 0);
   if (S.up.hay && cows() && cowFoodStock() >= feedPerCow()) setTimeout(() => { if (S.night && cowsFedTomorrow() < cows()) { feedCows('hay'); refreshSheet(); } }, 900);   // сеновал кормит сам
   save(); renderUI();
   if (fairRes) openFairResult(fairRes); else openNight(true);
@@ -1152,6 +1294,7 @@ function sell(v) {
     const m = n * unitPrice(it.id);
     money += m; xp += n * GOODS[it.id].price;
     for (const o of [S.stats, S.life]) { o.sold ??= {}; o.sold[it.id] = (o.sold[it.id] || 0) + m; }
+    goalEv('sell', it.id, n);
     if (fairOn()) { const q = fairLog().sold[it.id] ??= { n: 0, m: 0 }; q.n += n; q.m += m; }
     if (GOODS[it.id].sp) {   // продаём самую маленькую находку — лучшая остаётся для конкурса
       const list = S.special.map((x, i) => ({ ...x, i })).filter(x => x.k === GOODS[it.id].sp).sort((a, b) => a.q - b.q);
@@ -1161,7 +1304,7 @@ function sell(v) {
   }
   const tip = v.pat / v.max > 0.6 ? Math.ceil(money * 0.2) : 0;   // чаевые за скорость
   money += tip;
-  if (full) xp = Math.round(xp * 1.25);   // вся корзинка нашлась — бонус опыта
+  if (full) { xp = Math.round(xp * 1.25); if (v.items.length > 1) goalEv('basket', null, 1); }   // вся корзинка нашлась — бонус опыта
   S.coins += money; S.stats.earned += money; S.stats.served++; S.life.earned += money; S.life.served++;
   if (tip) for (const o of [S.stats, S.life]) o.sold[v.items[0].id] += tip;
   if (fairOn()) { const L = fairLog(); L.money += money; L.served++; }
@@ -1191,7 +1334,7 @@ function ghPick() { return GH_CROPS.includes(S.sel) ? S.sel : null; }   // в т
 const GH_WRONG = () => `🏡 В теплице растут только 🍅 и 🍓 — выбери их справа${GH_CROPS.some(id => S.unlocked.includes(id)) ? '' : ' (сначала открой ночью)'}`;
 function harvestBed(p, s, gh) {   // в теплице — гроздь из GH_YIELD плодов
   const n = gh ? GH_YIELD : 1;
-  S.inv[p.crop] = (S.inv[p.crop] || 0) + n; S.life.harvested += n;
+  S.inv[p.crop] = (S.inv[p.crop] || 0) + n; S.life.harvested += n; goalEv('harvest', p.crop, n);
   addFloat(s.x + .5, s.y + .5, `+${n} ${CROP[p.crop].e}`);
   if (p.crop === 'pumpkin' || p.crop === 'corn' || (gh && p.crop === 'strawberry')) rollSpecial(p.crop);
   p.last = p.crop; p.crop = null; p.prog = 0;
@@ -1252,7 +1395,7 @@ function treeAct(i, mode) {
   if (!t) return false;
   if (treeReady(t)) {
     const T = TREES[t.kind];
-    S.inv[T.fruit] = (S.inv[T.fruit] || 0) + T.yield; S.life.harvested += T.yield;
+    S.inv[T.fruit] = (S.inv[T.fruit] || 0) + T.yield; S.life.harvested += T.yield; goalEv('harvest', T.fruit, T.yield);
     addFloat(s.x + .5, s.y + .5, `+${T.yield} ${GOODS[T.fruit].e}`);
     t.fruit = 0;
   } else if (!t.kind && mode !== 'harvest') {
@@ -1320,7 +1463,7 @@ function feedHens(byHelper) {
 function collectEggs() {
   if (!coopReady()) return false;
   const g = S.coop.gold || 0;
-  if (S.coop.eggs) { S.inv.egg = (S.inv.egg || 0) + S.coop.eggs; S.life.eggs += S.coop.eggs; addFloat(COOP_SPOT.x + .5, COOP_SPOT.y + .5, `+${S.coop.eggs} 🥚`); }
+  if (S.coop.eggs) { S.inv.egg = (S.inv.egg || 0) + S.coop.eggs; S.life.eggs += S.coop.eggs; goalEv('collect', 'egg', S.coop.eggs); addFloat(COOP_SPOT.x + .5, COOP_SPOT.y + .5, `+${S.coop.eggs} 🥚`); }
   if (g) { S.inv.goldegg = (S.inv.goldegg || 0) + g; S.life.gold = (S.life.gold || 0) + g; addFloat(COOP_SPOT.x + .5, COOP_SPOT.y - .3, `✨ +${g} 🟡`); toast(`✨ Золотое яйцо! Продаётся за ${sellPrice('goldegg')}💰 — или прибереги для конкурса золотых яиц 🏆`); }
   S.coop.eggs = 0; S.coop.gold = 0;
   save(); renderUI(); return true;
@@ -1377,7 +1520,7 @@ function loadProd(k, byHelper) {
 function collectProd(k) {
   const P = PROD[k], st = S.prod[k];
   if (!st.out) return false;
-  S.inv[P.out] = (S.inv[P.out] || 0) + st.out; S.life[P.out] = (S.life[P.out] || 0) + st.out;
+  S.inv[P.out] = (S.inv[P.out] || 0) + st.out; S.life[P.out] = (S.life[P.out] || 0) + st.out; goalEv('make', P.out, st.out);
   if (P.out === 'cheese') for (let i = 0; i < st.out; i++) rollSpecial('cheese');
   addFloat(P.spot.x + .5, P.spot.y - .5, `+${st.out} ${GOODS[P.out].e}`);
   st.out = 0; save(); renderUI(); return true;
@@ -1456,7 +1599,7 @@ function collectBake() {
   const out = S.bake.out, n = bakeOut();
   if (!n) return false;
   const txt = Object.entries(out).filter(([, k]) => k).map(([g, k]) => `+${k} ${GOODS[g].e}`).join(' ');
-  for (const [g, k] of Object.entries(out)) S.inv[g] = (S.inv[g] || 0) + k;
+  for (const [g, k] of Object.entries(out)) { S.inv[g] = (S.inv[g] || 0) + k; if (k) goalEv('make', g, k); }
   S.life.baked = (S.life.baked || 0) + n;
   addFloat(BAKE_SPOT.x + .5, BAKE_SPOT.y - .5, txt);
   S.bake.out = {}; save(); renderUI(); return true;
@@ -1660,7 +1803,7 @@ function feedCows(byHelper) {
 }
 function collectMilk() {
   if (!S.barn.milk) return false;
-  S.inv.milk = (S.inv.milk || 0) + S.barn.milk; S.life.milk += S.barn.milk;
+  S.inv.milk = (S.inv.milk || 0) + S.barn.milk; S.life.milk += S.barn.milk; goalEv('collect', 'milk', S.barn.milk);
   addFloat(BARN_SPOT.x + .5, BARN_SPOT.y + .5, `+${S.barn.milk} 🥛`);
   S.barn.milk = 0;
   save(); renderUI(); return true;
@@ -1716,7 +1859,7 @@ function routeThrough(list, from) {   // жадный обход: каждый �
 function buyUpgrade(key) {
   const u = UPGRADES[key], l = S.up[key], cost = u.cost(l);
   if (l >= u.max || S.coins < cost || upLocked(key)) return;
-  spend(cost, 'up'); S.up[key]++;
+  spend(cost, 'up'); S.up[key]++; goalEv('upgrade', key, 1);
   const before = S.plots.length;
   if (key === 'land') for (let k = 0; k < 4 && S.plots.length < MAX_PLOTS; k++) S.plots.push({ crop: null, prog: 0 });
   if (key === 'helper') syncHelpers();
@@ -2072,7 +2215,7 @@ function helperPlot(i, cfg) {
   let prev = plotPrev(p);
   if (p.crop && p.prog >= 1) {
     prev = p.crop;
-    S.inv[prev] = (S.inv[prev] || 0) + 1; S.life.harvested++;
+    S.inv[prev] = (S.inv[prev] || 0) + 1; S.life.harvested++; goalEv('harvest', prev, 1);
     addFloat(s.x + .5, s.y + .5, `+1 ${CROP[prev].e}`);
     p.last = prev; p.crop = null; p.prog = 0;
   } else if (p.crop || !cfg.replant) return false;
@@ -3085,6 +3228,7 @@ function draw(t) {
   for (const v of visitors) list.push({ z: v.x + v.y, f: () => drawPersonC(v, v.look) });
   if (clerkOn()) list.push({ z: clerk.x + clerk.y, f: () => drawPersonC(clerk, CLERK_LOOK) });
   archSlices(list);
+  for (const id of S.decor || []) if (DECOR_SPOT[id]) { const q = DECOR_SPOT[id]; list.push({ z: id === 'flags' ? 8.5 + 10.5 : q.x + q.y + 1, f: () => drawSprite(DECOR_OBJ[id], () => drawDecor(id), id + S.night, t) }); }
   list.push({ z: CIRCUS.x + CIRCUS.y + .9, f: () => drawSprite(CIRCUS, drawCircus, (isFair() && !S.night) + season().id, t) });   // шатёр цирка у ярмарки
   if (fairOn()) fairDrawList(list, t);
   list.sort((a, b) => a.z - b.z).forEach(o => o.f());
@@ -4777,6 +4921,7 @@ function renderUI() {
   const items = Object.keys(GOODS).filter(id => S.inv[id]).map(id => `<span class="${GOODS[id].sp ? 'sp' : onSale(id) ? '' : 'off'}">${GOODS[id].sp ? '🌟' : ''}${GOODS[id].e} ${S.inv[id]}</span>`);
   $('inv').innerHTML = items.length ? items.join('') : '<span style="opacity:.75">Склад пуст</span>';
   $('fairBtn').style.display = fairUnlocked() || isFair() ? '' : 'none';   // до ярмарки ещё дорасти — кнопка не висит над головой
+  renderGoalBtn();
   { const d = (S.night && fairCal(S.day) ? nextFairDay(S.day + 1) : nextFairDay()) - S.day, used = cratesUsed(), fb = $('fairBtn');   // кнопка ярмарки: когда и сколько ящиков собрано
     const when = d === 0 ? 'сегодня!' : d === 1 ? 'завтра' : `через ${d} ${d < 5 ? 'дня' : 'дней'}`;
     fb.innerHTML = `<i class="glow"></i>🎪<small>${d === 0 ? 'сегодня' : d === 1 ? 'завтра' : d + ' дн.'}</small>`; fb.title = `Ярмарка ${when} · ящиков ${used} из ${allCrates()}`;
@@ -4897,6 +5042,7 @@ function openMenu() {
       <button onclick="${S.night ? 'openNight(false)' : "toast('🌙 Улучшения покупаются ночью')"}">⬆️ Улучшения ${S.night ? '' : '<small style="color:#7a6650">— ночью</small>'}</button>
       ${S.up.helper ? '<button onclick="openHelpers()">🧑‍🌾 Помощники</button>' : ''}
       ${fairUnlocked() || S.trophies.length ? `<button onclick="openTrophies()">🏆 Трофеи и конкурс${S.trophies.length ? ` <small style="color:#7a6650">— кубков: ${S.trophies.length}</small>` : ''}</button>` : ''}
+      <button onclick="openGoals()">📒 Тетрадь фермера <small style="color:#7a6650">— цели сезона</small></button>
       <button onclick="openCalendar()">📅 Календарь <small style="color:#7a6650">— ${WEEKDAYS[cal().dow].toLowerCase()}, ${season().name.toLowerCase()}</small></button>
       <button onclick="openProfile()">👤 Профиль</button>
       <button onclick="toggleEco()">🔋 Экономия батареи <small style="color:#7a6650">— ${ECO ? 'включена' : 'выключена'}</small></button>
