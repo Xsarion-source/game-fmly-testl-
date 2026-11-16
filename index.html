@@ -706,7 +706,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.50';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.51';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -2106,7 +2106,7 @@ let last = performance.now(), saveAcc = 0, lastDraw = 0, lastTouch = 0, camSig =
 let timeScale = 1;   // чит-ускорение
 // Телефон греется от перерисовки 60 раз в секунду. Игра почти вся неспешная, поэтому кадр рисуем
 // 30 раз в секунду, пока открыто окно — 12; полную частоту — только пока двигают карту пальцами.
-const frameGap = () => performance.now() - lastTouch < 600 ? 0 : $('overlay').classList.contains('show') ? 1000 / 12 : 1000 / 30;
+const frameGap = () => performance.now() - lastTouch < 600 ? 0 : $('overlay').classList.contains('show') ? 1000 / 12 : 1000 / (ECO ? 20 : 30);
 function tick(now) {
   const dt = Math.min(0.1, Math.max(0, (now - last) / 1000)); last = now;
   for (let k = 0; k < timeScale; k++) step(dt);
@@ -2165,6 +2165,10 @@ function step(dt) {
 const $ = id => document.getElementById(id);
 const cv = $('cv'); let ctx = cv.getContext('2d');
 let cw = 1, ch = 1, dpr = 1, zoom = 1, userZoom = false;
+// Экономия батареи (по умолчанию включена, хранится на этом устройстве): картинка в 1,5 раза чётче экрана
+// вместо 2 и 20 кадров в секунду вместо 30 — телефон греется заметно меньше
+let ECO = true; try { ECO = localStorage.getItem('farm-eco') !== '0'; } catch {}
+function toggleEco() { ECO = !ECO; try { localStorage.setItem('farm-eco', ECO ? '1' : '0'); } catch {} resize(); openMenu(); toast(ECO ? '🔋 Экономия батареи включена' : '🔋 Экономия выключена — картинка чётче, телефон греется сильнее'); }
 const cam = { x: 0, y: 0 };
 const iso = (x, y) => ({ x: (x - y) * TW / 2, y: (x + y) * TH / 2 });
 const lift = (x, y, z) => { const p = iso(x, y); return { x: p.x, y: p.y - z }; };
@@ -2177,7 +2181,7 @@ function centerCam() { cam.x = (WORLD.x0 + WORLD.x1) / 2 + 40 / zoom; cam.y = (W
 function resize() {
   const r = $('stage').getBoundingClientRect();
   cw = Math.max(1, r.width); ch = Math.max(1, r.height);
-  dpr = Math.min(2, window.devicePixelRatio || 1);
+  dpr = Math.min(ECO ? 1.5 : 2, window.devicePixelRatio || 1);
   cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr);
   const wasTablet = tablet; tablet = cw >= 700;
   if (!userZoom) zoom = tablet ? fitZoom() : Math.max(0.55, Math.min(1.2, Math.max(cw / 700, ch / 1080)));
@@ -4378,6 +4382,7 @@ function openMenu() {
       <button onclick="openTrophies()">🏆 Трофеи и конкурс${S.trophies.length ? ` <small style="color:#7a6650">— кубков: ${S.trophies.length}</small>` : ''}</button>
       <button onclick="openCalendar()">📅 Календарь <small style="color:#7a6650">— ${WEEKDAYS[cal().dow].toLowerCase()}, ${season().name.toLowerCase()}</small></button>
       <button onclick="openProfile()">👤 Профиль</button>
+      <button onclick="toggleEco()">🔋 Экономия батареи <small style="color:#7a6650">— ${ECO ? 'включена' : 'выключена'}</small></button>
       <button onclick="openSaves()">💾 Сохранения <small style="color:#7a6650">— ${esc(slotNames()[SLOT - 1])}</small></button>
       <button onclick="openEconomy()">💰 Экономика</button>
       <button onclick="openHelp()">📖 Как играть</button>
