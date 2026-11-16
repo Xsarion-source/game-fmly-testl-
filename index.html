@@ -706,7 +706,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.52';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.53';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -2102,19 +2102,16 @@ function openHelpers() {
 }
 
 // ================== ЦИКЛ ==================
-let last = performance.now(), saveAcc = 0, drawAcc = 0;
+let last = performance.now(), saveAcc = 0;
 let timeScale = 1;   // чит-ускорение
-// Ровно 40 кадров в секунду всегда — и когда двигают карту, и с открытым окном: без скачков плавности.
-// Чтобы телефон меньше грелся, этого хватает (60 кадров — заметно горячее).
-const FRAME_MS = 1000 / 40;
 function tick(now) {
   const dt = Math.min(0.1, Math.max(0, (now - last) / 1000)); last = now;
   for (let k = 0; k < timeScale; k++) step(dt);
   floats.forEach(f => f.t += dt); floats = floats.filter(f => f.t < 1.2);
   saveAcc += dt; if (saveAcc > 5) { saveAcc = 0; save(); }
   updateCam(dt);
-  drawAcc += dt * 1000;   // копим время: при 60 Гц экрана кадр рисуется через раз-полтора, в среднем 40 в секунду
-  if (drawAcc >= FRAME_MS - 1) { drawAcc = Math.min(drawAcc - FRAME_MS, FRAME_MS); draw(now / 1000); renderHud(); }
+  draw(now / 1000);   // каждый кадр экрана: ограничение частоты ощущается хуже, чем греется телефон
+  renderHud();
   requestAnimationFrame(tick);
 }
 function step(dt) {
@@ -2162,7 +2159,7 @@ function step(dt) {
 
 // ================== КАМЕРА И ВВОД ==================
 const $ = id => document.getElementById(id);
-const cv = $('cv'); let ctx = cv.getContext('2d');
+const cv = $('cv'); let ctx = cv.getContext('2d'); const MAIN_CTX = ctx;
 let cw = 1, ch = 1, dpr = 1, zoom = 1, userZoom = false;
 // Экономия батареи (по умолчанию включена, хранится на этом устройстве): картинка с чёткостью 1,5× вместо 2× —
 // телефон греется заметно меньше
@@ -2587,6 +2584,26 @@ const zoomSettled = now => { const k = dpr * zoom; if (k !== zoomK) { zoomK = k;
 // Фон (лес вокруг, земля, тропинки) рисуется в отдельную картинку сразу на всю область, куда может
 // уехать камера, — при перетаскивании он не перерисовывается. Обновляется только при изменениях на земле или новом масштабе.
 const bg = { cv: document.createElement('canvas'), key: '', r: null, ox: 0, oy: 0 };
+// Деревья в глубине леса (позади них только лес или край карты) впекаются в картинку фона:
+// за ними никто не ходит, перекрывать некого, а рисовать их по одному каждый кадр дорого
+let bakedTrees = null;
+function bakeTreeSet() {
+  const trees = decor.filter(d => d.kind === 'tree'), at = new Map(trees.map(d => [d.x + ',' + d.y, d]));
+  const ok = new Set(trees.filter(d => d.lot == null));
+  for (let changed = true; changed;) {
+    changed = false;
+    for (const d of [...ok]) {
+      for (let dy = -3; dy <= 0 && ok.has(d); dy++) for (let dx = -3; dx <= 0; dx++) {
+        if (!dx && !dy) continue;
+        const x = d.x + dx, y = d.y + dy;
+        if (x < 0 || y < 0 || (x >= W && y < ROAD)) continue;   // край карты, лес справа
+        const o = at.get(x + ',' + y);
+        if (!o || !ok.has(o)) { ok.delete(d); changed = true; break; }
+      }
+    }
+  }
+  return ok;
+}
 function groundSig() {   // всё, от чего зависит земля (кроме мигания)
   const pl = a => a.map(p => p.crop ? (p.prog < 1 ? 'w' : 'r') : '-').join('');
   return [season().id, isFair() && !S.night, contestOf(), S.picnic === S.day && !S.night, JSON.stringify(S.up), pl(S.plots), pl(S.gh), S.trees.map(t => t.kind ? 1 : 0).join(''), hens(), cows()].join('|');
@@ -2611,7 +2628,7 @@ function drawBackdrop(now) {
     const main = ctx; ctx = bg.cv.getContext('2d');
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = look().bg; ctx.fillRect(0, 0, w, h);
     ctx.setTransform(k, 0, 0, k, -bg.ox, -bg.oy);
-    try { drawOutside(R); drawGround(0); drawPaths(); drawPicnic(); drawOutsideTrees(); } finally { ctx = main; }
+    try { drawOutside(R); drawGround(0); drawPaths(); drawPicnic(); drawOutsideTrees(); [...(bakedTrees ??= bakeTreeSet())].sort((a, b) => a.z - b.z).forEach(d => drawTree(d)); } finally { ctx = main; }
   }
   const T = camT();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -2690,10 +2707,14 @@ function drawSprite(d, fn, key, now, o, raw) {
   const k = dpr * zoom;
   if (!zoomSettled(now)) { fn(); return; }   // пока зумят пальцами — рисуем напрямую, без перестройки спрайтов
   let sp = d._sp;
+  if (sp && sp.k === k && sp.cv.width > 1) {   // за краем экрана — не рисуем вовсе (картинка на месте, пока не понадобится)
+    const T = camT(), x = sp.ox + T.x, y = sp.oy + T.y;
+    if (x > cv.width || y > cv.height || x + sp.cv.width < 0 || y + sp.cv.height < 0) return;
+  }
   const full = key + '|' + k + '|' + S.night + '|' + upKey;
   if (!sp || sp.key !== full) {
     const b = measure(fn);
-    sp = d._sp = { key: full, cv: sp?.cv || document.createElement('canvas'), empty: !b };
+    sp = d._sp = { key: full, k, cv: sp?.cv || document.createElement('canvas'), empty: !b };
     if (b) {
       sp.ox = Math.floor(b.x0 * k); sp.oy = Math.floor(b.y0 * k);
       sp.cv.width = Math.ceil(b.x1 * k) - sp.ox + 1; sp.cv.height = Math.ceil(b.y1 * k) - sp.oy + 1;
@@ -2717,7 +2738,7 @@ let upKey = '';   // улучшения одной строкой — счита
 function draw(t) {
   upKey = JSON.stringify(S.up);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = look().bg; ctx.fillRect(0, 0, cv.width, cv.height);
+  if (!zoomSettled(t) || !bg.r || !inside(viewRect(), bg.r)) { ctx.fillStyle = look().bg; ctx.fillRect(0, 0, cv.width, cv.height); }   // фон и так закроет весь экран
   setWorld();
   drawBackdrop(t);
   drawGroundGlow(t);
@@ -2728,7 +2749,9 @@ function draw(t) {
 
   const list = [];
   const DRAW = { tree: d => d.lot == null || S.up.clear <= d.lot ? drawTree(d) : (!prodAt(d.x, d.y) || !S.up[prodAt(d.x, d.y)]) && drawStump(d), mill: drawMill, dairy: drawDairy, house: drawHouse, bakery: drawBakery, mailbox: drawMailbox, trophies: drawTrophies, flowers: drawFlowers, doghouse: drawDoghouse, well: drawWell, swing: drawSwing, stall: drawStall, season: drawSeasonStand, coop: drawCoop, barn: drawBarn, trough: drawTrough, fence: drawFence, billboard: drawBillboard, sack: drawSack, bench: drawBench, glass: drawGlass, ghroof: drawGhRoof };
+  const settled = zoomSettled(t);
   for (const d of decor) {   // постройка рисуется в своих координатах, сдвинутая на смещение группы (LAYOUT)
+    if (settled && bakedTrees && bakedTrees.has(d)) continue;   // уже в картинке фона
     const sk = SPRITE_KEY[d.kind], o = d.g ? isoG(d.g, 0, 0) : null, raw = () => DRAW[d.kind](d, t);
     const moved = o ? () => { ctx.save(); ctx.translate(o.x, o.y); try { raw(); } finally { ctx.restore(); } } : raw;
     list.push({ z: d.z, f: sk ? () => drawSprite(d, moved, sk(d), t, o, raw) : moved });
@@ -2739,15 +2762,15 @@ function draw(t) {
   for (const c of cowsState) list.push({ z: c.x + c.y, f: () => drawCow(c, t) });
   S.plots.forEach((p, i) => { if (p.crop) { const s = PLOT_SLOTS[i]; list.push({ z: s.x + s.y + 1, f: () => drawCrop(i, t) }); } });
   S.gh.forEach((p, i) => { if (p.crop) { const s = GH_SLOTS[i]; list.push({ z: s.x + s.y + 1, f: () => drawCrop(i, t, true) }); } });
-  list.push({ z: P.x + P.y + 0.01, f: () => S.picnic === S.day && !S.night && !path.length && !P.moving && Math.floor(P.x) === PICNIC.x && Math.floor(P.y) === PICNIC.y ? drawSitting(P, PLAYER_LOOK) : drawPerson(P, PLAYER_LOOK) });   // на пикнике фермер сидит на пледе
-  for (const h of helpers) list.push({ z: h.x + h.y, f: () => { const pose = picPose(h); if (pose) { drawHelperPose(h, pose, t); return; } drawPerson(h, h.look); const c = iso(h.x, h.y); const cfg = S.helpers[h.id] || { stations: [] }, st = cfg.stations;
+  list.push({ z: P.x + P.y + 0.01, f: () => S.picnic === S.day && !S.night && !path.length && !P.moving && Math.floor(P.x) === PICNIC.x && Math.floor(P.y) === PICNIC.y ? drawSitting(P, PLAYER_LOOK) : drawPersonC(P, PLAYER_LOOK) });   // на пикнике фермер сидит на пледе
+  for (const h of helpers) list.push({ z: h.x + h.y, f: () => { const pose = picPose(h); if (pose) { drawHelperPose(h, pose, t); return; } drawPersonC(h, h.look); const c = iso(h.x, h.y); const cfg = S.helpers[h.id] || { stations: [] }, st = cfg.stations;
     const fieldIco = !cfg.replant ? '🧺' : cfg.seed === 'same' ? '🔁' : CROP[cfg.seed]?.e || '🧺';   // только сбор — корзинка, посев — значок культуры
     const icons = isRest() && !S.night ? [S.picnic === S.day ? '🧺' : REST.ico] : st.length ? st.map(k => k === 'field' ? (!cfg.zones.length ? '❓' : fieldIco) : k === 'gh' && cfg.ghReplant && cfg.ghSeed !== 'same' ? CROP[cfg.ghSeed].e : STATIONS[k].ico) : [REST.ico];
     if (h.broke) icons.push('💰');
     rr(c.x - icons.length * 6.5 - 3, c.y - 69, icons.length * 13 + 6, 18, 9, 'rgba(255,253,246,.95)');
     icons.forEach((e, k) => emoji(e, c.x + (k - (icons.length - 1) / 2) * 13, c.y - 59.5, 11)); } });
-  for (const v of visitors) list.push({ z: v.x + v.y, f: () => drawPerson(v, v.look) });
-  if (clerkOn()) list.push({ z: clerk.x + clerk.y, f: () => drawPerson(clerk, CLERK_LOOK) });
+  for (const v of visitors) list.push({ z: v.x + v.y, f: () => drawPersonC(v, v.look) });
+  if (clerkOn()) list.push({ z: clerk.x + clerk.y, f: () => drawPersonC(clerk, CLERK_LOOK) });
   if (fairOn()) fairDrawList(list, t);
   list.sort((a, b) => a.z - b.z).forEach(o => o.f());
 
@@ -2852,7 +2875,7 @@ function fairDrawList(list, t) {
     else list.push({ z: o.z, f: () => { const g = stallGoods(o.B), nm = o.B.r != null ? RIVALS_DEF[o.B.r].name.toUpperCase() : ''; drawSprite(o, () => drawFairStall(o.B, g, nm, '#7a3a1a'), g.join(), t); } });
   }
   for (const f of fairFolk) list.push({ z: f.x + f.y, f: () => {
-    if (!f.kid) { drawPerson(f, f.look); return; }
+    if (!f.kid) { drawPersonC(f, f.look); return; }
     const c = iso(f.x, f.y); ctx.save(); ctx.translate(c.x, c.y); ctx.scale(.7, .7); ctx.translate(-c.x, -c.y); drawPerson(f, f.look); ctx.restore();
   } });
 }
@@ -4105,15 +4128,38 @@ function drawCrop(i, t, gh) {
   }
 }
 
-function drawPerson(p, L) {
-  const c = iso(p.x, p.y), sw = p.moving ? Math.sin(p.phase) : 0, bob = p.moving ? Math.abs(Math.cos(p.phase)) * 1.5 : 0;
+// Человечки рисуются из готовых картинок: на каждый вид — кадры походки (16 фаз), лицом влево/вправо.
+// Вектором каждый кадр — это треть всей работы при отрисовке; из картинки — одно копирование.
+const PCACHE = new WeakMap(), PH = 16;
+function drawPersonC(p, L) {
+  const k = dpr * zoom;
+  if (ctx !== MAIN_CTX || !zoomSettled(performance.now() / 1000)) { drawPerson(p, L); return; }
+  const ph = p.moving ? Math.round(((p.phase % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) / (Math.PI * 2) * PH) % PH : -1;
+  const wk = p.work > 0 ? Math.round(Math.sin(p.work * 30) * 3) : 0;
+  let M = PCACHE.get(L); if (!M || M.k !== k) PCACHE.set(L, M = { k, m: new Map() });
+  const key = ph * 100 + wk * 10 + (p.flip ? 1 : 0);
+  let img = M.m.get(key);
+  if (!img) {
+    img = document.createElement('canvas'); img.width = Math.ceil(30 * k) + 2; img.height = Math.ceil(62 * k) + 2;
+    const c = img.getContext('2d'); c.setTransform(k, 0, 0, k, 15 * k + 1, 53 * k + 1);
+    const main = ctx; ctx = c;
+    try { drawPerson({ x: 0, y: 0, moving: ph >= 0, phase: ph * Math.PI * 2 / PH, flip: p.flip, workOff: wk }, L, true); } finally { ctx = main; }
+    M.m.set(key, img);
+  }
+  const c = iso(p.x, p.y), T = camT();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(img, Math.round(T.x + c.x * k - 15 * k - 1), Math.round(T.y + c.y * k - 53 * k - 1));
+  setWorld();
+}
+function drawPerson(p, L, local) {
+  const c = local ? { x: 0, y: 0 } : iso(p.x, p.y), sw = p.moving ? Math.sin(p.phase) : 0, bob = p.moving ? Math.abs(Math.cos(p.phase)) * 1.5 : 0;
   ctx.fillStyle = 'rgba(30,40,15,.28)'; ctx.beginPath(); ctx.ellipse(c.x, c.y, 10, 4.5, 0, 0, 7); ctx.fill();
   ctx.save(); ctx.translate(c.x, c.y - bob); if (p.flip) ctx.scale(-1, 1);
   ctx.lineJoin = 'round';
   const O = (fn, fill, lw = 1.3) => { ctx.beginPath(); fn(); ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = lw; ctx.stroke(); };
   const R = (x, y, w, h, r, fill) => O(() => ctx.roundRect(x, y, w, h, r), fill);
   const C = (x, y, r, fill, lw) => O(() => ctx.arc(x, y, r, 0, Math.PI * 2), fill, lw);
-  const work = p.work > 0 ? Math.sin(p.work * 30) * 3 : 0;
+  const work = p.workOff ?? (p.work > 0 ? Math.sin(p.work * 30) * 3 : 0);
   const la = Math.max(0, sw) * 2.5, lb = Math.max(0, -sw) * 2.5;
   R(-5, -12 - la, 4, 11, 1, L.pants); R(1, -12 - lb, 4, 11, 1, L.pants);
   R(-5.8, -3 - la, 5.4, 3, 1.4, '#3a2a1e'); R(.4, -3 - lb, 5.4, 3, 1.4, '#3a2a1e');
