@@ -745,7 +745,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.71';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.72';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -2128,6 +2128,12 @@ function updateHelper(h, dt) {
     return;
   }
   const hx = Math.floor(h.x), hy = Math.floor(h.y), stall = fairOn() ? FAIR_HELP : STATIONS.stall.idle;
+  // ярмарка: помощник с лавки весь день стоит за нашим лотком (лавка закрыта, до фермы далеко — иначе покупатели не дождутся)
+  if (fairOn() && cfg.stations.includes('stall')) {
+    if (hx === stall.x && hy === stall.y) { h.flip = false; if (serveable()) helperSell(h); }
+    else h.path = findPath(hx, hy, stall.x, stall.y) || [];
+    return;
+  }
   // лавка в приоритете: если есть кому продать — продаёт, иначе идёт по другим станциям
   if (cfg.stations.includes('stall') && serveable()) {
     if (hx === stall.x && hy === stall.y) { h.flip = false; helperSell(h); }
@@ -2153,7 +2159,7 @@ function updateHelper(h, dt) {
     const first = cfg.stations.includes('stall') ? 'stall' : cfg.stations[0];
     const base = first ? STATIONS[first].idle : REST.idle;
     const spot = first === 'stall' ? (fairOn() ? FAIR_HELP : base) : first === 'field' && cfg.zones.length ? zoneIdle(cfg.zones[0]) : first === 'gh' ? GH_IDLE : { x: base.x + (h.id % 2), y: base.y };
-    if ((hx !== spot.x || hy !== spot.y) && walkable(spot.x, spot.y)) h.path = findPath(hx, hy, spot.x, spot.y) || [];
+    if ((hx !== spot.x || hy !== spot.y) && (walkable(spot.x, spot.y) || spot.y >= H)) h.path = findPath(hx, hy, spot.x, spot.y) || [];   // место на ярмарке — за краем сетки фермы
   }
 }
 
