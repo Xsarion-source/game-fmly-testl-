@@ -741,7 +741,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.69';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.70';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -780,7 +780,7 @@ function stashFarm(o) {   // разные фермы: проигравшую н�
   for (let n = 1; n <= SLOTS; n++) {
     if (n === SLOT || readLocal(n) || CLOUD.cache[n]) continue;
     writeLocal(n, o); cloudPush(n, o).catch(() => {});
-    const a = slotNames(); a[n - 1] = `Спасённая (день ${o.day})`; try { localStorage.setItem('farm-slot-names', JSON.stringify(a)); } catch {}
+    const a = slotNames(); a[n - 1] = `Спасённая (${dayShort(o.day)})`; try { localStorage.setItem('farm-slot-names', JSON.stringify(a)); } catch {}
     return;
   }
   try { localStorage.setItem('farm-save-backup', JSON.stringify(o)); } catch {}
@@ -875,6 +875,9 @@ const SEASONS = [
 ];
 const cal = (d = S.day) => { const i = d - 1; return { dow: i % 7, week: Math.floor(i / 7) % 3 + 1, sday: i % SEASON_LEN + 1, si: Math.floor(i / SEASON_LEN) % 4, year: Math.floor(i / (SEASON_LEN * 4)) + 1 }; };
 const season = (d = S.day) => SEASONS[cal(d).si];
+// как день видит игрок: «Год 1 · Весна · день 5» — номер внутри сезона (1–21), а не сквозной счёт дней
+const dayName = (d = S.day) => { const c = cal(d); return `Год ${c.year} · ${SEASONS[c.si].name} · день ${c.sday}`; };
+const dayShort = (d = S.day) => { const c = cal(d); return `${SEASONS[c.si].name.toLowerCase()}, день ${c.sday}${c.year > 1 ? `, год ${c.year}` : ''}`; };
 const seasonGrow = (id, gh) => (season().grow[id] || 1) * (gh ? 1 : season().grow.field || 1);
 const seasonPrice = id => season().price[id] || 1;
 // ярмарка и почта открываются не сразу — новичку хватает своей фермы
@@ -969,7 +972,7 @@ function shouldAutoStart() {
 function beginClock() {
   if (S.night || S.started) return;
   S.started = true;
-  toast(`☀️ День ${S.day} начался. Ждём ${S.toSpawn} покупателей`);
+  toast(`☀️ ${season().name}, день ${cal().sday} начался. Ждём ${S.toSpawn} покупателей`);
 }
 
 function endDay() {
@@ -4678,7 +4681,7 @@ function renderHud() {
   else { [, label, sky] = PHASES.find(p => frac < p[0]); }
   box.style.background = sky;
   box.classList.toggle('dark', S.night);
-  $('phase').textContent = `День ${S.day} · ${WD[cal().dow]}` + (timeScale > 1 ? ` ⏩${timeScale}` : ''); box.title = `${WEEKDAYS[cal().dow]} · ${label} · ${season().name}` + (timeScale > 1 ? ` ⏩${timeScale}` : '');
+  $('phase').textContent = `${season().e} День ${cal().sday} · ${WD[cal().dow]}` + (timeScale > 1 ? ` ⏩${timeScale}` : ''); box.title = `${dayName()} · ${WEEKDAYS[cal().dow]} · ${label}` + (timeScale > 1 ? ` ⏩${timeScale}` : '');
   if (S.night) { icon.textContent = '🌙'; icon.style.left = '66px'; icon.style.top = '18px'; return; }
   const a = Math.PI * (1 - frac);
   icon.textContent = '☀️';
@@ -4692,7 +4695,7 @@ function renderUI() {
   $('nightBtn').style.display = S.night ? '' : 'none';
   $('plantAll').style.display = '';   // сажать можно и ночью — к утру прорастёт
   $('dayBtn').style.display = S.night ? '' : 'none';
-  $('dayBtn').textContent = `☀️ Начать день ${S.day + 1}`;
+  $('dayBtn').textContent = `☀️ Начать день ${cal(S.day + 1).sday}${cal(S.day + 1).sday === 1 ? ` · ${season(S.day + 1).name}` : ''}`;
   $('helperBtn').style.display = S.up.helper > 0 ? '' : 'none';
   setTimeout(() => { const n = [...document.querySelectorAll('.arow .act')].filter(b => b.style.display !== 'none').length; const r = document.querySelector('.arow'); r.style.setProperty('--n', Math.max(5, n)); r.style.gap = n > 5 ? '6px' : ''; });
   $('bakeBtn').style.display = S.up.bakery > 0 ? '' : 'none';
@@ -4735,7 +4738,7 @@ function openProfile() {
   const plotsUsed = S.plots.length;
   $('sheet').dataset.view = ''; $('sheet').innerHTML = `<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
       <div style="font-size:44px;width:68px;height:68px;border-radius:50%;background:#f0e5cb;display:flex;align-items:center;justify-content:center">🧑‍🌾</div>
-      <div><h2 style="margin:0">Фермер</h2><div style="color:#7a6650">${esc(slotNames()[SLOT - 1])} · день ${S.day}</div></div></div>
+      <div><h2 style="margin:0">Фермер</h2><div style="color:#7a6650">${esc(slotNames()[SLOT - 1])} · ${dayName()}</div></div></div>
     ${lvlCard()}
     <h3 style="margin:14px 0 4px">За всё время</h3>
     ${stat('💰 Монет сейчас', S.coins)}${stat('💵 Заработано всего', L.earned)}${stat('🧍 Покупателей обслужено', L.served)}
@@ -4760,7 +4763,7 @@ function econChart(hist) {
   const grid = [max, (max + min) / 2, min].filter((v, i, a) => a.indexOf(v) === i).map(v => `<line x1="${L}" x2="${Wd - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="#e6d9bb" stroke-width="1"/><text x="${L - 4}" y="${Y(v) + 3}" text-anchor="end" font-size="9" fill="#7a6650">${fmt(v)}</text>`).join('');
   const zero = min < 0 ? `<line x1="${L}" x2="${Wd - R}" y1="${Y(0)}" y2="${Y(0)}" stroke="#7a6650" stroke-width="1"/>` : '';
   const step = Math.max(1, Math.ceil(pts.length / 6));
-  const xl = pts.map((x, i) => (i % step === 0 || i === pts.length - 1) ? `<text x="${X(i)}" y="${Hd - 6}" text-anchor="middle" font-size="9" fill="#7a6650">${x.now ? 'сег.' : x.d}</text>` : '').join('');
+  const xl = pts.map((x, i) => (i % step === 0 || i === pts.length - 1) ? `<text x="${X(i)}" y="${Hd - 6}" text-anchor="middle" font-size="9" fill="#7a6650">${x.now ? 'сег.' : cal(x.d).sday}</text>` : '').join('');
   const last = pts[pts.length - 1];
   const dot = (k, col) => `<circle cx="${X(pts.length - 1)}" cy="${Y(last[k])}" r="3" fill="${col}"/>`;
   return `<svg viewBox="0 0 ${Wd} ${Hd}" style="width:100%;height:auto;background:#f6eedb;border-radius:10px">${grid}${zero}${area}
@@ -4781,7 +4784,7 @@ function openEconomy() {
   const spentToday = spentSum(st), net = st.earned - spentToday;
   let h = `<h2>💰 Экономика</h2>
     <div class="summary" style="font-size:15px">На счету <b>${fmt(S.coins)}💰</b> · цены на лотке ${Math.round(priceMult() * 100)}% (вывеска${S.up.cozy ? ' и уют' : ''})</div>
-    <h3 style="margin:12px 0 4px">${S.night ? 'Сегодня' : `День ${S.day}`} — итог</h3>
+    <h3 style="margin:12px 0 4px">${S.night ? 'Сегодня' : `День ${cal().sday}`} — итог</h3>
     ${row('💵 Выручка', '+' + fmt(st.earned), '#3e9b3a')}${row('🧾 Траты', '−' + fmt(spentToday), '#b0503a')}
     ${row('📈 Итого', (net >= 0 ? '+' : '−') + fmt(Math.abs(net)), net >= 0 ? '#3e9b3a' : '#b0503a')}
     ${row('🧍 Покупателей', `${st.served || 0} обслужено · ${st.missed || 0} ушли`)}
@@ -4791,7 +4794,7 @@ function openEconomy() {
   const hmax = Math.max(1, ...hist.flatMap(x => [x.e, x.s]));
   h += `<h3 style="margin:12px 0 4px">Последние дни</h3><div class="echart">${hist.map(x => `<div class="ecol"><div class="ebars">
       <i style="height:${x.e / hmax * 100}%;background:#7cc35e" title="${x.e}"></i><i style="height:${x.s / hmax * 100}%;background:#e8a07a" title="${x.s}"></i></div>
-      <small>${x.now ? 'сег.' : x.d}</small></div>`).join('')}</div>
+      <small>${x.now ? 'сег.' : cal(x.d).sday}</small></div>`).join('')}</div>
     <div style="font-size:12px;color:#7a6650;text-align:center"><span style="color:#3e9b3a">■</span> выручка · <span style="color:#d0805a">■</span> траты</div>`;
   const all = [...(S.hist || []), { d: S.day, e: st.earned || 0, s: spentToday, now: true }];
   h += `<h3 style="margin:14px 0 4px">Общий график — прибыль и траты</h3>
@@ -4853,7 +4856,7 @@ function openSaves() {
           style="flex:1;min-width:0;font:800 16px system-ui,sans-serif;color:#3b2416;background:transparent;border:none;border-bottom:1.5px dashed #c9b48a;padding:2px 0">
         ${cur ? '<span style="font-size:12px;font-weight:800;color:#b07a1a;white-space:nowrap">▶ играешь</span>' : ''}
       </div>
-      <div style="font-size:13px;color:#7a6650;margin:6px 0 8px">${d ? `День ${d.day} · 💰 ${d.coins} · заработано ${d.life?.earned ?? 0}` : 'Пусто — здесь можно начать новую ферму'}</div>
+      <div style="font-size:13px;color:#7a6650;margin:6px 0 8px">${d ? `${dayName(d.day)} · 💰 ${d.coins} · заработано ${d.life?.earned ?? 0}` : 'Пусто — здесь можно начать новую ферму'}</div>
       ${cur ? '' : `<div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="wide" style="flex:1" onclick="switchSlot(${n})">${d ? '▶ Играть' : '🌱 Новая ферма'}</button>
         ${d ? '' : `<button class="wide" style="flex:1;background:#f0e5cb;color:#3b2416" onclick="copyToSlot(${n})">📋 Копия текущей</button>`}
@@ -4954,7 +4957,7 @@ async function exportCode() {
   const copied = await copyCode(code);
   window._farmCode = code;
   $('sheet').dataset.view = ''; $('sheet').innerHTML = `<h2>📤 Код фермы</h2>
-    <div class="summary">${copied ? '✓ Код скопирован. ' : ''}Сохрани его в Заметки или отправь себе сообщением. День ${S.day} · 💰 ${S.coins} · в коде ${code.length} символов</div>
+    <div class="summary">${copied ? '✓ Код скопирован. ' : ''}Сохрани его в Заметки или отправь себе сообщением. ${dayName()} · 💰 ${S.coins} · в коде ${code.length} символов</div>
     <textarea id="codeBox" readonly onfocus="this.setSelectionRange(0,1e9)" style="width:100%;height:140px;font:12px monospace;border-radius:10px;border:1.5px solid #d9c49a;padding:8px;background:#fffaf0;word-break:break-all">${code}</textarea>
     <div class="row" style="margin-top:8px">${navigator.share ? `<button class="wide" onclick="navigator.share({text:window._farmCode}).catch(e=>{if(e&&e.name!=='AbortError')copyCode(window._farmCode).then(ok=>toast(ok?'✓ Скопировано':'Не получилось — выдели код пальцем'))})">📨 Отправить</button>` : ''}
     <button class="wide" onclick="copyCode(window._farmCode).then(ok=>toast(ok?'✓ Скопировано':'Не получилось — выдели код пальцем'))">📋 Скопировать</button>
@@ -4970,7 +4973,7 @@ async function pasteCode() {
 function codeCheck() {
   const v = $('codeIn').value, el = $('codeInfo'); if (!el) return;
   if (!v.trim()) { el.textContent = ''; return; }
-  parseFarmCode(v).then(o => { el.style.color = '#2f6b2a'; el.textContent = `✓ Код целый: день ${o.day} · 💰 ${o.coins}`; },
+  parseFarmCode(v).then(o => { el.style.color = '#2f6b2a'; el.textContent = `✓ Код целый: ${dayShort(o.day)} · 💰 ${o.coins}`; },
     e => { el.style.color = '#b0503a'; el.textContent = codeErr(e); });
 }
 let importArmed = null;
@@ -4995,8 +4998,8 @@ async function importCode(code) {
   importArmed = null;
   writeLocal(target, o);
   if (CLOUD.ready) { try { await withTimeout(cloudPush(target, o), 6000); } catch {} }
-  if (target === SLOT) { noSave = true; wnSet({ slot: SLOT, msg: `📥 Ферма загружена из кода — день ${o.day}`, state: readLocal(SLOT) ? undefined : o }); location.reload(); return; }
-  const a = slotNames(); a[target - 1] = `Из кода (день ${o.day})`; try { localStorage.setItem('farm-slot-names', JSON.stringify(a)); } catch {}
+  if (target === SLOT) { noSave = true; wnSet({ slot: SLOT, msg: `📥 Ферма загружена из кода — ${dayShort(o.day)}`, state: readLocal(SLOT) ? undefined : o }); location.reload(); return; }
+  const a = slotNames(); a[target - 1] = `Из кода (${dayShort(o.day)})`; try { localStorage.setItem('farm-slot-names', JSON.stringify(a)); } catch {}
   cloudMetaSave();
   toast(`📥 Ферма из кода — в ячейке «${slotNames()[target - 1]}»`); openSaves();
 }
@@ -5046,7 +5049,7 @@ function openHelp() {
 
 function openNight(withSummary) {
   const st = S.stats;
-  let h = `<h2>🌙 Ночь ${S.day}</h2>`;
+  let h = `<h2>🌙 Ночь · ${season().name}, день ${cal().sday}</h2>`;
   if (withSummary) {
     h += `<div class="summary">За день: заработано <b>${st.earned}💰</b><br>Обслужено: <b>${st.served}</b> · Ушли ни с чем: <b>${st.missed}</b><br>
       ${isRest(S.day + 1) ? 'Завтра <b>воскресенье — выходной</b> 🧺 лавка закрыта' : `Завтра придёт ~<b>${visitorsPerDay(S.day + 1)}</b> покупателей${isFair(S.day + 1) ? ` — <b>ярмарка</b> 🎪<br>📦 Собрано ящиков: <b>${cratesUsed()} из ${allCrates()}</b> — <a href="#" onclick="event.preventDefault();openFairPack()" style="color:#b0503a;font-weight:800">собрать товары</a><br>${contestReminder()}` : ''}`}</div>`;
@@ -5070,7 +5073,7 @@ function openNight(withSummary) {
   }
   h += shopTabs();
   h += `<div class="row" style="margin-top:14px"><button class="wide alt" onclick="closeNight()">🌾 К грядкам</button>
-        <button class="wide" style="background:#ffd34d" onclick="morning()">☀️ Начать день ${S.day + 1}</button></div>
+        <button class="wide" style="background:#ffd34d" onclick="morning()">☀️ Начать день ${cal(S.day + 1).sday}${cal(S.day + 1).sday === 1 ? ` · ${season(S.day + 1).name}` : ''}</button></div>
 `;
   $('sheet').dataset.view = withSummary ? 'night-sum' : 'night'; $('sheet').innerHTML = h;
   $('overlay').classList.add('show');
@@ -5200,12 +5203,12 @@ function openTrophies() {
       const items = contestPick(k);
       h += `<div style="font-size:13px;color:#7a6650;margin-bottom:4px">Соперники: ${rivalsFor(S.day).map(r => `${r.name} — ${sp.unit(r.q)}`).join(' · ')}</div>`;
       if (!items.length) h += `<div class="summary">Выставить нечего: ${k === 'goldegg' ? 'нужно золотое яйцо 🟡 со склада' : `нужна особая находка — ${sp.name.toLowerCase()} ${sp.e}. Они попадаются очень редко`}. Без штрафа — просто посмотри, кто победит.</div>`;
-      else items.slice(0, 4).forEach(x => h += `<div class="up"><div class="ico">${sp.e}</div><div class="txt"><b>${sp.name}</b><small>${x.q == null ? 'Блеск узнаем на конкурсе' : sp.unit(x.q)}${x.d ? ` · найдена в день ${x.d}` : ''}</small></div><button onclick="enterContest(${x.i ?? -1})">Выставить</button></div>`);
+      else items.slice(0, 4).forEach(x => h += `<div class="up"><div class="ico">${sp.e}</div><div class="txt"><b>${sp.name}</b><small>${x.q == null ? 'Блеск узнаем на конкурсе' : sp.unit(x.q)}${x.d ? ` · найдена: ${dayShort(x.d)}` : ''}</small></div><button onclick="enterContest(${x.i ?? -1})">Выставить</button></div>`);
     }
   } else h += `<div style="font-size:13px;color:#7a6650">Ярмарка — в первую и вторую субботу месяца, за дорогой. Конкурсы по очереди: ${CONTEST_ORDER.map(c => SPECIAL[c].e).join(' ')}. Особые находки попадаются очень редко — при сборе тыкв, кукурузы, клубники в теплице и на сыроварне.</div>`;
   const mine = S.special.slice().sort((a, b) => b.q - a.q);
   h += `<h3 style="margin:12px 0 4px">🌟 Особые находки</h3>` + (mine.length || S.inv.goldegg ? `<div style="font-size:14px;line-height:1.6">${mine.map(x => `${SPECIAL[x.k].e} ${SPECIAL[x.k].name} — ${SPECIAL[x.k].unit(x.q)}`).join('<br>')}${S.inv.goldegg ? `${mine.length ? '<br>' : ''}🟡 Золотых яиц на складе: ${S.inv.goldegg}` : ''}</div>` : `<div style="font-size:13px;color:#7a6650">Пока нет — удача ещё улыбнётся!</div>`);
-  if (S.trophies.length) h += `<h3 style="margin:12px 0 4px">🏆 Кубки</h3><div style="font-size:14px;line-height:1.6">${S.trophies.slice().reverse().map(t => `${MEDAL[t.p].e} ${SPECIAL[t.k].name.split(' ').pop()} — ${MEDAL[t.p].name}, день ${t.d} (${SPECIAL[t.k].unit(t.q)})`).join('<br>')}</div>`;
+  if (S.trophies.length) h += `<h3 style="margin:12px 0 4px">🏆 Кубки</h3><div style="font-size:14px;line-height:1.6">${S.trophies.slice().reverse().map(t => `${MEDAL[t.p].e} ${SPECIAL[t.k].name.split(' ').pop()} — ${MEDAL[t.p].name}, ${dayShort(t.d)} (${SPECIAL[t.k].unit(t.q)})`).join('<br>')}</div>`;
   h += `<button class="wide alt" style="width:100%;margin-top:12px" onclick="S.night ? openNight(false) : closeNight()">Закрыть</button>`;
   $('sheet').dataset.view = 'trophies'; $('sheet').innerHTML = h; $('overlay').classList.add('show');
 }
@@ -5235,7 +5238,7 @@ function dayEvents(d) {   // значки событий на день: новы
   if (cal(d).sday === 1) ev.push([SEASONS[cal(d).si].e, `Начало сезона: ${SEASONS[cal(d).si].name.toLowerCase()}`]);
   if (isFair(d)) ev.push(['🎪', `Ярмарка: покупателей больше · 🏆 конкурс ${SPECIAL[contestOf(d)].what} ${SPECIAL[contestOf(d)].e}`]);
   if (isRest(d)) ev.push(['🧺', 'Выходной: лавка закрыта']);
-  if (d % 30 === 0) ev.push(['🎂', `Ферме ${d} дней`]);
+  if (d > 1 && cal(d).si === 0 && cal(d).sday === 1) ev.push(['🎂', `Ферме ${cal(d).year - 1} ${cal(d).year - 1 === 1 ? 'год' : cal(d).year - 1 < 5 ? 'года' : 'лет'}!`]);
   return ev;
 }
 function openCalendar(si) {
@@ -5244,13 +5247,13 @@ function openCalendar(si) {
   const first = calSeason * SEASON_LEN + 1, se = SEASONS[calSeason % 4], year = Math.floor(calSeason / 4) + 1;
   const hist = Object.fromEntries((S.hist || []).map(h => [h.d, h]));
   let h = `<h2>📅 Календарь</h2>
-    <div class="summary">Сегодня: <b>${WEEKDAYS[cal().dow]}, день ${S.day}</b> · ${season().e} ${season().name}, неделя ${cal().week} из 3${cal().year > 1 ? `, год ${cal().year}` : ''}<br><small>${season().e} ${season().text}</small></div>
+    <div class="summary">Сегодня: <b>${WEEKDAYS[cal().dow]}, день ${cal().sday}</b> · ${season().e} ${season().name}, неделя ${cal().week} из 3, год ${cal().year}<br><small>${season().e} ${season().text}</small></div>
     <div class="calnav"><button ${calSeason <= 0 ? 'disabled' : ''} onclick="openCalendar(${calSeason - 1})">‹</button><b>${se.e} ${se.name}${year > 1 ? ` · год ${year}` : ''}</b><button onclick="openCalendar(${calSeason + 1})">›</button></div>
     <div class="cal">${WD.map(w => `<div class="wd">${w}</div>`).join('')}`;
   for (let d = first; d < first + SEASON_LEN; d++) {
     const past = d < S.day, today = d === S.day, ev = dayEvents(d), x = hist[d];
     const earned = today ? S.stats.earned || 0 : x ? x.e : null;
-    h += `<div class="cd ${past ? 'past' : ''} ${today ? 'today' : ''} ${cal(d).dow >= 5 ? 'we' : ''}" onclick="calDay(${d})"><span class="n">${d}</span>${ev.length ? `<span class="ev">${ev.map(e => e[0]).join('')}</span>` : ''}${earned != null && (past || today) ? `<span class="m">${earned ? '+' + (earned >= 10000 ? Math.round(earned / 1000) + 'k' : earned) : '—'}</span>` : ''}</div>`;
+    h += `<div class="cd ${past ? 'past' : ''} ${today ? 'today' : ''} ${cal(d).dow >= 5 ? 'we' : ''}" onclick="calDay(${d})"><span class="n">${cal(d).sday}</span>${ev.length ? `<span class="ev">${ev.map(e => e[0]).join('')}</span>` : ''}${earned != null && (past || today) ? `<span class="m">${earned ? '+' + (earned >= 10000 ? Math.round(earned / 1000) + 'k' : earned) : '—'}</span>` : ''}</div>`;
   }
   h += `</div><div id="calInfo" style="font-size:13px;color:#7a6650;min-height:18px;margin-top:8px">Тапни на день — подробности</div>
     <button class="wide" style="width:100%;margin-top:8px" onclick="S.night ? openNight(false) : closeNight()">Закрыть</button>`;
@@ -5258,7 +5261,7 @@ function openCalendar(si) {
 }
 function calDay(d) {
   const x = (S.hist || []).find(h => h.d === d), c = cal(d), ev = dayEvents(d);
-  let t = `<b>${WEEKDAYS[c.dow]}, день ${d}</b>`;
+  let t = `<b>${WEEKDAYS[c.dow]}, день ${c.sday}</b>`;
   if (d === S.day) t += ` — сегодня: заработано ${S.stats.earned || 0}💰, обслужено ${S.stats.served || 0}`;
   else if (x) t += ` — заработано ${x.e}💰, потрачено ${x.s || 0}💰, обслужено ${x.sv ?? '?'}, ушли ни с чем ${x.m ?? '?'}`;
   else if (d < S.day) t += ' — нет записей';
