@@ -722,7 +722,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.63';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.64';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -4475,7 +4475,7 @@ function renderUI() {
   $('helperBtn').style.display = S.up.helper > 0 ? '' : 'none';
   setTimeout(() => { const n = [...document.querySelectorAll('.arow .act')].filter(b => b.style.display !== 'none').length; const r = document.querySelector('.arow'); r.style.setProperty('--n', Math.max(5, n)); r.style.gap = n > 5 ? '6px' : ''; });
   $('bakeBtn').style.display = S.up.bakery > 0 ? '' : 'none';
-  $('restBtn').style.display = isRest() && !S.night && S.picnic !== S.day ? '' : 'none';   // воскресенье: пикник / отдых / итоги недели
+  $('restBtn').style.display = isRest() && !S.night ? '' : 'none';   // воскресенье: пикник / отдых / итоги недели — и после пикника можно уйти спать
   const items = Object.keys(GOODS).filter(id => S.inv[id]).map(id => `<span class="${GOODS[id].sp ? 'sp' : onSale(id) ? '' : 'off'}">${GOODS[id].sp ? '🌟' : ''}${GOODS[id].e} ${S.inv[id]}</span>`);
   $('inv').innerHTML = items.length ? items.join('') : '<span style="opacity:.75">Склад пуст</span>';
   $('fairBtn').style.display = fairUnlocked() || isFair() ? '' : 'none';   // до ярмарки ещё дорасти — кнопка не висит над головой
