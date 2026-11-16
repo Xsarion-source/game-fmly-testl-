@@ -722,7 +722,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.61';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.62';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -2331,10 +2331,10 @@ function onTap(sx, sy) {
   const fx = (wx / (TW / 2) + wy / (TH / 2)) / 2, fy = (wy / (TH / 2) - wx / (TW / 2)) / 2;
   const tx = Math.floor(fx), ty = Math.floor(fy);
   if (fairOn() && ((tx >= 17 && tx <= 19 + 2 * (S.up.fairstall || 0) && ty >= 22 && ty <= 25) || (S.up.fairbake && tx >= 15 && tx <= 17 && ty >= 27 && ty <= 28))) { goFair(); return; }   // лотки фермы
-  if (tx >= 3 && tx <= 33 && ty >= 19 && ty <= 34) { openTrophies(); return; }   // ярмарка за дорогой
+  if (tx >= 3 && tx <= 33 && ty >= 19 && ty <= 34) { fairLockedToast() || openTrophies(); return; }   // ярмарка за дорогой
   if (tx < 0 || ty < 0 || tx >= W || ty >= H) return;
   if (S.night) { const k = upAtNight(tx, ty); if (k) { openUpgrade(k); return; } }
-  if (tx === TROPHY.x && ty === TROPHY.y) { openTrophies(); return; }
+  if (tx === TROPHY.x && ty === TROPHY.y) { fairLockedToast() || openTrophies(); return; }
   if (tx === MAIL.x && ty === MAIL.y) { openMail(); return; }
   { const b = at('home', 4, 2); if (tx === b.x && (ty === b.y || ty === b.y + 1)) { tapBakery(); return; } }
   const si = slotAt(tx, ty);
@@ -4224,6 +4224,14 @@ function drawCrop(i, t, gh) {
     const x = c.x + ox, y = c.y + oy;
     if (p.prog < 0.35) {
       leaf(x - 2, y - 3, 3.2, 1.7, -0.6, '#8ad85a'); leaf(x + 2, y - 3, 3.2, 1.7, 0.6, '#7ccf4f');
+    } else if (p.crop === 'carrot') {   // корнеплод: из земли торчит оранжевая макушка, над ней — пучок ботвы
+      if (p.prog > 0.75) { ctx.save(); ctx.beginPath(); ctx.rect(x - 9, y - 16, 18, 15); ctx.clip(); emoji(CROP.carrot.e, x + 1, y - 3, 11); ctx.restore(); }
+      const h = 4 + p.prog * 5;
+      for (const a of [-0.7, -0.25, 0.25, 0.7]) leaf(x + Math.sin(a) * h * .6, y - 3 - h * .5, 1.6, h * .55, a, a < 0 ? '#7ccf4f' : '#8ad85a');
+    } else if (p.crop === 'pumpkin') {   // тыква лежит на земле, вокруг — плети с широкими листьями
+      leaf(x - 5, y - 1, 5, 2.4, -0.2, '#5aa83f'); leaf(x + 5, y - 2, 5, 2.4, 0.3, '#6cbf4a');
+      if (p.prog > 0.6) { const r = p.prog > 0.75 ? 1 : 0.6; ctx.globalAlpha = .95; emoji(CROP.pumpkin.e, x + 1, y - 4 * r, 7 + 4 * r); ctx.globalAlpha = 1; }
+      leaf(x - 1, y - 6, 3.6, 2, -0.6, '#8ad85a');
     } else {
       const h = 6 + p.prog * 8;
       seg({ x, y }, { x, y: y - h }, INK, 2.8); seg({ x, y }, { x, y: y - h }, '#5aa83f', 1.6);
@@ -4923,8 +4931,12 @@ function drawHelperPose(h, pose, t) {
     if (my) { rr(c.x - 11, c.y - 70, 22, 16, 8, 'rgba(255,253,246,.95)'); emoji(['💬', '😄', '🍉', '☀️'][Math.floor(t / 4.4 + h.id) % 4], c.x, c.y - 62, 11); }
   }
 }   // плед у пруда
+function fairLockedToast() {   // ярмарка ещё не открыта — только подсказка, без конкурса
+  if (fairUnlocked() || S.trophies.length) return false;
+  toast(`🎪 Ярмарка по субботам откроется на ⭐ ${FAIR_LVL} уровне фермы`); return true;
+}
 function goFair() {   // фермер идёт в шатёр фермы на ярмарке; уже там — выбор товаров
-  if (!fairOn()) { openTrophies(); return; }
+  if (!fairOn()) { fairLockedToast() || openTrophies(); return; }
   if (Math.floor(P.x) === FAIR_SELL.x && Math.floor(P.y) === FAIR_SELL.y && !path.length) { openFairPack(); return; }
   setTasks([{ x: FAIR_SELL.x, y: FAIR_SELL.y }]); toast('🎪 Фермер идёт в шатёр фермы на ярмарке');
 }
