@@ -400,7 +400,7 @@ const UPGRADES = {
   slots:  { name: 'Место на прилавке',  ico: '🧺', desc: l => `Ещё одно место для товара на прилавке: ${3 + l} → ${4 + l}`, cost: l => [150, 450, 1000][l], max: 3 },
   stall2: { name: 'Вторая лавка',      ico: '🏪', desc: l => 'Ещё одна лавка слева от первой: 6 мест под товар, своя очередь и свой продавец', cost: l => [3000][l], max: 1, need: () => S.up.slots >= 3, needText: 'Откроется, когда на прилавке будет 6 мест 🧺' },
   seasonstand: { name: 'Сезонная пристройка', ico: '🍦', desc: l => 'Маленькая пристройка к лавке: ещё 2 места — только для сезонных товаров', cost: l => [3000][l], max: 1, need: () => false, needText: 'Откроется, когда появятся сезонные товары' },
-  sign:   { name: 'Красивая вывеска',  ico: '🪧', desc: l => `Цены выше (+${l*10}% → +${(l+1)*10}%)`, cost: l => 60 + l*70, max: 6 },
+  sign:   { name: 'Красивая вывеска',  ico: '🪧', desc: l => `Цены на лотке выше (+${l*5}% → +${(l+1)*5}%)`, cost: l => 60 + l*70, max: 6 },
   helper: { name: 'Помощник',         ico: '🧑‍🌾', desc: l => `Работает на одной или нескольких станциях: поле, сад, курятник, коровник, лавка (помощников: ${l} → ${l+1})`, cost: l => [120, 280, 520, 800, 1150, 1600, 2100, 2700, 3400, 4200][l], max: 10 },
   fairbake:  { name: 'Хлебный лоток',     ico: '🥐', desc: l => `Свой лоток для выпечки на ярмарке: ещё ${BAKE_CRATES} ящика — только под 🍞🥧🍕🎂`, cost: l => [2500][l], max: 1, need: () => S.up.bakery >= 1, needText: 'Откроется, когда пристроишь пекарню 🥖' },
   fairstall: { name: 'Место на ярмарке', ico: '🎪', desc: l => `Ещё один лоток рядом с шатром фермы: +${CRATES_PER} ящика товара на ярмарку (сейчас ${fairCrates()})`, cost: l => [600, 1500][l], max: 2 },
@@ -721,7 +721,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.57';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.58';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -889,7 +889,7 @@ const LOOKS = {
 };
 const look = () => LOOKS[season().id];
 function applySeasonBg() { const c = look().bg; document.body.style.background = c; $('app').style.background = c; }
-const priceMult = () => 1 + S.up.sign * 0.1 + (S.up.cozy || 0) * 0.02 + prestige();
+const priceMult = () => 1 + S.up.sign * 0.05 + (S.up.cozy || 0) * 0.02 + prestige();
 const homeMult = () => 1 + (S.up.house || 0) * 0.2 + (picnicOn() ? 0.15 : 0);   // дом: помощники сыты и работают быстрее
 const patience = (n = 1) => 50 + S.up.bench * 8 + (n - 1) * 6;   // терпение тикает только в очереди; большая корзинка — ждут чуть дольше
 const sellPrice = c => Math.round(GOODS[c].price * priceMult() * seasonPrice(c));
