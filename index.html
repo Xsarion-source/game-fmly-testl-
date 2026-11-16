@@ -773,7 +773,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.76';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.77';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1697,8 +1697,8 @@ function readyJobs() {
   return jobs;
 }
 
-function routeThrough(list) {   // жадный обход: каждый раз к ближайшей клетке
-  const out = []; let cx = Math.floor(P.x), cy = Math.floor(P.y);
+function routeThrough(list, from) {   // жадный обход: каждый раз к ближайшей клетке
+  const out = []; let cx = from ? from.x : Math.floor(P.x), cy = from ? from.y : Math.floor(P.y);
   const rest = list.slice();
   while (rest.length) {
     let bi = 0, bd = 1e9;
@@ -2140,7 +2140,7 @@ function updateHelper(h, dt) {
   if (h.target) {                          // дошёл до места работы
     const job = h.target; h.target = null;
     if (job.act()) h.work = 0.45 / homeMult();
-    if (job.ord != null) { h.cur = job.ord + 1; h.lastPlot = true; } else h.lastPlot = false;
+    if (job.ord != null) { h.cur = job.ord + 1; h.lastPlot = true; h.bedRun = (h.bedRun || 0) + 1; } else { h.lastPlot = false; h.bedRun = 0; }
     h.think = 0.5;   // пауза полсекунды перед следующим делом
     return;
   }
@@ -2177,7 +2177,8 @@ function updateHelper(h, dt) {
   const free = jobs.filter(j => !claimed.has(j.x + ',' + j.y)), cur = h.cur || 0;
   const beds = free.filter(j => j.ord != null).sort((a, b) => (a.ord - cur + 4000) % 4000 - (b.ord - cur + 4000) % 4000);
   const other = free.filter(j => j.ord == null).sort((a, b) => (Math.abs(a.x - hx) + Math.abs(a.y - hy)) - (Math.abs(b.x - hx) + Math.abs(b.y - hy)));
-  const cand = h.lastPlot ? [...other, ...beds] : [...beds, ...other];
+  // урожай на грядках — по порядку до конца; яйца, молоко и мастерские — когда грядок нет (или после 12 грядок подряд, чтобы не копилось вечно)
+  const cand = beds.length && (h.bedRun || 0) < 12 ? [...beds, ...other] : [...other, ...beds];
   let found = false;
   for (const j of cand) {
     const pth = findPath(hx, hy, j.x, j.y);
@@ -5576,9 +5577,11 @@ function harvestRoute(again) {   // грядки, яблони и гнездо �
   const steady = j => ['coop', 'barn', 'bakery', ...Object.keys(PROD)].includes(kindOf(j));   // куры, коровы и мастерские дают продукцию всё время
   // повторный обход — только за созревшим на грядках и в саду: иначе фермер так и ходил бы к курятнику за каждым новым яйцом
   const all = readyJobs().filter(j => !again || !steady(j)), mine = all.filter(j => kindOf(j) === 'field' ? !zoneTaken(j) : !covered.has(kindOf(j)));
-  const list = mine.map(j => ({ x: j.x, y: j.y, fn: () => j.act('player') }));
+  const list = mine.map(j => ({ x: j.x, y: j.y, steady: steady(j), fn: () => j.act('player') }));
   if (!list.length) { if (!again) toast(all.length ? '🧑‍🌾 Это уже собирают помощники' : 'Пока нечего собирать'); return false; }
-  setTasks(routeThrough(list), true);
+  // сначала весь урожай (грядки, теплица, сад), потом — яйца, молоко и мастерские: не бросать поле на полпути
+  const crops = routeThrough(list.filter(t => !t.steady)), last = crops[crops.length - 1];
+  setTasks([...crops, ...routeThrough(list.filter(t => t.steady), last)], true);
   return true;
 }
 $('plantAll').onclick = () => {
