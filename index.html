@@ -394,7 +394,8 @@ const UPGRADES = {
   house:  { name: 'Дом фермера',       ico: '🏠', desc: l => l === 0 ? 'Веранда и кухня: помощники сыты и работают на 20% быстрее' : 'Второй этаж: помощники работают ещё на 20% быстрее (всего +40%)', cost: l => [3000, 7000][l], max: 2 },
   trays:  { name: 'Противни',          ico: '🍪', desc: l => `В каждое отделение печи — по ${l + 2} одинаковых штуки за раз (сейчас по ${l + 1})`, cost: l => [3000, 6000][l], max: 2, need: () => S.up.bakery >= 1, needText: 'Откроется, когда пристроишь пекарню 🥖' },
   bakery: { name: 'Пекарня',           ico: '🥖', desc: l => l === 0 ? 'Пристройка к дому. Печёт из 🍚 муки и продуктов фермы: 🍞 хлеб, 🥧 пирог, 🍕 пиццу и 🎂 торт' : 'Печёт вдвое быстрее', cost: l => [6000, 9000][l], max: 2, need: () => S.up.mill >= 1, needText: 'Откроется после новой постройки в лесу 🪓' },
-  cozy:   { name: 'Уют',               ico: '🌷', desc: l => `${COZY[l]}. Покупателям нравится — платят на 2% больше (+${l * 2}% → +${(l + 1) * 2}%)`, cost: l => [600, 1200, 2000, 3200, 5000][l], max: 5 },
+  cozy:   { name: 'Уют',               ico: '🌷', desc: l => `${COZY[l]}. Покупателям нравится — платят на 2% больше (+${l * 2}% → +${(l + 1) * 2}%)`, cost: l => [600, 1200, 2000, 3200, 5000][l],
+            get max() { return Math.max(S.up.cozy || 0, S.up.house ? 5 : 4); } },   // фонарики висят на веранде — последний уровень после «Дома фермера»
   ads:    { name: 'Реклама',           ico: '📣', desc: l => `+1 покупатель в день (больше людей приводит уровень фермы ⭐)`,           cost: l => 30 + l*35,           max: 10 },
   fert:   { name: 'Удобрения',         ico: '🧪', desc: l => `Рост быстрее (+${l*20}% → +${(l+1)*20}%)`, cost: l => 50 + l*60, max: 5 },
   slots:  { name: 'Место на прилавке',  ico: '🧺', desc: l => `Ещё одно место для товара на прилавке: ${3 + l} → ${4 + l}`, cost: l => [150, 450, 1000][l], max: 3 },
@@ -721,7 +722,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.59';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.61';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1747,7 +1748,7 @@ function openUpgrade(key) {
   }
   let h = `<div class="up" style="border:none"><div class="ico" style="font-size:40px;width:52px">${u.ico}</div><div class="txt"><b style="font-size:18px">${u.name}</b>
     <small>Уровень ${l} из ${u.max}</small></div></div>
-    <div class="summary">${maxed ? 'Улучшено до максимума ✔' : u.desc(l)}</div>`;
+    <div class="summary">${maxed ? (key === 'cozy' && l < 5 ? `Следующее: ${COZY[l]} — фонарики висят на веранде, сначала улучши 🏠 «Дом фермера»` : 'Улучшено до максимума ✔') : u.desc(l)}</div>`;
   if (PROD[key] && l) { const P = PROD[key], st = S.prod[key]; h += `<div class="summary">${P.ico} В работе: ${st.q} ${GOODS[P.out].e} (место на ${P.cap}), готово: ${st.out}. Нужно ${P.n} ${GOODS[P.in].e} на 1 ${GOODS[P.out].e}, на складе ${S.inv[P.in] || 0}</div>`; }
   if (key === 'coop' && hens()) {
     const fed = fedTomorrow();
@@ -2658,23 +2659,36 @@ const zoomSettled = now => { const k = dpr * zoom; if (k !== zoomK) { zoomK = k;
 const bg = { cv: document.createElement('canvas'), key: '', r: null, ox: 0, oy: 0 };
 // Деревья в глубине леса (позади них только лес или край карты) впекаются в картинку фона:
 // за ними никто не ходит, перекрывать некого, а рисовать их по одному каждый кадр дорого
-let bakedTrees = null;
+let bakedTrees = null, bakedFor = -1, liftedKeys = new Set(), liftedOut = [];
+// дерево леса за краем фермы (то же правило, что в drawOutside): размер или 0
+function outTreeAt(x, y) {
+  if (x >= 0 && y >= 0 && x < W && y < H) return 0;
+  if ((y === ROAD || y === ROAD + 1) && (x >= W || x < 0)) return 0;
+  const behind = x < 0 || y < 0 || (x >= W && y < ROAD);
+  return behind && !edgeTree(x, y) && hash(x, y) > (x < -2 || y < -2 || x > W + 1 ? 0.25 : 0.5) ? 0.8 + hash(y, x) * 0.45 : 0;
+}
+// Впекаем дерево, только если всё позади него (3×3) — тоже впечённые деревья или пустая земля за краем фермы.
+// Деревья фермы и леса считаются вместе: иначе незапечённое дерево фермы рисуется поверх стоящего перед ним дерева леса
 function bakeTreeSet() {
-  const trees = decor.filter(d => d.kind === 'tree'), at = new Map(trees.map(d => [d.x + ',' + d.y, d]));
-  const ok = new Set(trees.filter(d => d.lot == null));
+  const trees = new Map();
+  bakedFor = S.up.clear || 0;   // нерасчищенный участок — обычный лес; расчистили — пересчитываем
+  for (const d of decor) if (d.kind === 'tree') trees.set(d.x + ',' + d.y, { d, lot: d.lot != null && bakedFor > d.lot });
+  for (let y = -14; y < ROAD; y++) for (let x = -14; x < W + 16; x++) { const k = x + ',' + y, sz = outTreeAt(x, y); if (sz && !trees.has(k)) trees.set(k, { x, y, s: sz }); }
+  const ok = new Set([...trees.keys()].filter(k => !trees.get(k).lot));
   for (let changed = true; changed;) {
     changed = false;
-    for (const d of [...ok]) {
-      for (let dy = -3; dy <= 0 && ok.has(d); dy++) for (let dx = -3; dx <= 0; dx++) {
+    for (const k of [...ok]) {
+      const [x0, y0] = k.split(',').map(Number);
+      for (let dy = -3; dy <= 0 && ok.has(k); dy++) for (let dx = -3; dx <= 0; dx++) {
         if (!dx && !dy) continue;
-        const x = d.x + dx, y = d.y + dy;
-        if (x < 0 || y < 0 || (x >= W && y < ROAD)) continue;   // край карты, лес справа
-        const o = at.get(x + ',' + y);
-        if (!o || !ok.has(o)) { ok.delete(d); changed = true; break; }
+        const x = x0 + dx, y = y0 + dy, ck = x + ',' + y;
+        if (trees.has(ck) ? !ok.has(ck) : x >= 0 && y >= 0 && x < W && y < H) { ok.delete(k); changed = true; break; }   // позади живое место фермы или незапечённое дерево
       }
     }
   }
-  return ok;
+  liftedKeys = new Set(); liftedOut = [];
+  for (const [k, t] of trees) if (!t.d && !ok.has(k)) { liftedKeys.add(k); liftedOut.push({ kind: 'tree', x: t.x, y: t.y, s: t.s, z: t.x + t.y + 1 }); }
+  return new Set([...trees.values()].filter(t => t.d && ok.has(t.d.x + ',' + t.d.y)).map(t => t.d));
 }
 function groundSig() {   // всё, от чего зависит земля (кроме мигания)
   const pl = a => a.map(p => p.crop ? (p.prog < 1 ? 'w' : 'r') : '-').join('');
@@ -2700,7 +2714,7 @@ function drawBackdrop(now) {
     const main = ctx; ctx = bg.cv.getContext('2d');
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = look().bg; ctx.fillRect(0, 0, w, h);
     ctx.setTransform(k, 0, 0, k, -bg.ox, -bg.oy);
-    try { drawOutside(R); drawGround(0); drawPaths(); drawPicnic(); drawOutsideTrees(); [...(bakedTrees ??= bakeTreeSet())].sort((a, b) => a.z - b.z).forEach(d => drawTree(d)); } finally { ctx = main; }
+    try { drawOutside(R); drawGround(0); drawPaths(); drawPicnic(); if (bakedFor !== (S.up.clear || 0)) bakedTrees = null; bakedTrees ??= bakeTreeSet(); drawOutsideTrees(true); } finally { ctx = main; }
   }
   const T = camT();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -2828,6 +2842,7 @@ function draw(t) {
     const moved = o ? () => { ctx.save(); ctx.translate(o.x, o.y); try { raw(); } finally { ctx.restore(); } } : raw;
     list.push({ z: d.z, f: sk ? () => drawSprite(d, moved, sk(d), t, o, raw) : moved });
   }
+  if (settled && bakedTrees) for (const o of liftedOut) list.push({ z: o.z, f: () => drawSprite(o, () => drawTree(o), SPRITE_KEY.tree(o), t) });   // лес перед деревьями фермы
   S.trees.forEach((tr, i) => { if (tr.kind) { const s = ORCHARD_SLOTS[i]; list.push({ z: s.x + s.y + 1, f: () => drawOrchardTree(i, t) }); } });
   for (const h of hensState) list.push({ z: h.x + h.y, f: () => { const key = animKey(h, (h.rooster ? 'r' : '') + (h.peck ? 'p' : '')); drawCachedAt(h, key, 34, 40, 17, 32, o => drawHen({ ...o, phase: phaseOf(key) }, 0)); } });
   for (const h of chicksState) list.push({ z: h.x + h.y, f: () => { const key = animKey(h, ''); drawCachedAt(h, key, 16, 18, 8, 13, o => drawChick({ ...o, phase: phaseOf(key) }, 0)); } });
@@ -2843,6 +2858,7 @@ function draw(t) {
     icons.forEach((e, k) => emoji(e, c.x + (k - (icons.length - 1) / 2) * 13, c.y - 59.5, 11)); } });
   for (const v of visitors) list.push({ z: v.x + v.y, f: () => drawPersonC(v, v.look) });
   if (clerkOn()) list.push({ z: clerk.x + clerk.y, f: () => drawPersonC(clerk, CLERK_LOOK) });
+  archSlices(list);
   if (fairOn()) fairDrawList(list, t);
   list.sort((a, b) => a.z - b.z).forEach(o => o.f());
 
@@ -2872,13 +2888,17 @@ function drawOutside(V = viewRect()) {
     poly(tilePts(x, y), col, col);
     if (road) { seg(iso(x, y + .5), iso(x + 1, y + .5), 'rgba(150,110,65,.16)', 4); if (h > .88) pebble(c.x + (h - .94) * 60, c.y, 1.6, '#cdbb98'); continue; }
     const behind = x < 0 || y < 0 || (x >= W && y < ROAD);   // за фермой и справа — лес, перед ней — открытый луг
-    if (behind && !edgeTree(x, y) && h > (x < -2 || y < -2 || x > W + 1 ? 0.25 : 0.5)) trees.push({ x, y, s: 0.8 + hash(y, x) * 0.45 });
+    const sz = outTreeAt(x, y);
+    if (sz) trees.push({ x, y, s: sz });
     else if (h > .82 && season().id !== 'winter') circle(c.x + (h - .9) * 40, c.y, 2.2, season().id === 'autumn' ? ['#e0892f', '#d8b23a', '#c9542f'][Math.floor(h * 1000) % 3] : ['#ffffff', '#ffd84d', '#ff8fb1'][Math.floor(h * 1000) % 3]);
     else if (!behind && h < .06) { circle(c.x - 5, c.y - 5, 7, look().bush[0]); circle(c.x + 5, c.y - 4, 6, look().bush[1]); }   // кусты
   }
 }
 // деревья вокруг фермы — после земли фермы, иначе её клетки перекрывают стволы и кроны
-function drawOutsideTrees() { outTrees.sort((a, b) => (a.x + a.y) - (b.x + b.y)).forEach(drawTree); drawFairGround(); }
+function drawOutsideTrees(baked) {   // в картинку фона — лес и впечённые деревья фермы одним списком по глубине
+  const list = baked ? [...outTrees.filter(o => !liftedKeys.has(o.x + ',' + o.y)), ...bakedTrees] : outTrees;
+  list.sort((a, b) => (a.x + a.y) - (b.x + b.y)).forEach(d => drawTree(d)); drawFairGround();
+}
 
 // ---------- Ярмарка за дорогой: по субботам — шатры, флажки, народ; в другие дни — табличка ----------
 const FAIR = { x: 5, y: 23 };   // площадь ярмарки — в трёх клетках от дороги, вход — арка у дороги
@@ -3036,11 +3056,11 @@ function drawFairPlaza() {
   const w = iso(WHEEL.x, WHEEL.y); ctx.beginPath(); ctx.ellipse(w.x, w.y, 52, 22, 0, 0, 7); ctx.fillStyle = win ? '#cdd3d6' : '#c4b49a'; ctx.fill(); ctx.strokeStyle = 'rgba(90,80,65,.5)'; ctx.lineWidth = 1.5; ctx.stroke();
   for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 2; circle(w.x + Math.cos(a) * 48, w.y + Math.sin(a) * 20, 2.6, win ? '#b8c0c3' : '#a8977a'); }
 }
-function drawFairGround() {
-  const { x, y } = FAIR, on = isFair() && !S.night;
-  drawFairPlaza();
-  // арка «ЯРМАРКА» над дорожкой у самой дороги — видна всегда
-  const ax0 = 9.55, ax1 = 13.45, ay = 19.35;
+// арка «ЯРМАРКА» над дорожкой у самой дороги — видна всегда. Режется на узкие полоски с глубиной каждая:
+// кто со стороны дороги — за аркой, кто уже на ярмарке — перед ней
+const ARCH = { x0: 9.55, x1: 13.45, y: 19.35 };
+function drawFairArch() {
+  const on = isFair() && !S.night, { x0: ax0, x1: ax1, y: ay } = ARCH;
   toonPost(ax0, ay, 0, 56, .1); toonPost(ax1, ay, 0, 56, .1);
   gface(fY(ax0 - .15, ax1 + .15, ay, 44, 58), '#ffe08a', '#f0b82e', INK, 1.6);
   textOnX(ax0 - .15, ay, 51, ax1 - ax0 + .3, 'ЯРМАРКА', '#c0392b', 10);
@@ -3049,8 +3069,21 @@ function drawFairGround() {
     seg(lift(11.1, ay, 44), lift(11.1, ay, 38), INK, 1); seg(lift(11.9, ay, 44), lift(11.9, ay, 38), INK, 1);
     gface(fY(10.85, 12.15, ay, 30, 38), '#fffaf0', '#f0dfb8', '#7a4a2a', 1.3);
     textOnX(10.85, ay, 34, 1.3, 'ПО СУББОТАМ', '#3b2416', 5.5);
-    return;
   }
+}
+function archSlices(list) {
+  const V = viewRect(), A = iso(ARCH.x0 - .5, ARCH.y), B = iso(ARCH.x1 + .5, ARCH.y);
+  if (B.x < V.x0 || A.x > V.x1 || A.y - 80 > V.y1 || B.y < V.y0) return;   // арки не видно
+  for (let x = ARCH.x0 - .5; x < ARCH.x1 + .5; x += .5) {
+    const sx0 = (x - ARCH.y) * TW / 2, sx1 = (x + .5 - ARCH.y) * TW / 2;
+    list.push({ z: x + .25 + ARCH.y, f: () => { ctx.save(); ctx.beginPath(); ctx.rect(sx0, -1e4, sx1 - sx0 + .5, 2e4); ctx.clip(); drawFairArch(); ctx.restore(); } });
+  }
+}
+function drawFairGround() {
+  const { x, y } = FAIR, on = isFair() && !S.night;
+  drawFairPlaza();
+  const { x0: ax0, x1: ax1, y: ay } = ARCH;
+  if (!on) return;   // арку «ЯРМАРКА» рисует drawFairArch — вместе с людьми, чтобы проходящие под ней не шли поверх
   // доска конкурса справа от арки
   const k = contestOf();
   toonPost(14.0, 19.7, 0, 30, .05); toonPost(14.9, 19.7, 0, 30, .05);
@@ -3607,7 +3640,7 @@ function drawHouse(d, t) {
     const ap = lift(3, 3, hw + 34), tp = lift(3, 3, hw + 48);
     seg(ap, tp, '#3b2416', 1.8);
     emoji('🐓', tp.x, tp.y - 5, 13);
-    for (const lx of [2.35, 3.3]) {
+    if (L >= 1) for (const lx of [2.35, 3.3]) {   // фонарики — под навесом веранды
       const lp = lift(lx, 4.02, 23);
       seg(lift(lx, 4.02, 30), { x: lp.x, y: lp.y - 4 }, '#3b2416', 1);
       circle(lp.x, lp.y, 3.6, INK); circle(lp.x, lp.y, 2.7, S.night ? '#ffe28a' : '#f4c95d'); circle(lp.x - .8, lp.y - .8, .9, '#fff8d8');
@@ -4818,7 +4851,7 @@ function shopRows() {
     const l = S.up[key], maxed = l >= u.max, cost = u.cost(l), lock = upLocked(key);
     if (lock) { const known = lvlLocked(key) && !(u.need && !u.need());
       rows[tab].push({ rank: 2, i, h: `<div class="up" data-why="🔒 ${needTxt(key)}"><div class="ico"${known ? ' style="opacity:.55"' : ''}>${known ? u.ico : '❓'}</div><div class="txt"><b>${known ? u.name : '???'}</b><small>${needTxt(key)}</small></div><button disabled>${known ? '⭐' + upLvl(key) : '???'}</button></div>` }); return; }
-    rows[tab].push({ rank: maxed ? 3 : S.coins >= cost ? 0 : 1, cost, i, h: `<div class="up" data-why="${maxed ? (key === 'coop' && l < 8 ? 'Вольер полон — расширь его' : key === 'barn' && l < 7 ? 'Пастбище полное — расширь его' : u.max === 1 ? 'Это у вас уже есть' : 'Улучшено на максимум') : 'Недостаточно средств'}"><div class="ico">${u.ico}</div><div class="txt"><b>${u.name} <small>ур. ${l}/${u.max}</small></b><small>${maxed ? 'Максимум' : u.desc(l)}</small></div>
+    rows[tab].push({ rank: maxed ? 3 : S.coins >= cost ? 0 : 1, cost, i, h: `<div class="up" data-why="${maxed ? (key === 'cozy' && l < 5 ? 'Фонарики вешать некуда — сначала построй веранду: «Дом фермера»' : key === 'coop' && l < 8 ? 'Вольер полон — расширь его' : key === 'barn' && l < 7 ? 'Пастбище полное — расширь его' : u.max === 1 ? 'Это у вас уже есть' : 'Улучшено на максимум') : 'Недостаточно средств'}"><div class="ico">${u.ico}</div><div class="txt"><b>${u.name} <small>ур. ${l}/${u.max}</small></b><small>${maxed ? 'Максимум' : u.desc(l)}</small></div>
       <button ${maxed || S.coins < cost ? 'disabled' : ''} onclick="buyUpgrade('${key}')">${maxed ? '✔' : cost + '💰'}</button></div>` });
   });
   CROPS.forEach((c, i) => {
@@ -4878,9 +4911,11 @@ function drawSitting(h, look) {   // сидит, подогнув ноги
 function drawHelperPose(h, pose, t) {
   const c = iso(h.x, h.y);
   if (pose === 'lie') {   // лежит на спине, руки за головой
-    ctx.save(); ctx.translate(c.x, c.y - 2); ctx.scale(1, .55); ctx.rotate(h.id % 2 ? -1.45 : 1.45); ctx.translate(-c.x, -c.y);
+    const a = h.id % 2 ? -1.32 : 1.32, len = .82;   // повёрнут вдоль земли; укорачиваем только рост, не толщину
+    ctx.save(); ctx.translate(c.x, c.y - 2); ctx.rotate(a); ctx.scale(1, len); ctx.translate(-c.x, -c.y);
     drawPerson({ ...h, moving: false }, h.look); ctx.restore();
-    emoji('💤', c.x + 14, c.y - 24, 10);
+    const hx = c.x + Math.sin(a) * 34 * len, hy = c.y - 2 - Math.cos(a) * 34 * len;   // где голова
+    emoji('💤', hx + (a > 0 ? 4 : -4), hy - 15, 10);
   } else if (pose === 'sit') drawSitting(h, h.look);
   else {
     drawPerson({ ...h, moving: false }, h.look);
