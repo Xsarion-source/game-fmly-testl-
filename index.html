@@ -138,7 +138,7 @@
   .act { --s: min(64px, calc((100vw - 20px - var(--n, 5) * 6px) / var(--n, 5))); width: var(--s); height: var(--s); flex: none; padding: 0; border-radius: 50%; background: rgba(255,248,231,.96); box-shadow: 0 3px 0 rgba(0,0,0,.2);
          display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; line-height: 1.1; }
   .act span { font-size: 24px; line-height: 1; margin-bottom: 2px; }
-  .sunrise { background: #ffd34d; padding: 12px 22px; border-radius: 999px; font-size: 17px; box-shadow: 0 3px 0 rgba(0,0,0,.2); animation: pulse 1.6s infinite; }
+  .sunrise { background: #ffd34d; padding: 12px 22px; border-radius: 999px; font-size: 17px; box-shadow: 0 3px 0 rgba(0,0,0,.2); animation: pulse 1.6s 4; }
   @keyframes pulse { 50% { transform: scale(1.04); } }
   .menu button { display: block; width: 100%; text-align: left; margin-top: 6px; background: #f0e5cb; padding: 12px; }
   .stat { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 15px; }
@@ -706,7 +706,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.54';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.55';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -2116,9 +2116,23 @@ function tick(now) {
   floats.forEach(f => f.t += dt); floats = floats.filter(f => f.t < 1.2);
   saveAcc += dt; if (saveAcc > 5) { saveAcc = 0; save(); }
   updateCam(dt);
-  draw(now / 1000);   // каждый кадр экрана: ограничение частоты ощущается хуже, чем греется телефон
+  // Перерисовываем экран каждый кадр, только пока что-то движется (камера, люди, животные, всплывающие цифры).
+  // Если сцена стоит (ночь, все на месте) — меняются лишь дым, крылья мельницы и полоски,
+  // им хватает 20 кадров в секунду: телефон не греется, рисуя одну и ту же картинку 60 раз
+  const sig = motionSig();
+  if (sig !== drawSig || pointers.size || now - lastDraw >= 48) { draw(now / 1000); lastDraw = now; drawSig = sig; }
   renderHud();
   requestAnimationFrame(tick);
+}
+let lastDraw = -1e9, drawSig = NaN;
+function motionSig() {   // одно число от всего, что двигается: изменилось — значит, кадр нужен сразу
+  let s = cam.x * 7.13 + cam.y * 3.31 + zoom * 977 + cw + ch * 2.17 + floats.length * 13.7 + (S.night ? 5 : 0);
+  const V = viewRect(70);   // кто идёт за краем экрана, кадр не торопит
+  const add = (a, k) => { for (const o of a) { const q = iso(o.x, o.y); if (q.x >= V.x0 && q.x <= V.x1 && q.y >= V.y0 && q.y <= V.y1) s += o.x * k + o.y * (k + 1.7) + (o.peck || o.graze ? k * 0.37 : 0); k += 0.61; } };
+  add([P], 1.1); add(helpers, 2.3); add(visitors, 3.7); add(hensState, 5.9); add(chicksState, 7.3); add(cowsState, 9.1);
+  if (clerkOn()) add([clerk], 11.3);
+  if (fairFolk.length) add(fairFolk, 13.1);
+  return s;
 }
 function step(dt) {
   updateClerk(dt);
