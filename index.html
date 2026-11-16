@@ -745,7 +745,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.72';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.73';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -5512,7 +5512,9 @@ function harvestRoute(again) {   // грядки, яблони и гнездо �
   const covered = new Set(S.helpers.flatMap(c => c.stations));
   const kindOf = j => Object.keys(PROD).find(k => PROD[k].spot.x === j.x && PROD[k].spot.y === j.y) || (j.x === BAKE_SPOT.x && j.y === BAKE_SPOT.y ? 'bakery' : j.x === COOP_SPOT.x && j.y === COOP_SPOT.y ? 'coop' : j.x === BARN_SPOT.x && j.y === BARN_SPOT.y ? 'barn' : orchardAt(j.x, j.y) >= 0 ? 'orchard' : ghAt(j.x, j.y) >= 0 ? 'gh' : 'field');
   const zoneTaken = j => zoneOwner(zoneOfXY(j.x, j.y)) >= 0;   // на поле — только участки без помощника
-  const all = readyJobs(), mine = all.filter(j => kindOf(j) === 'field' ? !zoneTaken(j) : !covered.has(kindOf(j)));
+  const steady = j => ['coop', 'barn', 'bakery', ...Object.keys(PROD)].includes(kindOf(j));   // куры, коровы и мастерские дают продукцию всё время
+  // повторный обход — только за созревшим на грядках и в саду: иначе фермер так и ходил бы к курятнику за каждым новым яйцом
+  const all = readyJobs().filter(j => !again || !steady(j)), mine = all.filter(j => kindOf(j) === 'field' ? !zoneTaken(j) : !covered.has(kindOf(j)));
   const list = mine.map(j => ({ x: j.x, y: j.y, fn: () => j.act('player') }));
   if (!list.length) { if (!again) toast(all.length ? '🧑‍🌾 Это уже собирают помощники' : 'Пока нечего собирать'); return false; }
   setTasks(routeThrough(list), true);
