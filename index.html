@@ -158,11 +158,24 @@
 
   #infoBox { position: fixed; inset: 0; z-index: 30; display: none; align-items: center; justify-content: center; background: rgba(10,15,35,.35); padding: 24px; }
   #infoBox.show { display: flex; }
+  #lvlUp { position: fixed; inset: 0; z-index: 40; display: none; align-items: center; justify-content: center; background: rgba(10,15,35,.55); padding: 24px; }
+  #lvlUp.show { display: flex; }
+  .lu-card { position: relative; width: 100%; max-width: 340px; text-align: center; padding: 18px 16px 16px; border-radius: 22px; border: 3px solid #f0b429;
+             background: radial-gradient(circle at 50% 18%, #fff6cf 0, #fff6cf 30%, var(--panel) 62%); box-shadow: 0 12px 40px rgba(0,0,0,.35); animation: luPop .5s cubic-bezier(.2,1.5,.4,1); }
+  .lu-burst { position: absolute; left: 14px; top: 10px; font-size: 30px; transform: rotate(-18deg); }
+  .lu-star { font-size: 76px; line-height: 1; }
+  .lu-n { font-size: 46px; font-weight: 900; color: #c47a00; margin-top: -6px; text-shadow: 0 2px 0 #fff; }
+  .lu-t { font-size: 19px; font-weight: 800; margin: 2px 0 10px; }
+  .lu-news { text-align: left; font-size: 15px; line-height: 1.5; background: #f6ecd2; border-radius: 12px; padding: 8px 12px; margin-bottom: 12px; }
+  .lu-news:empty { display: none; }
+  .lu-card button { width: 100%; font-size: 18px; }
+  @keyframes luPop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
   #infoBox > div { background: var(--panel); border-radius: 18px; padding: 16px; max-width: 360px; width: 100%; box-shadow: 0 10px 30px rgba(0,0,0,.3); font-size: 15px; line-height: 1.45; }
   #infoText h3 { margin: 0 0 6px; font-size: 18px; }
   #overlay { position: fixed; inset: 0; background: rgba(10,15,35,.55); display: none; align-items: flex-end; justify-content: center; z-index: 10; }
   #overlay.show { display: flex; }
-  #sheet { width: 100%; max-width: 640px; max-height: 86%; overflow-y: auto; background: var(--panel); border-radius: 18px 18px 0 0;
+  #sheet { width: 100%; max-width: 640px; height: min(82%, 760px); box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain;   /* одна высота у всех окон — не прыгает при переключении */
+           background: var(--panel); border-radius: 18px 18px 0 0;
            padding: 14px 14px calc(14px + env(safe-area-inset-bottom)); animation: up .3s; }
   #sheet h2 { margin: 0 0 6px; font-size: 20px; }
   .summary { background: #f0e5cb; border-radius: 10px; padding: 8px 10px; font-size: 14px; margin-bottom: 10px; line-height: 1.5; }
@@ -290,6 +303,10 @@
 
 <div id="overlay"><div id="sheet"></div></div>
 <div id="toast"></div>
+<div id="lvlUp" onclick="if (event.target === this) closeLvl()"><div class="lu-card">
+  <div class="lu-burst">🎉</div><div class="lu-star">⭐</div><div class="lu-n" id="luN">2</div>
+  <div class="lu-t">Новый уровень фермы!</div><div class="lu-news" id="luNews"></div>
+  <button class="wide" onclick="closeLvl()">Ура!</button></div></div>
 <div id="infoBox" onclick="if (event.target === this) closeInfo()"><div><div id="infoText"></div><button class="wide" style="width:100%;margin-top:12px" onclick="closeInfo()">ОК</button></div></div>
 
 <script>
@@ -722,7 +739,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.64';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.65';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -820,10 +837,24 @@ const LVL_XP = L => Math.round(40 * Math.pow(L - 1, 2.4));   // сколько �
 const farmLevel = () => { let L = 1; while (S.xp >= LVL_XP(L + 1)) L++; return L; };
 function gainXp(n) {
   const L0 = farmLevel(); S.xp += n; const L = farmLevel();
-  if (L > L0) setTimeout(() => toast(`⭐ Уровень фермы ${L}!` + (lvlNews(L) ? ` Открылось: ${lvlNews(L)}` : ' Покупателей станет больше')), 300);
+  if (L > L0) setTimeout(() => showLevelUp(L0, L), 300);
 }
+// праздничное окно нового уровня: что открылось и что изменилось у покупателей
+let luFrom = 0;
+function showLevelUp(L0, L) {
+  if ($('lvlUp').classList.contains('show')) L0 = Math.min(L0, luFrom);   // два уровня подряд — в одном окне
+  luFrom = L0;
+  const open = []; for (let k = L0 + 1; k <= L; k++) { const n = lvlNews(k); if (n) open.push(...n.split(', ')); }
+  const xL = k => Math.min(30, 8 + Math.min(14, k) + (S.up.ads || 0) + prestigeGuests());
+  const rows = open.map(t => `🔓 ${t}`);
+  if (xL(L) > xL(L0)) rows.push(`🧍 Покупателей в день: ${xL(L0)} → <b>${xL(L)}</b>`);
+  if (basketMax(L) > basketMax(L0)) rows.push(`🧺 В корзинке до <b>${basketMax(L)}</b> разных товаров`);
+  $('luN').textContent = L; $('luNews').innerHTML = rows.join('<br>');
+  $('lvlUp').classList.add('show');
+}
+function closeLvl() { $('lvlUp').classList.remove('show'); }
 function lvlNews(L) {   // что открывает уровень
-  return [...(L === FAIR_LVL ? ['🎪 ярмарка по субботам'] : []), ...(L === MAIL_LVL ? ['📬 заказы по почте'] : []), ...CROPS.filter(c => c.lvl === L).map(c => c.e + ' ' + c.name), ...Object.keys(UP_LVL).filter(k => UP_LVL[k] === L && L > 1 && !S.up[k] && UPGRADES[k]).map(k => UPGRADES[k].ico + ' ' + UPGRADES[k].name)].join(', ');
+  return [...(L === FAIR_LVL ? ['🎪 Ярмарка по субботам'] : []), ...(L === MAIL_LVL ? ['📬 Заказы по почте'] : []), ...CROPS.filter(c => c.lvl === L).map(c => c.e + ' ' + c.name), ...Object.keys(UP_LVL).filter(k => UP_LVL[k] === L && L > 1 && !S.up[k] && UPGRADES[k]).map(k => UPGRADES[k].ico + ' ' + UPGRADES[k].name)].join(', ');
 }
 // покупателей в день растёт с уровнем, но не бесконечно; зато корзинка у каждого больше
 const visitorsBase = () => Math.min(30, 8 + Math.min(14, farmLevel()) + (S.up.ads || 0) + prestigeGuests());
