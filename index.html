@@ -355,7 +355,7 @@ const GOODS = {
 // Планировка: каждая постройка нарисована в своих «старых» координатах и сдвинута на [dx, dy] клеток.
 // Чтобы раздвинуть или передвинуть что-то — поменяй смещение здесь (сохранения от этого не зависят).
 const LAYOUT = {
-  home: [1, 0], mail: [2, 0], dog: [0, 0], orchard: [0, 2], flowers: [1, 2], well: [1, 4], swing: [0, 2],
+  home: [1, 0], mail: [4, 1], dog: [0, 1], orchard: [0, 2], flowers: [1, 2], well: [1, 4], swing: [0, 2],
   stall: [2, 5], stall2: [-1, 5], benchA: [3, 5], benchB: [0, 5], ads: [8, 5], field: [3, 0], fert: [4, 0], coop: [3, 3], pond: [5, 4],
   barn: [6, 1], gh: [7, 2], mill: [8, 1], dairy: [8, 2], path: [2, 0],
 };
@@ -376,7 +376,7 @@ const BAKE = {
 };
 const BAKE_CAP = 6, BAKE_SPOT = at('home', 4, 4);   // BAKE_CAP — мест в очереди (ждут, пока освободится отделение)
 const OVENS = 2, trayN = () => 1 + (S.up.trays || 0);   // в печи два отделения; противни — по 2–3 штуки в отделение
-const MAIL = at('mail', 4, 5), MAIL_SPOT = at('mail', 5, 5);   // почтовый ящик у тропинки
+const MAIL = at('mail', 4, 5), MAIL_SPOT = at('mail', 3, 5);   // почтовый ящик через тропинку от пекарни; фермер встаёт на тропинку
 // Уют: что появляется у дома на каждом уровне
 const COZY = ['🌷 Клумбы у сада', '🐕 Собака и будка', '🪣 Колодец', '🌳 Качели у лавки', '🐓 Флюгер и фонарики на доме'];
 const COZY_SPOTS = [at('flowers', 4, 6), at('dog', 1, 4), at('well', 4, 8), at('swing', 1, 9), at('home', 3, 4)];
@@ -465,7 +465,7 @@ function addBox(kind, g, x, y, w, d) {
   const p = at(g, x, y);
   for (let i = p.x; i < p.x + w; i++) for (let j = p.y; j < p.y + d; j++) blocked[j][i] = true;
 }
-addBox('house', 'home', 2, 2, 2, 2);
+addBox('house', 'home', 1, 1, 3, 3);   // дом 3×3
 addBox('stall', 'stall', 3, 10, 2, 1);
 const COUNTER = at('stall', 4, 9);   // где стоит фермер за прилавком
 // вторая лавка — слева (клетки 2–3 × 15): свой продавец за ней, своя очередь перед ней
@@ -597,7 +597,7 @@ const prodAt = (x, y) => Object.keys(FOOT).find(k => x >= FOOT[k].x0 && x <= FOO
 deco('mail', { kind: 'mailbox', z: 4 + 5 + 1 }); blocked[MAIL.y][MAIL.x] = true;
 const TROPHY = at('pond', 14, 12);   // доска почёта с кубками — у дороги, между прудом и рекламным щитом
 decor.push({ kind: 'trophies', x: TROPHY.x, y: TROPHY.y, z: TROPHY.x + TROPHY.y + 1 }); blocked[TROPHY.y][TROPHY.x] = true;
-deco('home', { kind: 'bakery', z: 4 + 1 + 2 + 2 - 1.01 });   // пристройка справа от дома (клетки 4 × 2–3)
+deco('home', { kind: 'bakery', z: 4 + 2 + 2 + 2 - 1.01 });   // пристройка справа от дома (клетки 4–5 × 2–3)
 deco('flowers', { kind: 'flowers', z: 4 + 6 + .9 });
 deco('dog', { kind: 'doghouse', z: 1 + 4 + 1 });
 deco('well', { kind: 'well', z: 4 + 8 + 1 });
@@ -631,7 +631,7 @@ function applyLots() {
       blocked[y][x] = S.up.clear <= k || !!(b && S.up[b]);
     }
   });
-  { const a = at('home', 4, 2); blocked[a.y][a.x] = blocked[a.y + 1][a.x] = !!S.up.bakery; }   // пекарня
+  { const a = at('home', 4, 2); for (const dx of [0, 1]) blocked[a.y][a.x + dx] = blocked[a.y + 1][a.x + dx] = !!S.up.bakery; }   // пекарня 2×2
   blocked[STALL2.y][STALL2.x] = blocked[STALL2.y][STALL2.x + 1] = !!S.up.stall2;   // вторая лавка
   blocked[SEASON_SPOT.y][SEASON_SPOT.x] = !!S.up.seasonstand;   // сезонная пристройка
   for (const [l, x, y] of COZY_CELLS) blocked[y][x] = (S.up.cozy || 0) >= l;   // будка, колодец, качели
@@ -739,7 +739,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.65';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.66';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -826,6 +826,7 @@ async function cloudInit() {
 }
 
 const P = { x: S.player.x, y: S.player.y, phase: 0, moving: false, flip: false, work: 0 };
+if (blocked[Math.floor(P.y)]?.[Math.floor(P.x)]) { const h = at('home', 3, 4); P.x = h.x + .5; P.y = h.y + .5; }   // дом стал больше — фермер, стоявший на его месте, выходит к двери
 const PLAYER_LOOK = { shirt: '#e8604c', shirtDark: '#c44d3b', pants: '#3f6fb5', skin: '#f2c49b', hair: '#7a4a2a', hat: 'straw', overalls: true };
 let visitors = [];
 let tasks = [], path = [];
@@ -1731,8 +1732,8 @@ function upAt(x, y) {   // какое улучшение относится к �
   if (inCoopArea(x, y)) return 'coop';
   if (inBarnArea(x, y)) return 'barn';
   const in_ = (g, x0, y0, x1, y1) => { const [dx, dy] = LAYOUT[g]; return x - dx >= x0 && x - dx <= x1 && y - dy >= y0 && y - dy <= y1; };
-  if (in_('home', 2, 2, 3, 3)) return S.up.house < UPGRADES.house.max ? 'house' : 'helper';
-  if (in_('home', 4, 2, 4, 3)) return S.up.bakery < UPGRADES.bakery.max || upLocked('trays') || S.up.trays >= UPGRADES.trays.max ? 'bakery' : 'trays';
+  if (in_('home', 1, 1, 3, 3)) return S.up.house < UPGRADES.house.max ? 'house' : 'helper';
+  if (in_('home', 4, 2, 5, 3)) return S.up.bakery < UPGRADES.bakery.max || upLocked('trays') || S.up.trays >= UPGRADES.trays.max ? 'bakery' : 'trays';
   if (in_('flowers', 4, 6, 4, 7) || in_('well', 4, 8, 4, 8) || in_('dog', 1, 4, 1, 4) || in_('swing', 1, 9, 2, 9)) return 'cozy';
   if (in_('stall', 3, 10, 4, 10)) return 'sign';
   if (in_('stall', 0, 10, 1, 10) && !S.up.stall2) return 'stall2';
@@ -1747,23 +1748,46 @@ function upAtNight(x, y) {   // по проходимым клеткам с ма
 }
 // Ночью над местами улучшений, на которые хватает денег, — значок ⬆
 let badgeHits = [];
+// Значки улучшений одного здания висят рядком над его крышей — не на стенах и не вразброс
+const BADGE_GROUPS = [
+  { keys: ['house', 'helper', 'cozy'], at: () => liftG('home', 2.5, 2.5, (S.up.house >= 2 ? 78 : 44) + 40 + 34) },
+  { keys: ['bakery', 'trays'], at: () => liftG('home', 5.2, 3.2, S.up.bakery ? 74 : 34) },
+  { keys: ['coop', 'nests', 'rooster', 'yard'], at: () => liftG('coop', 7, 8.5, hens() ? 90 : 34) },
+  { keys: ['barn', 'milker', 'clover', 'hay', 'pasture'], at: () => liftG('barn', 15, 2, cows() ? 114 : 40) },
+  { keys: ['sign', 'slots', 'bench'], at: () => liftG('stall', 4, 10.1, 96) },
+];
+const BADGE_Z = { greenhouse: 56, clear: 62, mill: 84, dairy: 58, ads: 74 };
 function drawUpBadges(t) {
   badgeHits = [];
   if (!S.night) return;
-  for (const [key, u] of Object.entries(UPGRADES)) {
-    const l = S.up[key]; if (l >= u.max || upLocked(key)) continue;
-    const s = upSpot(key), ok = S.coins >= u.cost(l);
-    const c = lift(s.x + .5, s.y + .5, { helper: 80, house: 100, bakery: 52, trays: 70, cozy: 30, sign: 86, ads: 74, coop: 30, nests: 14, rooster: 20, yard: 10, milker: 24, clover: 12, hay: 30, pasture: 12, barn: 30, greenhouse: 56, clear: 62, mill: 84, dairy: 58 }[key] || 30);
-    const y = c.y;
-    
+  ctx.font = '800 10px system-ui, sans-serif';
+  const avail = k => S.up[k] < UPGRADES[k].max && !upLocked(k), width = k => 22 + ctx.measureText(`▲ ${UPGRADES[k].cost(S.up[k])}`).width;
+  const place = [], grouped = new Set();
+  for (const g of BADGE_GROUPS) {
+    g.keys.forEach(k => grouped.add(k));
+    const ks = g.keys.filter(avail); if (!ks.length) continue;
+    const c = g.at();
+    for (let r = 0; r * 3 < ks.length; r++) {   // по три в ряд, следующий ряд — выше
+      const row = ks.slice(r * 3, r * 3 + 3), ws = row.map(width), tot = ws.reduce((a, b) => a + b, 0) + (row.length - 1) * 4;
+      let x = c.x - tot / 2;
+      row.forEach((k, i) => { place.push([k, x + ws[i] / 2, c.y - r * 24, ws[i]]); x += ws[i] + 4; });
+    }
+  }
+  for (const k in UPGRADES) {   // остальное — над своим местом (поле, сад, расчистка, щит…)
+    if (grouped.has(k) || !avail(k)) continue;
+    const s = upSpot(k); if (!s) continue;
+    const c = lift(s.x + .5, s.y + .5, BADGE_Z[k] || 30);
+    place.push([k, c.x, c.y, width(k)]);
+  }
+  for (const [key, x, y, w] of place) {
+    const u = UPGRADES[key], l = S.up[key], ok = S.coins >= u.cost(l), label = `▲ ${u.cost(l)}`;
+    badgeHits.push({ key, x, y, w });
     // плашка «⬆ цена»: это предложение купить улучшение, а не уведомление о состоянии
-    const label = `▲ ${u.cost(l)}`, wTxt = (ctx.font = '800 10px system-ui, sans-serif', ctx.measureText(label).width), w = 22 + wTxt;
-    badgeHits.push({ key, x: c.x, y, w });
     ctx.globalAlpha = ok ? 1 : .65;
-    ctx.beginPath(); ctx.roundRect(c.x - w / 2, y - 10, w, 20, 10); ctx.fillStyle = ok ? '#3e9b3a' : '#7a6a55'; ctx.fill();
+    ctx.beginPath(); ctx.roundRect(x - w / 2, y - 10, w, 20, 10); ctx.fillStyle = ok ? '#3e9b3a' : '#7a6a55'; ctx.fill();
     ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
-    emoji(u.ico, c.x - w / 2 + 10, y + .5, 11);
-    ctx.fillStyle = '#fff'; ctx.font = '800 10px system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(label, c.x - w / 2 + 18, y + .5);
+    emoji(u.ico, x - w / 2 + 10, y + .5, 11);
+    ctx.fillStyle = '#fff'; ctx.font = '800 10px system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(label, x - w / 2 + 18, y + .5);
     ctx.globalAlpha = 1;
   }
 }
@@ -2354,6 +2378,8 @@ function onTap(sx, sy) {
     if (dx < bdv) { bdv = dx; bv = v; }
   }
   if (bv) { tapVisitor(bv); return; }
+  { const m = liftG('mail', 4.5, 5.5, 0);   // почтовый ящик — по самому ящику на столбике, а не по клетке под ним
+    if (Math.abs(wx - m.x) < 18 && wy > m.y - 40 && wy < m.y + 8) { openMail(); return; } }
   // тап по самому зданию курятника/коровника (по крыше и стенам, а не только по клеткам у земли)
   const hit = (g, x0, y0, x1, y1, h) => { const o = isoG(g, 0, 0), ps = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]].map(([x, y]) => iso(x, y));
     const xs = ps.map(q => q.x + o.x), ys = ps.map(q => q.y + o.y); return wx > Math.min(...xs) + 6 && wx < Math.max(...xs) - 6 && wy > Math.min(...ys) - h && wy < Math.max(...ys); };
@@ -2367,7 +2393,7 @@ function onTap(sx, sy) {
   if (S.night) { const k = upAtNight(tx, ty); if (k) { openUpgrade(k); return; } }
   if (tx === TROPHY.x && ty === TROPHY.y) { fairLockedToast() || openTrophies(); return; }
   if (tx === MAIL.x && ty === MAIL.y) { openMail(); return; }
-  { const b = at('home', 4, 2); if (tx === b.x && (ty === b.y || ty === b.y + 1)) { tapBakery(); return; } }
+  { const b = at('home', 4, 2); if ((tx === b.x || tx === b.x + 1) && (ty === b.y || ty === b.y + 1)) { tapBakery(); return; } }
   const si = slotAt(tx, ty);
   if (si >= 0) { tapPlot(si); return; }
   const oi = orchardAt(tx, ty);
@@ -3468,8 +3494,8 @@ function drawGhRoof() {
 function drawProdBubbles() {
   if (S.up.bakery) {   // пекарня: готовое или чего не хватает
     const n = bakeOut(), sel = GOODS[S.bake.sel].e;
-    if (n) drawBubbleAt(liftG('home', 4.5, 3, 66), `${Object.keys(S.bake.out).filter(g => S.bake.out[g]).map(g => GOODS[g].e)[0]}${n}`, true);
-    else if (!bakeBusy() && !S.night && bakeHave(S.bake.sel) > 0) drawBubbleAt(liftG('home', 4.5, 3, 66), `${sel}?`, false);
+    if (n) drawBubbleAt(liftG('home', 5, 3, 62), `${Object.keys(S.bake.out).filter(g => S.bake.out[g]).map(g => GOODS[g].e)[0]}${n}`, true);
+    else if (!bakeBusy() && !S.night && bakeHave(S.bake.sel) > 0) drawBubbleAt(liftG('home', 5, 3, 62), `${sel}?`, false);
   }
   if (S.order && (!S.order.seen || orderReady())) drawBubbleAt(liftG('mail', 4.5, 5.5, 50), orderReady() ? '📦✔' : '✉️', orderReady());
   for (const k in PROD) {
@@ -3499,9 +3525,9 @@ function drawReserved() {
   }
   if (!S.up.bakery && !upLocked('bakery')) {   // место под пекарню
     ctx.setLineDash([5, 5]);
-    poly([[4, 2], [5, 2], [5, 4], [4, 4]].map(([x, y]) => isoG('home', x, y)), 'rgba(255,255,255,.08)', 'rgba(255,255,255,.45)', 1.4);
+    poly([[4, 2], [6, 2], [6, 4], [4, 4]].map(([x, y]) => isoG('home', x, y)), 'rgba(255,255,255,.08)', 'rgba(255,255,255,.45)', 1.4);
     ctx.setLineDash([]);
-    const c = isoG('home', 4.5, 3); ctx.globalAlpha = .45; emoji('🥖', c.x - 8, c.y - 4, 14); ctx.globalAlpha = .9; emoji('🔒', c.x + 9, c.y - 4, 11); ctx.globalAlpha = 1;
+    const c = isoG('home', 5, 3); ctx.globalAlpha = .45; emoji('🥖', c.x - 8, c.y - 4, 14); ctx.globalAlpha = .9; emoji('🔒', c.x + 9, c.y - 4, 11); ctx.globalAlpha = 1;
   }
   if (!S.up.greenhouse) {   // место под теплицу
     ctx.setLineDash([5, 5]);
@@ -3625,55 +3651,64 @@ function smoke(p, t, speed) {
 }
 
 // Дом: изба → с верандой и трубой → двухэтажный. Уют 5 — флюгер и фонарики
+// Дом фермера: 3×3 клетки, двускатная крыша (конёк вдоль фасада, фронтон справа).
+// Уровни: 0 — домик, 1 — веранда, кухня и труба, 2 — второй этаж
+const HOUSE = { x0: 1, x1: 4, y0: 1, y1: 4 };
 function drawHouse(d, t) {
-  const L = S.up.house || 0, hw = L >= 2 ? 74 : 40;
-  softShadow(1.8, 1.8, 4.4, 4.6);
-  if (L >= 1) {   // настил веранды: доски с тенью
-    toonBox(1.85, 4, 2.3, .6, 3, ['#c99a62', '#a87a48'], ['#a87a48', '#8f6538'], ['#e2b679', '#c99a5e'], 0, 1.2);
-    for (const y of [4.15, 4.3, 4.45]) seg(lift(1.85, y, 3), lift(4.15, y, 3), 'rgba(120,80,40,.35)', 1);
+  const L = S.up.house || 0, hw = L >= 2 ? 78 : 44, R = 40, o = .24, { x0, x1: X, y0, y1: Y } = HOUSE, ym = (y0 + Y) / 2, e = hw - 3;
+  softShadow(x0 - .3, y0 - .2, X + .4, Y + .7);
+  if (L >= 1) {   // настил веранды вдоль всего фасада
+    toonBox(x0 - .15, Y, X - x0 + .3, .62, 3, ['#c99a62', '#a87a48'], ['#a87a48', '#8f6538'], ['#e2b679', '#c99a5e'], 0, 1.2);
+    for (const y of [Y + .15, Y + .3, Y + .45]) seg(lift(x0 - .15, y, 3), lift(X + .15, y, 3), 'rgba(120,80,40,.35)', 1);
   }
-  // стены: светлый фасад слева, тень справа; внизу — каменный цоколь
-  gface(fY(2, 4, 4, 0, hw), '#fbecc9', '#e2c595'); gface(fX(4, 2, 4, 0, hw), '#e6cc9c', '#c6a46f');
-  for (let z = 10; z < hw - 2; z += 8) {   // брёвнышки-обшивка
-    seg(lift(2, 4, z), lift(4, 4, z), 'rgba(150,105,60,.22)', 1.2);
-    seg(lift(4, 2, z), lift(4, 4, z), 'rgba(120,85,45,.25)', 1.2);
+  // стены: светлый фасад, тень справа; брёвнышки и каменный цоколь
+  gface(fY(x0, X, Y, 0, hw), '#fbecc9', '#e2c595'); gface(fX(X, y0, Y, 0, hw), '#e6cc9c', '#c6a46f');
+  for (let z = 10; z < hw - 2; z += 8) { seg(lift(x0, Y, z), lift(X, Y, z), 'rgba(150,105,60,.22)', 1.2); seg(lift(X, y0, z), lift(X, Y, z), 'rgba(120,85,45,.25)', 1.2); }
+  gface(fY(x0, X, Y, 0, 6), '#b9b2a6', '#8f887c', INK, 1.2); gface(fX(X, y0, Y, 0, 6), '#a29b8f', '#7d766b', INK, 1.2);
+  for (let x = x0 + .5; x < X; x += .55) seg(lift(x, Y, 0), lift(x, Y, 6), 'rgba(60,55,50,.35)', 1);
+  for (let y = y0 + .5; y < Y; y += .55) seg(lift(X, y, 0), lift(X, y, 6), 'rgba(60,55,50,.35)', 1);
+  gface(fY(X - .12, X, Y, 0, hw), '#c99a62', '#9e7140', INK, 1); gface(fX(X, Y - .12, Y, 0, hw), '#b0844f', '#8a6236', INK, 1);   // угловой брус
+  // фронтон справа — треугольник стены под скатами, с круглым чердачным окошком
+  gface([lift(X, y0, hw), lift(X, Y, hw), lift(X, ym, hw + R - 3)], '#e6cc9c', '#d0b07c');
+  for (let z = hw + 8; z < hw + R - 8; z += 8) { const k = 1 - (z - hw) / (R - 3); seg(lift(X, ym - 1.5 * k, z), lift(X, ym + 1.5 * k, z), 'rgba(120,85,45,.25)', 1.1); }
+  { const c = lift(X, ym, hw + 15); circle(c.x, c.y, 6.5, '#7a4a2a'); circle(c.x, c.y, 5, S.night ? '#ffd27a' : '#bfe3f6'); seg({ x: c.x - 5, y: c.y }, { x: c.x + 5, y: c.y }, '#7a4a2a', 1.2); }
+  if (L >= 2) { gface(fY(x0, X, Y, 40, 44), '#c99a62', '#a87a48', INK, 1); gface(fX(X, y0, Y, 40, 44), '#b0844f', '#8f6538', INK, 1); }   // межэтажный пояс
+  // дверь со ступенькой, окна с ставнями
+  if (!L) toonBox(2.15, Y, .8, .2, 2, ['#c7c0b4', '#9d968a'], ['#aaa397', '#857e72'], ['#dcd6cc', '#c3bcb0'], 0, 1);
+  gface(fY(2.25, 2.85, Y, 2, 27), '#b07a46', '#7e5230', '#5b3a22', 2.4);
+  for (const x of [2.45, 2.65]) seg(lift(x, Y, 3), lift(x, Y, 26), 'rgba(70,40,20,.4)', 1);
+  { const k = lift(2.77, Y, 13); circle(k.x, k.y, 2, '#ffd54a'); circle(k.x - .5, k.y - .6, .8, '#fff6c8'); }
+  toonWin('y', Y, 1.45, 1.95, 12, 27, true); toonWin('y', Y, 3.2, 3.7, 12, 27, true);
+  toonWin('x', X, 1.25, 1.8, 13, 29, false);
+  if (!S.up.bakery) toonWin('x', X, 2.7, 3.3, 13, 29, true);   // под пекарней окна не видно
+  if (L >= 2) { for (const [a, b] of [[1.4, 1.9], [2.3, 2.8], [3.2, 3.7]]) toonWin('y', Y, a, b, 52, 68, true); toonWin('x', X, 1.25, 1.8, 52, 68, false); toonWin('x', X, 2.7, 3.3, 52, 68, false); }
+  seg(lift(x0, Y, hw), lift(X, Y, hw), 'rgba(255,250,235,.7)', 1.5);   // светлая кромка под крышей
+  if (L >= 1) {   // кирпичная труба на заднем скате — над коньком
+    toonBox(3.05, 1.55, .36, .36, R + 16, ['#c46a4a', '#9c4a32'], ['#a8573c', '#843d28'], null, hw + 6, 1.2);
+    toonBox(3.01, 1.51, .44, .44, 3, ['#7a7068', '#5e554e'], ['#6a615a', '#4f4741'], ['#9a918a', '#857c75'], hw + R + 22, 1.2);
+    anim(() => { if (S.started && !S.night) smoke(lift(3.23, 1.73, hw + R + 27), t, .6); });
   }
-  gface(fY(2, 4, 4, 0, 6), '#b9b2a6', '#8f887c', INK, 1.2); gface(fX(4, 2, 4, 0, 6), '#a29b8f', '#7d766b', INK, 1.2);
-  for (const x of [2.5, 3.1, 3.6]) seg(lift(x, 4, 0), lift(x, 4, 6), 'rgba(60,55,50,.35)', 1);
-  for (const y of [2.5, 3.1, 3.6]) seg(lift(4, y, 0), lift(4, y, 6), 'rgba(60,55,50,.35)', 1);
-  gface(fY(3.88, 4, 4, 0, hw), '#c99a62', '#9e7140', INK, 1); gface(fX(4, 3.88, 4, 0, hw), '#b0844f', '#8a6236', INK, 1);   // угловой брус
-  if (L >= 2) {   // межэтажный пояс
-    gface(fY(2, 4, 4, 38, 42), '#c99a62', '#a87a48', INK, 1); gface(fX(4, 2, 4, 38, 42), '#b0844f', '#8f6538', INK, 1);
-  }
-  // дверь: доски, рама, ручка и ступенька
-  if (!L) toonBox(2.45, 4, .75, .18, 2, ['#c7c0b4', '#9d968a'], ['#aaa397', '#857e72'], ['#dcd6cc', '#c3bcb0'], 0, 1);
-  gface(fY(2.55, 3.1, 4, 2, 28), '#b07a46', '#7e5230', '#5b3a22', 2.4);
-  for (const x of [2.73, 2.92]) seg(lift(x, 4, 3), lift(x, 4, 27), 'rgba(70,40,20,.4)', 1);
-  const knob = lift(3.0, 4, 14); circle(knob.x, knob.y, 2, '#ffd54a'); circle(knob.x - .5, knob.y - .6, .8, '#fff6c8');
-  toonWin('x', 4, 2.55, 3.35, 15, 30, true);
-  if (L >= 1 || S.up.bakery) toonWin('y', 4, 3.4, 3.8, 14, 28, false);
-  if (L >= 2) { toonWin('y', 4, 2.3, 2.85, 47, 61, true); toonWin('y', 4, 3.2, 3.75, 47, 61, true); toonWin('x', 4, 2.35, 2.85, 47, 61, false); toonWin('x', 4, 3.2, 3.7, 47, 61, false); }
-  seg(lift(2, 4, hw), lift(4, 4, hw), 'rgba(255,250,235,.7)', 1.5);   // светлая кромка под крышей
-  const o = 0.2, apex = lift(3, 3, hw + 34);
-  if (L >= 1) {   // кирпичная труба с колпаком
-    toonBox(3.35, 2.25, .32, .32, 30, ['#c46a4a', '#9c4a32'], ['#a8573c', '#843d28'], null, hw + 4, 1.2);
-    toonBox(3.31, 2.21, .4, .4, 3, ['#7a7068', '#5e554e'], ['#6a615a', '#4f4741'], ['#9a918a', '#857c75'], hw + 34, 1.2);
-    anim(() => { if (S.started && !S.night) smoke(lift(3.5, 2.4, hw + 39), t, .6); });
-  }
-  toonRoof(2 - o, 2 - o, 4 + o, 4 + o, hw - 2, apex);
-  if (L >= 1) {   // навес веранды на двух столбиках
-    for (const x of [1.92, 4.08]) { vline(x, 4.55, 0, 27, INK, 5); vline(x, 4.55, 0, 27, '#a87a48', 3); vline(x - .02, 4.55, 1, 26, '#d7a86c', 1); }
-    gface(fY(1.85, 4.15, 4.68, 23, 25.5), '#a87a48', '#8f6538', INK, 1.1);
-    gface([lift(1.85, 4, 33), lift(4.15, 4, 33), lift(4.15, 4.68, 25.5), lift(1.85, 4.68, 25.5)], '#e6b97c', '#c2905a', INK, 1.4);
-    for (let k = 1; k < 4; k++) { const f = k / 4; seg(lift(1.85, 4 + .68 * f, 33 - 7.5 * f), lift(4.15, 4 + .68 * f, 33 - 7.5 * f), 'rgba(120,80,40,.35)', 1.1); }
+  // передний скат: черепица рядами; ребро конька; торцевые доски на фронтоне
+  const A = lift(x0 - o, Y + o, e), B = lift(X + o, Y + o, e), C = lift(X + o, ym, hw + R), D = lift(x0 - o, ym, hw + R);
+  gface([D, C, B, A], '#d4584a', '#a83c32', INK, 1.6);
+  for (let k = 1; k < 6; k++) { const f = k / 6; seg(mix(A, D, f), mix(B, C, f), 'rgba(90,20,15,.35)', 1.3); seg(mix(A, D, f + .02), mix(B, C, f + .02), 'rgba(255,200,180,.18)', 1); }
+  seg(A, B, 'rgba(255,225,205,.55)', 1.6);
+  const Bk = lift(X + o, y0 - o, e), d5 = p => ({ x: p.x, y: p.y + 5 });
+  gface([B, C, d5(C), d5(B)], '#8a3a2c', '#6e2c21', INK, 1.2); gface([C, Bk, d5(Bk), d5(C)], '#7a3226', '#5e251c', INK, 1.2);
+  seg(D, C, '#5e251c', 3); seg(D, C, '#e07a6a', 1);
+  if (L >= 1) {   // навес веранды на столбиках
+    // навес высоко — под самой крышей, неглубокий: окна и дверь под ним видны
+    for (const x of [x0 - .08, 2.5, X + .08]) { vline(x, Y + .5, 0, 34, INK, 5); vline(x, Y + .5, 0, 34, '#a87a48', 3); vline(x - .02, Y + .5, 1, 33, '#d7a86c', 1); }
+    gface(fY(x0 - .15, X + .15, Y + .58, 32, 34.5), '#a87a48', '#8f6538', INK, 1.1);
+    gface([lift(x0 - .15, Y, 39), lift(X + .15, Y, 39), lift(X + .15, Y + .58, 34.5), lift(x0 - .15, Y + .58, 34.5)], '#e6b97c', '#c2905a', INK, 1.4);
+    for (let k = 1; k < 3; k++) { const f = k / 3; seg(lift(x0 - .15, Y + .58 * f, 39 - 4.5 * f), lift(X + .15, Y + .58 * f, 39 - 4.5 * f), 'rgba(120,80,40,.35)', 1.1); }
   }
   if ((S.up.cozy || 0) >= 5) {
-    const ap = lift(3, 3, hw + 34), tp = lift(3, 3, hw + 48);
-    seg(ap, tp, '#3b2416', 1.8);
-    emoji('🐓', tp.x, tp.y - 5, 13);
-    if (L >= 1) for (const lx of [2.35, 3.3]) {   // фонарики — под навесом веранды
-      const lp = lift(lx, 4.02, 23);
-      seg(lift(lx, 4.02, 30), { x: lp.x, y: lp.y - 4 }, '#3b2416', 1);
+    const ap = lift(2.2, ym, hw + R), tp = lift(2.2, ym, hw + R + 14);   // флюгер на коньке
+    seg(ap, tp, '#3b2416', 1.8); emoji('🐓', tp.x, tp.y - 5, 13);
+    if (L >= 1) for (const lx of [1.7, 3.35]) {   // фонарики — под навесом веранды
+      const lp = lift(lx, Y + .3, 29);
+      seg(lift(lx, Y + .3, 36), { x: lp.x, y: lp.y - 4 }, '#3b2416', 1);
       circle(lp.x, lp.y, 3.6, INK); circle(lp.x, lp.y, 2.7, S.night ? '#ffe28a' : '#f4c95d'); circle(lp.x - .8, lp.y - .8, .9, '#fff8d8');
     }
   }
@@ -3681,7 +3716,7 @@ function drawHouse(d, t) {
 // Пекарня: кирпичная пристройка с покатой крышей, полосатым козырьком, трубой и окном-печкой
 function drawBakery(d, t) {
   if (!S.up.bakery) return;
-  const x0 = 4, y0 = 2.08, w = .92, dd = 1.84, h = 26, top = 37, X = x0 + w, Y = y0 + dd;
+  const x0 = 4, y0 = 2.08, w = 1.84, dd = 1.84, h = 28, top = 39, X = x0 + w, Y = y0 + dd;   // две клетки в ширину
   gface(fY(x0, X, Y, 0, h), '#f6b682', '#da8b57'); gface(fX(X, y0, Y, 0, h), '#e19a66', '#bf7445');
   gface([lift(x0, Y, h), lift(X, Y, h), lift(x0, Y, top)], '#f8bd8a', '#eaa36e');   // фронтон к дому
   ctx.save(); shape(fX(X, y0, Y, 0, h)); ctx.clip();   // кирпичная кладка
@@ -3696,26 +3731,27 @@ function drawBakery(d, t) {
     for (let x = x0 + (r % 2 ? .1 : .24); x < X; x += .28) seg(lift(x, Y, z), lift(x, Y, z + 4.5), 'rgba(150,70,35,.22)', 1);
   }
   ctx.restore();
-  gface(fY(4.25, 4.7, Y, 0, 19), '#b07a46', '#7e5230', '#5b3a22', 2.2);   // дверь
-  const dk = lift(4.62, Y, 9); circle(dk.x, dk.y, 1.6, '#ffd54a');
+  gface(fY(4.3, 4.85, Y, 0, 21), '#b07a46', '#7e5230', '#5b3a22', 2.2);   // дверь
+  const dk = lift(4.76, Y, 10); circle(dk.x, dk.y, 1.6, '#ffd54a');
+  toonWin('y', Y, 5.15, 5.6, 9, 20, false);   // окошко рядом с дверью
   const baking = bakeLoaded().length && S.started && !S.night;
-  toonWin('x', X, 2.4, 3.2, 7, 18, false, S.night ? null : baking ? ['#ffe0a0', '#ff9a3c'] : null);
-  for (let i = 0; i < 6; i++) {   // полосатый козырёк над окном
+  toonWin('x', X, 2.4, 3.4, 7, 20, false, S.night ? null : baking ? ['#ffe0a0', '#ff9a3c'] : null);
+  for (let i = 0; i < 7; i++) {   // полосатый козырёк над окном
     const a = 2.32 + i * .16, b = a + .16;
-    shape([lift(X, a, 22), lift(X, b, 22), lift(X + .26, b, 17), lift(X + .26, a, 17)]);
+    shape([lift(X, a, 24), lift(X, b, 24), lift(X + .26, b, 19), lift(X + .26, a, 19)]);
     ctx.fillStyle = i % 2 ? '#fff6ea' : '#e0473e'; ctx.fill();
   }
-  shape([lift(X, 2.32, 22), lift(X, 3.28, 22), lift(X + .26, 3.28, 17), lift(X + .26, 2.32, 17)]); ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke();
+  shape([lift(X, 2.32, 24), lift(X, 3.44, 24), lift(X + .26, 3.44, 19), lift(X + .26, 2.32, 19)]); ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke();
   const R = [lift(x0, y0 - .06, top), lift(X + .14, y0 - .06, h), lift(X + .14, Y + .12, h), lift(x0, Y + .12, top)];
   gface([R[2], R[1], { x: R[1].x, y: R[1].y + 4 }, { x: R[2].x, y: R[2].y + 4 }], '#86452c', '#66321f', INK, 1.2);   // торец крыши
   gface(R, '#c4734c', '#9c5636', INK, 1.5);
-  for (let k = 1; k < 5; k++) { const f = k / 5; seg(mix(R[0], R[1], f), mix(R[3], R[2], f), 'rgba(90,40,20,.35)', 1.3); seg(mix(R[0], R[1], f + .015), mix(R[3], R[2], f + .015), 'rgba(255,215,190,.2)', 1); }
+  for (let k = 1; k < 8; k++) { const f = k / 8; seg(mix(R[0], R[1], f), mix(R[3], R[2], f), 'rgba(90,40,20,.35)', 1.3); seg(mix(R[0], R[1], f + .015), mix(R[3], R[2], f + .015), 'rgba(255,215,190,.2)', 1); }
   seg(R[0], R[3], 'rgba(255,225,200,.5)', 1.6);
-  toonBox(4.15, 2.3, .3, .3, 15, ['#c46a4a', '#9c4a32'], ['#a8573c', '#843d28'], null, 33, 1.2);   // труба печи — над крышей
-  toonBox(4.12, 2.27, .36, .36, 2.5, ['#7a7068', '#5e554e'], ['#6a615a', '#4f4741'], ['#9a918a', '#857c75'], 48, 1);
-  const sg = lift(x0 + w * .3, Y, 31);   // круглая вывеска на фронтоне
+  toonBox(5.05, 2.3, .32, .32, 22, ['#c46a4a', '#9c4a32'], ['#a8573c', '#843d28'], null, 30, 1.2);   // труба печи — над крышей
+  toonBox(5.02, 2.27, .38, .38, 2.5, ['#7a7068', '#5e554e'], ['#6a615a', '#4f4741'], ['#9a918a', '#857c75'], 52, 1);
+  const sg = lift(x0 + w * .22, Y, h + 5);   // круглая вывеска на фронтоне
   circle(sg.x, sg.y, 7.5, INK); circle(sg.x, sg.y, 6.4, '#f6e2b8'); emoji('🥖', sg.x, sg.y, 9);
-  if (baking) anim(() => smoke(lift(4.3, 2.45, 52), t, .9));
+  if (baking) anim(() => smoke(lift(5.21, 2.46, 57), t, .9));
 }
 // Почтовый ящик: флажок поднят, когда есть заказ
 function toonPost(x, y, z0, z1, w = .07, c = ['#c99a62', '#9e7140']) {   // тонкий брус
@@ -4396,7 +4432,7 @@ function drawBars() {
   });
   if (S.up.bakery) S.bake.ov.forEach((o, i) => {   // пекарня: по полоске на отделение
     if (!o) return;
-    const c = liftG('home', 4.5, 4.25, 2);
+    const c = liftG('home', 5, 4.25, 2);
     rr(c.x - 16, c.y + i * 7, 32, 5, 2.5, 'rgba(0,0,0,.35)'); rr(c.x - 16, c.y + i * 7, 32 * Math.min(1, o.t / BAKE[o.r].time), 5, 2.5, '#ffd34d');
   });
   for (const k in PROD) {   // мельница и сыроварня: прогресс текущей партии
@@ -4429,15 +4465,15 @@ function drawLighting() {
   if (S.night) {
     ctx.fillStyle = 'rgba(12,22,60,.55)'; ctx.fillRect(0, 0, cv.width, cv.height);
     setWorld(); ctx.globalCompositeOperation = 'lighter';
-    const glows = [[liftG('home', 4, 2.95, 22), 70], [liftG('stall', 4, 10.1, 56), S.up.sign >= 3 ? 95 : 60]];
+    const glows = [[liftG('home', 2.6, 4, 22), 75], [liftG('home', 5.84, 2.9, 14), 55], [liftG('stall', 4, 10.1, 56), S.up.sign >= 3 ? 95 : 60]];
     if (hens()) glows.push([liftG('coop', 6.4, 9, 17), 45]);
     if (cows()) glows.push([liftG('barn', 16, 2, 40), 50]);
     if (S.up.mill) glows.push([liftG('mill', 19, 7, 30), 55]);
     if (S.up.dairy) glows.push([liftG('dairy', 18.5, 10, 26), 50]);
     if (S.up.ads) glows.push([liftG('ads', 12.55, 10.5, S.up.ads >= 3 ? 42 : 24), S.up.ads >= 5 ? 85 : S.up.ads >= 3 ? 65 : 42, .6]);   // подсветка щита
     if (S.up.greenhouse) glows.push([liftG('gh', 14.5, 9, 30), 60]);
-    if (S.up.house >= 2) glows.push([liftG('home', 4, 2.9, 54), 55], [liftG('home', 3, 4, 54), 50]);
-    if (S.up.cozy >= 5) glows.push([liftG('home', 2.35, 4.05, 24), 38, .5], [liftG('home', 3.3, 4.05, 24), 38, .5]);
+    if (S.up.house >= 2) glows.push([liftG('home', 4, 2.4, 60), 55], [liftG('home', 2.5, 4, 60), 55]);
+    if (S.up.cozy >= 5) glows.push([liftG('home', 1.7, 4.3, 29), 38, .5], [liftG('home', 3.35, 4.3, 29), 38, .5]);
     for (const [p, r, a = .35] of glows) {
       const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
       g.addColorStop(0, `rgba(255,200,100,${a})`); g.addColorStop(1, 'rgba(255,190,90,0)');
