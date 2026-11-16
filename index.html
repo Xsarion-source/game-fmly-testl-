@@ -448,7 +448,7 @@ const UPGRADES = {
   ads:    { name: 'Реклама',           ico: '📣', desc: l => `+1 покупатель в день (больше людей приводит уровень фермы ⭐)`,           cost: l => 30 + l*35,           max: 10 },
   fert:   { name: 'Удобрения',         ico: '🧪', desc: l => `Рост быстрее (+${l*20}% → +${(l+1)*20}%)`, cost: l => 50 + l*60, max: 5 },
   slots:  { name: 'Место на прилавке',  ico: '🧺', desc: l => `Ещё одно место для товара на прилавке: ${3 + l} → ${4 + l}`, cost: l => [150, 450, 1000][l], max: 3 },
-  stall2: { name: 'Вторая лавка',      ico: '🏪', desc: l => 'Ещё одна лавка слева от первой: 6 мест под товар, своя очередь и свой продавец', cost: l => [3000][l], max: 1, need: () => S.up.slots >= 3, needText: 'Откроется, когда на прилавке будет 6 мест 🧺' },
+  stall2: { name: 'Вторая лавка',      ico: '🏪', desc: l => 'Ещё одна лавка слева от первой: 6 мест под товар и своя очередь. Торгуют фермер и помощники со станцией «Лавка»', cost: l => [3000][l], max: 1, need: () => S.up.slots >= 3, needText: 'Откроется, когда на прилавке будет 6 мест 🧺' },
   seasonstand: { name: 'Сезонная пристройка', ico: '🍦', desc: l => 'Маленькая пристройка к лавке: ещё 2 места — только для сезонных товаров', cost: l => [3000][l], max: 1, need: () => false, needText: 'Откроется, когда появятся сезонные товары' },
   sign:   { name: 'Красивая вывеска',  ico: '🪧', desc: l => `Цены на лотке выше (+${l*5}% → +${(l+1)*5}%)`, cost: l => 60 + l*70, max: 6 },
   helper: { name: 'Помощник',         ico: '🧑‍🌾', desc: l => `Работает на одной или нескольких станциях: поле, сад, курятник, коровник, лавка (помощников: ${l} → ${l+1})`, cost: l => [120, 280, 520, 800, 1150, 1600, 2100, 2700, 3400, 4200][l], max: 10 },
@@ -773,7 +773,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.78';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.79';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1751,7 +1751,7 @@ function buyUpgrade(key) {
     hay: '🟨 Сеновал построен — каждую ночь сам кормит коров со склада',
     pasture: `🐄 Пастбище больше — места для ${3 + 2 * S.up.pasture} коров. Покупай коров в «Коровнике»`,
     fert: '🧪 Мешки удобрений у поля', sign: '🪧 Новая вывеска над лотком', bench: '🪑 Скамейка у очереди',
-    stall2: '🏪 Вторая лавка открыта! Выставь на неё товар: «Прилавок» → «Лавка 2». Продаёт её продавец',
+    stall2: '🏪 Вторая лавка открыта! Выставь на неё товар: «Прилавок» → «Лавка 2». Поставь на станцию «Лавка» второго помощника — один встанет за первую лавку, другой за вторую',
     slots: `🧺 На прилавке теперь ${shopN()} мест — выставь ещё товар: «Прилавок»`,
     fairbake: `🥐 Хлебный лоток на ярмарке — ещё ${BAKE_CRATES} ящика для выпечки. Собирай их до субботы кнопкой 🎪`,
     fairstall: `🎪 Новый лоток на ярмарке — теперь ${fairCrates()} ящиков товара. Собирай их до субботы кнопкой 🎪`,
@@ -1962,7 +1962,7 @@ function updatePlayer(dt) {
 // продавец второй лавки: сам обслуживает её очередь, по одному покупателю примерно в секунду
 const clerk = { x: CLERK2.x + .5, y: CLERK2.y + .5, phase: 0, moving: false, flip: false, t: 0 };
 const CLERK_LOOK = { shirt: '#e05a7a', shirtDark: '#b8435f', pants: '#3b4a6b', skin: '#e8b48a', hair: '#6b3e1f', hat: 'cap', capColor: '#fffaf0' };
-const clerkOn = () => S.up.stall2 && !S.night && !isRest() && !isFair();
+const clerkOn = () => false;   // своего продавца у второй лавки нет — продают фермер и помощники со станцией «Лавка»
 function updateClerk(dt) {
   if (!clerkOn() || (clerk.t -= dt) > 0) return;
   const v = visitors.find(v => v.state === 'waiting' && v.shop === 1 && canSell(v));
@@ -2018,7 +2018,7 @@ const STATIONS = {
   mill:    { ico: '🌬️', name: 'Мельница', idle: at('mill', 19, 7),  hint: 'Мелет пшеницу в муку (оставляет 🌾 коровам)' },
   dairy:   { ico: '🧀', name: 'Сыроварня', idle: at('dairy', 16, 7), hint: 'Варит сыр из молока' },
   bakery:  { ico: '🥖', name: 'Пекарня',  idle: at('home', 4, 4),   hint: 'Печёт выбранный рецепт и забирает готовое' },
-  stall:   { ico: '🏪', name: 'Лавка',    idle: at('stall', 3, 9),  hint: 'Стоит за прилавком и продаёт то, что выставлено' },
+  stall:   { ico: '🏪', name: 'Лавка',    idle: at('stall', 3, 9),  hint: 'Стоит за прилавком и продаёт то, что выставлено. Двое помощников делят обе лавки' },
 };
 const REST = { ico: '😴', idle: at('home', 3, 4) };
 let helpers = [];
@@ -2122,10 +2122,20 @@ function helperJobs(cfg) {
   }
   return jobs;
 }
-const serveable = () => !S.night && visitors.some(v => v.state === 'waiting' && canSell(v) && (fairOn() || !v.shop));   // помощник — за первой лавкой
-function helperSell(h) {   // продавец за прилавком
+// помощники со станцией «Лавка» обслуживают обе лавки: двое и больше — делятся (чётные — первая, нечётные — вторая),
+// один — переходит туда, где ждёт покупатель, которому есть что продать
+const forShop = (v, k) => fairOn() || (v.shop || 0) === k;
+const serveable = (k = 0) => !S.night && visitors.some(v => v.state === 'waiting' && canSell(v) && forShop(v, k));
+function helperShop(h) {
+  if (fairOn() || !S.up.stall2) return 0;
+  const list = helpers.filter(o => (S.helpers[o.id]?.stations || []).includes('stall'));
+  if (list.length >= 2) return list.indexOf(h) % 2;
+  const cur = h.shopK || 0; return serveable(cur) ? cur : serveable(1 - cur) ? 1 - cur : cur;
+}
+const shopSpot = k => k ? CLERK2 : STATIONS.stall.idle;   // где стоит помощник за прилавком
+function helperSell(h, k = 0) {   // помощник за прилавком
   if ((h.sellT -= 1) > 0) return;
-  const v = visitors.find(v => v.state === 'waiting' && canSell(v) && (fairOn() || !v.shop));
+  const v = visitors.find(v => v.state === 'waiting' && canSell(v) && forShop(v, k));
   if (v) { sell(v); h.work = 0.45; h.sellT = 1; }
 }
 function updateHelper(h, dt) {
@@ -2163,10 +2173,13 @@ function updateHelper(h, dt) {
     return;
   }
   // лавка в приоритете: если есть кому продать — продаёт, иначе идёт по другим станциям
-  if (cfg.stations.includes('stall') && serveable()) {
-    if (hx === stall.x && hy === stall.y) { h.flip = false; helperSell(h); }
-    else h.path = findPath(hx, hy, stall.x, stall.y) || [];
-    return;
+  if (cfg.stations.includes('stall')) {
+    const k = h.shopK = helperShop(h), sp = shopSpot(k);
+    if (serveable(k)) {
+      if (hx === sp.x && hy === sp.y) { h.flip = false; helperSell(h, k); }
+      else h.path = findPath(hx, hy, sp.x, sp.y) || [];
+      return;
+    }
   }
   const claimed = new Set(helpers.filter(o => o.target).map(o => o.target.x + ',' + o.target.y));
   if (tasks[0]) claimed.add(tasks[0].x + ',' + tasks[0].y);
@@ -2190,7 +2203,7 @@ function updateHelper(h, dt) {
   if (!found) {   // работы нет — ждёт на своей станции
     const first = cfg.stations.includes('stall') ? 'stall' : cfg.stations[0];
     const base = first ? STATIONS[first].idle : REST.idle;
-    const spot = first === 'stall' ? (fairOn() ? FAIR_HELP : base) : first === 'field' && cfg.zones.length ? zoneIdle(cfg.zones[0]) : first === 'gh' ? GH_IDLE : { x: base.x + (h.id % 2), y: base.y };
+    const spot = first === 'stall' ? (fairOn() ? FAIR_HELP : shopSpot(h.shopK || 0)) : first === 'field' && cfg.zones.length ? zoneIdle(cfg.zones[0]) : first === 'gh' ? GH_IDLE : { x: base.x + (h.id % 2), y: base.y };
     if ((hx !== spot.x || hy !== spot.y) && (walkable(spot.x, spot.y) || spot.y >= H)) h.path = findPath(hx, hy, spot.x, spot.y) || [];   // место на ярмарке — за краем сетки фермы
   }
 }
@@ -5340,7 +5353,7 @@ function openStall(sel, shop) {
   let h = `<h2>🏪 Прилавок</h2><div class="fpinfo">Покупатели приходят только за тем, что стоит на прилавке, и берут со склада. Остальное копится — для заказов, ярмарки и производства. Менять можно в любой момент.</div>
     
     ${S.up.stall2 ? `<div class="pmrow" style="margin-bottom:8px">${['🏪 Лавка 1', '🏪 Лавка 2'].map((t, k) => `<button class="${k === shopSel ? '' : 'alt'}" onclick="openStall(0, ${k})">${t}</button>`).join('')}</div>
-      <div class="fpinfo" style="margin-top:-4px">${shopSel ? 'Здесь продаёт продавец — сам, весь день. У лавки своя очередь.' : 'Здесь продаёшь ты или помощник за прилавком.'}</div>` : ''}
+      <div class="fpinfo" style="margin-top:-4px">${shopSel ? 'У второй лавки своя очередь. Продаёшь ты или помощник со станцией «Лавка».' : 'Здесь продаёшь ты или помощник со станцией «Лавка».'}</div>` : ''}
     <div class="cgrid">`;
   for (let i = 0; i < 6; i++) {
     const id = A[i], on = i === slotSel ? ' sel' : '';
@@ -5365,7 +5378,7 @@ function openStall(sel, shop) {
     for (const id of sps) { const on = onSale(id), g = GOODS[id]; h += `<button class="sg sp ${on ? 'on' : ''}" onclick="toggleSale('${id}')"><span class="e">${g.e}</span><b>${g.name}</b><small>${S.inv[id]} шт · ${sellPrice(id)}💰</small><i>${on ? '✔ продаём' : '🏆 бережём'}</i></button>`; }
     h += `</div>`;
   }
-  if (!S.up.stall2 && !upLocked('stall2')) h += `<div class="fpinfo" style="margin-top:10px">🏪 Можно поставить <b>вторую лавку</b> — ещё 6 мест, своя очередь и свой продавец. Ночью: «Улучшения» → «Ферма».</div>`;
+  if (!S.up.stall2 && !upLocked('stall2')) h += `<div class="fpinfo" style="margin-top:10px">🏪 Можно поставить <b>вторую лавку</b> — ещё 6 мест и своя очередь, торгуют фермер и помощники. Ночью: «Улучшения» → «Ферма».</div>`;
   h += `<button class="wide" style="width:100%;margin-top:12px" onclick="S.night ? openNight(false) : closeNight()">Готово</button>`;
   const top = $('sheet').dataset.view === 'stall' ? $('sheet').scrollTop : 0;
   $('sheet').dataset.view = 'stall'; $('sheet').innerHTML = h; $('overlay').classList.add('show'); $('sheet').scrollTop = top;
