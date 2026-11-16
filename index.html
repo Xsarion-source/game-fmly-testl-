@@ -169,6 +169,10 @@
   .lu-news { text-align: left; font-size: 15px; line-height: 1.5; background: #f6ecd2; border-radius: 12px; padding: 8px 12px; margin-bottom: 12px; }
   .lu-news:empty { display: none; }
   .lu-card button { width: 100%; font-size: 18px; }
+  .season-spring { background: linear-gradient(#ffe0ee, #f7a8c8) !important; border: 2px solid #e57fae !important; }
+  .season-summer { background: linear-gradient(#fff3b0, #ffc94d) !important; border: 2px solid #e8a820 !important; }
+  .season-autumn { background: linear-gradient(#ffd8a8, #ec9550) !important; border: 2px solid #c9661f !important; }
+  .season-winter { background: linear-gradient(#f0f8ff, #b2d8f6) !important; border: 2px solid #6fa3d8 !important; }
   @keyframes luPop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
   #infoBox > div { background: var(--panel); border-radius: 18px; padding: 16px; max-width: 360px; width: 100%; box-shadow: 0 10px 30px rgba(0,0,0,.3); font-size: 15px; line-height: 1.45; }
   #infoText h3 { margin: 0 0 6px; font-size: 18px; }
@@ -304,9 +308,9 @@
 <div id="overlay"><div id="sheet"></div></div>
 <div id="toast"></div>
 <div id="lvlUp" onclick="if (event.target === this) closeLvl()"><div class="lu-card">
-  <div class="lu-burst">🎉</div><div class="lu-star">⭐</div><div class="lu-n" id="luN">2</div>
-  <div class="lu-t">Новый уровень фермы!</div><div class="lu-news" id="luNews"></div>
-  <button class="wide" onclick="closeLvl()">Ура!</button></div></div>
+  <div class="lu-burst" id="luBurst">🎉</div><div class="lu-star" id="luStar">⭐</div><div class="lu-n" id="luN">2</div>
+  <div class="lu-t" id="luT">Новый уровень фермы!</div><div class="lu-news" id="luNews"></div>
+  <button class="wide" id="luOk" onclick="closeLvl()">Ура!</button></div></div>
 <div id="infoBox" onclick="if (event.target === this) closeInfo()"><div><div id="infoText"></div><button class="wide" style="width:100%;margin-top:12px" onclick="closeInfo()">ОК</button></div></div>
 
 <script>
@@ -741,7 +745,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.70';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.71';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -852,10 +856,22 @@ function showLevelUp(L0, L) {
   const rows = open.map(t => `🔓 ${t}`);
   if (xL(L) > xL(L0)) rows.push(`🧍 Покупателей в день: ${xL(L0)} → <b>${xL(L)}</b>`);
   if (basketMax(L) > basketMax(L0)) rows.push(`🧺 В корзинке до <b>${basketMax(L)}</b> разных товаров`);
-  $('luN').textContent = L; $('luNews').innerHTML = rows.join('<br>');
+  luDress('🎉', '⭐', 'Новый уровень фермы!', 'Ура!', '#f0b429'); $('luN').textContent = L; $('luNews').innerHTML = rows.join('<br>');
   $('lvlUp').classList.add('show');
 }
 function closeLvl() { $('lvlUp').classList.remove('show'); }
+function luDress(burst, star, title, ok, border) { $('luBurst').textContent = burst; $('luStar').textContent = star; $('luT').textContent = title; $('luOk').textContent = ok; document.querySelector('.lu-card').style.borderColor = border; }
+// новый сезон: праздничное окно в цветах сезона
+const SEASON_ACC = { spring: 'весну', summer: 'лето', autumn: 'осень', winter: 'зиму' }, SEASON_COL = { spring: '#f29ac0', summer: '#f0b429', autumn: '#e0782f', winter: '#7fb2ec' };
+const SEASON_BURST = { spring: '🌷', summer: '🌻', autumn: '🍁', winter: '⛄' };
+function showSeasonCard() {
+  const se = season(), c = cal(), was = $('lvlUp').classList.contains('show');
+  if (was) return;   // уже открыто окно уровня — сезон покажем тостом
+  luDress(SEASON_BURST[se.id] || '🎉', se.e, `Наступил${se.id === 'summer' ? 'о' : 'а'} ${se.name.toLowerCase()}!`, 'Вперёд!', SEASON_COL[se.id]);
+  $('luN').textContent = c.year > 1 && se.id === 'spring' ? `Год ${c.year}` : '';
+  $('luNews').innerHTML = `${se.e} ${se.text}<br>📅 Сезон длится 3 недели: ярмарки в субботу 1-й и 2-й недели`;
+  $('lvlUp').classList.add('show');
+}
 function lvlNews(L) {   // что открывает уровень
   return [...(L === FAIR_LVL ? ['🎪 Ярмарка — две субботы в месяц'] : []), ...(L === MAIL_LVL ? ['📬 Заказы по почте'] : []), ...CROPS.filter(c => c.lvl === L).map(c => c.e + ' ' + c.name), ...Object.keys(UP_LVL).filter(k => UP_LVL[k] === L && L > 1 && !S.up[k] && UPGRADES[k]).map(k => UPGRADES[k].ico + ' ' + UPGRADES[k].name)].join(', ');
 }
@@ -957,7 +973,7 @@ function startDay() {
   else if (shouldAutoStart()) beginClock();
   else toast('🌅 Рассвет. Посади семечко (или нажми на солнце) — и день начнётся');
   if (coopMsg) setTimeout(() => toast(coopMsg), 1700);
-  if (cal().sday === 1 && S.day > 1) setTimeout(() => toast(`${season().e} Наступила ${season().name.toLowerCase()}: ${season().text}`), coopMsg ? 3400 : 1700);
+  if (cal().sday === 1 && S.day > 1) setTimeout(() => { if ($('lvlUp').classList.contains('show')) toast(`${season().e} ${season().name}: ${season().text}`); else showSeasonCard(); }, 600);
   if (isFair()) { setTimeout(() => { toast(cratesUsed() ? `🎪 Ярмарка! Лавка закрыта — торгуем в шатре фермы. Привезли ${cratesUsed()} ящ.` : '🎪 Ярмарка, а ящики пустые — продавать нечего. Собери товары к следующей субботе'); if (!tasks.length && !path.length) setTasks([{ x: FAIR_SELL.x, y: FAIR_SELL.y }]); }, 900); setTimeout(() => toast(`🏆 Сегодня конкурс ${SPECIAL[contestOf()].what} ${SPECIAL[contestOf()].e} — тапни на доску у входа на ярмарку`), 3600); }
   if (isRest()) setTimeout(openSunday, 600);
   if (isFair(S.day + 1)) { setTimeout(() => toast(contestReminder()), 2600); if (!cratesUsed()) setTimeout(() => toast('🎪 Завтра ярмарка — собери товары в ящики: «Прилавок» → «Товары на ярмарку»'), 5200); }
@@ -4695,7 +4711,9 @@ function renderUI() {
   $('nightBtn').style.display = S.night ? '' : 'none';
   $('plantAll').style.display = '';   // сажать можно и ночью — к утру прорастёт
   $('dayBtn').style.display = S.night ? '' : 'none';
-  $('dayBtn').textContent = `☀️ Начать день ${cal(S.day + 1).sday}${cal(S.day + 1).sday === 1 ? ` · ${season(S.day + 1).name}` : ''}`;
+  { const ns = cal(S.day + 1).sday === 1 ? season(S.day + 1) : null;   // завтра новый сезон — кнопка в его цветах
+    $('dayBtn').textContent = ns ? `${ns.e} Встретить ${SEASON_ACC[ns.id]}` : `☀️ Начать день ${cal(S.day + 1).sday}`;
+    $('dayBtn').className = 'wide sunrise' + (ns ? ' season-' + ns.id : ''); }
   $('helperBtn').style.display = S.up.helper > 0 ? '' : 'none';
   setTimeout(() => { const n = [...document.querySelectorAll('.arow .act')].filter(b => b.style.display !== 'none').length; const r = document.querySelector('.arow'); r.style.setProperty('--n', Math.max(5, n)); r.style.gap = n > 5 ? '6px' : ''; });
   $('bakeBtn').style.display = S.up.bakery > 0 ? '' : 'none';
@@ -5073,7 +5091,7 @@ function openNight(withSummary) {
   }
   h += shopTabs();
   h += `<div class="row" style="margin-top:14px"><button class="wide alt" onclick="closeNight()">🌾 К грядкам</button>
-        <button class="wide" style="background:#ffd34d" onclick="morning()">☀️ Начать день ${cal(S.day + 1).sday}${cal(S.day + 1).sday === 1 ? ` · ${season(S.day + 1).name}` : ''}</button></div>
+        <button class="wide${cal(S.day + 1).sday === 1 ? ' season-' + season(S.day + 1).id : ''}" style="background:#ffd34d" onclick="morning()">${cal(S.day + 1).sday === 1 ? `${season(S.day + 1).e} Встретить ${SEASON_ACC[season(S.day + 1).id]}` : `☀️ Начать день ${cal(S.day + 1).sday}`}</button></div>
 `;
   $('sheet').dataset.view = withSummary ? 'night-sum' : 'night'; $('sheet').innerHTML = h;
   $('overlay').classList.add('show');
