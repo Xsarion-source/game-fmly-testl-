@@ -209,7 +209,9 @@
   .crate .ce { font-size: 30px; line-height: 1.1; } .crate .ce.plus { font-size: 30px; color: #cdb994; }
   .crate b { font-size: 18px; } .crate b i { font-style: normal; font-size: 12px; opacity: .7; } .crate small { font-size: 11px; line-height: 1.1; text-align: center; }
   .crate.lockd { opacity: .55; }
-  .crate.sel { outline: 3px solid #f4a92b; outline-offset: 2px; }
+  .crate.sel { outline: 4px solid #f4a92b; outline-offset: 2px; position: relative; }
+  .crate.sel::after { content: 'выбрано'; position: absolute; top: -11px; left: 50%; transform: translateX(-50%); background: #f4a92b; color: #fff; font-size: 10px; font-weight: 900; padding: 1px 7px; border-radius: 8px; }
+  .cpanel.selp { border: 2.5px solid #f4a92b; }
   .cgrid .crate { aspect-ratio: 1.15; }
   .cpanel { background: #fffaf0; border: 1.5px solid #ecdcb8; border-radius: 14px; padding: 10px; margin-bottom: 8px; }
   .cptitle { font-size: 15px; margin-bottom: 6px; }
@@ -226,6 +228,15 @@
   .crow { display: flex; align-items: center; gap: 10px; } .crow input[type=range] { flex: 1; height: 34px; accent-color: #f4a92b; }
   .crow input[type=number] { width: 72px; font-size: 22px; font-weight: 800; text-align: center; padding: 6px; border-radius: 10px; border: 1.5px solid #d9c49a; background: #fffaf0; user-select: text; -webkit-user-select: text; }
   .cquick { display: flex; gap: 6px; margin-top: 8px; } .cquick button { flex: 1; padding: 8px 4px; font-size: 14px; }
+  /* шапка окна: ручка для свайпа, крупный заголовок, ⓘ с пояснением */
+  .sh-head { position: sticky; top: -14px; z-index: 3; margin: -14px -14px 10px; padding: 7px 14px 9px; background: var(--panel); border-bottom: 1.5px solid #ecdcb8; border-radius: 18px 18px 0 0; touch-action: none; cursor: grab; }
+  .sh-grab { width: 46px; height: 5px; border-radius: 3px; background: #d6c3a0; margin: 0 auto 7px; }
+  .sh-row { display: flex; align-items: center; gap: 10px; min-height: 30px; }
+  .sh-row h2 { flex: 1; margin: 0 !important; font-size: 22px !important; letter-spacing: .2px; }
+  .sh-info { flex: none; width: 32px; height: 32px; border-radius: 50%; padding: 0; background: #f3e8cf; border: 1.5px solid #e2cfa6; color: #7a5a3a; box-shadow: none;
+             font: italic 900 18px Georgia, 'Times New Roman', serif; display: flex; align-items: center; justify-content: center; }
+  #sheet .tabs { top: calc(var(--shh, 0px) - 14px); }
+  #sheet.drag { transition: none !important; }
   .fpinfo { font-size: 15px; line-height: 1.4; color: #5a4632; margin: -2px 0 10px; }
   .fphead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; margin: 4px 0 6px; }
   .fpprice { font-size: 14px; background: #fff3c4; border: 1.5px solid #f0c24a; border-radius: 999px; padding: 4px 10px; cursor: pointer; }
@@ -239,8 +250,10 @@
   .pack button { min-width: 0; padding: 7px 6px; font-size: 13px; border-radius: 10px; }
   .stallg { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
   .stallg .sg { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 8px 4px; border-radius: 14px; border: 1.5px solid #ecdcb8; background: #f3ead6; color: #7a6650; box-shadow: none; font-weight: 600; }
-  .stallg .sg .e { font-size: 28px; filter: grayscale(.7); opacity: .7; }
-  .stallg .sg b { font-size: 13px; color: var(--ink); } .stallg .sg small { font-size: 11px; } .stallg .sg i { font-style: normal; font-size: 12px; font-weight: 800; margin-top: 2px; }
+  .stallg .sg .e { font-size: 30px; }
+  .stallg .sg.used { opacity: .5; } .stallg .sg .q { font-size: 16px; font-weight: 900; color: var(--ink); line-height: 1.1; }
+  .stallg .sg b { font-size: 13px; color: var(--ink); } .stallg .sg small { font-size: 11px; }
+  .stallg .sg i:empty { display: none; } .stallg .sg i { font-style: normal; font-size: 12px; font-weight: 800; margin-top: 2px; }
   .stallg .sg.on { background: linear-gradient(#fff3c4, #ffe28f); border-color: #f0c24a; box-shadow: 0 3px 0 #dba93c; color: #6b4a1a; }
   .stallg .sg.on .e { filter: none; opacity: 1; }
   .stallg .sg.sp { border-color: #e8c25a; background: #fbf3dc; } .stallg .sg.sp .e { filter: none; opacity: 1; }
@@ -745,7 +758,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.73';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.74';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -5318,10 +5331,10 @@ function openStall(sel, shop) {
   }
   h += `</div>`;
   const cur = A[slotSel], other = S.up.stall2 ? shopArr(1 - shopSel).slice(0, shopCap(1 - shopSel)) : [];
-  h += `<div class="cpanel"><div class="cptitle">🧺 Место ${slotSel + 1}: ${cur ? `<b>${GOODS[cur].e} ${GOODS[cur].name}</b> · ${sellPrice(cur)}💰 · на складе ${S.inv[cur] || 0}` : 'выбери товар'}</div><div class="stallg">`;
+  h += `<div class="cpanel selp"><div class="cptitle">Место ${slotSel + 1}: ${cur ? `<b>${GOODS[cur].e} ${GOODS[cur].name}</b> · на складе <b>${S.inv[cur] || 0} шт</b> · ${sellPrice(cur)}💰 — нажми другой товар, чтобы заменить` : '<b>пусто</b> — выбери, что здесь продавать'}</div><div class="stallg">`;
   for (const id of known) {
     const j = A.slice(0, n).indexOf(id), g = GOODS[id], o = other.includes(id);
-    h += `<button class="sg${j === slotSel ? ' on' : ''}" onclick="setSlot(${slotSel}, '${id}')"><span class="e">${g.e}</span><b>${g.name}</b><small>${S.inv[id] || 0} шт · ${sellPrice(id)}💰</small><i>${j === slotSel ? '✔ здесь' : j >= 0 ? `на месте ${j + 1}` : o ? `в лавке ${2 - shopSel}` : ''}</i></button>`;
+    h += `<button class="sg${j === slotSel ? ' on' : j >= 0 || o ? ' used' : ''}" onclick="setSlot(${slotSel}, '${id}')"><span class="e">${g.e}</span><b>${g.name}</b><span class="q">${S.inv[id] || 0} шт</span><small>${sellPrice(id)}💰 за штуку</small><i>${j === slotSel ? '✔ здесь' : j >= 0 ? `уже на месте ${j + 1}` : o ? `в лавке ${2 - shopSel}` : ''}</i></button>`;
   }
   h += `</div>${cur ? `<button class="wide alt" style="width:100%;margin-top:8px" onclick="setSlot(${slotSel}, null)">Убрать с прилавка</button>` : ''}</div>`;
   if (S.up.seasonstand) {   // сезонная пристройка: 2 места (сезонных товаров пока нет)
@@ -5504,7 +5517,37 @@ function toast(msg) {
   toastT = setTimeout(() => t.classList.remove('show'), Math.min(7000, Math.max(2500, 1200 + String(msg).length * 60)));
 }
 new MutationObserver(() => { if ($('toast').classList.contains('show')) placeToast(); }).observe($('overlay'), { attributes: true, attributeFilter: ['class'] });   // меню открылось/закрылось — подсказка переезжает
-new MutationObserver(() => { if ($('toast').classList.contains('show')) requestAnimationFrame(placeToast); }).observe($('sheet'), { childList: true });
+new MutationObserver(() => { decorateSheet(); if ($('toast').classList.contains('show')) requestAnimationFrame(placeToast); }).observe($('sheet'), { childList: true });
+// Шапка любого окна: ручка, заголовок из первого <h2>; пояснение (.fpinfo/.intro сразу под заголовком) — в кнопку ⓘ
+let sheetInfo = '';
+function decorateSheet() {
+  const sh = $('sheet'); if (sh.firstElementChild?.classList.contains('sh-head')) return;
+  const head = document.createElement('div'); head.className = 'sh-head'; head.innerHTML = '<div class="sh-grab"></div><div class="sh-row"></div>';
+  const row = head.lastChild, first = sh.firstElementChild;
+  if (first && first.tagName === 'H2') {
+    row.appendChild(first);
+    const nx = sh.firstElementChild;
+    if (nx && (nx.classList.contains('fpinfo') || nx.classList.contains('intro'))) {
+      sheetInfo = nx.innerHTML; nx.remove();
+      const b = document.createElement('button'); b.className = 'sh-info'; b.textContent = 'i'; b.title = 'Подробнее'; b.onclick = () => infoBox(sheetInfo); row.appendChild(b);
+    }
+  } else head.querySelector('.sh-row').remove();
+  sh.prepend(head);
+  sh.style.setProperty('--shh', head.offsetHeight + 'px');
+}
+// закрыть окно свайпом вниз: за шапку — всегда, за любое место — если окно прокручено к самому верху
+{ const sh = $('sheet'); let y0 = null, dy = 0, fromHead = false;
+  const start = (y, t) => { fromHead = !!t.closest?.('.sh-head'); if (!fromHead && sh.scrollTop > 0) { y0 = null; return; } y0 = y; dy = 0; };
+  const move = (y, e) => { if (y0 == null) return; dy = y - y0; if (dy <= 0 && !fromHead) { y0 = null; sh.style.transform = ''; return; }
+    if (dy > 6) { sh.classList.add('drag'); sh.style.transform = `translateY(${Math.max(0, dy)}px)`; e.cancelable && e.preventDefault(); } };
+  const end = () => { if (y0 == null) return; y0 = null; sh.classList.remove('drag');
+    if (dy > 90) { sh.style.transition = 'transform .18s'; sh.style.transform = 'translateY(110%)'; setTimeout(() => { sh.style.transition = ''; sh.style.transform = ''; S.night && $('sheet').dataset.view !== 'night' && $('sheet').dataset.view !== 'night-sum' ? openNight(false) : closeNight(); }, 170); }
+    else { sh.style.transition = 'transform .15s'; sh.style.transform = ''; setTimeout(() => sh.style.transition = '', 160); } };
+  sh.addEventListener('touchstart', e => start(e.touches[0].clientY, e.target), { passive: true });
+  sh.addEventListener('touchmove', e => move(e.touches[0].clientY, e), { passive: false });
+  sh.addEventListener('touchend', end); sh.addEventListener('touchcancel', end);
+  sh.addEventListener('mousedown', e => { if (e.target.closest('.sh-head') && !e.target.closest('button')) { start(e.clientY, e.target); const mm = ev => move(ev.clientY, ev), mu = () => { end(); removeEventListener('mousemove', mm); removeEventListener('mouseup', mu); }; addEventListener('mousemove', mm); addEventListener('mouseup', mu); } });
+}
 $('toast').onclick = () => { clearTimeout(toastT); $('toast').classList.remove('show'); };
 
 $('harvestAll').onclick = () => { if (harvestRoute(false)) autoHarvest = true; };
