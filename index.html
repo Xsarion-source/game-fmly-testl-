@@ -215,6 +215,7 @@
   .cgrid .crate { aspect-ratio: 1.15; }
   .cpanel { background: #fffaf0; border: 1.5px solid #ecdcb8; border-radius: 14px; padding: 10px; margin-bottom: 8px; }
   .cptitle { font-size: 15px; margin-bottom: 6px; }
+  .cprm { float: right; margin: -2px 0 4px 8px; padding: 6px 12px; border-radius: 12px; font-size: 14px; font-weight: 800; background: #f6dcd2; color: #8a2a1f; border: 1.5px solid #e2a898; box-shadow: none; }
   .gchips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
   .gchip { flex: none; display: flex; flex-direction: column; align-items: center; min-width: 52px; padding: 5px 6px; border-radius: 12px; background: #f3ead6; border: 1.5px solid #ecdcb8; box-shadow: none; }
   .gchip span { font-size: 24px; line-height: 1.1; } .gchip small { font-size: 11px; font-weight: 800; color: #7a6650; }
@@ -772,7 +773,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.75';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-16.76';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1003,7 +1004,7 @@ function startDay() {
   if (cal().sday === 1 && S.day > 1) setTimeout(() => { if ($('lvlUp').classList.contains('show')) toast(`${season().e} ${season().name}: ${season().text}`); else showSeasonCard(); }, 600);
   if (isFair()) { setTimeout(() => { toast(cratesUsed() ? `🎪 Ярмарка! Лавка закрыта — торгуем в шатре фермы. Привезли ${cratesUsed()} ящ.` : '🎪 Ярмарка, а ящики пустые — продавать нечего. Собери товары к следующей субботе'); if (!tasks.length && !path.length) setTasks([{ x: FAIR_SELL.x, y: FAIR_SELL.y }]); }, 900); setTimeout(() => toast(`🏆 Сегодня конкурс ${SPECIAL[contestOf()].what} ${SPECIAL[contestOf()].e} — тапни на доску у входа на ярмарку`), 3600); }
   if (isRest()) setTimeout(openSunday, 600);
-  if (isFair(S.day + 1)) { setTimeout(() => toast(contestReminder()), 2600); if (!cratesUsed()) setTimeout(() => toast('🎪 Завтра ярмарка — собери товары в ящики: «Прилавок» → «Товары на ярмарку»'), 5200); }
+  if (isFair(S.day + 1)) { setTimeout(() => toast(contestReminder()), 2600); if (!cratesUsed()) setTimeout(() => toast('🎪 Завтра ярмарка — собери товары в ящики: кнопка 🎪 справа вверху'), 5200); }
   save(); renderUI();
 }
 
@@ -5088,7 +5089,7 @@ function openHelp() {
     🏡 🍅 Помидоры и 🍓 клубника растут только в теплице — построй её ночью.<br>
     🪓 Ночью расчисти лес справа и построй 🌬️ мельницу (3 🌾 → 🍚 мука) и 🧀 сыроварню (2 🥛 → сыр). Тапни на здание — фермер загрузит сырьё и заберёт готовое.<br>
     🥖 Пекарня — пристройка к дому (нужна мельница): выбери рецепт — 🍞 хлеб, 🥧 пирог, 🍕 пиццу или 🎂 торт.<br>
-    🎪 В ярмарочную субботу (1-я и 2-я неделя месяца) лавка закрыта: фермер торгует в шатре фермы на ярмарке. Товары собери заранее — «Прилавок» → «Товары на ярмарку» (в ящик — один товар, до 20 шт.). На ярмарке цены выше — чем больше престиж фермы (кубки и уют), тем дороже; в субботу дополнить нельзя. Больше ящиков — «Место на ярмарке».<br>
+    🎪 В ярмарочную субботу (1-я и 2-я неделя месяца) лавка закрыта: фермер торгует в шатре фермы на ярмарке. Товары собери заранее — кнопка 🎪 справа вверху (в ящик — один товар, до 20 шт.). На ярмарке цены выше — чем больше престиж фермы (кубки и уют), тем дороже; в субботу дополнить нельзя. Больше ящиков — «Место на ярмарке».<br>
     🏆 Иногда случается чудо: гигантская тыква, королевский початок, золотая клубника или отборный сыр. Выставь находку на субботний конкурс — кубок встанет на доску почёта у дома, а цены вырастут.<br>
     📅 Месяц — 3 недели, он же сезон. В субботу 1-й и 2-й недели 🎪 ярмарка за дорогой — покупателей больше, и берут больше. Воскресенье — выходной: лавка закрыта, можно устроить 🧺 пикник (помощники неделю работают быстрее) или отдохнуть до понедельника. Сезоны меняются каждые 4 недели — тапни на солнышко, там календарь.<br>
     📬 С 3-го дня в почтовый ящик у тропинки приходят заказы: собери товар за 3 дня — заплатят в 1,6 раза больше лотка.<br>
@@ -5333,7 +5334,7 @@ function openStall(sel, shop) {
   // всё, что ферма умеет производить или когда-либо было на складе — даже если сейчас 0 шт.
   const known = Object.keys(GOODS).filter(id => !GOODS[id].sp && (S.inv[id] > 0 || S.shop.a.includes(id) || S.unlocked.includes(id) || has[id] || S.seenGoods.includes(id) || (S.life.sold || {})[id]));
   let h = `<h2>🏪 Прилавок</h2><div class="fpinfo">Покупатели приходят только за тем, что стоит на прилавке, и берут со склада. Остальное копится — для заказов, ярмарки и производства. Менять можно в любой момент.</div>
-    ${fairUnlocked() ? `<button class="wide" style="width:100%;margin-bottom:8px;background:#ffe28f" onclick="openFairPack()">🎪 Товары на ярмарку — ящиков ${cratesUsed()} из ${allCrates()}${isFair(S.day + 1) || (isFair() && S.night) ? ' · ярмарка завтра!' : ''}</button>` : ''}
+    
     ${S.up.stall2 ? `<div class="pmrow" style="margin-bottom:8px">${['🏪 Лавка 1', '🏪 Лавка 2'].map((t, k) => `<button class="${k === shopSel ? '' : 'alt'}" onclick="openStall(0, ${k})">${t}</button>`).join('')}</div>
       <div class="fpinfo" style="margin-top:-4px">${shopSel ? 'Здесь продаёт продавец — сам, весь день. У лавки своя очередь.' : 'Здесь продаёшь ты или помощник за прилавком.'}</div>` : ''}
     <div class="cgrid">`;
@@ -5345,12 +5346,12 @@ function openStall(sel, shop) {
   }
   h += `</div>`;
   const cur = A[slotSel], other = S.up.stall2 ? shopArr(1 - shopSel).slice(0, shopCap(1 - shopSel)) : [];
-  h += `<div class="cpanel selp"><div class="cptitle">Место ${slotSel + 1}: ${cur ? `<b>${GOODS[cur].e} ${GOODS[cur].name}</b> · на складе <b>${S.inv[cur] || 0} шт</b> · ${sellPrice(cur)}💰 — нажми другой товар, чтобы заменить` : '<b>пусто</b> — выбери, что здесь продавать'}</div><div class="stallg">`;
+  h += `<div class="cpanel selp"><div class="cptitle">${cur ? `<button class="cprm" onclick="setSlot(${slotSel}, null)">✕ Убрать</button>` : ''}Место ${slotSel + 1}: ${cur ? `<b>${GOODS[cur].e} ${GOODS[cur].name}</b> · на складе <b>${S.inv[cur] || 0} шт</b> · ${sellPrice(cur)}💰 — нажми другой товар, чтобы заменить` : '<b>пусто</b> — выбери, что здесь продавать'}</div><div class="stallg">`;
   for (const id of known) {
     const j = A.slice(0, n).indexOf(id), g = GOODS[id], o = other.includes(id);
     h += `<button class="sg${j === slotSel ? ' on' : j >= 0 || o ? ' used' : ''}" onclick="setSlot(${slotSel}, '${id}')"><span class="e">${g.e}</span><b>${g.name}</b><span class="q">${S.inv[id] || 0} шт</span><small>${sellPrice(id)}💰 за штуку</small><i>${j === slotSel ? '✔ здесь' : j >= 0 ? '🧺 уже на прилавке' : o ? `🏪 в лавке ${2 - shopSel}` : ''}</i></button>`;
   }
-  h += `</div>${cur ? `<button class="wide alt" style="width:100%;margin-top:8px" onclick="setSlot(${slotSel}, null)">Убрать с прилавка</button>` : ''}</div>`;
+  h += `</div></div>`;
   if (S.up.seasonstand) {   // сезонная пристройка: 2 места (сезонных товаров пока нет)
     h += `<h3 style="margin:12px 0 2px">🍦 Сезонная пристройка</h3><div class="cgrid">${[0, 1].map(i => `<button class="crate" disabled><span class="ce plus">＋</span><small>сезонное</small></button>`).join('')}</div>`;
   }
@@ -5540,7 +5541,7 @@ function decorateSheet() {
   const row = head.lastChild, first = sh.firstElementChild;
   const T = $('sheetTitle');
   if (first && first.tagName === 'H2') {
-    T.innerHTML = `<span class="fl l">{</span><div class="rib">${first.innerHTML}</div><span class="fl r">}</span>`; T.classList.add('show');
+    T.innerHTML = `<div class="rib">${first.innerHTML}</div>`; T.classList.add('show');
     first.remove(); row.innerHTML = '<span class="sp"></span>'; head.classList.add('titled');
     const nx = sh.firstElementChild;
     if (nx && (nx.classList.contains('fpinfo') || nx.classList.contains('intro'))) {
