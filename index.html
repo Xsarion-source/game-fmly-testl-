@@ -804,7 +804,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.88';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.89';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -2129,7 +2129,7 @@ function drawUpBadges(t) {
   for (const g of BADGE_GROUPS) {
     g.keys.forEach(k => grouped.add(k));
     const ks = g.keys.filter(upAvail); if (!ks.length) continue;
-    const c = g.at(); place.push({ keys: ks, name: g.name, x: c.x, y: c.y });
+    const c = g.at(); place.push({ keys: ks, group: g, x: c.x, y: c.y });
   }
   for (const k in UPGRADES) {   // остальное — над своим местом (поле, сад, расчистка, щит…)
     if (grouped.has(k) || !upAvail(k)) continue;
@@ -2154,18 +2154,20 @@ function drawUpBadges(t) {
 }
 // тап по самому зданию — то же, что по значку над ним: у здания с несколькими улучшениями — их список
 function openUpPlace(key) {
-  const g = BADGE_GROUPS.find(g => g.keys.includes(key)), ks = g ? g.keys.filter(upAvail) : [];
-  if (ks.length > 1) openUpBadge({ keys: ks, name: g.name });
-  else openUpgrade(ks[0] || key);
+  const g = BADGE_GROUPS.find(g => g.keys.includes(key));
+  g ? openUpGroup(g) : openUpgrade(key);
 }
-// тап по значку: одно улучшение — сразу его карточка, несколько — список улучшений этого здания
-function openUpBadge(b) {
-  if (b.keys.length === 1) { openUpgrade(b.keys[0]); return; }
-  let h = `<h2>${b.name}</h2>`;
-  for (const k of b.keys) {
-    const u = UPGRADES[k], l = S.up[k], cost = u.cost(l);
-    h += `<div class="up" onclick="openUpgrade('${k}')"><div class="ico">${u.ico}</div><div class="txt"><b>${u.name} <small>ур. ${l}/${u.max}</small></b><small>${u.desc(l)}</small></div>
-      <button ${S.coins < cost ? 'disabled' : ''} onclick="event.stopPropagation(); buyUpgrade('${k}')">${cost}💰</button></div>`;
+// тап по значку: у здания — окно здания со всеми его улучшениями, у отдельного места — карточка улучшения
+function openUpBadge(b) { b.group ? openUpGroup(b.group) : openUpgrade(b.keys[0]); }
+function openUpGroup(g) {
+  const rank = k => upAvail(k) ? 0 : upLocked(k) ? 1 : 2;   // сначала что можно купить, потом закрытое, в конце — готовое
+  let h = `<h2>${g.name}</h2>`;
+  for (const k of g.keys.slice().sort((a, b) => rank(a) - rank(b))) {
+    const u = UPGRADES[k], l = S.up[k], cost = u.cost(l), r = rank(k);
+    const known = r !== 1 || (lvlLocked(k) && !(u.need && !u.need()));
+    const btn = r === 0 ? `<button ${S.coins < cost ? 'disabled' : ''} onclick="event.stopPropagation(); buyUpgrade('${k}')">${cost}💰</button>`
+      : r === 1 ? `<button disabled>${lvlLocked(k) ? '⭐' + upLvl(k) : '🔒'}</button>` : `<button disabled>✔</button>`;
+    h += `<div class="up" onclick="openUpgrade('${k}')"><div class="ico"${r === 1 ? ' style="opacity:.55"' : ''}>${known ? u.ico : '❓'}</div><div class="txt"><b>${known ? u.name : '???'} <small>ур. ${l}/${u.max}</small></b><small>${r === 0 ? u.desc(l) : r === 1 ? needTxt(k) : 'Улучшено до максимума'}</small></div>${btn}</div>`;
   }
   h += `<div class="row" style="margin-top:12px"><button class="wide alt" onclick="openNight(false)">⬆️ Все улучшения</button><button class="wide alt" onclick="closeNight()">Закрыть</button></div>`;
   $('sheet').dataset.view = 'upgroup'; $('sheet').innerHTML = h;
