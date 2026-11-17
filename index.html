@@ -109,7 +109,7 @@
   .bk-h { margin: 14px 0 6px; font-size: 17px; }
   .bk-h small { font-weight: normal; font-size: 12px; color: #7a6650; }
   .bk-note { font-size: 12px; color: #7a6650; margin: 6px 0; line-height: 1.4; }
-  .bq { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; }
+  .bq { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; margin-top: 12px; }
   .bq-s { position: relative; height: 58px; padding: 2px; border-radius: 12px; background: #fff; border: 2px solid var(--line); display: flex; flex-direction: column; align-items: center; justify-content: center; font: inherit; color: inherit; }
   .bq-s span { font-size: 24px; line-height: 1; }
   .bq-s small { font-size: 10px; color: #7a6650; margin-top: 3px; }
@@ -868,7 +868,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.100';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.101';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
