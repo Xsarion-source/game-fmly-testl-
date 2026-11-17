@@ -529,7 +529,7 @@ const UPGRADES = {
   house:  { name: 'Дом фермера',       ico: '🏠', desc: l => l === 0 ? 'Веранда и кухня: помощники сыты и работают на 20% быстрее' : 'Второй этаж: помощники работают ещё на 20% быстрее (всего +40%)', cost: l => [3000, 7000][l], max: 2 },
   millBin:  { name: 'Бункер мельницы',   ico: '📦', desc: l => `Очередь на помол длиннее: ${PROD.mill.cap * (1 + l)} → ${PROD.mill.cap * (2 + l)} мешков — загрузил утром, мелет до вечера`, cost: l => [2500][l], max: 1, need: () => S.up.mill >= 1, needText: 'Откроется, когда построишь мельницу 🌬️' },
   dairyBin: { name: 'Чаны сыроварни',    ico: '🪣', desc: l => `Очередь длиннее: ${PROD.dairy.cap * (1 + l)} → ${PROD.dairy.cap * (2 + l)} сыров`, cost: l => [3500][l], max: 1, need: () => S.up.dairy >= 1, needText: 'Откроется, когда построишь сыроварню 🧀' },
-  trays:  { name: 'Противни',          ico: '🍪', desc: l => `В каждое отделение печи — по ${l + 2} одинаковых штуки за раз (сейчас по ${l + 1})`, cost: l => [3000, 6000][l], max: 2, need: () => S.up.bakery >= 1, needText: 'Откроется, когда пристроишь пекарню 🥖' },
+  trays:  { name: 'Противни',          ico: '🥘', desc: l => `В каждое отделение печи — по ${l + 2} одинаковых штуки за раз (сейчас по ${l + 1})`, cost: l => [3000, 6000][l], max: 2, need: () => S.up.bakery >= 1, needText: 'Откроется, когда пристроишь пекарню 🥖' },
   bakery: { name: 'Пекарня',           ico: '🥖', desc: l => l === 0 ? 'Пристройка к дому. Печёт из 🍚 муки и продуктов фермы: 🍞 хлеб, 🥧 пирог, 🍕 пиццу и 🎂 торт' : 'Печёт вдвое быстрее', cost: l => [6000, 9000][l], max: 2, need: () => S.up.mill >= 1, needText: 'Откроется после новой постройки в лесу 🪓' },
   cozy:   { name: 'Уют',               ico: '🌷', desc: l => `${COZY[l]}. Покупателям нравится — платят на 2% больше (+${l * 2}% → +${(l + 1) * 2}%)`, cost: l => [600, 1200, 2000, 3200, 5000][l],
             get max() { return Math.max(S.up.cozy || 0, S.up.house ? 5 : 4); } },   // фонарики висят на веранде — последний уровень после «Дома фермера»
@@ -868,7 +868,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.103';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.104';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1996,13 +1996,13 @@ function openBakery() {
   if (helper.length) h += `<div class="chips">${Object.keys(BAKE).filter(canMake).map(r => `<button class="chip${r === st.sel ? ' on' : ''}" onclick="setBake('${r}')">${GOODS[r].e} ${GOODS[r].name}</button>`).join('')}</div>`;
   // улучшения пекарни: «сейчас → будет»
   h += `<h3 class="bk-h">⬆️ Улучшения</h3>`;
-  const row = (u, title, now, next) => {
+  const row = (u, title, now, next, ico) => {
     const U = UPGRADES[u], l = S.up[u], maxed = l >= U.max, cost = U.cost(l), lock = upLocked(u);
-    return `<div class="up" data-why="${maxed ? 'Улучшено до максимума' : lock ? '🔒 ' + needTxt(u) : S.night ? 'Недостаточно средств' : '🌙 Улучшения покупаются ночью'}"><div class="ico">${U.ico}</div><div class="txt"><b>${title} <small>ур. ${l}/${U.max}</small></b><small>${maxed ? now + ' · максимум' : lock ? needTxt(u) : `${now} → <b>${next}</b>`}</small></div>
+    return `<div class="up" data-why="${maxed ? 'Улучшено до максимума' : lock ? '🔒 ' + needTxt(u) : S.night ? 'Недостаточно средств' : '🌙 Улучшения покупаются ночью'}"><div class="ico">${ico || U.ico}</div><div class="txt"><b>${title} <small>ур. ${l}/${U.max}</small></b><small>${maxed ? now + ' · максимум' : lock ? needTxt(u) : `${now} → <b>${next}</b>`}</small></div>
       <button ${maxed || lock || !S.night || S.coins < cost ? 'disabled' : ''} onclick="buyUpgrade('${u}')">${maxed ? '✔' : lock ? (lvlLocked(u) ? '⭐' + upLvl(u) : '🔒') : cost + '💰'}</button></div>`;
   };
   const pd = (lv, tr) => Math.floor(OVENS * DAY_LEN / (BAKE[sel].time / lv) * tr);
-  h += row('bakery', 'Жар печи', `~${pd(sp, trayN())} ${GOODS[sel].e} в день`, `~${pd(sp + 1, trayN())} ${GOODS[sel].e} в день`);
+  h += row('bakery', 'Жар печи', `~${pd(sp, trayN())} ${GOODS[sel].e} в день`, `~${pd(sp + 1, trayN())} ${GOODS[sel].e} в день`, '🫕');
   h += row('trays', 'Противни', `по ${trayN()} шт. в отделение`, `по ${trayN() + 1} шт.`);
   if (!S.night) h += `<div style="font-size:12px;color:#7a6650;margin-top:4px">🌙 Улучшения покупаются ночью</div>`;
   $('sheet').dataset.view = 'bakery'; $('sheet').dataset.sig = bakeSig(); $('sheet').innerHTML = h;
@@ -2180,7 +2180,7 @@ function buyUpgrade(key) {
     mill: S.up.mill === 1 ? '🌬️ Мельница готова! Тапни на неё — фермер засыплет пшеницу' : '🌬️ Мельница мелет вдвое быстрее',
     dairy: S.up.dairy === 1 ? '🧀 Сыроварня готова! Тапни на неё — фермер принесёт молоко' : '🧀 Сыроварня варит вдвое быстрее',
     house: S.up.house === 1 ? '🏠 У дома веранда и кухня — помощники работают быстрее' : '🏠 Второй этаж готов! Помощники ещё быстрее',
-    trays: `🍪 Противни — теперь в каждое отделение печи по ${trayN()} штуки за раз`,
+    trays: `🥘 Противни — теперь в каждое отделение печи по ${trayN()} штуки за раз`,
     bakery: S.up.bakery === 1 ? '🥖 Пекарня готова! Тапни на неё и выбери, что печь' : '🥖 Пекарня печёт вдвое быстрее',
     cozy: `${COZY[S.up.cozy - 1]} — покупатели платят на ${S.up.cozy * 2}% больше`,
     nests: S.up.nests === 1 ? '🪺 В вольере соломенные гнёзда — куры несутся чаще' : `🪺 Ещё гнёзда — яиц на ${S.up.nests * 20}% больше`,
@@ -2332,7 +2332,7 @@ function openUpgrade(key) {
   if (key === 'barn' && cows()) h += `<button class="wide alt" ${cowsFedTomorrow() >= cows() ? 'disabled' : ''} onclick="closeNight(); setTasks([{ ...BARN_SPOT, fn: feedCows }])">🌻 Покормить</button>`;
   if (key === 'house') h += `<button class="wide alt" onclick="openUpgrade('helper')">🧑‍🌾 Нанять помощника</button>`;
   if ((key === 'bakery' || key === 'trays') && S.up.bakery) h += `<button class="wide alt" onclick="openBakery()">🥖 Пекарня</button>`;
-  if (key === 'bakery' && S.up.bakery && S.up.trays < UPGRADES.trays.max) h += `<button class="wide alt" onclick="openUpgrade('trays')">🍪 Противни</button>`;
+  if (key === 'bakery' && S.up.bakery && S.up.trays < UPGRADES.trays.max) h += `<button class="wide alt" onclick="openUpgrade('trays')">🥘 Противни</button>`;
   if (PROD[key] && l) { const st = S.prod[key]; h += `<button class="wide alt" onclick="closeNight(); setTasks([{ ...PROD['${key}'].spot, fn: () => prodAct('${key}') }])">${GOODS[PROD[key].in].e} Загрузить${st.out ? ' и забрать' : ''}</button>`; }
   h += maxed ? `<button class="wide" disabled>✔ Максимум</button>`
     : upLocked(key) ? `<button class="wide" disabled>🔒 ${needTxt(key)}</button>`
@@ -3374,6 +3374,38 @@ const ICON_DRAW = {
     for (const s of [-1, 1]) for (const y of [-16, 16]) { K.LL(0, y, 8 * s, y + (y < 0 ? -8 : 8), '#bfe3f6', 2.5); } c.restore(); } K.C(32, 32, 4, '#fffdf6', 2); },
   '🔥': K => { K.D(c => { c.moveTo(32, 60); c.bezierCurveTo(8, 58, 8, 32, 22, 22); c.quadraticCurveTo(22, 32, 30, 34); c.bezierCurveTo(26, 18, 34, 8, 40, 4); c.bezierCurveTo(42, 18, 58, 28, 54, 44); c.bezierCurveTo(52, 56, 42, 60, 32, 60); }, K.G(0, 4, 0, 60, '#ffd84d', '#e8501e'));
     K.D(c => { c.moveTo(32, 58); c.bezierCurveTo(22, 56, 22, 42, 30, 36); c.quadraticCurveTo(32, 44, 38, 42); c.bezierCurveTo(42, 50, 40, 58, 32, 58); }, '#fff2a0', 2); },
+  '🫕': K => {
+    const c = K.c;
+    K.E(32, 55, 27, 5, 'rgba(90,58,36,.16)', 0, 0);
+    K.R(6, 44, 52, 10, 3, K.G(6, 0, 58, 0, '#c9a27a', '#8a6444'));                       // каменное основание
+    const dome = c => { c.moveTo(9, 46); c.bezierCurveTo(8, 12, 56, 12, 55, 46); c.closePath(); };
+    K.D(dome, K.G(9, 0, 55, 0, '#e8865a', '#9e3f22'), 0);
+    c.save(); K.D(dome, null, 0); c.clip();
+    c.strokeStyle = 'rgba(110,40,20,.35)'; c.lineWidth = 1.4;
+    for (let y = 22; y < 46; y += 6) { c.beginPath(); c.moveTo(0, y); c.lineTo(64, y); c.stroke(); for (let x = (y / 6 % 2) * 5; x < 64; x += 10) { c.beginPath(); c.moveTo(x, y); c.lineTo(x, y + 6); c.stroke(); } }   // кирпичики
+    c.restore(); K.D(dome, null, 3);
+    const mouth = c => { c.moveTo(20, 46); c.lineTo(20, 36); c.arc(32, 36, 12, Math.PI, 0); c.lineTo(44, 46); c.closePath(); };
+    K.D(mouth, '#3a1a10', 3);
+    c.save(); K.D(mouth, null, 0); c.clip();
+    K.D(c => { c.moveTo(22, 47); c.bezierCurveTo(22, 38, 27, 36, 27, 30); c.quadraticCurveTo(31, 36, 32, 33); c.bezierCurveTo(33, 28, 37, 27, 38, 24); c.bezierCurveTo(40, 32, 44, 38, 42, 47); c.closePath(); }, K.G(0, 24, 0, 47, '#ffd84d', '#e8501e'), 0);
+    K.D(c => { c.moveTo(27, 47); c.bezierCurveTo(27, 42, 31, 40, 32, 36); c.bezierCurveTo(34, 40, 38, 43, 37, 47); c.closePath(); }, '#fff2a0', 0);
+    c.restore();
+    K.R(28, 8, 8, 9, 1.5, '#8a6444', 2.5);                                                 // труба
+    K.H(18, 26, 4, 2.5, .35);
+  },   // жар печи: кирпичная печь с огнём
+  '🥘': K => {
+    const c = K.c, A = [4, 36], B = [30, 22], C2 = [60, 32], D = [34, 48], h = 4;
+    K.E(32, 52, 28, 5, 'rgba(90,58,36,.16)', 0, 0);
+    K.P([A, D, [D[0], D[1] + h], [A[0], A[1] + h]], '#6f7686', 2.5);                       // бортики
+    K.P([D, C2, [C2[0], C2[1] + h], [D[0], D[1] + h]], '#4f5564', 2.5);
+    K.P([A, B, C2, D], K.G(0, 22, 0, 48, '#d6dbe4', '#9aa1b0'), 3);                        // лист
+    K.P([[A[0] + 4, A[1]], [B[0], B[1] + 2.5], [C2[0] - 4, C2[1]], [D[0], D[1] - 2.5]], null, 0); c.lineWidth = 1.2; c.strokeStyle = 'rgba(255,255,255,.6)'; c.stroke();
+    for (const [x, y] of [[18, 33], [32, 28], [44, 34], [30, 39]]) {                         // булочки
+      K.E(x, y + 1.5, 7.5, 4.2, '#a85d24', 0, 2.5);
+      K.D(c => { c.ellipse(x, y, 7.5, 5.5, 0, Math.PI, 0); c.ellipse(x, y + 1.5, 7.5, 4.2, 0, 0, Math.PI); }, K.G(0, y - 6, 0, y + 5, '#f6c675', '#c97a30'), 2.5);
+      K.H(x - 3, y - 2.5, 2.2, 1.2, .55);
+    }
+  },   // противень с булочками
   '🛒': K => { K.L(4, 10, 14, 10, IK, 3.5); K.P([[12, 14], [58, 18], [52, 40], [18, 42]], K.G(0, 14, 0, 42, '#7fa9f0', '#4570c4')); for (const x of [26, 36, 46]) K.L(x, 17, x - 1, 40, 'rgba(255,255,255,.6)', 2);
     K.L(18, 42, 20, 50, IK, 3); K.L(20, 50, 52, 50, IK, 3); K.C(24, 56, 4.5, '#3b3b3b', 2); K.C(48, 56, 4.5, '#3b3b3b', 2); },
   '📱': K => { K.R(16, 4, 32, 56, 7, '#3b3b46'); K.R(20, 11, 24, 40, 2, K.G(0, 11, 0, 51, '#bfe6ff', '#7fb2ec'), 0); K.C(32, 55, 2.2, '#9aa0b0', 0); },
