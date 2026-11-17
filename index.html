@@ -884,7 +884,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.110';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.111';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3279,32 +3279,60 @@ const mailIcon = (K, flag) => {
   else { K.LL(56, 34, 46, 34, '#ff5a52', 3); }
   K.H(46, 18, 6, 2.5, .5);
 };
-// круассан M: дольки-«лепестки» — широкий выпуклый край снаружи, сужаются к внутренней стороне полумесяца
-function croissant4(K, o) {
-  const c = K.c, N = o.n, ox = 32, oy = o.oy, Ri = o.Ri, span = o.span, f = o.flat;
-  K.E(32, 54, 27, 5, 'rgba(90,58,36,.16)', 0, 0);
-  const P = (a, r) => [ox + Math.cos(a) * r, oy + Math.sin(a) * r * f];
-  const segs = [];
-  for (let i = 0; i < N; i++) {
-    const u = i / (N - 1), a = -Math.PI / 2 + (u - .5) * 2 * span, t = 1 - Math.abs(u - .5) * 2;
-    segs.push({ a, t, th: o.tMin + (o.tMax - o.tMin) * Math.pow(t, o.pow || 1) });
+// масло: толстый контур только по силуэту, внутренние рёбра тонкие
+function softBox(K, A, B, C, D, h, o = {}) {
+  const c = K.c, r = o.r || 0;
+  const hex = [A, B, C, [C[0], C[1] + h], [D[0], D[1] + h], [A[0], A[1] + h]];
+  const path = pts => { c.beginPath(); pts.forEach((p, i) => i ? c.lineTo(...p) : c.moveTo(...p)); c.closePath(); };
+  c.lineJoin = 'round';
+  path(hex); c.lineWidth = o.outer || 5.5; c.strokeStyle = IK; c.stroke();                      // силуэт
+  const face = (pts, g) => { path(pts); c.fillStyle = g; c.fill(); };
+  face([A, D, [D[0], D[1] + h], [A[0], A[1] + h]], K.G(A[0], 0, D[0], 0, '#ffe58a', '#f4c94a'));
+  face([D, C, [C[0], C[1] + h], [D[0], D[1] + h]], K.G(D[0], 0, C[0], 0, '#efc243', '#d9a52c'));
+  face([A, B, C, D], K.G(0, B[1], 0, D[1], '#fff7cc', '#ffe78f'));
+  // тонкие внутренние рёбра
+  c.beginPath(); c.moveTo(...A); c.lineTo(...D); c.lineTo(...C); c.moveTo(...D); c.lineTo(D[0], D[1] + h);
+  c.lineWidth = o.inner || 1.6; c.strokeStyle = 'rgba(150,95,20,.75)'; c.stroke();
+  if (o.soft) {   // мягкие светлые кромки: короткие, внутри верхней грани, не доходят до углов
+    const L = (P, Q, a, b, off) => { c.beginPath(); c.moveTo(P[0] + (Q[0] - P[0]) * a, P[1] + (Q[1] - P[1]) * a + off); c.lineTo(P[0] + (Q[0] - P[0]) * b, P[1] + (Q[1] - P[1]) * b + off); c.stroke(); };
+    c.lineCap = 'round'; c.lineWidth = 1.6; c.strokeStyle = 'rgba(255,255,240,.85)';
+    L(A, B, .2, .7, 1.6); L(B, C, .12, .45, 1.6);
   }
-  const step = 2 * span / (N - 1);
-  segs.sort((p, q) => p.t - q.t);
-  for (const s of segs) {
-    const wo = step * (o.wo || .75), wi = step * (o.wi || .35), Ro = Ri + s.th;
-    const shape = c => {
-      const p1 = P(s.a - wi, Ri), p2 = P(s.a + wi, Ri), p3 = P(s.a + wo, Ro * .97), p4 = P(s.a - wo, Ro * .97);
-      const cR = P(s.a + wo * 1.05, (Ri + Ro) / 2), cL = P(s.a - wo * 1.05, (Ri + Ro) / 2), top = P(s.a, Ro * (o.bul || 1.12));
-      c.moveTo(...p1); c.quadraticCurveTo(...P(s.a, Ri * 1.02), ...p2);
-      c.quadraticCurveTo(...cR, ...p3);
-      c.bezierCurveTo(...P(s.a + wo * .6, Ro * 1.1), ...P(s.a + wo * .2, Ro * (o.bul || 1.12)), ...top);
-      c.bezierCurveTo(...P(s.a - wo * .2, Ro * (o.bul || 1.12)), ...P(s.a - wo * .6, Ro * 1.1), ...p4);
-      c.quadraticCurveTo(...cL, ...p1); c.closePath();
-    };
-    const [gx, gy] = P(s.a, Ro), [hx, hy] = P(s.a, Ri);
-    K.D(shape, K.G(gx, gy, hx, hy, '#ffd98c', '#b0591f'), 2.6);
+}
+// круассан: «рулеты» к концам меньше, тонкие внутренние контуры, общий толстый силуэт, богаче цвет, длиннее кончики
+function rollCroissant2(K, o) {
+  const c = K.c, n = 3, H = 14, step = 8.5, tilt = .25, sc = o.sc || .76;
+  const cols = o.glaze ? ['#ffcf76', '#e88e2c', '#a24a0e'] : ['#fbc46a', '#e08a33', '#94450f'];
+  K.E(32, 51, 27, 6, 'rgba(90,58,36,.16)', 0, 0);
+  c.save(); c.translate(32, 35); c.rotate(-.15); c.scale(sc, sc);
+  const rolls = [];
+  for (let k = n; k >= 0; k--) for (const sg of k ? [-1, 1] : [0]) {
+    const f = 1 - k * .18, h = H * f, w = 9.5 * (1 - k * .12);
+    rolls.push({ x: sg * k * step * (1 - k * .06), y: .6 * k * k + (H - h) * .35, h, w, a: -sg * tilt, k, sg });
   }
+  const tipL = o.tip || 5;
+  const tip = sg => { const last = rolls.find(r => r.k === n && r.sg === sg); const tx = last.x + sg * (last.w + tipL), ty = last.y + 2.5;
+    return c => { c.moveTo(last.x + sg * last.w * .5, last.y - last.h * .4); c.quadraticCurveTo(tx - sg * 1, ty - 3.5, tx, ty + 1.5); c.quadraticCurveTo(tx - sg * 3, ty + 4.5, last.x + sg * last.w * .4, last.y + last.h * .55); c.closePath(); }; };
+  const rollPath = r => c => { c.save(); c.translate(r.x, r.y); c.rotate(r.a); c.ellipse(0, 0, r.w, r.h, 0, 0, 7); c.restore(); };
+  // 1) общий толстый силуэт: все части с широкой обводкой
+  for (const p of [tip(-1), tip(1), ...rolls.map(rollPath)]) { c.beginPath(); p(c); c.lineWidth = o.outer || 5.5; c.strokeStyle = IK; c.lineJoin = 'round'; c.stroke(); }
+  // 2) части по порядку: заливка + тонкий шов
+  const paint = (p, y0, h) => { const g = c.createLinearGradient(0, y0 - h, 0, y0 + h); g.addColorStop(0, cols[0]); g.addColorStop(.45, cols[1]); g.addColorStop(1, cols[2]); c.beginPath(); p(c); c.fillStyle = g; c.fill(); };
+  for (const sg of [-1, 1]) { const last = rolls.find(r => r.k === n && r.sg === sg); paint(tip(sg), last.y, 6); c.beginPath(); tip(sg)(c); c.lineWidth = o.inner || 1.6; c.strokeStyle = 'rgba(90,40,12,.85)'; c.stroke(); }
+  for (const r of rolls) {
+    c.save(); c.translate(r.x, r.y); c.rotate(r.a);
+    const sh = c => c.ellipse(0, 0, r.w, r.h, 0, 0, 7);
+    const g = c.createLinearGradient(0, -r.h, 0, r.h); g.addColorStop(0, cols[0]); g.addColorStop(.45, cols[1]); g.addColorStop(1, cols[2]);
+    K.D(sh, g, 0);
+    c.save(); K.D(sh, null, 0); c.clip();
+    for (let j = -2; j <= 2; j++) { const x = j * r.w * .36; c.beginPath(); c.moveTo(x - 2, r.h); c.quadraticCurveTo(x + 2.5, 0, x - 1, -r.h); c.lineWidth = .9; c.strokeStyle = 'rgba(120,50,10,.38)'; c.stroke(); }
+    if (o.glaze) { c.beginPath(); c.ellipse(-r.w * .1, -r.h * .5, r.w * .5, r.h * .2, 0, 0, 7); c.fillStyle = 'rgba(255,250,215,.6)'; c.fill(); c.beginPath(); c.ellipse(r.w * .35, -r.h * .2, r.w * .12, r.h * .35, .2, 0, 7); c.fillStyle = 'rgba(255,240,200,.35)'; c.fill(); }
+    else { c.beginPath(); c.ellipse(-r.w * .15, -r.h * .55, r.w * .45, r.h * .16, 0, 0, 7); c.fillStyle = 'rgba(255,245,205,.5)'; c.fill(); }
+    c.restore();
+    c.beginPath(); sh(c); c.lineWidth = o.inner || 1.6; c.strokeStyle = 'rgba(90,40,12,.85)'; c.stroke();
+    c.restore();
+  }
+  c.restore();
 }
 const ICON_DRAW = {
   '💰': K => {   // стопка монет и одна монета рядом, на ребре
@@ -3422,28 +3450,25 @@ const ICON_DRAW = {
     K.P([[6, 34], [58, 30], [58, 50], [6, 54]], K.G(0, 30, 0, 54, '#ffd24a', '#e6a822'));
     for (const [x, y, r] of [[16, 44, 3.5], [30, 40, 4.5], [46, 44, 3], [38, 49, 2.2], [24, 49, 2]]) K.E(x, y, r * 1.1, r, '#c98a12', 0, 0);
     K.E(36, 24, 3, 1.6, '#e6b030', 0, 0); K.H(20, 30, 6, 1.5, .5); },
-  '🧈': K => {   // масло: прямоугольный брусок
-  K.E(32, 50, 28, 6, 'rgba(90,58,36,.16)', 0, 0);
-  const A = [4, 30], B = [20, 22], C = [60, 34], D = [44, 42], h = 11;
-  K.P([A, D, [D[0], D[1] + h], [A[0], A[1] + h]], K.G(4, 0, 44, 0, '#ffe58a', '#f4c94a'), 3);
-  K.P([D, C, [C[0], C[1] + h], [D[0], D[1] + h]], K.G(44, 0, 60, 0, '#ecbc3c', '#d59f28'), 3);
-  K.P([A, B, C, D], K.G(0, 22, 0, 42, '#fff6c4', '#ffe58a'), 3);
+  '🧈': K => {   // масло: брусок и отрезанный ломтик
+    K.E(32, 52, 30, 6, 'rgba(90,58,36,.16)', 0, 0); softBox(K, [2, 28], [19, 19], [42, 26], [25, 35], 13, { soft: true }); softBox(K, [44, 42], [57, 35.5], [62, 37.5], [49, 44], 8, { soft: true, outer: 3.6, inner: 1.2 });
   },
-
-
-  '🫙': K => {   // сметана: светлая миска с синей каёмкой, ложка в сметане
+  '🫙': K => {   // сметана: светлая миска с синей полоской, ложка в сметане
   const c = K.c;
   K.E(32, 56, 26, 5, 'rgba(90,58,36,.16)', 0, 0);
   const bowl = c => { c.moveTo(6, 32); c.quadraticCurveTo(8, 56, 32, 56); c.quadraticCurveTo(56, 56, 58, 32); c.closePath(); };
-  K.D(bowl, K.G(6, 0, 58, 0, '#ffffff', '#d9e2ea'), 3);
-  K.D(c => { c.moveTo(9, 40); c.quadraticCurveTo(32, 47, 55, 40); }, null, 0); c.lineWidth = 3.5; c.strokeStyle = '#5a8fd6'; c.stroke();
+  K.D(bowl, K.G(6, 0, 58, 0, '#ffffff', '#d9e2ea'), 0);
+  c.save(); K.D(bowl, null, 0); c.clip();
+  c.beginPath(); c.ellipse(32, 40.5, 25, 7.4, 0, 0, Math.PI); c.lineWidth = 3.4; c.strokeStyle = '#5a8fd6'; c.stroke(); c.restore();
+  K.D(bowl, null, 3);
   K.E(32, 32, 26, 8, '#e6edf3', 0, 3);
-  K.D(c => { c.moveTo(9, 32); c.bezierCurveTo(12, 22, 22, 26, 26, 20); c.bezierCurveTo(30, 14, 36, 22, 40, 20); c.bezierCurveTo(46, 18, 52, 26, 55, 32); c.quadraticCurveTo(32, 40, 9, 32); }, K.G(0, 14, 0, 38, '#ffffff', '#f3eee4'), 2.6);
+  const cream = c => { c.moveTo(9, 32); c.bezierCurveTo(12, 22, 22, 26, 26, 20); c.bezierCurveTo(30, 14, 36, 22, 40, 20); c.bezierCurveTo(46, 18, 52, 26, 55, 32); };
+  K.D(c => { cream(c); c.quadraticCurveTo(32, 40, 9, 32); }, K.G(0, 14, 0, 38, '#ffffff', '#f3eee4'), 0);
+  c.save(); c.beginPath(); c.rect(0, 0, 64, 64); c.ellipse(32, 32, 26, 8, 0, 0, 7); c.clip('evenodd');   // контур шапки — только над краем миски
+  K.D(cream, null, 2.6); c.restore();
   K.D(c => { c.moveTo(22, 25); c.quadraticCurveTo(28, 20, 32, 25); }, null, 0); c.lineWidth = 2; c.strokeStyle = 'rgba(160,140,110,.45)'; c.stroke();
   K.LL(41, 25, 54, 3, '#c98a4a', 4);
   },
-
-
   '🥄': K => {   // маслобойка: деревянная кадушка с мутовкой
     const c = K.c;
     K.E(32, 58, 20, 4, 'rgba(90,58,36,.16)', 0, 0);
@@ -3568,7 +3593,7 @@ const ICON_DRAW = {
   '📥': K => { K.R(6, 34, 52, 24, 5, K.G(0, 34, 0, 58, '#e2b679', '#b98a55')); K.R(18, 34, 28, 10, 2, '#8a5a36', 2); K.LL(32, 4, 32, 26, '#3e9b3a', 4); K.P([[22, 20], [42, 20], [32, 32]], '#3e9b3a', 2.5); },
   '📤': K => { K.R(6, 34, 52, 24, 5, K.G(0, 34, 0, 58, '#e2b679', '#b98a55')); K.R(18, 34, 28, 10, 2, '#8a5a36', 2); K.LL(32, 30, 32, 10, '#e0703a', 4); K.P([[22, 14], [42, 14], [32, 2]], '#e0703a', 2.5); },
   '🍪': K => { K.C(32, 34, 26, K.G(0, 8, 0, 60, '#f2c278', '#c88a42')); for (const [x, y, r] of [[22, 24, 4], [38, 20, 3.5], [44, 36, 4], [28, 42, 3.5], [18, 36, 2.6], [36, 50, 3]]) K.E(x, y, r, r * .85, '#6b3e1f', .3, 0); K.H(20, 18, 4, 2, .4); },
-  '🥐': K => croissant4(K, { n: 7, oy: 52, Ri: 13, span: 1.38, tMin: 7, tMax: 23, flat: .75, pow: .8 }),
+  '🥐': K => rollCroissant2(K, { glaze: true, sc: .85 }),   // масляный круассан
 
   '🍦': K => { K.P([[18, 30], [46, 30], [32, 62]], K.G(18, 0, 46, 0, '#f2c278', '#c88a42')); K.L(23, 38, 40, 34, 'rgba(120,60,15,.45)', 1.6); K.L(26, 46, 37, 42, 'rgba(120,60,15,.45)', 1.6);
     K.D(c => { c.moveTo(14, 32); c.bezierCurveTo(8, 14, 24, 4, 32, 6); c.bezierCurveTo(42, 4, 56, 14, 50, 32); c.quadraticCurveTo(46, 38, 42, 32); c.quadraticCurveTo(36, 38, 30, 32); c.quadraticCurveTo(22, 38, 14, 32); }, K.G(0, 6, 0, 36, '#fffaf2', '#f2dcc2'));
