@@ -899,7 +899,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.124';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.125';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3821,8 +3821,9 @@ function outTreeAt(x, y) {
 // Деревья фермы и леса считаются вместе: иначе незапечённое дерево фермы рисуется поверх стоящего перед ним дерева леса
 function bakeTreeSet() {
   const trees = new Map();
-  bakedFor = clearKey();   // нерасчищенный участок — обычный лес; расчистили — пересчитываем
-  for (const d of decor) if (d.kind === 'tree') trees.set(d.x + ',' + d.y, { d, lot: d.lot != null && lotCleared(d.lot) });
+  bakedFor = treeKey();   // нерасчищенный участок — обычный лес; расчистили — пересчитываем; в ветер ближние деревья — живые
+  const sw = swayOn();
+  for (const d of decor) if (d.kind === 'tree') trees.set(d.x + ',' + d.y, { d, lot: (d.lot != null && lotCleared(d.lot)) || (sw && nearFarm(d)) });
   for (let y = -14; y < ROAD; y++) for (let x = -14; x < W + 16; x++) { const k = x + ',' + y, sz = outTreeAt(x, y); if (sz && !trees.has(k)) trees.set(k, { x, y, s: sz }); }
   const ok = new Set([...trees.keys()].filter(k => !trees.get(k).lot));
   for (let changed = true; changed;) {
@@ -3864,7 +3865,7 @@ function drawBackdrop(now) {
     const main = ctx; ctx = bg.cv.getContext('2d');
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = look().bg; ctx.fillRect(0, 0, w, h);
     ctx.setTransform(k, 0, 0, k, -bg.ox, -bg.oy);
-    try { drawOutside(R); drawGround(0); drawPaths(); drawPicnic(); if (bakedFor !== clearKey()) bakedTrees = null; bakedTrees ??= bakeTreeSet(); if (swayOn()) drawFairGround(); else drawOutsideTrees(true); } finally { ctx = main; }
+    try { drawOutside(R); drawGround(0); drawPaths(); drawPicnic(); if (bakedFor !== treeKey()) bakedTrees = null; bakedTrees ??= bakeTreeSet(); drawOutsideTrees(true); } finally { ctx = main; }
   }
   const T = camT();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -3962,7 +3963,7 @@ function drawSprite(d, fn, key, now, o, raw) {
   if (!sp.empty) {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     const T = camT();
-    if (d.kind === 'tree' && swayOn()) {   // наклон кроны от основания ствола: порывами, у каждого дерева своя фаза
+    if (d.kind === 'tree' && swayOn() && d.lot !== undefined && nearFarm(d)) {   // наклон кроны от основания ствола: порывами, у каждого дерева своя фаза
       const by = iso(d.x + .5, d.y + .5).y * k + T.y, g = .55 + .45 * Math.sin(now * .7), a = .045 * g * Math.sin(now * 2.1 + d.x * .7 + d.y * .45);
       ctx.setTransform(1, 0, -a, 1, a * by, 0);
     }
@@ -3994,14 +3995,13 @@ function draw(t) {
   const DRAW = { tree: d => (d.lot == null || !lotCleared(d.lot)) && drawTree(d), mill: drawMill, dairy: drawDairy, house: drawHouse, bakery: drawBakery, mailbox: drawMailbox, trophies: drawTrophies, flowers: drawFlowers, doghouse: drawDoghouse, well: drawWell, swing: drawSwing, stall: drawStall, season: drawSeasonStand, coop: drawCoop, barn: drawBarn, trough: drawTrough, fence: drawFence, billboard: drawBillboard, sack: drawSack, bench: drawBench, glass: drawGlass, ghroof: drawGhRoof };
   const settled = zoomSettled(t);
   for (const d of decor) {   // постройка рисуется в своих координатах, сдвинутая на смещение группы (LAYOUT)
-    if (settled && bakedTrees && bakedTrees.has(d) && !swayOn()) continue;   // уже в картинке фона
+    if (settled && bakedTrees && bakedTrees.has(d)) continue;   // уже в картинке фона
     const sk = SPRITE_KEY[d.kind], o = d.g ? isoG(d.g, 0, 0) : null, raw = () => DRAW[d.kind](d, t);
     const moved = o ? () => { ctx.save(); ctx.translate(o.x, o.y); try { raw(); } finally { ctx.restore(); } } : raw;
     list.push({ z: d.z, f: sk ? () => drawSprite(d, moved, sk(d), t, o, raw) : moved });
   }
-  if (settled && swayOn()) for (const o of outTrees) { o.kind = 'tree'; list.push({ z: o.x + o.y + 1, f: () => drawSprite(o, () => drawTree(o), SPRITE_KEY.tree(o), t) }); }
-  else if (settled && bakedTrees) for (const o of liftedOut) list.push({ z: o.z, f: () => drawSprite(o, () => drawTree(o), SPRITE_KEY.tree(o), t) });   // лес перед деревьями фермы
-  S.trees.forEach((tr, i) => { if (tr.kind) { const s = ORCHARD_SLOTS[i]; list.push({ z: s.x + s.y + 1, f: () => drawOrchardTree(i, t) }); } });
+  if (settled && bakedTrees) for (const o of liftedOut) list.push({ z: o.z, f: () => drawSprite(o, () => drawTree(o), SPRITE_KEY.tree(o), t) });   // лес перед деревьями фермы
+  S.trees.forEach((tr, i) => { if (tr.kind) { const s = ORCHARD_SLOTS[i]; list.push({ z: s.x + s.y + 1, f: () => { if (!swayOn()) return drawOrchardTree(i, t); const by = iso(s.x + .5, s.y + .5).y, a = .045 * (.55 + .45 * Math.sin(t * .7)) * Math.sin(t * 2.1 + s.x * .7 + s.y * .45); ctx.save(); ctx.transform(1, 0, -a, 1, a * by, 0); try { drawOrchardTree(i, t); } finally { ctx.restore(); } } }); } });   // сад качается на ветру
   for (const h of hensState) list.push({ z: h.x + h.y, f: () => { const key = animKey(h, (h.rooster ? 'r' : '') + (h.peck ? 'p' : '')); drawCachedAt(h, key, 34, 40, 17, 32, o => drawHen({ ...o, phase: phaseOf(key) }, 0)); } });
   for (const h of chicksState) list.push({ z: h.x + h.y, f: () => { const key = animKey(h, ''); drawCachedAt(h, key, 16, 18, 8, 13, o => drawChick({ ...o, phase: phaseOf(key) }, 0)); } });
   for (const c of cowsState) list.push({ z: c.x + c.y, f: () => { const key = animKey(c, c.graze ? 'g' : ''); drawCachedAt(c, key, 70, 64, 35, 52, o => drawCow({ ...o, phase: phaseOf(key) }, 0)); } });
@@ -4038,7 +4038,14 @@ function draw(t) {
 // Мир вокруг фермы: лес позади, луг впереди, дорога уходит за край — экран заполнен на любом устройстве
 const hash = (x, y) => { const v = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return v - Math.floor(v); };
 let outTrees = [];
-const swayOn = () => weather() === 'wind' && !S.night && !fairOn();   // в ветер деревья качаются — рисуем их поштучно, а не в картинке фона
+const swayOn = () => weather() === 'wind' && !S.night && !fairOn();   // в ветер качаются сад и деревья на ферме и в двух рядах вокруг неё (дальний лес — в картинке фона, неподвижен)
+const treeKey = () => clearKey() + (swayOn() ? 100 : 0);
+let NEAR = null;
+function nearFarm(d) {   // дерево фермы в пределах двух клеток от открытой земли фермы
+  if (!NEAR) { const tr = new Set(decor.filter(o => o.kind === 'tree').map(o => o.x + ',' + o.y)); NEAR = new Set();
+    for (const o of decor) if (o.kind === 'tree') { let ok = false; for (let dy = -2; dy <= 2 && !ok; dy++) for (let dx = -2; dx <= 2; dx++) { const x = o.x + dx, y = o.y + dy; if (x >= 0 && y >= 0 && x < W && y < H && !tr.has(x + ',' + y)) { ok = true; break; } } if (ok) NEAR.add(o); } }
+  return NEAR.has(d);
+}
 function drawOutside(V = viewRect()) {
   const R = 30, trees = outTrees = [];
   for (let y = -R; y < H + R; y++) for (let x = -R; x < W + R; x++) {
