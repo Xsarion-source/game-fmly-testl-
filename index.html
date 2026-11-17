@@ -235,6 +235,16 @@
   .cal .ev { font-size: 13px; line-height: 1.1; }
   .cal .m { font-size: 10px; font-weight: 800; color: #3e7d32; margin-top: auto; }
   .uplvl { margin: 2px 0 6px; color: #7a6650; font-size: 14px; } .uplvl b { color: #4a2e18; }
+  .cntb { display: inline-block; min-width: 20px; height: 20px; padding: 0 5px; box-sizing: border-box; border-radius: 10px; background: var(--accent); color: #fff; font-size: 12px; line-height: 20px; margin-left: 4px; vertical-align: 1px; }
+  .cd.sel { outline: 3px solid #f4a92b; outline-offset: -1px; }
+  .dsum { margin-top: 10px; background: #f6ecd6; border-radius: 16px; padding: 10px 12px; }
+  .dsh { font-weight: 900; font-size: 15px; color: #4a2e18; margin-bottom: 6px; }
+  .dsgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .dsc { background: #fff; border-radius: 12px; padding: 6px 2px; display: flex; flex-direction: column; align-items: center; line-height: 1.15; }
+  .dsc span { font-size: 20px; } .dsc b { font-size: 16px; color: #4a2e18; } .dsc small { font-size: 10.5px; color: #7a6650; }
+  .dstop { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; } .dstop span { background: #fff; border-radius: 999px; padding: 2px 9px; font-weight: 800; font-size: 13px; color: #4a2e18; }
+  .dsev { font-size: 13px; color: #7a6650; margin-top: 6px; } .dsev a { color: #b0503a; font-weight: 800; }
+  .dsnext { border-top: 1.5px dashed #d9c49c; margin-top: 10px; padding-top: 8px; }
   .nightline { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 6px 0 2px; color: #7a6650; font-size: 13px; } .nightline b { color: #4a2e18; font-size: 16px; }
   .feedrow { display: flex; align-items: stretch; gap: 8px; margin: 8px 0 4px; }
   .feedlbl { flex: 1; align-self: center; font-weight: 800; font-size: 15px; color: #4a2e18; line-height: 1.2; } .feedlbl small { display: block; font-weight: 600; font-size: 11.5px; color: #7a6650; margin-top: 3px; }
@@ -829,7 +839,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.94';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.95';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -927,7 +937,7 @@ let floats = [];
 const LVL_XP = L => Math.round(40 * Math.pow(L - 1, 2.4));   // сколько опыта всего нужно для уровня L: 2 → 40, 5 → ~1100, 10 → ~7800, 20 → ~47000
 const farmLevel = () => { let L = 1; while (S.xp >= LVL_XP(L + 1)) L++; return L; };
 function gainXp(n) {
-  const L0 = farmLevel(); S.xp += n; const L = farmLevel();
+  const L0 = farmLevel(); S.xp += n; const L = farmLevel(); if (S.stats) S.stats.xp = (S.stats.xp || 0) + n;
   if (L > L0) setTimeout(() => showLevelUp(L0, L), 300);
 }
 // праздничное окно нового уровня: что открылось и что изменилось у покупателей
@@ -1039,7 +1049,7 @@ function openGoals() {
   h += `</div>`;
   const got = (S.decor || []).map(id => DECOR.find(d => d.id === id)?.name).filter(Boolean);
   if (got.length) h += `<h3 style="margin:12px 0 4px">Украшения фермы</h3><div style="font-size:14px;line-height:1.7">${got.join('<br>')}</div>`;
-  h += `<button class="wide" style="width:100%;margin-top:12px" onclick="S.night ? openNight(false) : closeNight()">Закрыть</button>`;
+  h += `<button class="wide" style="width:100%;margin-top:12px" onclick="closeNight()">Закрыть</button>`;
   $('sheet').dataset.view = 'goals'; const top = $('sheet').scrollTop; $('sheet').innerHTML = h; $('overlay').classList.add('show'); $('sheet').scrollTop = top;
 }
 function renderGoalBtn() {
@@ -1145,7 +1155,7 @@ function specialFound(k, q) {
   setTimeout(() => {
     $('sheet').dataset.view = ''; $('sheet').innerHTML = `<div style="text-align:center"><div style="font-size:64px;line-height:1.1;margin:6px 0">${sp.e}</div>
       <h2 style="margin:4px 0">🌟 Невероятно! ${sp.name}!</h2><div class="summary" style="font-size:16px"><b>${sp.unit(q)}</b> — такое бывает очень редко.<br>Она не продаётся: выставь её на 🏆 конкурс ${SPECIAL[k].what} на субботней ярмарке.</div></div>
-      <div class="row"><button class="wide" onclick="openTrophies()">🏆 Трофеи и конкурс</button><button class="wide alt" onclick="S.night ? openNight(false) : closeNight()">Ура!</button></div>`;
+      <div class="row"><button class="wide" onclick="openTrophies()">🏆 Трофеи и конкурс</button><button class="wide alt" onclick="closeNight()">Ура!</button></div>`;
     $('overlay').classList.add('show');
   }, 500);
 }
@@ -1218,7 +1228,7 @@ function endDay() {
   goalEv('day', null, S.stats.earned || 0); if (fairRes) goalEv('fair', null, fairRes.money || 0);
   if (S.up.hay && cows() && cowFoodStock() >= feedPerCow()) setTimeout(() => { if (S.night && cowsFedTomorrow() < cows()) { feedCows('hay'); refreshSheet(); } }, 900);   // сеновал кормит сам
   save(); renderUI();
-  if (fairRes) openFairResult(fairRes); else openNight(true);
+  if (fairRes) openFairResult(fairRes); else openCalendar();
 }
 
 // ================== 📦 СКЛАД и 🚚 ГРУЗОВИК — заготовка ==================
@@ -2184,9 +2194,13 @@ function openUpPlace(key) {
 }
 // тап по значку: у здания — окно здания со всеми его улучшениями, у отдельного места — карточка улучшения
 function openUpBadge(b) { b.group ? openUpGroup(b.group) : openUpgrade(b.keys[0]); }
+let upGroupCur = null;
 function openUpGroup(g) {
+  upGroupCur = g;
   const rank = k => upAvail(k) ? 0 : upLocked(k) ? 1 : 2;   // сначала что можно купить, потом закрытое, в конце — готовое
   let h = `<h2>${g.name}</h2>`;
+  if (S.night && g.keys.includes('coop') && hens()) h += feedTiles('hen');   // ночью здесь же — покормить на завтра
+  if (S.night && g.keys.includes('barn') && cows()) h += feedTiles('cow');
   for (const k of g.keys.slice().sort((a, b) => rank(a) - rank(b))) {
     const u = UPGRADES[k], l = S.up[k], cost = u.cost(l), r = rank(k);
     const known = r !== 1 || (lvlLocked(k) && !(u.need && !u.need()));
@@ -3751,7 +3765,7 @@ function openFairResult(r) {
   if (r.left.length) h += `<div class="fres" style="color:#7a6650"><span>↩️ Вернулось на склад</span><span style="flex:2;text-align:right">${r.left.map(([c, n]) => n + ' ' + GOODS[c].e).join('  ')}</span></div>`;
   h += `<h3 style="margin:12px 0 4px">Кто сколько наторговал</h3>` + all.map((x, k) => `<div class="fres"${x.me ? ' style="font-weight:800;color:#2f6b2a"' : ''}><span>${['🥇', '🥈', '🥉', '4.'][k]} ${x.name}</span><b>${x.m}💰</b></div>`).join('');
   if (r.out.length) h += `<div style="font-size:13px;color:#7a6650;margin-top:6px">У соседей кончилось: ${r.out.map(o => `${GOODS[o.g].e} у «${RIVALS_DEF[o.i].name}»`).join(', ')}</div>`;
-  h += `<button class="wide" style="width:100%;margin-top:14px" onclick="openNight(true)">🌙 Дальше</button>`;
+  h += `<button class="wide" style="width:100%;margin-top:14px" onclick="openCalendar()">🌙 Дальше</button>`;
   $('sheet').dataset.view = 'fairres'; $('sheet').innerHTML = h; $('overlay').classList.add('show');
 }
 function rivalSale(i, g) {   // покупатель ушёл к соседу: идёт к его ларьку, стоит у прилавка и уходит
@@ -5154,7 +5168,7 @@ function renderUI() {
   for (const id in S.inv) if (S.inv[id] > 0 && !S.seenGoods.includes(id) && GOODS[id] && !GOODS[id].sp) S.seenGoods.push(id);   // запоминаем товары — чтобы их можно было снять с продажи и при нуле
   $('nightBtn').style.display = S.night ? '' : 'none';
   if (S.night) {   // сколько улучшений можно купить прямо сейчас (как цифры на вкладках)
-    const R = shopRows(), n = Object.values(R).reduce((a, rows) => a + rows.filter(r => r.rank === 0).length, 0), nb = $('nightBtn');
+    const n = upCount(), nb = $('nightBtn');
     let b = nb.querySelector('.nb'); if (!b) { b = document.createElement('i'); b.className = 'nb'; nb.appendChild(b); }
     b.textContent = n; b.style.display = n ? '' : 'none';
   }
@@ -5509,37 +5523,26 @@ function openHelp() {
 }
 
 // Ночью — плитки «покормить на завтра» (размером с ящик прилавка): тап — покормить; значки — кто кормит сам
-function feedTiles() {
+function feedTiles(only) {
   const T = [];
   const tile = (ico, name, fed, all, can, fn, auto) => {
     const done = fed >= all, cls = done ? 'ok' : can ? 'go' : 'no';
-    T.push(`<button class="feedt ${cls}" onclick="${fn}; openNight($('sheet').dataset.view === 'night-sum')"><span class="fe">${ico}</span><b>${done ? 'Накормлены' : can ? 'Покормить' : 'Мало корма'}</b><small>${done ? '✔ ' : ''}${fed}/${all} ${name}</small>${auto ? `<i class="fa">${auto}</i>` : ''}</button>`);
+    T.push(`<button class="feedt ${cls}" onclick="${fn}; refreshSheet()"><span class="fe">${ico}</span><b>${done ? 'Накормлены' : can ? 'Покормить' : 'Мало корма'}</b><small>${done ? '✔ ' : ''}${fed}/${all} ${name}</small>${auto ? `<i class="fa">${auto}</i>` : ''}</button>`);
   };
   const helperFeeds = st => S.helpers.some(c => c.feed && c.stations.includes(st));
-  if (hens()) tile('🐔', 'кур', fedTomorrow(), hens(), feedStock() >= FEED_PER_HEN, 'feedHens()', helperFeeds('coop') ? '🧑‍🌾' : '');
-  if (cows()) tile('🐄', 'коров', cowsFedTomorrow(), cows(), cowFoodStock() >= feedPerCow(), 'feedCows()', [S.up.hay ? '🟨' : '', helperFeeds('barn') ? '🧑‍🌾' : ''].join(''));
+  if (hens() && only !== 'cow') tile('🐔', 'кур', fedTomorrow(), hens(), feedStock() >= FEED_PER_HEN, 'feedHens()', helperFeeds('coop') ? '🧑‍🌾' : '');
+  if (cows() && only !== 'hen') tile('🐄', 'коров', cowsFedTomorrow(), cows(), cowFoodStock() >= feedPerCow(), 'feedCows()', [S.up.hay ? '🟨' : '', helperFeeds('barn') ? '🧑‍🌾' : ''].join(''));
   if (!T.length) return '';
   const legend = [helperFeeds('coop') || (cows() && helperFeeds('barn')) ? '🧑‍🌾 кормит помощник' : '', cows() && S.up.hay ? '🟨 сеновал кормит сам' : ''].filter(Boolean).join(' · ');
   return `<div class="feedrow"><div class="feedlbl">Корм на завтра${legend ? `<small>${legend}</small>` : ''}</div>${T.join('')}</div>`;
 }
-function openNight(withSummary) {
-  const st = S.stats;
-  let h = `<h2>⬆️ Улучшения</h2>`;
-  if (withSummary) {
-    h += `<div class="summary">За день: заработано <b>${st.earned}💰</b><br>Обслужено: <b>${st.served}</b> · Ушли ни с чем: <b>${st.missed}</b><br>
-      ${isRest(S.day + 1) ? 'Завтра <b>воскресенье — выходной</b> 🧺 лавка закрыта' : `Завтра придёт ~<b>${visitorsPerDay(S.day + 1)}</b> покупателей${isFair(S.day + 1) ? ` — <b>ярмарка</b> 🎪<br>📦 Собрано ящиков: <b>${cratesUsed()} из ${allCrates()}</b> — <a href="#" onclick="event.preventDefault();openFairPack()" style="color:#b0503a;font-weight:800">собрать товары</a><br>${contestReminder()}` : ''}`}</div>`;
-  }
-  h += `<div class="nightline"><span>🌙 ${season().name}, день ${cal().sday}</span><b>У тебя: 💰 ${S.coins}</b></div>`;
-  if (EMBED && CLOUD.state !== 'ok' && CLOUD.state !== 'wait' && S.day >= 2 && (S.codeDay || 0) < S.day)   // облака нет — Safari может стереть ферму
-    h += `<div class="summary" style="background:#fff1d6;border:1.5px solid #f0c24a">⚠️ Ферма хранится только в этом браузере — Safari может её стереть. <a href="#" onclick="event.preventDefault();exportCode()" style="color:#b0503a;font-weight:800">Сохрани код фермы</a> или играй в <a href="${APP_URL}" target="_blank" rel="noopener" style="color:#2f6b2a;font-weight:800">приложении</a>, где ферма сохраняется сама.</div>`;
-  h += feedTiles();
+function openNight() {   // ⬆️ Улучшения: только покупки (итоги дня — в календаре, корм — в курятнике и коровнике)
+  let h = `<h2>⬆️ Улучшения</h2><div class="nightline"><span></span><b>У тебя: 💰 ${S.coins}</b></div>`;
   h += shopTabs();
-  h += `<div class="row" style="margin-top:14px"><button class="wide alt" onclick="closeNight()">🌾 К грядкам</button>
-        <button class="wide${cal(S.day + 1).sday === 1 ? ' season-' + season(S.day + 1).id : ''}" style="background:#ffd34d" onclick="morning()">${cal(S.day + 1).sday === 1 ? `${season(S.day + 1).e} Встретить ${SEASON_ACC[season(S.day + 1).id]}` : `☀️ Начать день ${cal(S.day + 1).sday}`}</button></div>
-`;
-  $('sheet').dataset.view = withSummary ? 'night-sum' : 'night'; $('sheet').innerHTML = h;
+  $('sheet').dataset.view = 'night'; $('sheet').innerHTML = h;
   $('overlay').classList.add('show');
 }
+const upCount = () => Object.values(shopRows()).reduce((a, rows) => a + rows.filter(r => r.rank === 0).length, 0);   // сколько улучшений можно купить сейчас
 // Магазин ночью — три вкладки; в каждой сначала то, что можно купить, потом дорогое, потом тайны «???», в конце — купленное
 const FARM_UPS = ['land', 'fert', 'ads', 'slots', 'stall2', 'seasonstand', 'sign', 'bench', 'helper', 'cozy', 'fairstall', 'fairbake'];
 let upTab = 'farm';
@@ -5574,7 +5577,7 @@ function shopTabs() {
 }
 function setUpTab(t) {
   upTab = t; const sh = $('sheet'), v = sh.dataset.view, top = sh.scrollTop;
-  openNight(v === 'night-sum');
+  openNight();
   const an = $('shopAnchor'); if (an) sh.scrollTop = Math.min(top, sh.scrollTop + an.getBoundingClientRect().top - sh.getBoundingClientRect().top);
 }
 // ---------- Воскресенье: письмо с итогами недели, пикник или отдых ----------
@@ -5670,7 +5673,7 @@ function openTrophies() {
   const mine = S.special.slice().sort((a, b) => b.q - a.q);
   h += `<h3 style="margin:12px 0 4px">🌟 Особые находки</h3>` + (mine.length || S.inv.goldegg ? `<div style="font-size:14px;line-height:1.6">${mine.map(x => `${SPECIAL[x.k].e} ${SPECIAL[x.k].name} — ${SPECIAL[x.k].unit(x.q)}`).join('<br>')}${S.inv.goldegg ? `${mine.length ? '<br>' : ''}🟡 Золотых яиц на складе: ${S.inv.goldegg}` : ''}</div>` : `<div style="font-size:13px;color:#7a6650">Пока нет — удача ещё улыбнётся!</div>`);
   if (S.trophies.length) h += `<h3 style="margin:12px 0 4px">🏆 Кубки</h3><div style="font-size:14px;line-height:1.6">${S.trophies.slice().reverse().map(t => `${MEDAL[t.p].e} ${SPECIAL[t.k].name.split(' ').pop()} — ${MEDAL[t.p].name}, ${dayShort(t.d)} (${SPECIAL[t.k].unit(t.q)})`).join('<br>')}</div>`;
-  h += `<button class="wide alt" style="width:100%;margin-top:12px" onclick="S.night ? openNight(false) : closeNight()">Закрыть</button>`;
+  h += `<button class="wide alt" style="width:100%;margin-top:12px" onclick="closeNight()">Закрыть</button>`;
   $('sheet').dataset.view = 'trophies'; $('sheet').innerHTML = h; $('overlay').classList.add('show');
 }
 function enterContest(i) {
@@ -5702,33 +5705,54 @@ function dayEvents(d) {   // значки событий на день: новы
   if (d > 1 && cal(d).si === 0 && cal(d).sday === 1) ev.push(['🎂', `Ферме ${cal(d).year - 1} ${cal(d).year - 1 === 1 ? 'год' : cal(d).year - 1 < 5 ? 'года' : 'лет'}!`]);
   return ev;
 }
-function openCalendar(si) {
-  const cur = Math.floor((S.day - 1) / SEASON_LEN);
-  calSeason = si ?? calSeason ?? cur; if (si === undefined && $('sheet').dataset.view !== 'cal') calSeason = cur;
+let calSel = 0;   // выбранный день — под календарём его итоги
+function openCalendar(si, sel) {
+  const cur = Math.floor((S.day - 1) / SEASON_LEN), fresh = $('sheet').dataset.view !== 'cal';
+  calSeason = si ?? calSeason ?? cur; if (si === undefined && fresh) calSeason = cur;
+  calSel = sel ?? (fresh || !calSel ? S.day : calSel);
   const first = calSeason * SEASON_LEN + 1, se = SEASONS[calSeason % 4], year = Math.floor(calSeason / 4) + 1;
   const hist = Object.fromEntries((S.hist || []).map(h => [h.d, h]));
   let h = `<h2>📅 Календарь</h2>
-    <div class="summary">Сегодня: <b>${WEEKDAYS[cal().dow]}, день ${cal().sday}</b> · ${season().e} ${season().name}, неделя ${cal().week} из 3, год ${cal().year}<br><small>${season().e} ${season().text}</small></div>
+    <div class="fpinfo">Сегодня: <b>${WEEKDAYS[cal().dow]}, день ${cal().sday}</b> · ${season().e} ${season().name}, неделя ${cal().week} из 3, год ${cal().year}<br>${season().e} ${season().text}<br>Тапни на день — его итоги и события появятся под календарём.</div>
     <div class="calnav"><button ${calSeason <= 0 ? 'disabled' : ''} onclick="openCalendar(${calSeason - 1})">‹</button><b>${se.e} ${se.name}${year > 1 ? ` · год ${year}` : ''}</b><button onclick="openCalendar(${calSeason + 1})">›</button></div>
     <div class="cal">${WD.map(w => `<div class="wd">${w}</div>`).join('')}`;
   for (let d = first; d < first + SEASON_LEN; d++) {
     const past = d < S.day, today = d === S.day, ev = dayEvents(d), x = hist[d];
     const earned = today ? S.stats.earned || 0 : x ? x.e : null;
-    h += `<div class="cd ${past ? 'past' : ''} ${today ? 'today' : ''} ${cal(d).dow >= 5 ? 'we' : ''}" onclick="calDay(${d})"><span class="n">${cal(d).sday}</span>${ev.length ? `<span class="ev">${ev.map(e => e[0]).join('')}</span>` : ''}${earned != null && (past || today) ? `<span class="m">${earned ? '+' + (earned >= 10000 ? Math.round(earned / 1000) + 'k' : earned) : '—'}</span>` : ''}</div>`;
+    h += `<div class="cd ${past ? 'past' : ''} ${today ? 'today' : ''} ${cal(d).dow >= 5 ? 'we' : ''}${d === calSel ? ' sel' : ''}" data-d="${d}" onclick="calDay(${d})"><span class="n">${cal(d).sday}</span>${ev.length ? `<span class="ev">${ev.map(e => e[0]).join('')}</span>` : ''}${earned != null && (past || today) ? `<span class="m">${earned ? '+' + (earned >= 10000 ? Math.round(earned / 1000) + 'k' : earned) : '—'}</span>` : ''}</div>`;
   }
-  h += `</div><div id="calInfo" style="font-size:13px;color:#7a6650;min-height:18px;margin-top:8px">Тапни на день — подробности</div>
-    <button class="wide" style="width:100%;margin-top:8px" onclick="S.night ? openNight(false) : closeNight()">Закрыть</button>`;
+  h += `</div><div id="calInfo" class="dsum">${calInfo()}</div>`;
+  if (S.night) {
+    const n = upCount(), nx = cal(S.day + 1).sday === 1;
+    h += `<div class="row" style="margin-top:10px"><button class="wide alt" onclick="openNight()">⬆️ Улучшения${n ? ` <span class="cntb">${n}</span>` : ''}</button>
+      <button class="wide${nx ? ' season-' + season(S.day + 1).id : ''}" style="background:#ffd34d" onclick="morning()">${nx ? `${season(S.day + 1).e} Встретить ${SEASON_ACC[season(S.day + 1).id]}` : `☀️ Начать день ${cal(S.day + 1).sday}`}</button></div>`;
+  } else h += `<button class="wide" style="width:100%;margin-top:8px" onclick="closeNight()">Закрыть</button>`;
   $('sheet').dataset.view = 'cal'; $('sheet').innerHTML = h; $('overlay').classList.add('show');
 }
 function calDay(d) {
-  const x = (S.hist || []).find(h => h.d === d), c = cal(d), ev = dayEvents(d);
-  let t = `<b>${WEEKDAYS[c.dow]}, день ${c.sday}</b>`;
-  if (d === S.day) t += ` — сегодня: заработано ${S.stats.earned || 0}💰, обслужено ${S.stats.served || 0}`;
-  else if (x) t += ` — заработано ${x.e}💰, потрачено ${x.s || 0}💰, обслужено ${x.sv ?? '?'}, ушли ни с чем ${x.m ?? '?'}`;
-  else if (d < S.day) t += ' — нет записей';
-  else t += d === S.day + 1 ? ' — завтра' : ` — через ${d - S.day} дн.`;
-  if (ev.length) t += '<br>' + ev.map(e => e.join(' ')).join(' · ');
-  $('calInfo').innerHTML = t;
+  calSel = d; $('calInfo').innerHTML = calInfo();
+  document.querySelectorAll('#sheet .cd').forEach(e => e.classList.toggle('sel', +e.dataset.d === d));
+}
+// итоги выбранного дня; у сегодняшнего ночью — ещё и «завтра»: прогноз, ящики к ярмарке, корм
+function calInfo() {
+  const d = calSel, today = d === S.day, x = today ? null : (S.hist || []).find(h => h.d === d), c = cal(d), ev = dayEvents(d);
+  let h = `<div class="dsh">${today ? (S.night ? '🌙 Итоги дня' : '☀️ Сегодня') : '📅'} · ${WEEKDAYS[c.dow]}, день ${c.sday}</div>`;
+  const evs = ev.length ? `<div class="dsev">${ev.map(e => e.join(' ')).join(' · ')}</div>` : '';
+  if (!today && !x) return h + `<div class="dsev">${d < S.day ? 'Нет записей' : d === S.day + 1 ? 'Завтра' : `Через ${d - S.day} дн.`}</div>` + evs;
+  const st = today ? { e: S.stats.earned || 0, s: spentSum(S.stats), sv: S.stats.served || 0, m: S.stats.missed || 0, so: S.stats.sold || {}, xp: S.stats.xp || 0 } : x;
+  const cell = (ico, v, l) => `<div class="dsc"><span>${ico}</span><b>${v}</b><small>${l}</small></div>`;
+  h += `<div class="dsgrid">${cell('💰', '+' + st.e, 'заработано')}${cell('🙂', st.sv ?? '?', 'покупателей')}${cell('😠', st.m ?? '?', 'ушли')}${cell('⭐', st.xp != null ? '+' + st.xp : '?', 'опыт')}</div>`;
+  const top = Object.entries(st.so || {}).filter(([g, m]) => m > 0 && (GOODS[g] || g === 'order')).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  if (top.length) h += `<div class="dstop">${top.map(([g, m]) => `<span>${g === 'order' ? '📬' : GOODS[g].e} ${m}💰</span>`).join('')}</div>`;
+  if (st.s) h += `<div class="dsev">Потрачено ${st.s}💰</div>`;
+  h += evs;
+  if (today && S.night) {   // завтра
+    const n = S.day + 1;
+    h += `<div class="dsnext"><div class="dsh">Завтра</div><div class="dsev" style="margin-top:0">${isRest(n) ? '🧺 Воскресенье — лавка закрыта' : `🙂 ~${visitorsPerDay(n)} покупателей`}${isFair(n) ? ` · 🎪 ярмарка · 📦 ${cratesUsed()}/${allCrates()} — <a href="#" onclick="event.preventDefault();openFairPack()">собрать</a>` : ''}</div>${isFair(n) ? `<div class="dsev">${contestReminder()}</div>` : ''}${feedTiles()}</div>`;
+    if (EMBED && CLOUD.state !== 'ok' && CLOUD.state !== 'wait' && S.day >= 2 && (S.codeDay || 0) < S.day)   // облака нет — Safari может стереть ферму
+      h += `<div class="summary" style="background:#fff1d6;border:1.5px solid #f0c24a;margin-top:8px">⚠️ Ферма хранится только в этом браузере — Safari может её стереть. <a href="#" onclick="event.preventDefault();exportCode()" style="color:#b0503a;font-weight:800">Сохрани код фермы</a> или играй в <a href="${APP_URL}" target="_blank" rel="noopener" style="color:#2f6b2a;font-weight:800">приложении</a>, где ферма сохраняется сама.</div>`;
+  }
+  return h;
 }
 // ---------- Прилавок: что выставлено на продажу ----------
 let slotSel = 0, shopSel = 0;
@@ -5771,7 +5795,7 @@ function openStall(sel, shop) {
     h += `</div>`;
   }
   if (!S.up.stall2 && !upLocked('stall2')) h += `<div class="fpinfo" style="margin-top:10px">🏪 Можно поставить <b>вторую лавку</b> — ещё 6 мест и своя очередь, торгуют фермер и помощники. Ночью: «Улучшения» → «Ферма».</div>`;
-  h += `<button class="wide" style="width:100%;margin-top:12px" onclick="S.night ? openNight(false) : closeNight()">Готово</button>`;
+  h += `<button class="wide" style="width:100%;margin-top:12px" onclick="closeNight()">Готово</button>`;
   const top = $('sheet').dataset.view === 'stall' ? $('sheet').scrollTop : 0;
   $('sheet').dataset.view = 'stall'; $('sheet').innerHTML = h; $('overlay').classList.add('show'); $('sheet').scrollTop = top;
 }
@@ -5836,7 +5860,7 @@ function openFairPack(sel) {
     h += `</div>`;
   }
   h += `<div class="fphead"><b>📦 ${used} из ${allCrates()} ящиков</b><div class="fpprice" onclick="prestigeInfo()">🏅 Цены <b>+${pct}%</b> ⓘ</div></div>`;
-  h += `<div class="row" style="margin-top:8px">${!lock && used ? `<button class="wide alt" onclick="packFair(null)">↩️ Всё на склад</button>` : ''}<button class="wide" onclick="save(); S.night ? openNight(false) : closeNight()">Готово</button></div>`;
+  h += `<div class="row" style="margin-top:8px">${!lock && used ? `<button class="wide alt" onclick="packFair(null)">↩️ Всё на склад</button>` : ''}<button class="wide" onclick="save(); closeNight()">Готово</button></div>`;
   const top = $('sheet').dataset.view === 'fairpack' ? $('sheet').scrollTop : 0;
   $('sheet').dataset.view = 'fairpack'; $('sheet').innerHTML = h; $('overlay').classList.add('show'); $('sheet').scrollTop = top;
 }
@@ -5892,7 +5916,9 @@ function stallAll(on) {
 function refreshSheet() {
   if (!$('overlay').classList.contains('show')) return;
   const v = $('sheet').dataset.view || '', top = $('sheet').scrollTop;
-  if (v === 'night' || v === 'night-sum') openNight(v === 'night-sum');
+  if (v === 'night') openNight();
+  else if (v === 'cal') openCalendar(calSeason);
+  else if (v === 'upgroup' && upGroupCur) openUpGroup(upGroupCur);
   else if (v.startsWith('up:')) openUpgrade(v.slice(3));
   else return;
   $('sheet').scrollTop = top;
@@ -5909,7 +5935,7 @@ $('sheet').addEventListener('click', e => {
 function closeNight() { $('overlay').classList.remove('show'); $('sheet').dataset.view = ''; }
 function morning() {   // итог дня — в историю (последние 14 дней)
   S.hist ??= [];
-  S.hist.push({ d: S.day, e: S.stats.earned || 0, s: spentSum(S.stats), sv: S.stats.served || 0, m: S.stats.missed || 0, so: S.stats.sold || {} });
+  S.hist.push({ d: S.day, e: S.stats.earned || 0, s: spentSum(S.stats), sv: S.stats.served || 0, m: S.stats.missed || 0, so: S.stats.sold || {}, xp: S.stats.xp || 0 });
   if (S.hist.length > 400) S.hist.shift();   // история для общего графика
   S.day++; startDay();
 }
@@ -6123,7 +6149,7 @@ if (tablet) { centerCam(); clampCam(); }   // на планшете — вся �
 else { const a = iso(5, 15), b = iso(11, 6); cam.x = (a.x + b.x) / 2; cam.y = (a.y + b.y) / 2 - 10; clampCam(); }   // на телефоне — поле и лавка в кадре
 if (S.toSpawn === 0 && !S.night) startDay(); else renderUI();
 if (!S.night) S.toSpawn = Math.max(S.toSpawn, visitorsPerDay());   // старые сохранения получают новый поток покупателей сразу
-if (S.night) openNight(false);
+if (S.night) openCalendar();
 // Приложение на экране «Домой» держит старую версию в памяти — проверяем сайт и обновляемся сами (ферма сохраняется до перезагрузки)
 let updBusy = false;
 async function checkUpdate() {
