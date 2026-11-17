@@ -227,6 +227,7 @@
   .calnav button { width: 40px; height: 34px; padding: 0; border-radius: 10px; font-size: 20px; }
   .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
   .cal .wd { text-align: center; font-size: 11px; font-weight: 800; color: #7a6650; }
+  .cal .cd .wx { position: absolute; top: 1px; right: 2px; font-size: 13px; line-height: 1; }
   .cal .cd { position: relative; min-height: 50px; border-radius: 9px; background: #fffaf0; border: 1.5px solid #ecdcb8; padding: 2px 3px; display: flex; flex-direction: column; align-items: center; cursor: pointer; }
   .cal .cd.we { background: #fff3dc; }
   .cal .cd.past { background: #efe6d2; color: #8d7a63; }
@@ -844,6 +845,7 @@ S.picnic ??= 0; S.special ??= []; S.trophies ??= []; S.contestDay ??= 0; S.spOn 
 if (!S.fair.crates) { S.fair.crates = []; for (const [c, n0] of Object.entries(S.fair.stock || {})) for (let n = n0; n > 0; n -= CRATE) S.fair.crates.push({ id: c, n: Math.min(CRATE, n) }); }   // ящики — явным списком
 syncFair(); syncSpecial();   // особые находки и кубки конкурсов   // товары, снятые с продажи (копятся для заказов и производства)
 S.up.nests ??= 0; S.up.rooster ??= 0; S.up.yard ??= 0;
+S.wseed ??= Math.floor(Math.random() * 1e6);   // погода у каждой фермы своя
 S.up.millBin ??= 0; S.up.dairyBin ??= 0; S.keep ??= {}; S.up.dhouse ??= 0; S.up.churn ??= 0;   // бункер мельницы, чаны сыроварни, запас для пекарни
 S.up.milker ??= 0; S.up.clover ??= 0; S.up.hay ??= 0; S.up.pasture ??= 0;
 S.coop.gold ??= 0; S.coop.extra ??= 0; S.coop.chicks ??= 0;
@@ -890,7 +892,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.115';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.116';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1150,7 +1152,7 @@ const DECOR_OBJ = Object.fromEntries(Object.keys(DECOR_SPOT).map(id => [id, { id
 // покупателей в день растёт с уровнем, но не бесконечно; зато корзинка у каждого больше
 const visitorsBase = () => Math.min(30, 8 + Math.min(14, farmLevel()) + (S.up.ads || 0) + prestigeGuests());
 const basketMax = (L = farmLevel()) => L < 3 ? 1 : L < 6 ? 2 : L < 10 ? 3 : L < 15 ? 4 : 5;   // сколько разных товаров берёт один покупатель
-const visitorsPerDay = (d = S.day) => cal(d).dow === 6 ? 0 : Math.round(visitorsBase() * (isFair(d) ? 2.4 : 1));   // на ярмарке народу много — часть идёт к соседям   // суббота — ярмарка, воскресенье — выходной   // день 1 → 11 покупателей (~1 каждые 14 сек)
+const visitorsPerDay = (d = S.day) => cal(d).dow === 6 ? 0 : Math.round(visitorsBase() * (isFair(d) ? 2.4 : 1) * (weather(d) === 'heat' ? 1.2 : 1));   // на ярмарке народу много — часть идёт к соседям   // суббота — ярмарка, воскресенье — выходной   // день 1 → 11 покупателей (~1 каждые 14 сек)
 const growMult = () => 1 + S.up.fert * 0.2;
 // ---------- Календарь: неделя из 7 дней, месяц (он же сезон) — 3 недели (21 день), год — 4 сезона ----------
 const WEEKDAYS = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'], WD = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -1166,6 +1168,27 @@ const season = (d = S.day) => SEASONS[cal(d).si];
 // как день видит игрок: «Год 1 · Весна · день 5» — номер внутри сезона (1–21), а не сквозной счёт дней
 const dayName = (d = S.day) => { const c = cal(d); return `Год ${c.year} · ${SEASONS[c.si].name} · день ${c.sday}`; };
 const dayShort = (d = S.day) => { const c = cal(d); return `${SEASONS[c.si].name.toLowerCase()}, день ${c.sday}${c.year > 1 ? `, год ${c.year}` : ''}`; };
+// ---------- Погода: у каждого дня своя, известна заранее (прогноз в календаре). Плохой погоды нет ----------
+const WEATHER = {
+  sun:  { e: '☀️', name: 'Ясно',     text: 'обычный день' },
+  wind: { e: '💨', name: 'Ветрено',  text: 'мельница мелет в 1,5 раза быстрее' },
+  rain: { e: '🌧️', name: 'Дождь',    text: 'грядки в поле растут на 30% быстрее' },
+  heat: { e: '🔆', name: 'Жара',     text: 'покупателей на 20% больше' },
+  snow: { e: '❄️', name: 'Снегопад', text: 'молоко, сыр и выпечка на 10% дороже' },
+};
+const WX_ODDS = {   // жара — только летом, снег — только зимой, зимой без дождя
+  spring: [['wind', .25], ['rain', .25]], summer: [['wind', .15], ['rain', .15], ['heat', .25]],
+  autumn: [['wind', .3], ['rain', .25]], winter: [['wind', .2], ['snow', .3]],
+};
+function weather(d = S.day) {
+  const v = Math.sin((d * 7.31 + (S.wseed || 0) % 9973) * 12.9898) * 43758.5453; let r = v - Math.floor(v);
+  for (const [k, p] of WX_ODDS[season(d).id]) if ((r -= p) < 0) return k;
+  return 'sun';
+}
+const wxOf = (d = S.day) => WEATHER[weather(d)];
+const WX_SNOW = new Set(['milk', 'cheese', 'sour', 'butter', 'bread', 'pie', 'pizza', 'cake', 'croissant']);
+const wxGrow = () => weather() === 'rain' ? 1.3 : 1, wxMill = () => weather() === 'wind' ? 1.5 : 1;
+const wxPrice = c => weather() === 'snow' && WX_SNOW.has(c) ? 1.1 : 1;
 const seasonGrow = (id, gh) => (season().grow[id] || 1) * (gh ? 1 : season().grow.field || 1);
 const seasonPrice = id => season().price[id] || 1;
 // ярмарка и почта открываются не сразу — новичку хватает своей фермы
@@ -1223,7 +1246,7 @@ function applySeasonBg() { const c = look().bg; document.body.style.background =
 const priceMult = () => 1 + S.up.sign * 0.05 + (S.up.cozy || 0) * 0.02 + prestige();
 const homeMult = () => 1 + (S.up.house || 0) * 0.2 + (picnicOn() ? 0.15 : 0);   // дом: помощники сыты и работают быстрее
 const patience = (n = 1) => 50 + S.up.bench * 8 + (n - 1) * 6;   // терпение тикает только в очереди; большая корзинка — ждут чуть дольше
-const sellPrice = c => Math.round(GOODS[c].price * priceMult() * seasonPrice(c));
+const sellPrice = c => Math.round(GOODS[c].price * priceMult() * seasonPrice(c) * wxPrice(c));
 // Экономика: за день (S.stats) и за всё время (S.life) — выручка по товарам и траты по статьям
 const SPEND = { seeds: '🌱 Семена', up: '⬆️ Улучшения', crops: '🔓 Новые культуры', trees: '🌳 Саженцы' };
 function spend(n, cat) {
@@ -1801,7 +1824,7 @@ function updateProd(dt) {
     const st = S.prod[k], T = PROD[k].time;
     if (!st.q) { st.t = 0; continue; }
     if (st.out >= Math.max(20, prodCap(k))) continue;   // склад здания полон — ждёт, пока заберут
-    st.t += dt * prodSpeed(k);
+    st.t += dt * prodSpeed(k) * (k === 'mill' ? wxMill() : 1);   // ветер крутит мельницу быстрее
     while (st.t >= T && st.q > 0) { st.t -= T; st.q--; st.out++; }
   }
 }
@@ -2960,7 +2983,7 @@ function step(dt) {
   if (!S.night && !S.started && shouldAutoStart()) beginClock();
   if (!S.night && S.started) {
     S.t += dt;
-    for (const p of S.plots) if (p.crop && p.prog < 1) p.prog = Math.min(1, p.prog + dt * growMult() * seasonGrow(p.crop) / CROP[p.crop].grow);
+    for (const p of S.plots) if (p.crop && p.prog < 1) p.prog = Math.min(1, p.prog + dt * growMult() * seasonGrow(p.crop) * wxGrow() / CROP[p.crop].grow);   // дождь — только поле
     for (const p of S.gh) if (p.crop && p.prog < 1) p.prog = Math.min(1, p.prog + dt * growMult() * seasonGrow(p.crop, true) / (CROP[p.crop].grow * GH_SLOW));
     for (const t of S.trees) if (t.kind) {
       const T = TREES[t.kind];
@@ -3495,6 +3518,17 @@ const ICON_DRAW = {
   '🌙': K => { const c = K.c; K.C(32, 32, 24, IK, 0); K.C(32, 32, 21, K.G(0, 10, 0, 54, '#fff09a', '#ffc93c'), 0);
     c.save(); c.globalCompositeOperation = 'destination-out'; K.C(44, 22, 19, '#000', 0); c.restore();
     c.save(); c.beginPath(); c.arc(32, 32, 22.5, 0, 7); c.clip(); K.D(cc => cc.arc(44, 22, 19, 0, 7), null, 3); c.restore(); K.C(24, 42, 3, 'rgba(230,180,40,.6)', 0); },
+  '💨': K => {   // ветер: три завитка
+    const w = (y, x0, x1, r) => { K.D(c => { c.moveTo(x0, y); c.lineTo(x1, y); c.arc(x1, y - r, r, Math.PI / 2, -Math.PI * .9, true); }, null, 0); K.c.lineCap = 'round'; K.c.lineWidth = 7.5; K.c.strokeStyle = IK; K.c.stroke(); K.c.lineWidth = 4; K.c.strokeStyle = '#d6ecfa'; K.c.stroke(); };
+    w(24, 6, 40, 7); w(38, 10, 50, 6); w(51, 6, 30, 5); },
+  '🌧️': K => {   // туча с каплями
+    for (const [x, y] of [[17, 51], [30, 57], [43, 51]]) { const c = K.c; c.save(); c.translate(x, y); c.rotate(.38);   // капли наискосок — дождь с ветерком
+      K.D(c => { c.moveTo(0, -8); c.quadraticCurveTo(5, 0, 0, 3); c.quadraticCurveTo(-5, 0, 0, -8); }, K.G(0, -8, 0, 3, '#9fd2f7', '#4f8fd6'), 2.4); c.restore(); }
+    K.D(c => { c.moveTo(14, 40); c.arc(14, 30, 10, Math.PI * .6, Math.PI * 1.45); c.arc(28, 18, 13, Math.PI * 1.1, Math.PI * 1.85); c.arc(45, 29, 11, Math.PI * 1.35, Math.PI * .5); c.closePath(); }, K.G(0, 4, 0, 42, '#f2f6fa', '#aebdcc')); K.H(22, 16, 6, 3, .7); },   // низ туч ровный, углы скруглены
+  '🔆': K => {   // жара: горячее солнце с волнами зноя
+    for (let k = 0; k < 8; k++) { const c = K.c; c.save(); c.translate(32, 26); c.rotate(k * Math.PI / 4); K.P([[-5, -15], [0, -25], [5, -15]], '#ff8a3a', 2.5); c.restore(); }
+    K.C(32, 26, 13, K.G(0, 13, 0, 39, '#ffe27a', '#ff8f2e')); K.H(27, 21, 4, 2.4, .55);
+    for (const y of [50, 58]) { K.D(c => { c.moveTo(12, y); for (let x = 12; x < 52; x += 10) c.quadraticCurveTo(x + 2.5, y - 4, x + 5, y), c.quadraticCurveTo(x + 7.5, y + 4, x + 10, y); }, null, 0); K.c.lineWidth = 6; K.c.strokeStyle = IK; K.c.stroke(); K.c.lineWidth = 3; K.c.strokeStyle = '#ffb35a'; K.c.stroke(); } },
   '☀️': K => { for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4, c = K.c; c.save(); c.translate(32, 32); c.rotate(a); K.P([[-5, -18], [0, -30], [5, -18]], '#ffb83a', 2.5); c.restore(); }
     K.C(32, 32, 16, K.G(0, 16, 0, 48, '#fff09a', '#ffc93c')); K.H(26, 26, 5, 3, .55); },
   '🌅': K => { const c = K.c; K.R(4, 6, 56, 52, 8, K.G(0, 6, 0, 58, '#ffb27a', '#ffe0b0')); c.save(); c.beginPath(); c.rect(0, 0, 64, 40); c.clip(); K.C(32, 40, 13, '#ffd84d', 2.5); c.restore();
@@ -3664,7 +3698,7 @@ const ICON_DRAW = {
   '📨': K => { K.R(6, 16, 52, 36, 5, '#fffdf6'); K.D(c => { c.moveTo(8, 18); c.lineTo(32, 38); c.lineTo(56, 18); }, null, 2.5); K.P([[46, 4], [60, 10], [50, 16]], '#e0473e', 2); K.L(30, 8, 46, 9, IK, 2.5); },
   '💬': K => { K.D(c => { c.roundRect(4, 8, 56, 38, 14); c.moveTo(16, 44); c.lineTo(12, 58); c.lineTo(28, 46); }, '#fffdf6'); for (const x of [20, 32, 44]) K.C(x, 27, 3.5, '#8a6a4a', 0); },
 };
-const ICON_ALIAS = { '❄': '❄️', '☁': '☁️', '⚠': '⚠️', '🌆': '🌇', '⬆': '⬆️', '☀': '☀️', '🌬': '🌬️', '✉': '✉️', '🛠️': '🛠' };
+const ICON_ALIAS = { '🌧': '🌧️', '❄': '❄️', '☁': '☁️', '⚠': '⚠️', '🌆': '🌇', '⬆': '⬆️', '☀': '☀️', '🌬': '🌬️', '✉': '✉️', '🛠️': '🛠' };
 const ICON_KEYS = new Set([...Object.keys(ICON_DRAW), ...Object.keys(ICON_ALIAS)]);
 const ICON_RE = new RegExp('(' + [...ICON_KEYS].sort((a, b) => b.length - a.length).map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')');
 const iconCache = {}, iconURLs = {};
@@ -4482,7 +4516,7 @@ function drawMillBody(d, t) {
   for (const f of [-.45, 0, .45]) { ctx.strokeStyle = 'rgba(255,240,220,.18)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(capC.x + rx * f, capC.y + ry * Math.sqrt(1 - f * f)); ctx.quadraticCurveTo(capC.x + rx * f * .7, capC.y - ry - 5, capC.x, capC.y - ry - 11); ctx.stroke(); }
   ctx.strokeStyle = '#f6f1e6'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(capC.x, capC.y, rx, ry, 0, 0, Math.PI); ctx.stroke();   // белая кромка
   // крылья: в плоскости фасада, решётка с одной стороны маха
-  const hub = lift(cx, cy + .48, 84), spin = S.prod.mill.q && S.started && !S.night ? t * (1.2 * S.up.mill) : 0.35;
+  const hub = lift(cx, cy + .48, 84), spin = S.prod.mill.q && S.started && !S.night ? t * (1.2 * S.up.mill * wxMill()) : 0.35;
   anim(() => (ANIM === 2 ? millScaled : f => f())(() => { for (let k = 0; k < 4; k++) {
     const a = spin + k * Math.PI / 2, ca = Math.cos(a), sa = Math.sin(a), L = 1.6, Z = 60;
     const at = s => ({ x: hub.x + ca * s * L * TW / 2, y: hub.y + ca * s * L * TH / 2 - sa * s * Z });
@@ -5659,7 +5693,7 @@ function renderHud() {
   else { [, label, sky] = PHASES.find(p => frac < p[0]); }
   box.style.background = sky;
   box.classList.toggle('dark', S.night);
-  $('phase').textContent = `${season().e} День ${cal().sday} · ${WD[cal().dow]}` + (timeScale > 1 ? ` ⏩${timeScale}` : ''); box.title = `${dayName()} · ${WEEKDAYS[cal().dow]} · ${label}` + (timeScale > 1 ? ` ⏩${timeScale}` : '');
+  $('phase').textContent = `${season().e} День ${cal().sday} · ${WD[cal().dow]}${weather() !== 'sun' ? ' · ' + wxOf().e : ''}` + (timeScale > 1 ? ` ⏩${timeScale}` : ''); box.title = `${dayName()} · ${WEEKDAYS[cal().dow]} · ${label}` + (timeScale > 1 ? ` ⏩${timeScale}` : '');
   if (S.night) { icon.textContent = '🌙'; icon.style.left = '66px'; icon.style.top = '18px'; return; }
   const a = Math.PI * (1 - frac);
   icon.textContent = '☀️';
@@ -6227,7 +6261,7 @@ function openCalendar(si, sel) {
   for (let d = first; d < first + SEASON_LEN; d++) {
     const past = d < S.day, today = d === S.day, ev = dayEvents(d), x = hist[d];
     const earned = today ? S.stats.earned || 0 : x ? x.e : null;
-    h += `<div class="cd ${past ? 'past' : ''} ${today ? 'today' : ''} ${cal(d).dow >= 5 ? 'we' : ''}${d === calSel ? ' sel' : ''}" data-d="${d}" onclick="calDay(${d})"><span class="n">${cal(d).sday}</span>${ev.length ? `<span class="ev">${ev.map(e => e[0]).join('')}</span>` : ''}${earned != null && (past || today) ? `<span class="m">${earned ? '+' + (earned >= 10000 ? Math.round(earned / 1000) + 'k' : earned) : '—'}</span>` : ''}</div>`;
+    h += `<div class="cd ${past ? 'past' : ''} ${today ? 'today' : ''} ${cal(d).dow >= 5 ? 'we' : ''}${d === calSel ? ' sel' : ''}" data-d="${d}" onclick="calDay(${d})"><span class="n">${cal(d).sday}</span>${d >= S.day && d < S.day + 8 && weather(d) !== 'sun' ? `<span class="wx">${wxOf(d).e}</span>` : ''}${ev.length ? `<span class="ev">${ev.map(e => e[0]).join('')}</span>` : ''}${earned != null && (past || today) ? `<span class="m">${earned ? '+' + (earned >= 10000 ? Math.round(earned / 1000) + 'k' : earned) : '—'}</span>` : ''}</div>`;
   }
   h += `</div><div id="calInfo" class="dsum">${calInfo()}</div>`;
   if (S.night) {
@@ -6246,17 +6280,18 @@ function calInfo() {
   const d = calSel, today = d === S.day, x = today ? null : (S.hist || []).find(h => h.d === d), c = cal(d), ev = dayEvents(d);
   let h = `<div class="dsh">${today ? (S.night ? '🌙 Итоги дня' : '☀️ Сегодня') : '📅'} · ${WEEKDAYS[c.dow]}, день ${c.sday}</div>`;
   const evs = ev.length ? `<div class="dsev">${ev.map(e => e.join(' ')).join(' · ')}</div>` : '';
-  if (!today && !x) return h + `<div class="dsev">${d < S.day ? 'Нет записей' : d === S.day + 1 ? 'Завтра' : `Через ${d - S.day} дн.`}</div>` + evs;
+  const wxl = d >= S.day && d < S.day + 8 ? `<div class="dsev">${wxOf(d).e} <b>${wxOf(d).name}</b> — ${wxOf(d).text}</div>` : '';   // прогноз — на неделю вперёд
+  if (!today && !x) return h + `<div class="dsev">${d < S.day ? 'Нет записей' : d === S.day + 1 ? 'Завтра' : `Через ${d - S.day} дн.`}</div>` + wxl + evs;
   const st = today ? { e: S.stats.earned || 0, s: spentSum(S.stats), sv: S.stats.served || 0, m: S.stats.missed || 0, so: S.stats.sold || {}, xp: S.stats.xp || 0 } : x;
   const cell = (ico, v, l) => `<div class="dsc"><span>${ico}</span><b>${v}</b><small>${l}</small></div>`;
   h += `<div class="dsgrid">${cell('💰', '+' + st.e, 'заработано')}${cell('🙂', st.sv ?? '?', 'покупателей')}${cell('😠', st.m ?? '?', 'ушли')}${cell('⭐', st.xp != null ? '+' + st.xp : '?', 'опыт')}</div>`;
   const top = Object.entries(st.so || {}).filter(([g, m]) => m > 0 && (GOODS[g] || g === 'order')).sort((a, b) => b[1] - a[1]).slice(0, 5);
   if (top.length) h += `<div class="dstop">${top.map(([g, m]) => `<span>${g === 'order' ? '📬' : GOODS[g].e} ${m}💰</span>`).join('')}</div>`;
   if (st.s) h += `<div class="dsev">Потрачено ${st.s}💰</div>`;
-  h += evs;
+  h += (today && !S.night ? wxl : '') + evs;
   if (today && S.night) {   // завтра
     const n = S.day + 1;
-    h += `<div class="dsnext"><div class="dsh">Завтра</div><div class="dsev" style="margin-top:0">${isRest(n) ? '🧺 Воскресенье — лавка закрыта' : `🙂 ~${visitorsPerDay(n)} покупателей`}${isFair(n) ? ` · 🎪 ярмарка · 📦 ${cratesUsed()}/${allCrates()} — <a href="#" onclick="event.preventDefault();openFairPack()">собрать</a>` : ''}</div>${isFair(n) ? `<div class="dsev">${contestReminder()}</div>` : ''}${feedTiles()}</div>`;
+    h += `<div class="dsnext"><div class="dsh">Завтра</div><div class="dsev" style="margin-top:0">${wxOf(n).e} <b>${wxOf(n).name}</b> — ${wxOf(n).text}</div><div class="dsev">${isRest(n) ? '🧺 Воскресенье — лавка закрыта' : `🙂 ~${visitorsPerDay(n)} покупателей`}${isFair(n) ? ` · 🎪 ярмарка · 📦 ${cratesUsed()}/${allCrates()} — <a href="#" onclick="event.preventDefault();openFairPack()">собрать</a>` : ''}</div>${isFair(n) ? `<div class="dsev">${contestReminder()}</div>` : ''}${feedTiles()}</div>`;
     if (EMBED && CLOUD.state !== 'ok' && CLOUD.state !== 'wait' && S.day >= 2 && (S.codeDay || 0) < S.day)   // облака нет — Safari может стереть ферму
       h += `<div class="summary" style="background:#fff1d6;border:1.5px solid #f0c24a;margin-top:8px">⚠️ Ферма хранится только в этом браузере — Safari может её стереть. <a href="#" onclick="event.preventDefault();exportCode()" style="color:#b0503a;font-weight:800">Сохрани код фермы</a> или играй в <a href="${APP_URL}" target="_blank" rel="noopener" style="color:#2f6b2a;font-weight:800">приложении</a>, где ферма сохраняется сама.</div>`;
   }
