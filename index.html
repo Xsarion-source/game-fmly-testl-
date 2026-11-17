@@ -804,7 +804,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.86';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.87';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -2091,7 +2091,7 @@ function upAt(x, y) {   // какое улучшение относится к �
   const si = slotAt(x, y); if (si >= S.plots.length) return 'land';
   const oi = orchardAt(x, y); if (oi >= 0 ? oi >= S.trees.length : ground[y][x] === 'o') return 'orchard';
   const gi = ghAt(x, y); if (gi >= 0 && gi >= S.gh.length) return 'greenhouse';
-  const li = lotAt(x, y); if (li >= 0) return S.up.clear <= li ? 'clear' : prodAt(x, y) === LOTS[li].b ? LOTS[li].b : null;
+  const li = lotAt(x, y); if (li >= 0) return S.up.clear <= li ? 'clear' : LOTS[li].b;   // вся вырубка — место своего здания
   if (inCoopArea(x, y)) return 'coop';
   if (inBarnArea(x, y)) return 'barn';
   const in_ = (g, x0, y0, x1, y1) => { const [dx, dy] = LAYOUT[g]; return x - dx >= x0 && x - dx <= x1 && y - dy >= y0 && y - dy <= y1; };
@@ -2107,7 +2107,7 @@ function upAt(x, y) {   // какое улучшение относится к �
 }
 function upAtNight(x, y) {   // по проходимым клеткам с максимальным улучшением фермер просто идёт
   const k = upAt(x, y);
-  return k && (!walkable(x, y) || S.up[k] < UPGRADES[k].max) ? k : null;
+  return k && (!walkable(x, y) || S.up[k] < UPGRADES[k].max || lotAt(x, y) >= 0) ? k : null;
 }
 // Ночью над местами улучшений, на которые хватает денег, — значок ⬆
 let badgeHits = [];
@@ -2786,8 +2786,10 @@ function onTap(sx, sy) {
   // тап по самому зданию курятника/коровника (по крыше и стенам, а не только по клеткам у земли)
   const hit = (g, x0, y0, x1, y1, h) => { const o = isoG(g, 0, 0), ps = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]].map(([x, y]) => iso(x, y));
     const xs = ps.map(q => q.x + o.x), ys = ps.map(q => q.y + o.y); return wx > Math.min(...xs) + 6 && wx < Math.max(...xs) - 6 && wy > Math.min(...ys) - h && wy < Math.max(...ys); };
-  if (hens() && hit('coop', 6, 8, 8, 9, 44)) { tapCoop(); return; }
-  if (cows() && hit('barn', 14, 1, 16, 3, 58)) { tapBarn(); return; }
+  if (hens() && hit('coop', 6, 8, 8, 9, 44)) { S.night ? openUpPlace('coop') : tapCoop(); return; }   // ночью здание — это его улучшения
+  if (cows() && hit('barn', 14, 1, 16, 3, 58)) { S.night ? openUpPlace('barn') : tapBarn(); return; }
+  if (S.up.dairy && hit('dairy', 17, 8, 18, 9, 60)) { S.night ? openUpPlace('dairy') : tapProd('dairy'); return; }   // по картинке здания, вместе с крышей
+  if (S.up.mill && hit('mill', 17, 4, 19, 6, 150)) { S.night ? openUpPlace('mill') : tapProd('mill'); return; }
   const fx = (wx / (TW / 2) + wy / (TH / 2)) / 2, fy = (wy / (TH / 2) - wx / (TW / 2)) / 2;
   const tx = Math.floor(fx), ty = Math.floor(fy);
   if (fairOn() && ((tx >= 17 && tx <= 19 + 2 * (S.up.fairstall || 0) && ty >= 22 && ty <= 25) || (S.up.fairbake && tx >= 15 && tx <= 17 && ty >= 27 && ty <= 28))) { goFair(); return; }   // лотки фермы
