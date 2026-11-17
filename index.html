@@ -899,7 +899,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.121';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.122';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -5696,27 +5696,25 @@ function drawWeather(t) {
       const y = ((wxR(i, 1) * H + s * vy) % (H + 20 * k)) - 10 * k, x = (wxR(i, 2) * W + Math.sin(s * .9 + i) * 14 * k + W) % W;
       ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
     }
-  } else if (w === 'wind') {   // редкие порывы: раз в ~17 с на 3 с проплывают 1–2 извивающиеся полоски и пара листьев, потом тихо
-    const G = 17, gi = Math.floor(s / G), u = (s - gi * G) / 3;
-    if (u < 1) {
-      const fade = Math.sin(Math.PI * u), n = wxR(gi, 21) < .5 ? 1 : 2;
-      ctx.lineCap = 'round';
-      for (let j = 0; j < n; j++) {
-        const y0 = (.15 + wxR(gi, 22 + j) * .65) * H, len = (130 + wxR(gi, 24 + j) * 70) * k, x0 = -len + u * (W + len) * 1.1 + j * 40 * k;
-        ctx.globalAlpha = fade * .7; ctx.beginPath();
-        for (let q = 0; q <= 24; q++) { const v = q / 24; ctx[q ? 'lineTo' : 'moveTo'](x0 + v * len, y0 + Math.sin(v * Math.PI * 2 + s * 5 + j) * 5 * k); }   // волна бежит — полоска извивается
-        ctx.strokeStyle = '#fff'; ctx.lineWidth = 3 * k; ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-      const LEAF = { spring: ['#d9f08a', '#a6d85a'], summer: ['#cfe86a', '#9fd14a'], autumn: ['#f6b23a', '#e0662a'], winter: null }[season().id];   // светлее травы, чтобы было видно
-      if (LEAF) for (let i = 0; i < 3; i++) {   // пара листьев летит вместе с порывом
-        const x = -20 * k + (u * 1.15 - i * .08) * (W + 40 * k), y = (.2 + wxR(gi, 30 + i) * .6) * H + Math.sin(u * 6 + i) * 14 * k + u * 30 * k;
-        ctx.globalAlpha = Math.min(1, fade * 1.5);
-        ctx.save(); ctx.translate(x, y); ctx.rotate(u * 8 + i); ctx.scale(1, .55 + .45 * Math.sin(u * 12 + i));
-        ctx.beginPath(); ctx.moveTo(-7 * k, 0); ctx.quadraticCurveTo(0, -5.5 * k, 7 * k, 0); ctx.quadraticCurveTo(0, 5.5 * k, -7 * k, 0);
-        ctx.fillStyle = LEAF[i % 2]; ctx.fill(); ctx.strokeStyle = 'rgba(60,40,20,.75)'; ctx.lineWidth = 1.2 * k; ctx.stroke(); ctx.beginPath(); ctx.moveTo(-6 * k, 0); ctx.lineTo(6 * k, 0); ctx.lineWidth = .8 * k; ctx.stroke(); ctx.restore();
-      }
-      ctx.globalAlpha = 1;
+  } else if (w === 'wind' && season().id === 'winter') {   // зимний ветер — метель: снег гуще, быстрее и косо, слева направо
+    ctx.fillStyle = 'rgba(235,242,250,.10)'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(255,255,255,.9)';
+    const n = Math.round(W * H / (k * k) / 1700);
+    for (let i = 0; i < n; i++) {
+      const r = (1.2 + wxR(i, 4) * 2) * k, vy = (110 + wxR(i, 5) * 70) * k, vx = vy * (.9 + wxR(i, 6) * .4);
+      const y = ((wxR(i, 1) * H + s * vy) % (H + 20 * k)) - 10 * k, x = ((wxR(i, 2) * W + s * vx + Math.sin(s * 2 + i) * 6 * k) % (W + 20 * k)) - 10 * k;
+      ctx.beginPath(); ctx.ellipse(x, y, r * 1.6, r, .6, 0, 7); ctx.fill();   // хлопья чуть вытянуты по ветру
+    }
+  } else if (w === 'wind') {   // ветер — только листья: раз в ~17 с порыв, листья летят по одному, с промежутками
+    const LEAF = { spring: ['#d9f08a', '#a6d85a'], summer: ['#cfe86a', '#9fd14a'], autumn: ['#f6b23a', '#e0662a'] }[season().id];   // светлее травы, чтобы было видно
+    const G = 17, gi = Math.floor(s / G), T = s - gi * G, FLY = 3.2;   // лист пересекает экран за ~3 с
+    for (let i = 0; i < 4; i++) {
+      const u = (T - i * 1.1 - wxR(gi, 40 + i) * .5) / FLY; if (u < 0 || u > 1) continue;   // старт с промежутком ~1 с
+      const x = -20 * k + u * (W + 40 * k), y = (.15 + wxR(gi, 30 + i) * .65) * H + Math.sin(u * 6 + i) * 16 * k + u * 30 * k;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(u * 8 + i); ctx.scale(1, .55 + .45 * Math.sin(u * 12 + i));
+      ctx.beginPath(); ctx.moveTo(-7 * k, 0); ctx.quadraticCurveTo(0, -5.5 * k, 7 * k, 0); ctx.quadraticCurveTo(0, 5.5 * k, -7 * k, 0);
+      ctx.fillStyle = LEAF[i % 2]; ctx.fill(); ctx.strokeStyle = 'rgba(60,40,20,.75)'; ctx.lineWidth = 1.2 * k; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-6 * k, 0); ctx.lineTo(6 * k, 0); ctx.lineWidth = .8 * k; ctx.stroke(); ctx.restore();
     }
   } else if (w === 'heat') {
     const g = ctx.createRadialGradient(W * .85, -H * .1, 0, W * .85, -H * .1, Math.max(W, H));
@@ -6562,6 +6560,7 @@ function refreshSheet() {
   else if (v.startsWith('prod:')) openProd(v.slice(5));
   else if (v === 'bakery') openBakery();
   else return;
+  decorateSheet();   // заголовок уезжает в ленту сразу, а не после — иначе прокрутка «прыгает» на его высоту
   $('sheet').scrollTop = top;
 }
 // строка меню с одной кнопкой нажимается целиком — не обязательно попадать в цену
