@@ -892,7 +892,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.116';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.117';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3971,6 +3971,7 @@ function draw(t) {
   list.sort((a, b) => a.z - b.z).forEach(o => o.f());
 
   drawLighting();
+  drawWeather(t);
   setWorld();
   drawBars();
   drawQueueIcons();
@@ -5628,6 +5629,57 @@ function drawFloats() {
 }
 const addFloat = (x, y, text) => floats.push({ x, y, text, t: 0 });
 
+// погода на карте — поверх мира, в экранных координатах: наклонный дождь, снег, волнистые полоски ветра, тёплый свет жары
+const wxR = (i, k) => { const v = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return v - Math.floor(v); };
+function drawWeather(t) {
+  if (S.night || fairOn()) return;
+  const w = weather(); if (w === 'sun') return;
+  const W = cv.width, H = cv.height, k = dpr, s = t / 1000;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  if (w === 'rain') {
+    ctx.fillStyle = 'rgba(40,62,95,.12)'; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(225,238,255,.7)'; ctx.lineWidth = 1.6 * k; ctx.lineCap = 'round'; ctx.beginPath();
+    const n = Math.round(W * H / (k * k) / 2600), vy = 620 * k, vx = .36 * vy, L = 15 * k;   // косой дождь — ветер слева направо, как полоски ветра
+    for (let i = 0; i < n; i++) {
+      const sp = .8 + wxR(i, 3) * .4, y = ((wxR(i, 1) * H + s * vy * sp) % (H + 40 * k)) - 20 * k;
+      const x = (((wxR(i, 2) * W + s * vx * sp) % (W + 80 * k)) + W + 80 * k) % (W + 80 * k) - 40 * k;
+      ctx.moveTo(x, y); ctx.lineTo(x + .36 * L, y + L);
+    }
+    ctx.stroke();
+  } else if (w === 'snow') {
+    ctx.fillStyle = 'rgba(255,255,255,.88)';
+    const n = Math.round(W * H / (k * k) / 3200);
+    for (let i = 0; i < n; i++) {
+      const r = (1.4 + wxR(i, 4) * 2.2) * k, vy = (28 + wxR(i, 5) * 34) * k;
+      const y = ((wxR(i, 1) * H + s * vy) % (H + 20 * k)) - 10 * k, x = (wxR(i, 2) * W + Math.sin(s * .9 + i) * 14 * k + W) % W;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+    }
+  } else if (w === 'wind') {   // время от времени по экрану проплывает волнистая полоска и тает
+    ctx.lineCap = 'round';
+    for (let j = 0; j < 3; j++) {
+      const P = 3.6, ph = s / P + j / 3, cyc = Math.floor(ph), f = ph - cyc;   // f: 0→1 жизнь полоски
+      const id = cyc * 3 + j + 1; if (wxR(id, 7) < .2) continue;                                 // иногда пропуск — ветер порывами
+      const y0 = (.12 + wxR(id, 9) * .7) * H, len = (110 + wxR(id, 3) * 90) * k, x0 = W * (f * 1.3 - .25) - len - wxR(id, 2) * 60 * k;   // слева направо
+      ctx.globalAlpha = Math.sin(Math.PI * f) * .75;
+      ctx.beginPath();
+      for (let q = 0; q <= 24; q++) { const u = q / 24, x = x0 + u * len, y = y0 + Math.sin(u * Math.PI * 2 + s * 3 + j) * 5 * k; q ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+      ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 3.2 * k; ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    const LEAF = { spring: ['#d9f08a', '#a6d85a'], summer: ['#cfe86a', '#9fd14a'], autumn: ['#f6b23a', '#e0662a'], winter: null }[season().id];   // светлее травы, чтобы было видно
+    if (LEAF) for (let i = 0; i < 9; i++) {   // листья летят по ветру, кувыркаясь
+      const P = 5 + wxR(i, 11) * 3, ph = s / P + wxR(i, 12), cyc = Math.floor(ph), f = ph - cyc, id = cyc * 9 + i;
+      const x = -20 * k + f * (W + 40 * k), y = (.1 + wxR(id, 13) * .8) * H + Math.sin(f * 9 + i) * 18 * k + f * 40 * k;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(s * (2 + wxR(i, 14) * 3) + i); ctx.scale(1, .55 + .45 * Math.sin(s * 5 + i));
+      ctx.beginPath(); ctx.moveTo(-7 * k, 0); ctx.quadraticCurveTo(0, -5.5 * k, 7 * k, 0); ctx.quadraticCurveTo(0, 5.5 * k, -7 * k, 0);
+      ctx.fillStyle = LEAF[i % 2]; ctx.fill(); ctx.strokeStyle = 'rgba(60,40,20,.75)'; ctx.lineWidth = 1.2 * k; ctx.stroke(); ctx.beginPath(); ctx.moveTo(-6 * k, 0); ctx.lineTo(6 * k, 0); ctx.lineWidth = .8 * k; ctx.stroke(); ctx.restore();
+    }
+  } else if (w === 'heat') {
+    const g = ctx.createRadialGradient(W * .85, -H * .1, 0, W * .85, -H * .1, Math.max(W, H));
+    g.addColorStop(0, 'rgba(255,185,80,.3)'); g.addColorStop(1, 'rgba(255,190,90,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  }
+}
 function drawLighting() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   const frac = S.night ? 1 : S.t / DAY_LEN;
