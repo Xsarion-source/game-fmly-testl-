@@ -210,6 +210,16 @@
   .cal .n { font-size: 12px; font-weight: 800; align-self: flex-start; }
   .cal .ev { font-size: 13px; line-height: 1.1; }
   .cal .m { font-size: 10px; font-weight: 800; color: #3e7d32; margin-top: auto; }
+  .nightline { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 6px 0 2px; color: #7a6650; font-size: 13px; } .nightline b { color: #4a2e18; font-size: 16px; }
+  .feedrow { display: flex; align-items: stretch; gap: 8px; margin: 8px 0 4px; }
+  .feedlbl { flex: 1; align-self: center; font-weight: 800; font-size: 15px; color: #4a2e18; line-height: 1.2; } .feedlbl small { display: block; font-weight: 600; font-size: 11.5px; color: #7a6650; margin-top: 3px; }
+  .feedt { position: relative; width: 90px; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 6px 2px 5px; border-radius: 14px; border: 2px solid #d9c49c; background: #fbf3e2; color: #4a2e18; font: inherit; box-shadow: 0 3px 0 #d9c49c; }
+  .feedt .fe { font-size: 30px; line-height: 1.1; } .feedt b { font-size: 12.5px; } .feedt small { font-size: 10.5px; opacity: .75; }
+  .feedt.go { background: #ffe08a; border-color: #e0a52a; box-shadow: 0 3px 0 #c98f1c; }
+  .feedt.ok { background: #e3f3d6; border-color: #9ccb7c; box-shadow: 0 3px 0 #86b866; } .feedt.ok b { color: #2f6b2a; }
+  .feedt.no { opacity: .7; }
+  .feedt:active { transform: translateY(2px); box-shadow: none; }
+  .feedt .fa { position: absolute; top: -8px; right: -6px; font-style: normal; font-size: 13px; background: #fff; border: 1.5px solid #d9c49c; border-radius: 10px; padding: 0 4px; line-height: 18px; }
   .crates { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 4px 0; }
   .crates i { width: 22px; height: 18px; border-radius: 4px; background: #efe6d2; border: 1.5px dashed #cdb994; }
   .crates i.on { background: linear-gradient(#e0b47a, #b8834d); border: 1.5px solid #7a4a2a; }
@@ -792,7 +802,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.82';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.83';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -5422,30 +5432,31 @@ function openHelp() {
   $('overlay').classList.add('show');
 }
 
+// Ночью — плитки «покормить на завтра» (размером с ящик прилавка): тап — покормить; значки — кто кормит сам
+function feedTiles() {
+  const T = [];
+  const tile = (ico, name, fed, all, can, fn, auto) => {
+    const done = fed >= all, cls = done ? 'ok' : can ? 'go' : 'no';
+    T.push(`<button class="feedt ${cls}" onclick="${fn}; openNight($('sheet').dataset.view === 'night-sum')"><span class="fe">${ico}</span><b>${done ? 'Накормлены' : can ? 'Покормить' : 'Мало корма'}</b><small>${done ? '✔ ' : ''}${fed}/${all} ${name}</small>${auto ? `<i class="fa">${auto}</i>` : ''}</button>`);
+  };
+  const helperFeeds = st => S.helpers.some(c => c.feed && c.stations.includes(st));
+  if (hens()) tile('🐔', 'кур', fedTomorrow(), hens(), feedStock() >= FEED_PER_HEN, 'feedHens()', helperFeeds('coop') ? '🧑‍🌾' : '');
+  if (cows()) tile('🐄', 'коров', cowsFedTomorrow(), cows(), cowFoodStock() >= feedPerCow(), 'feedCows()', [S.up.hay ? '🟨' : '', helperFeeds('barn') ? '🧑‍🌾' : ''].join(''));
+  if (!T.length) return '';
+  const legend = [helperFeeds('coop') || (cows() && helperFeeds('barn')) ? '🧑‍🌾 кормит помощник' : '', cows() && S.up.hay ? '🟨 сеновал кормит сам' : ''].filter(Boolean).join(' · ');
+  return `<div class="feedrow"><div class="feedlbl">Корм на завтра${legend ? `<small>${legend}</small>` : ''}</div>${T.join('')}</div>`;
+}
 function openNight(withSummary) {
   const st = S.stats;
-  let h = `<h2>🌙 Ночь · ${season().name}, день ${cal().sday}</h2>`;
+  let h = `<h2>⬆️ Улучшения</h2>`;
   if (withSummary) {
     h += `<div class="summary">За день: заработано <b>${st.earned}💰</b><br>Обслужено: <b>${st.served}</b> · Ушли ни с чем: <b>${st.missed}</b><br>
       ${isRest(S.day + 1) ? 'Завтра <b>воскресенье — выходной</b> 🧺 лавка закрыта' : `Завтра придёт ~<b>${visitorsPerDay(S.day + 1)}</b> покупателей${isFair(S.day + 1) ? ` — <b>ярмарка</b> 🎪<br>📦 Собрано ящиков: <b>${cratesUsed()} из ${allCrates()}</b> — <a href="#" onclick="event.preventDefault();openFairPack()" style="color:#b0503a;font-weight:800">собрать товары</a><br>${contestReminder()}` : ''}`}</div>`;
   }
-  h += `<div style="font-weight:700;margin:6px 0 2px">У тебя: 💰 ${S.coins}</div>`;
+  h += `<div class="nightline"><span>🌙 ${season().name}, день ${cal().sday}</span><b>У тебя: 💰 ${S.coins}</b></div>`;
   if (EMBED && CLOUD.state !== 'ok' && CLOUD.state !== 'wait' && S.day >= 2 && (S.codeDay || 0) < S.day)   // облака нет — Safari может стереть ферму
     h += `<div class="summary" style="background:#fff1d6;border:1.5px solid #f0c24a">⚠️ Ферма хранится только в этом браузере — Safari может её стереть. <a href="#" onclick="event.preventDefault();exportCode()" style="color:#b0503a;font-weight:800">Сохрани код фермы</a> или играй в <a href="${APP_URL}" target="_blank" rel="noopener" style="color:#2f6b2a;font-weight:800">приложении</a>, где ферма сохраняется сама.</div>`;
-  if (hens()) {
-    const fed = fedTomorrow(), need = (hens() - fed) * FEED_PER_HEN;
-    const status = fed >= hens() ? `Все ${hens()} кур накормлены на завтра ✔ — будет ~${hens() * 5} яиц`
-      : `Кур: ${hens()}${fed ? `, накормлено ${fed}` : ''}. Нужно ${need} любых растений (сначала берутся самые дешёвые), на складе ${feedStock()}`;
-    h += `<h3 style="margin:10px 0 0">🐔 Курятник${S.helpers.some(c => c.feed && c.stations.includes('coop')) ? ' <small style="font-weight:400;color:#7a6650">— помощник кормит сам</small>' : ''}</h3><div class="up" data-why="${fed >= hens() ? '🐔 Куры уже накормлены на завтра' : `Не хватает урожая на корм: нужно ${FEED_PER_HEN} на курицу`}"><div class="ico">🐔</div><div class="txt"><b>Покормить кур на завтра</b><small>${status}</small></div>
-      <button ${fed >= hens() || feedStock() < FEED_PER_HEN ? 'disabled' : ''} onclick="feedHens(); openNight(false)">Покормить</button></div>`;
-  }
-  if (cows()) {
-    const fed = cowsFedTomorrow(), need = (cows() - fed) * feedPerCow();
-    const status = fed >= cows() ? `Все ${cows()} коров накормлены ✔ — будет ~${cows() * 6} 🥛`
-      : `Коров: ${cows()}${fed ? `, накормлено ${fed}` : ''}. Нужно ${need} 🌻 или 🌾, на складе ${cowFoodStock()}`;
-    h += `<h3 style="margin:10px 0 0">🐄 Коровник${S.helpers.some(c => c.feed && c.stations.includes('barn')) ? ' <small style="font-weight:400;color:#7a6650">— помощник кормит сам</small>' : ''}</h3><div class="up" data-why="${fed >= cows() ? '🐄 Коровы уже накормлены на завтра' : `Не хватает корма: нужно ${feedPerCow()} 🌻 или 🌾 на корову`}"><div class="ico">🐄</div><div class="txt"><b>Покормить коров на завтра</b><small>${status}</small></div>
-      <button ${fed >= cows() || cowFoodStock() < feedPerCow() ? 'disabled' : ''} onclick="feedCows(); openNight(false)">Покормить</button></div>`;
-  }
+  h += feedTiles();
   h += shopTabs();
   h += `<div class="row" style="margin-top:14px"><button class="wide alt" onclick="closeNight()">🌾 К грядкам</button>
         <button class="wide${cal(S.day + 1).sday === 1 ? ' season-' + season(S.day + 1).id : ''}" style="background:#ffd34d" onclick="morning()">${cal(S.day + 1).sday === 1 ? `${season(S.day + 1).e} Встретить ${SEASON_ACC[season(S.day + 1).id]}` : `☀️ Начать день ${cal(S.day + 1).sday}`}</button></div>
