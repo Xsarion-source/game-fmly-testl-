@@ -792,7 +792,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-16.81';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.82';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -940,6 +940,7 @@ const GOAL_KINDS = {
   basket: { can: () => farmLevel() >= 3, make: L => ({ target: 8 + L }), text: g => `Обслужи ${g.target} покупателей с полной корзинкой 🧺` },
   day: { can: () => (S.hist || []).length >= 2, make: () => { const h = (S.hist || []).slice(-5).map(x => x.e); const avg = h.reduce((a, b) => a + b, 0) / Math.max(1, h.length); return { target: Math.max(80, Math.round(avg * 1.3 / 10) * 10) }; }, text: g => `Заработай за один день ${g.target}💰`, max: true },
   fair: { can: () => fairUnlocked(), make: () => { const h = (S.hist || []).slice(-5).map(x => x.e); const avg = h.reduce((a, b) => a + b, 0) / Math.max(1, h.length); return { target: Math.max(150, Math.round(avg * 1.5 / 10) * 10) }; }, text: g => `Заработай на одной ярмарке ${g.target}💰 🎪`, max: true },
+  truck: { can: () => truckOn(), make: L => ({ target: 20 + L * 3 }), text: g => `Погрузи в грузовик ${g.target} товаров 🚚` },
   upgrade: { can: () => true, make: L => ({ target: L < 6 ? 2 : 3 }), text: g => `Купи ${g.target} улучшения ⬆️` },
 };
 function seeded(n) { let a = n * 2654435761 >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -1139,6 +1140,7 @@ function startDay() {
   S.night = false; S.t = 0; S.spawned = 0; S.closing = false;
   S.toSpawn = visitorsPerDay();
   S.stats = { earned: 0, served: 0, missed: 0 };
+  truckMorning();   // склад и грузовик (пока выключены флагами FEAT); итоги приезда — в S.truck.last
   orderMorning();
   const coopMsg = coopMorning();
   closeNight();
@@ -1180,6 +1182,150 @@ function endDay() {
   if (S.up.hay && cows() && cowFoodStock() >= feedPerCow()) setTimeout(() => { if (S.night && cowsFedTomorrow() < cows()) { feedCows('hay'); refreshSheet(); } }, 900);   // сеновал кормит сам
   save(); renderUI();
   if (fairRes) openFairResult(fairRes); else openNight(true);
+}
+
+// ================== 📦 СКЛАД и 🚚 ГРУЗОВИК — заготовка ==================
+// В игре пока не видны: всё спрятано за флагами FEAT. Пока они выключены, игра идёт как раньше —
+// склад без предела, грузовика нет. Весь товар, что приходит на склад (урожай, яйца, молоко, мука, сыр, выпечка),
+// уже идёт через gain(): когда склад включим, вместимость заработает сразу везде.
+const FEAT = { store: false, truck: false };
+try { Object.assign(FEAT, JSON.parse(localStorage.getItem('farm-feat') || '{}')); } catch {}   // проверка на своём устройстве: farm-feat = {"store":true,"truck":true}
+
+// ---------- 📦 Склад: вместимость в «местах» ----------
+// Переполнение ничего не отнимает: урожай ждёт на грядке, яйца — в гнёздах, молоко — в коровнике, мука и сыр — в цеху,
+// выпечка — на противне. Помощники и кнопка «Собрать» туда не ходят, пока не освободится место.
+const STORE = {
+  lvl: 6,                                            // с какого уровня фермы появляется склад
+  cap: [150, 250, 400, 600, 850, 1200],              // мест на каждом уровне склада
+  cost: l => [0, 350, 700, 1300, 2200, 3500][l],     // цена улучшения до уровня l
+  vol: { pumpkin: 2, chick: 0, goldegg: 0 },         // мест на штуку (по умолчанию 1); особые находки места не занимают
+  warn: .85,                                         // с какой заполненности подсказывать «пора продать»
+  roomy: 1.25,                                       // старой ферме при открытии склада — запас сверх того, что уже лежит
+};
+S.store ??= { lvl: 0, open: false };
+const storeOn = () => !!FEAT.store && farmLevel() >= STORE.lvl;
+const storeVol = id => GOODS[id]?.sp ? 0 : STORE.vol[id] ?? 1;
+const storeCapAt = l => STORE.cap[Math.min(l, STORE.cap.length - 1)];
+const storeCap = () => storeOn() ? storeCapAt(S.store.lvl) : Infinity;
+const storeUsed = () => Object.entries(S.inv).reduce((a, [id, n]) => a + Math.max(0, n || 0) * storeVol(id), 0);
+const storeFree = () => Math.max(0, storeCap() - storeUsed());
+const storeFill = () => storeOn() ? Math.min(1, storeUsed() / storeCap()) : 0;   // 0…1 — для индикатора в шапке
+const storeWarn = () => storeFill() >= STORE.warn;
+const storeFit = (id, n = 1) => { const v = storeVol(id); return v ? Math.max(0, Math.min(n, Math.floor(storeFree() / v))) : n; };
+const fits = (id, n = 1) => storeFit(id, n) >= n;
+const bakeFits = () => Object.entries(S.bake.out).some(([g, k]) => k && fits(g));
+const storeMaxed = () => S.store.lvl >= STORE.cap.length - 1;
+// товар пришёл на склад: кладёт, сколько влезло, и возвращает это число. force — возврат своего же (ящики с ярмарки, отмена)
+function gain(id, n, force) {
+  n = Math.max(0, n || 0);
+  const k = force ? n : storeFit(id, n);
+  if (k > 0) S.inv[id] = (S.inv[id] || 0) + k;
+  if (k < n) storeFullNote(id);
+  return k;
+}
+let storeNoteAt = 0;
+function storeFullNote(id) {
+  if (!storeOn() || Date.now() - storeNoteAt < 20000) return;
+  storeNoteAt = Date.now();
+  toast(`📦 Склад полон (${storeUsed()}/${storeCap()}) — ${GOODS[id]?.e || ''} подождёт. Продай, переработай${truckOn() ? ' или отгрузи в грузовик 🚚' : ''}`);
+}
+// склад открылся у фермы, где уже много всего: поднимаем уровень, чтобы ничего не оказалось «сверх»
+function storeOpen() {
+  if (!storeOn() || S.store.open) return;
+  S.store.open = true;
+  const need = storeUsed() * STORE.roomy;
+  while (!storeMaxed() && storeCapAt(S.store.lvl) < need) S.store.lvl++;
+}
+function buyStore() {
+  if (!storeOn() || storeMaxed()) return false;
+  const c = STORE.cost(S.store.lvl + 1);
+  if (S.coins < c) return false;
+  spend(c, 'up'); S.store.lvl++; goalEv('upgrade', 'store', 1);
+  save(); renderUI(); return true;
+}
+
+// ---------- 🚚 Грузовик: контракт сезона ----------
+// В начале сезона приходит заказ («40 🧀, 30 🍞, 60 🥚»), в последний день сезона (воскресенье 3-й недели) приезжает грузовик.
+// Товар грузится в кузов заранее, частями — так он освобождает склад. Платят за всё, что погружено; за полный заказ — премия.
+// Ничего не отнимается: недогруз просто оплачивается по факту, репутация только растёт.
+const TRUCK = {
+  lvl: 7,                                    // с какого уровня фермы приходят заказы
+  full: .25,                                 // премия за полностью собранный заказ
+  room: .5,                                  // заказ занимает не больше половины склада
+  late: 5,                                   // если заказ пришёл позже, чем за столько дней до грузовика, он меньше
+  tiers: [                                   // заказчики растут вместе с репутацией
+    { id: 'shop',  e: '🏪', name: 'Сельский магазин',   rep: 0,  mul: 1.15, goods: 2, size: 1 },
+    { id: 'cafe',  e: '🍽️', name: 'Ресторан',           rep: 4,  mul: 1.25, goods: 3, size: 1.6 },
+    { id: 'chain', e: '🛒', name: 'Сеть супермаркетов', rep: 10, mul: 1.35, goods: 4, size: 2.5 },
+  ],
+  skip: ['sunflower', 'chick', 'goldegg'],   // что не заказывают
+};
+S.truck ??= { rep: 0, c: null, last: null, n: 0 };
+const truckOn = () => !!FEAT.truck && farmLevel() >= TRUCK.lvl;
+const truckTierIdx = () => TRUCK.tiers.reduce((a, t, i) => S.truck.rep >= t.rep ? i : a, 0);
+const truckDue = (d = S.day) => seasonIdx(d) * SEASON_LEN + SEASON_LEN;   // последний день сезона
+const truckDaysLeft = () => S.truck.c ? Math.max(0, S.truck.c.due - S.day) : 0;
+const truckNeed = id => { const c = S.truck.c; return c ? Math.max(0, (c.items[id] || 0) - (c.got[id] || 0)) : 0; };
+const truckDone = () => !!S.truck.c && Object.keys(S.truck.c.items).every(id => !truckNeed(id));
+const truckFrac = () => { const c = S.truck.c; if (!c) return 0; const a = Object.values(c.items).reduce((s, n) => s + n, 0); return a ? Object.keys(c.items).reduce((s, id) => s + Math.min(c.got[id] || 0, c.items[id]), 0) / a : 0; };
+const truckValue = () => { const c = S.truck.c; return c ? Object.keys(c.items).reduce((s, id) => s + Math.min(c.got[id] || 0, c.items[id]) * c.pay[id], 0) : 0; };
+// сколько ферма зарабатывает в день — чтобы заказ был по силам
+const truckDayIncome = () => { const h = (S.hist || []).slice(-7).map(x => x.e || 0); return h.length ? h.reduce((a, b) => a + b, 0) / h.length : 60 + Math.min(farmLevel(), 15) * 30; };
+function truckMake() {
+  const si = seasonIdx(), r = seeded(S.farmId.length * 613 + si * 97 + S.truck.n * 7), T = TRUCK.tiers[truckTierIdx()];
+  const pool = Object.keys(GOODS).filter(id => !GOODS[id].sp && !TRUCK.skip.includes(id) && canMake(id));
+  if (!pool.length) return null;
+  const pickW = () => { const w = pool.map(id => Math.sqrt(GOODS[id].price)), sum = w.reduce((a, b) => a + b, 0); let x = r() * sum; for (let i = 0; i < pool.length; i++) if ((x -= w[i]) <= 0) return pool.splice(i, 1)[0]; return pool.pop(); };
+  const ids = []; while (ids.length < T.goods && pool.length) ids.push(pickW());
+  const due = truckDue(), left = due - S.day + 1;
+  const budget = truckDayIncome() * 5 * T.size * Math.min(1, left / (SEASON_LEN - TRUCK.late));   // на ~5 дней заработка
+  const items = {}, got = {}, pay = {};
+  for (const id of ids) {
+    const p = GOODS[id].price, step = p < 40 ? 5 : 1;
+    items[id] = Math.max(step * 2, Math.round(budget / ids.length / p / step) * step);
+    got[id] = 0; pay[id] = Math.round(p * T.mul);
+  }
+  if (storeOn()) {   // весь заказ должен помещаться в склад с запасом — его копят там до погрузки
+    const vol = ids.reduce((a, id) => a + items[id] * storeVol(id), 0), lim = storeCap() * TRUCK.room;
+    if (vol > lim) for (const id of ids) { const step = GOODS[id].price < 40 ? 5 : 1; items[id] = Math.max(step, Math.floor(items[id] * lim / vol / step) * step); }
+  }
+  return { si, tier: T.id, items, got, pay, due, made: S.day };
+}
+function truckLoad(id, n = Infinity) {   // со склада в кузов (сколько нужно и сколько есть)
+  const c = S.truck.c; if (!c || !c.items[id]) return 0;
+  const k = Math.max(0, Math.min(n, truckNeed(id), S.inv[id] || 0));
+  if (!k) return 0;
+  S.inv[id] -= k; c.got[id] = (c.got[id] || 0) + k; goalEv('truck', id, k);
+  save(); renderUI(); return k;
+}
+function truckUnload(id, n = Infinity) {   // передумал — из кузова обратно на склад
+  const c = S.truck.c; if (!c) return 0;
+  const k = Math.max(0, Math.min(n, c.got[id] || 0));
+  if (!k) return 0;
+  c.got[id] -= k; gain(id, k, true);
+  save(); renderUI(); return k;
+}
+function truckArrive() {   // грузовик забирает погруженное и платит
+  const c = S.truck.c; if (!c) return null;
+  const T = TRUCK.tiers.find(t => t.id === c.tier) || TRUCK.tiers[0], frac = truckFrac(), done = truckDone();
+  const money = truckValue(), bonus = done ? Math.round(money * TRUCK.full) : 0, xp = Math.round((money + bonus) / 12);
+  const rep = done ? 2 : frac >= .5 ? 1 : 0, tierWas = truckTierIdx();
+  for (const id in c.got) { const extra = Math.max(0, (c.got[id] || 0) - (c.items[id] || 0)); if (extra) gain(id, extra, true); }   // лишнее — обратно
+  const pay = money + bonus;
+  if (pay) { S.coins += pay; S.stats.earned += pay; S.life.earned += pay; for (const st of [S.stats, S.life]) { st.sold ??= {}; st.sold.truck = (st.sold.truck || 0) + pay; } gainXp(xp); }
+  S.truck.rep += rep; S.truck.n++;
+  S.truck.last = { si: c.si, day: S.day, tier: T.id, items: c.items, got: c.got, money, bonus, xp: pay ? xp : 0, rep, done, frac, up: truckTierIdx() > tierWas };
+  S.truck.c = null;
+  return S.truck.last;
+}
+// утро: открыть склад, приезд грузовика, новый заказ в начале сезона (или как только грузовик открылся)
+function truckMorning() {
+  storeOpen();
+  if (!truckOn()) return null;
+  let res = null;
+  if (S.truck.c && S.day >= S.truck.c.due) res = truckArrive();
+  if (!S.truck.c && S.truck.last?.si !== seasonIdx() && S.day < truckDue()) S.truck.c = truckMake();
+  return res;
 }
 
 // ---------- Покупатели ----------
@@ -1334,15 +1480,16 @@ function ghPick() { return GH_CROPS.includes(S.sel) ? S.sel : null; }   // в т
 const GH_WRONG = () => `🏡 В теплице растут только 🍅 и 🍓 — выбери их справа${GH_CROPS.some(id => S.unlocked.includes(id)) ? '' : ' (сначала открой ночью)'}`;
 function harvestBed(p, s, gh) {   // в теплице — гроздь из GH_YIELD плодов
   const n = gh ? GH_YIELD : 1;
-  S.inv[p.crop] = (S.inv[p.crop] || 0) + n; S.life.harvested += n; goalEv('harvest', p.crop, n);
+  if (!fits(p.crop, n)) { storeFullNote(p.crop); return false; }   // склад полон — урожай ждёт на грядке
+  gain(p.crop, n); S.life.harvested += n; goalEv('harvest', p.crop, n);
   addFloat(s.x + .5, s.y + .5, `+${n} ${CROP[p.crop].e}`);
   if (p.crop === 'pumpkin' || p.crop === 'corn' || (gh && p.crop === 'strawberry')) rollSpecial(p.crop);
-  p.last = p.crop; p.crop = null; p.prog = 0;
+  p.last = p.crop; p.crop = null; p.prog = 0; return true;
 }
 function plotAct(i, mode, gh, crop) {
   const p = (gh ? S.gh : S.plots)[i], s = (gh ? GH_SLOTS : PLOT_SLOTS)[i];
   if (!p) return;
-  if (p.crop && p.prog >= 1 && mode !== 'plant') harvestBed(p, s, gh);
+  if (p.crop && p.prog >= 1 && mode !== 'plant') { if (!harvestBed(p, s, gh)) return; }
   else if (!p.crop && mode !== 'harvest') {
     const id = crop || (gh ? ghPick() : S.sel), c = CROP[id];
     if (!c) { toast(GH_WRONG()); return; }
@@ -1395,7 +1542,8 @@ function treeAct(i, mode) {
   if (!t) return false;
   if (treeReady(t)) {
     const T = TREES[t.kind];
-    S.inv[T.fruit] = (S.inv[T.fruit] || 0) + T.yield; S.life.harvested += T.yield; goalEv('harvest', T.fruit, T.yield);
+    if (!fits(T.fruit, T.yield)) { storeFullNote(T.fruit); return false; }
+    gain(T.fruit, T.yield); S.life.harvested += T.yield; goalEv('harvest', T.fruit, T.yield);
     addFloat(s.x + .5, s.y + .5, `+${T.yield} ${GOODS[T.fruit].e}`);
     t.fruit = 0;
   } else if (!t.kind && mode !== 'harvest') {
@@ -1434,7 +1582,7 @@ function coopMorning() {
   if (C.chicks) { C.extra = (C.extra || 0) + C.chicks; msg = C.chicks > 1 ? `🐔 ${C.chicks} цыплёнка выросли в кур!` : '🐔 Цыплёнок вырос в курицу!'; C.chicks = 0; }
   if (S.up.rooster && fedToday() && Math.random() < .6) {
     if (hens() + (C.chicks || 0) < hensCap()) { C.chicks = (C.chicks || 0) + 1; msg = '🐣 В курятнике вылупился цыплёнок — завтра станет курицей'; }
-    else { S.inv.chick = (S.inv.chick || 0) + 1; msg = '🐣 Вылупился цыплёнок! В вольере места нет — он на складе, продаётся за 60💰'; }
+    else { gain('chick', 1, true); msg = '🐣 Вылупился цыплёнок! В вольере места нет — он на складе, продаётся за 60💰'; }
     addFloat(COOP_SPOT.x + .5, COOP_SPOT.y + .5, '🐣');
   }
   syncHens();
@@ -1463,9 +1611,11 @@ function feedHens(byHelper) {
 function collectEggs() {
   if (!coopReady()) return false;
   const g = S.coop.gold || 0;
-  if (S.coop.eggs) { S.inv.egg = (S.inv.egg || 0) + S.coop.eggs; S.life.eggs += S.coop.eggs; goalEv('collect', 'egg', S.coop.eggs); addFloat(COOP_SPOT.x + .5, COOP_SPOT.y + .5, `+${S.coop.eggs} 🥚`); }
-  if (g) { S.inv.goldegg = (S.inv.goldegg || 0) + g; S.life.gold = (S.life.gold || 0) + g; addFloat(COOP_SPOT.x + .5, COOP_SPOT.y - .3, `✨ +${g} 🟡`); toast(`✨ Золотое яйцо! Продаётся за ${sellPrice('goldegg')}💰 — или прибереги для конкурса золотых яиц 🏆`); }
-  S.coop.eggs = 0; S.coop.gold = 0;
+  const e = gain('egg', S.coop.eggs);   // что не влезло на склад — ждёт в гнёздах
+  if (!e && !g) return false;
+  if (e) { S.life.eggs += e; goalEv('collect', 'egg', e); addFloat(COOP_SPOT.x + .5, COOP_SPOT.y + .5, `+${e} 🥚`); }
+  if (g) { gain('goldegg', g, true); S.life.gold = (S.life.gold || 0) + g; addFloat(COOP_SPOT.x + .5, COOP_SPOT.y - .3, `✨ +${g} 🟡`); toast(`✨ Золотое яйцо! Продаётся за ${sellPrice('goldegg')}💰 — или прибереги для конкурса золотых яиц 🏆`); }
+  S.coop.eggs -= e; S.coop.gold = 0;
   save(); renderUI(); return true;
 }
 function tapCoop() {
@@ -1520,10 +1670,11 @@ function loadProd(k, byHelper) {
 function collectProd(k) {
   const P = PROD[k], st = S.prod[k];
   if (!st.out) return false;
-  S.inv[P.out] = (S.inv[P.out] || 0) + st.out; S.life[P.out] = (S.life[P.out] || 0) + st.out; goalEv('make', P.out, st.out);
-  if (P.out === 'cheese') for (let i = 0; i < st.out; i++) rollSpecial('cheese');
-  addFloat(P.spot.x + .5, P.spot.y - .5, `+${st.out} ${GOODS[P.out].e}`);
-  st.out = 0; save(); renderUI(); return true;
+  const n = gain(P.out, st.out); if (!n) return false;   // что не влезло — остаётся готовым в цеху
+  S.life[P.out] = (S.life[P.out] || 0) + n; goalEv('make', P.out, n);
+  if (P.out === 'cheese') for (let i = 0; i < n; i++) rollSpecial('cheese');
+  addFloat(P.spot.x + .5, P.spot.y - .5, `+${n} ${GOODS[P.out].e}`);
+  st.out -= n; save(); renderUI(); return true;
 }
 function prodAct(k, byHelper) {   // забрать готовое и догрузить сырьё
   const P = PROD[k], st = S.prod[k];
@@ -1596,13 +1747,15 @@ function loadBake(r, want = Infinity) {
   return n;
 }
 function collectBake() {
-  const out = S.bake.out, n = bakeOut();
-  if (!n) return false;
-  const txt = Object.entries(out).filter(([, k]) => k).map(([g, k]) => `+${k} ${GOODS[g].e}`).join(' ');
-  for (const [g, k] of Object.entries(out)) { S.inv[g] = (S.inv[g] || 0) + k; if (k) goalEv('make', g, k); }
+  const out = S.bake.out;
+  if (!bakeOut()) return false;
+  const got = {};   // что не влезло на склад — остаётся на противне
+  for (const [g, k] of Object.entries(out)) { const m = k ? gain(g, k) : 0; if (m) { got[g] = m; out[g] -= m; goalEv('make', g, m); } }
+  const n = Object.values(got).reduce((a, b) => a + b, 0); if (!n) return false;
   S.life.baked = (S.life.baked || 0) + n;
-  addFloat(BAKE_SPOT.x + .5, BAKE_SPOT.y - .5, txt);
-  S.bake.out = {}; save(); renderUI(); return true;
+  addFloat(BAKE_SPOT.x + .5, BAKE_SPOT.y - .5, Object.entries(got).map(([g, k]) => `+${k} ${GOODS[g].e}`).join(' '));
+  for (const g in out) if (!out[g]) delete out[g];
+  save(); renderUI(); return true;
 }
 function bakeAct(byHelper) {   // забрать готовое и поставить в печь выбранный рецепт
   if (!S.up.bakery) return false;
@@ -1803,9 +1956,10 @@ function feedCows(byHelper) {
 }
 function collectMilk() {
   if (!S.barn.milk) return false;
-  S.inv.milk = (S.inv.milk || 0) + S.barn.milk; S.life.milk += S.barn.milk; goalEv('collect', 'milk', S.barn.milk);
-  addFloat(BARN_SPOT.x + .5, BARN_SPOT.y + .5, `+${S.barn.milk} 🥛`);
-  S.barn.milk = 0;
+  const n = gain('milk', S.barn.milk); if (!n) return false;   // что не влезло — ждёт в коровнике
+  S.life.milk += n; goalEv('collect', 'milk', n);
+  addFloat(BARN_SPOT.x + .5, BARN_SPOT.y + .5, `+${n} 🥛`);
+  S.barn.milk -= n;
   save(); renderUI(); return true;
 }
 function tapBarn() {
@@ -1835,13 +1989,13 @@ function updateCows(dt) {
 // Всё, что можно собрать прямо сейчас: грядки, деревья, гнездо, молоко
 function readyJobs() {
   const jobs = [];
-  S.plots.forEach((p, i) => { if (p.crop && p.prog >= 1) jobs.push({ x: PLOT_SLOTS[i].x, y: PLOT_SLOTS[i].y, act: () => plotAct(i, 'harvest') }); });
-  S.gh.forEach((p, i) => { if (p.crop && p.prog >= 1) jobs.push({ x: GH_SLOTS[i].x, y: GH_SLOTS[i].y, act: () => plotAct(i, 'harvest', true) }); });
-  S.trees.forEach((t, i) => { if (treeReady(t)) jobs.push({ x: ORCHARD_SLOTS[i].x, y: ORCHARD_SLOTS[i].y, act: () => treeAct(i, 'harvest') }); });
-  if (coopReady() > 0) jobs.push({ ...COOP_SPOT, act: collectEggs });
-  if (S.barn.milk > 0) jobs.push({ ...BARN_SPOT, act: collectMilk });
-  for (const k in PROD) if (S.up[k] && S.prod[k].out > 0) jobs.push({ ...PROD[k].spot, act: () => collectProd(k) });
-  if (S.up.bakery && bakeOut() > 0) jobs.push({ ...BAKE_SPOT, act: collectBake });
+  S.plots.forEach((p, i) => { if (p.crop && p.prog >= 1 && fits(p.crop)) jobs.push({ x: PLOT_SLOTS[i].x, y: PLOT_SLOTS[i].y, act: () => plotAct(i, 'harvest') }); });
+  S.gh.forEach((p, i) => { if (p.crop && p.prog >= 1 && fits(p.crop, GH_YIELD)) jobs.push({ x: GH_SLOTS[i].x, y: GH_SLOTS[i].y, act: () => plotAct(i, 'harvest', true) }); });
+  S.trees.forEach((t, i) => { if (treeReady(t) && fits(TREES[t.kind].fruit, TREES[t.kind].yield)) jobs.push({ x: ORCHARD_SLOTS[i].x, y: ORCHARD_SLOTS[i].y, act: () => treeAct(i, 'harvest') }); });
+  if ((S.coop.gold || 0) + (S.coop.eggs && fits('egg')) > 0) jobs.push({ ...COOP_SPOT, act: collectEggs });
+  if (S.barn.milk > 0 && fits('milk')) jobs.push({ ...BARN_SPOT, act: collectMilk });
+  for (const k in PROD) if (S.up[k] && S.prod[k].out > 0 && fits(PROD[k].out)) jobs.push({ ...PROD[k].spot, act: () => collectProd(k) });
+  if (S.up.bakery && bakeOut() > 0 && bakeFits()) jobs.push({ ...BAKE_SPOT, act: collectBake });
   return jobs;
 }
 
@@ -2215,7 +2369,8 @@ function helperPlot(i, cfg) {
   let prev = plotPrev(p);
   if (p.crop && p.prog >= 1) {
     prev = p.crop;
-    S.inv[prev] = (S.inv[prev] || 0) + 1; S.life.harvested++; goalEv('harvest', prev, 1);
+    if (!fits(prev)) return false;   // склад полон — помощник не срывает
+    gain(prev, 1); S.life.harvested++; goalEv('harvest', prev, 1);
     addFloat(s.x + .5, s.y + .5, `+1 ${CROP[prev].e}`);
     p.last = prev; p.crop = null; p.prog = 0;
   } else if (p.crop || !cfg.replant) return false;
@@ -2233,7 +2388,7 @@ function ghHelperSeed(cfg, p) {
 function helperGh(i, cfg) {
   const p = S.gh[i], s = GH_SLOTS[i];
   if (!p) return false;
-  if (p.crop && p.prog >= 1) harvestBed(p, s, true);
+  if (p.crop && p.prog >= 1) { if (!harvestBed(p, s, true)) return false; }
   else if (p.crop || !cfg.ghReplant) return false;
   if (cfg.ghReplant) { const id = ghHelperSeed(cfg, p); if (id) { spend(CROP[id].seed, 'seeds'); p.crop = id; p.prog = 0; if (!S.night) beginClock(); } }
   save(); renderUI(); return true;
@@ -2245,27 +2400,27 @@ function helperJobs(cfg) {
   const jobs = [], has = k => cfg.stations.includes(k);
   if (has('field')) S.plots.forEach((p, i) => {
     if (!cfg.zones.includes(zoneOf(i))) return;   // только свои участки
-    const ready = p.crop && p.prog >= 1, empty = !p.crop && cfg.replant && helperSeed(cfg, plotPrev(p));
+    const ready = p.crop && p.prog >= 1 && fits(p.crop), empty = !p.crop && cfg.replant && helperSeed(cfg, plotPrev(p));
     if (!p.crop && cfg.replant && !empty) jobs.broke = true;   // пустая грядка, но семена не по карману
     if (ready || empty) jobs.push({ x: PLOT_SLOTS[i].x, y: PLOT_SLOTS[i].y, ord: snakeOrd(PLOT_SLOTS[i]), act: () => helperPlot(i, cfg) });
   });
   if (has('gh')) S.gh.forEach((p, i) => {
-    const ready = p.crop && p.prog >= 1, empty = !p.crop && cfg.ghReplant && ghHelperSeed(cfg, p);
+    const ready = p.crop && p.prog >= 1 && fits(p.crop, GH_YIELD), empty = !p.crop && cfg.ghReplant && ghHelperSeed(cfg, p);
     if (!p.crop && cfg.ghReplant && !empty) jobs.broke = true;
     if (ready || empty) jobs.push({ x: GH_SLOTS[i].x, y: GH_SLOTS[i].y, ord: 1000 + snakeOrd(GH_SLOTS[i]), act: () => helperGh(i, cfg) });
   });
   for (const k in PROD) if (has(k) && S.up[k]) {
     const st = S.prod[k];
-    if (st.out > 0 || (st.q < PROD[k].cap && prodHave(k, true) >= PROD[k].n)) jobs.push({ ...PROD[k].spot, k, act: () => prodAct(k, true) });
+    if ((st.out > 0 && fits(PROD[k].out)) || (st.q < PROD[k].cap && prodHave(k, true) >= PROD[k].n)) jobs.push({ ...PROD[k].spot, k, act: () => prodAct(k, true) });
   }
-  if (has('bakery') && S.up.bakery && (bakeOut() > 0 || (bakeHave(S.bake.sel) > 0 && bakeRoom(S.bake.sel, 1) > 0))) jobs.push({ ...BAKE_SPOT, k: 'bakery', act: () => bakeAct(true) });
-  if (has('orchard')) S.trees.forEach((t, i) => { if (treeReady(t)) jobs.push({ x: ORCHARD_SLOTS[i].x, y: ORCHARD_SLOTS[i].y, k: 'orchard', act: () => treeAct(i, 'harvest') }); });
+  if (has('bakery') && S.up.bakery && ((bakeOut() > 0 && bakeFits()) || (bakeHave(S.bake.sel) > 0 && bakeRoom(S.bake.sel, 1) > 0))) jobs.push({ ...BAKE_SPOT, k: 'bakery', act: () => bakeAct(true) });
+  if (has('orchard')) S.trees.forEach((t, i) => { if (treeReady(t) && fits(TREES[t.kind].fruit, TREES[t.kind].yield)) jobs.push({ x: ORCHARD_SLOTS[i].x, y: ORCHARD_SLOTS[i].y, k: 'orchard', act: () => treeAct(i, 'harvest') }); });
   if (has('coop')) {
-    if (coopReady() > 0) jobs.push({ ...COOP_SPOT, k: 'coop', act: collectEggs });
+    if ((S.coop.gold || 0) + (S.coop.eggs && fits('egg')) > 0) jobs.push({ ...COOP_SPOT, k: 'coop', act: collectEggs });
     if (cfg.feed && S.night && hens() && fedTomorrow() < hens() && feedStock() >= FEED_PER_HEN) jobs.push({ ...COOP_SPOT, k: 'coop', act: () => { feedHens(true); refreshSheet(); } });
   }
   if (has('barn')) {
-    if (S.barn.milk > 0) jobs.push({ ...BARN_SPOT, k: 'barn', act: collectMilk });
+    if (S.barn.milk > 0 && fits('milk')) jobs.push({ ...BARN_SPOT, k: 'barn', act: collectMilk });
     if (cfg.feed && S.night && cows() && cowsFedTomorrow() < cows() && cowFoodStock() >= feedPerCow()) jobs.push({ ...BARN_SPOT, k: 'barn', act: () => { feedCows(true); refreshSheet(); } });
   }
   return jobs;
