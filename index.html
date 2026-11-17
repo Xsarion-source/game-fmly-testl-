@@ -839,7 +839,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.95';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.96';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -6023,7 +6023,7 @@ function harvestRoute(again) {   // грядки, яблони и гнездо �
 }
 // ---------- Посев: кнопка «Засеять» с текущим семечком и полоска семян над ней ----------
 // Тап по семечку — только выбрать; тап по пустой грядке сажает выбранное (полоска остаётся открытой);
-// «Засеять всё» — фермер идёт сажать, полоска закрывается. Закрыть без посева: снова «Засеять», свайп вниз, тап по карте.
+// «Засеять всё» — фермер идёт сажать, полоска остаётся открытой. Закрыть без посева: снова «Засеять», свайп вниз, тап по карте.
 let trayOpen = false;
 const sowHelperField = i => { const o = zoneOwner(zoneOf(i)); return o >= 0 && S.helpers[o].replant; };   // там сажает помощник
 const sowHelperGh = () => S.helpers.some(h => h.stations.includes('gh') && h.ghReplant);
@@ -6039,7 +6039,7 @@ let trayRowKey = '';
 function renderTray() {
   const T = $('seedTray'), c = CROP[S.sel], gh = GH_CROPS.includes(S.sel);
   const n = gh ? emptyGh() : emptyBeds(), can = c.seed ? Math.min(n, Math.floor(S.coins / c.seed)) : n;
-  if (!T.firstChild) { T.innerHTML = `<div class="grab"></div><div class="th"></div><div class="row"></div><button class="all" onclick="if (sowAll()) closeTray()"></button>`; trayRowKey = ''; }
+  if (!T.firstChild) { T.innerHTML = `<div class="grab"></div><div class="th"></div><div class="row"></div><button class="all" onclick="sowAll()"></button>`; trayRowKey = ''; }
   const ids = CROPS.map(c => c.id).filter(id => S.unlocked.includes(id));
   const key = ids.map(id => id + (S.sel === id ? '*' : '') + (S.coins < CROP[id].seed ? '-' : '')).join();
   if (key !== trayRowKey) {   // семена — только когда поменялись выбор, доступность или список (иначе прокрутка прыгала бы)
