@@ -270,6 +270,11 @@
   .rc-q { position: absolute; top: 6px; right: 8px; font-style: normal; min-width: 20px; height: 20px; border-radius: 10px; background: #f4a92b; color: #fff; font-size: 12px; font-weight: 900; line-height: 20px; }
   .rc-ing { display: flex; gap: 6px; justify-content: center; margin: 3px 0 1px; } .rc-ing span { display: inline-flex; align-items: center; gap: 1px; font-weight: 900; font-size: 13px; } .rc-ing i { font-style: normal; font-size: 17px; } .rc-ing .no { color: #d0453a; }
   .rc .rc-f { font-size: 11px; }
+  .hold { margin-top: 10px; background: #f6ecd6; border-radius: 14px; padding: 8px 10px; }
+  .hold-t { font-weight: 800; font-size: 14px; color: #4a2e18; margin-bottom: 4px; } .hold-t small { display: block; font-weight: 600; font-size: 12px; color: #7a6650; }
+  .hold-r { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-top: 1px solid #e8d9b8; } .hold-r .he { font-size: 26px; width: 32px; text-align: center; }
+  .hold-r > b { flex: 1; font-size: 14px; color: #4a2e18; } .hold-r > b small { display: block; font-weight: 600; font-size: 11.5px; color: #7a6650; }
+  .hold-r .stp button { width: 32px; height: 32px; font-size: 18px; }
   .rcp.r3 { grid-template-columns: 1fr 1fr 1fr; } .rcp.r3 .rc b { font-size: 13px; }
   .rc-m { position: absolute; top: 5px; left: 7px; font-style: normal; width: 24px; height: 24px; border-radius: 12px; background: #efe3c8; color: #4a2e18; font-size: 17px; font-weight: 900; line-height: 23px; }
   .oven.dh { background: linear-gradient(#7fa7c2, #557f9c); }
@@ -847,6 +852,7 @@ if (!S.fair.crates) { S.fair.crates = []; for (const [c, n0] of Object.entries(S
 syncFair(); syncSpecial();   // особые находки и кубки конкурсов   // товары, снятые с продажи (копятся для заказов и производства)
 S.up.nests ??= 0; S.up.rooster ??= 0; S.up.yard ??= 0;
 S.wseed ??= Math.floor(Math.random() * 1e6);   // погода у каждой фермы своя
+S.hold ??= {};   // «держать на складе»: сколько штук выпечки и молочного поддерживает помощник
 S.up.millBin ??= 0; S.up.stones ??= 0; S.up.dairyBin ??= 0; S.keep ??= {}; S.up.dhouse ??= 0; S.up.churn ??= 0;   // бункер мельницы, чаны сыроварни, запас для пекарни
 S.up.milker ??= 0; S.up.clover ??= 0; S.up.hay ??= 0; S.up.pasture ??= 0;
 S.coop.gold ??= 0; S.coop.extra ??= 0; S.coop.chicks ??= 0;
@@ -893,7 +899,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.118';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.119';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1782,7 +1788,7 @@ function prodHave(k, byHelper) {   // сколько сырья можно вз�
   return Math.max(0, have);
 }
 function loadProd(k, byHelper) {
-  if (PROD[k].multi) return dairyLoad(S.prod[k].sel);
+  if (PROD[k].multi) { if (!byHelper) return 0; let n = 0, r; while ((r = dairyWant()) && dairyLoad(r, 1)) n++; return n; }   // план котлов составляет игрок; помощник — по норме
   const P = PROD[k], st = S.prod[k];
   const n = Math.min(prodCap(k) - st.q, Math.floor(prodHave(k, byHelper) / P.n));
   if (n <= 0) return 0;
@@ -1918,7 +1924,7 @@ function upRow(u, title, now, next, ico) {   // строка улучшения 
     <button ${maxed || lock || !S.night || S.coins < cost ? 'disabled' : ''} onclick="buyUpgrade('${u}')">${maxed ? '✔' : lock ? (lvlLocked(u) ? '⭐' + upLvl(u) : '🔒') : cost + '💰'}</button></div>`;
 }
 const kLeft = o => Math.max(0, DAIRY[o.r].time - o.t) / dairyRate(o.r);
-function dairySig() { const st = S.prod.dairy; return [JSON.stringify(st.plan), st.kt.map(o => o ? o.r : '-').join(), JSON.stringify(st.out), S.night, S.started, st.sel, S.inv.milk, S.up.dhouse].join('|'); }
+function dairySig() { const st = S.prod.dairy; return [JSON.stringify(S.hold), JSON.stringify(st.plan), st.kt.map(o => o ? o.r : '-').join(), JSON.stringify(st.out), S.night, S.started, st.sel, S.inv.milk, S.up.dhouse].join('|'); }
 function openDairy() {
   const k = 'dairy', P = PROD[k], st = S.prod[k], K = kettles(); prodOpen = k; fillKettles();
   const hot = S.started && !S.night && st.kt.some(Boolean) && sumO(st.out) < Math.max(20, prodCap(k));
@@ -1952,8 +1958,8 @@ function openDairy() {
     const kp = S.keep?.[g] || 0;
     h += `<div class="pkeep"><div><b>Оставлять для пекарни ${GOODS[g].e}</b><small>покупатели не возьмут последние ${kp} ${GOODS[g].e}</small></div><div class="stp"><button onclick="setKeep('${g}', -5)">−</button><b>${kp}</b><button onclick="setKeep('${g}', 5)">+</button></div></div>`;
   }
-  h += `<div class="phelp">${helper.length ? `🧑‍🌾 Помощник ${helper.join(', ')} забирает готовое, а ночью засыпает всё молоко в:` : `🧑‍🌾 Помощник не назначен — ${S.up.helper ? '<a href="#" onclick="event.preventDefault();openHelpers()">назначить в «Команде»</a>' : 'наймёшь — поставь его на станцию ' + P.ico}`}</div>`;
-  if (helper.length) h += `<div class="chips">${Object.keys(DAIRY).filter(dairyOk).map(r => `<button class="chip${r === st.sel ? ' on' : ''}" onclick="setDairySel('${r}')">${GOODS[r].e} ${GOODS[r].name}</button>`).join('')}</div>`;
+  h += holdBlock(Object.keys(DAIRY).filter(dairyOk), helper, 'ночью ставит в план то, чего меньше нормы, и забирает готовое');
+  if (!helper.length) h += `<div class="phelp">${helper.length ? '' : `🧑‍🌾 Помощник не назначен — ${S.up.helper ? '<a href="#" onclick="event.preventDefault();openHelpers()">назначить в «Команде»</a>' : 'наймёшь — поставь его на станцию ' + P.ico}`}</div>`;
   const sel = dairyOk(st.sel) ? st.sel : 'cheese', se = GOODS[sel].e;
   h += `<h3 class="bk-h">⬆️ Улучшения</h3>`;
   h += upRow('dairy', 'Котлы', `~${prodPerDay(k, S.up.dairy, sel)} ${se} в день`, `~${Math.floor(DAY_LEN / DAIRY[sel].time * dairyRate(sel, S.up.dairy + 1)) * K} ${se} в день`, '🔥');
@@ -2080,8 +2086,32 @@ function collectBake() {
   for (const g in out) if (!out[g]) delete out[g];
   save(); renderUI(); return true;
 }
+// помощник держит запас: ставит то, чего меньше нормы (считая лежащее в печи, очереди и на полке)
+function holdHave(g) {
+  let n = S.inv[g] || 0;
+  if (BAKE[g]) n += S.bake.q.filter(x => x === g).length + S.bake.ov.reduce((a, o) => a + (o && o.r === g ? o.n : 0), 0) + (S.bake.out[g] || 0);
+  if (DAIRY[g]) { const st = S.prod.dairy; n += (st.plan[g] || 0) + st.kt.filter(o => o && o.r === g).length + (st.out[g] || 0); }
+  return n;
+}
+const holdGap = g => (S.hold[g] || 0) - holdHave(g);
+function holdPick(list, can) {   // самый «недостающий» по доле от нормы
+  return list.filter(g => holdGap(g) > 0 && can(g)).sort((a, b) => holdGap(b) / S.hold[b] - holdGap(a) / S.hold[a])[0] || null;
+}
+const bakeWant = () => holdPick(Object.keys(BAKE), r => canMake(r) && bakeHave(r) > 0 && bakeRoom(r, 1) > 0);
+const dairyWant = () => holdPick(Object.keys(DAIRY), r => dairyOk(r) && (S.inv.milk || 0) >= DAIRY[r].n && prodQ('dairy') < prodCap('dairy'));
+function setHold(g, d) { S.hold[g] = Math.max(0, Math.min(99, (S.hold[g] || 0) + d)); save(); refreshSheet(); }
+function holdBlock(list, helper, place) {   // список рецептов со счётчиком «держать на складе»
+  if (!helper.length) return '';
+  return `<div class="hold"><div class="hold-t">🧑‍🌾 Помощник ${helper.join(', ')} держит на складе <small>${place}</small></div>${list.map(g => `<div class="hold-r"><span class="he">${GOODS[g].e}</span><b>${GOODS[g].name}<small>на складе ${S.inv[g] || 0}${holdHave(g) > (S.inv[g] || 0) ? ` · в работе ${holdHave(g) - (S.inv[g] || 0)}` : ''}</small></b><div class="stp"><button onclick="setHold('${g}', -1)">−</button><b>${S.hold[g] || 0}</b><button onclick="setHold('${g}', 1)">+</button></div></div>`).join('')}</div>`;
+}
 function bakeAct(byHelper) {   // забрать готовое и поставить в печь выбранный рецепт
   if (!S.up.bakery) return false;
+  if (byHelper) {   // помощник: забрать готовое и доложить то, чего меньше нормы — по одной штуке, по очереди
+    const got = collectBake(); let n = 0, r;
+    while (n < BAKE_CAP + OVENS * trayN() && (r = bakeWant())) { if (!loadBake(r, 1)) break; n++; }
+    if (n && !S.night) beginClock();
+    if (got || n) { save(); renderUI(); return true; } return false;
+  }
   const r = S.bake.sel, got = collectBake(), n = loadBake(r);
   if (!got && !n) {
     if (!byHelper) toast(S.bake.q.length >= BAKE_CAP ? `🥖 Печь и очередь заняты` : `🥖 Для ${GOODS[r].e} нужно ${bakeNeed(r)}`);
@@ -2140,7 +2170,7 @@ function unOven(i) {   // вынуть из отделения недопечё�
   toast(`↩️ ${o.n} ${GOODS[o.r].e} вынуты из печи, продукты вернулись на склад`);
   save(); renderUI(); openBakery();
 }
-function bakeSig() { const st = S.bake; return [st.q.join(), st.ov.map(o => o ? o.r + o.n : '-').join(), Object.entries(st.out).join(), S.night, S.started, bakeOut() >= 20, S.up.trays].join('|'); }
+function bakeSig() { const st = S.bake; return [JSON.stringify(S.hold), st.q.join(), st.ov.map(o => o ? o.r + o.n : '-').join(), Object.entries(st.out).join(), S.night, S.started, bakeOut() >= 20, S.up.trays].join('|'); }
 function bakeLive() {   // окно открыто — двигаем полоски, перерисовываем при переменах
   const sh = $('sheet');
   if (sh.dataset.view !== 'bakery' || !$('overlay').classList.contains('show')) return;
@@ -2183,8 +2213,8 @@ function openBakery() {
       <b>${GOODS[r].name}</b><small>${sellPrice(r)}💰 · ${fmtSec(BAKE[r].time / sp)}</small><div class="rc-ing">${ing}</div><small class="rc-f">${foot}</small></button>`;
   }
   h += `</div><div class="pfacts" style="margin-top:10px"><span>${OVENS} отделения</span><span>по ${trayN()} шт. за раз</span><span>~${perDay(sel)} ${GOODS[sel].e} в день</span></div>`;
-  h += `<div class="phelp">${helper.length ? `🧑‍🌾 Помощник ${helper.join(', ')} забирает готовое и доливает очередь:` : `🧑‍🌾 Помощник не назначен — ${S.up.helper ? '<a href="#" onclick="event.preventDefault();openHelpers()">назначить в «Команде»</a>' : 'наймёшь — поставь его на станцию 🥖'}`}</div>`;
-  if (helper.length) h += `<div class="chips">${Object.keys(BAKE).filter(canMake).map(r => `<button class="chip${r === st.sel ? ' on' : ''}" onclick="setBake('${r}')">${GOODS[r].e} ${GOODS[r].name}</button>`).join('')}</div>`;
+  h += holdBlock(Object.keys(BAKE).filter(canMake), helper, 'печёт то, чего меньше нормы, и забирает готовое');
+  if (!helper.length) h += `<div class="phelp">${helper.length ? '' : `🧑‍🌾 Помощник не назначен — ${S.up.helper ? '<a href="#" onclick="event.preventDefault();openHelpers()">назначить в «Команде»</a>' : 'наймёшь — поставь его на станцию 🥖'}`}</div>`;
   // улучшения пекарни: «сейчас → будет»
   h += `<h3 class="bk-h">⬆️ Улучшения</h3>`;
   const row = (u, title, now, next, ico) => {
@@ -2768,9 +2798,9 @@ function helperJobs(cfg) {
   });
   for (const k in PROD) if (has(k) && S.up[k]) {
     const st = S.prod[k];
-    if ((prodOut(k) > 0 && prodFits(k)) || (S.night && prodQ(k) < prodCap(k) && prodHave(k, true) >= prodNeed(k) && (!PROD[k].multi || dairyOk(st.sel)))) jobs.push({ ...PROD[k].spot, k, act: () => prodAct(k, true) });
+    if ((prodOut(k) > 0 && prodFits(k)) || (S.night && (PROD[k].multi ? !!dairyWant() : prodQ(k) < prodCap(k) && prodHave(k, true) >= prodNeed(k)))) jobs.push({ ...PROD[k].spot, k, act: () => prodAct(k, true) });
   }
-  if (has('bakery') && S.up.bakery && ((bakeOut() > 0 && bakeFits()) || (bakeHave(S.bake.sel) > 0 && bakeRoom(S.bake.sel, 1) > 0))) jobs.push({ ...BAKE_SPOT, k: 'bakery', act: () => bakeAct(true) });
+  if (has('bakery') && S.up.bakery && ((bakeOut() > 0 && bakeFits()) || bakeWant())) jobs.push({ ...BAKE_SPOT, k: 'bakery', act: () => bakeAct(true) });
   if (has('orchard')) S.trees.forEach((t, i) => { if (treeReady(t) && fits(TREES[t.kind].fruit, TREES[t.kind].yield)) jobs.push({ x: ORCHARD_SLOTS[i].x, y: ORCHARD_SLOTS[i].y, k: 'orchard', act: () => treeAct(i, 'harvest') }); });
   if (has('coop')) {
     if ((S.coop.gold || 0) + (S.coop.eggs && fits('egg')) > 0) jobs.push({ ...COOP_SPOT, k: 'coop', act: collectEggs });
@@ -5582,24 +5612,25 @@ function drawPerson(p, L, local) {
 function drawBubble(v) {
   const c = iso(v.x, v.y), bx = c.x, by = c.y - 64;
   if (v.state === 'leaving') { if (v.mood && v.moodT > 0) emoji(v.mood === 'happy' ? '😊' : v.mood === 'ok' ? '🙂' : '😠', bx, by + 6, 18); return; }
-  const ok = fullStock(v), front = v.state === 'waiting' && v.slot === 0, show = front || v.items.length === 1 ? v.items.slice(0, 3) : [], more = v.items.length - show.length;   // всю корзинку видно у первого в очереди, у остальных — сколько товаров
-  const w = show.length ? show.length * 30 + (more ? 18 : 0) + 6 : 40, x0 = bx - w / 2;
-  ctx.beginPath(); ctx.roundRect(x0, by - 12, w, 22, 7);
+  const ok = fullStock(v), front = v.state === 'waiting' && v.slot === 0, show = front || v.items.length === 1 ? v.items : [];   // всю корзинку видно у первого в очереди
+  const rows = show.length > 3 ? 2 : 1, per = Math.ceil(show.length / rows), RH = 20;   // 4–5 товаров — в два ряда
+  const w = show.length ? per * 30 + 6 : 40, h = rows * RH + 2, x0 = bx - w / 2, top = by + 10 - h;
+  ctx.beginPath(); ctx.roundRect(x0, top, w, h, 7);
   ctx.moveTo(bx - 4, by + 10); ctx.lineTo(bx, by + 15); ctx.lineTo(bx + 4, by + 10);
   ctx.fillStyle = ok ? '#e6f7dc' : '#fffdf6'; ctx.fill(); ctx.strokeStyle = ok ? '#3e9b3a' : '#cdb994'; ctx.lineWidth = ok ? 2.5 : 1.2; ctx.stroke();
   ctx.font = 'bold 11px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   show.forEach((it, k) => {   // красная цифра — этого на складе не хватает
-    const cx = x0 + 3 + k * 30 + 15;
+    const r = Math.floor(k / per), q = k % per, inRow = Math.min(per, show.length - r * per);
+    const cx = bx - inRow * 15 + q * 30 + 15, cy = top + 1 + r * RH + RH / 2;
     ctx.fillStyle = itemOk(it) && stockOf(it.id) >= it.n ? '#3b2a1a' : '#d9342b';
-    ctx.fillText(it.n, cx - 9, by);
-    emoji(GOODS[it.id].e, cx + 5, by, 14);
+    ctx.fillText(it.n, cx - 9, cy);
+    emoji(GOODS[it.id].e, cx + 5, cy, 14);
   });
   if (!show.length) { emoji('🧺', bx - 7, by, 14); ctx.fillStyle = ok ? '#3b2a1a' : '#d9342b'; ctx.fillText(v.items.length, bx + 10, by); }
-  else if (more) { ctx.fillStyle = '#3b2a1a'; ctx.fillText('+' + more, x0 + w - 12, by); }
   if (v.state === 'waiting') {
     const r = Math.max(0, v.pat / v.max);
-    rr(bx - 16, by - 18, 32, 4, 2, 'rgba(0,0,0,.25)');
-    rr(bx - 16, by - 18, 32 * r, 4, 2, r > .5 ? '#3e9b3a' : r > .25 ? '#f4a92b' : '#d9534f');
+    rr(bx - 16, top - 6, 32, 4, 2, 'rgba(0,0,0,.25)');
+    rr(bx - 16, top - 6, 32 * r, 4, 2, r > .5 ? '#3e9b3a' : r > .25 ? '#f4a92b' : '#d9534f');
   }
 }
 
