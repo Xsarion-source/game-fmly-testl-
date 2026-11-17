@@ -868,7 +868,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.102';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.103';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3009,6 +3009,79 @@ const henIcon = (K, rooster) => {
   K.P([[54, 20], [62, 24], [54, 28]], '#f2a43a', 2.5); K.C(52, 31, 3.2, '#e0393e', 2.5);
   K.C(47, 20, 2.2, '#222', 0); K.C(47.6, 19.4, .8, '#fff', 0);
 };
+// выпечка в одной перспективе с пирогом: батон, кусок пиццы, торт с вырезанным куском
+const proj = (cx, cy, rx, ry, a, r) => [cx + Math.cos(a) * rx * r, cy + Math.sin(a) * ry * r];
+function berry(K, x, y, s) {   // клубничка (не сплющенная)
+  K.D(c => { c.moveTo(x, y + s); c.bezierCurveTo(x - s * 1.3, y, x - s * .9, y - s * .9, x, y - s * .6); c.bezierCurveTo(x + s * .9, y - s * .9, x + s * 1.3, y, x, y + s); }, K.G(0, y - s, 0, y + s, '#ff5a5a', '#c41e3a'), 1.8);
+  for (const [dx, dy] of [[-.35, -.1], [.3, -.15], [0, .3], [-.15, .55], [.25, .35]]) { K.c.fillStyle = '#ffe9a0'; K.c.fillRect(x + dx * s - .6, y + dy * s - .6, 1.2, 1.2); }
+  K.P([[x - s * .55, y - s * .62], [x, y - s * .95], [x + s * .55, y - s * .62], [x, y - s * .45]], '#5fae4e', 1.2);
+}
+const breadIcon = K => {
+  const c = K.c;
+  K.E(33, 50, 27, 6, 'rgba(90,58,36,.16)', 0, 0);
+  c.save(); c.translate(32, 32); c.rotate(-.2);
+  const body = c => c.ellipse(0, 0, 29, 17, 0, 0, 7);
+  K.D(body, K.G(0, -17, 0, 17, '#f4bd6c', '#a4561c'), 0);
+  c.save(); K.D(body, null, 0); c.clip();
+  c.fillStyle = K.G(0, -14, 0, 4, 'rgba(255,225,160,.55)', 'rgba(255,225,160,0)'); c.fillRect(-30, -14, 60, 18);   // светлый верх
+  for (const [x, L] of [[-17, .6], [-6, 1], [6, 1], [17, .6]]) {   // параллельные, середина длиннее
+    const ux = .78, uy = -.62, half = 11 * L;                    // один наклон для всех
+    c.beginPath(); c.moveTo(x - ux * half, -2 - uy * half); c.lineTo(x + ux * half, -2 + uy * half);   // прямые параллельные надрезы
+    c.lineWidth = 6; c.strokeStyle = '#8a4516'; c.stroke(); c.lineWidth = 3.4; c.strokeStyle = '#f8d796'; c.stroke();
+  }
+  c.restore(); K.D(body, null, 3);
+  c.restore();
+};
+const pizzaIcon = K => {
+  const c = K.c, T = [18, 55], L = [8, 19], R = [57, 17], h = 4.5;
+  K.E(32, 54, 24, 5, 'rgba(90,58,36,.16)', 0, 0);
+  // бок (толщина теста) справа
+  K.P([T, R, [R[0], R[1] + h], [T[0], T[1] + h]], '#d9963f', 2.6);
+  // верх
+  const top = c => { c.moveTo(T[0], T[1]); c.lineTo(L[0], L[1]); c.quadraticCurveTo(28, 6, R[0], R[1]); c.closePath(); };
+  K.D(top, '#efb661', 3);
+  const inset = c => { c.moveTo(T[0] + 1.5, T[1] - 5); c.lineTo(L[0] + 4.5, L[1] + 4); c.quadraticCurveTo(28, 13, R[0] - 6, R[1] + 4); c.closePath(); };
+  K.D(inset, '#d9412f', 0);                                                           // соус
+  const cheese = c => { c.moveTo(T[0] + 3, T[1] - 9); c.lineTo(L[0] + 7, L[1] + 6); c.quadraticCurveTo(28, 16, R[0] - 10, R[1] + 6); c.closePath(); };
+  K.D(cheese, K.G(0, 14, 0, 46, '#ffe592', '#f5c457'), 0);                             // сыр ровным слоем
+  for (const [x, y, r] of [[22, 34, 7], [38, 23, 7]]) {   // два кусочка колбасы
+    K.E(x, y, r, r * .8, K.G(0, y - r, 0, y + r, '#d8384a', '#a81e2c'), 0, 2);
+    for (const [dx, dy] of [[-.35, -.2], [.3, -.3], [.1, .3], [-.2, .35], [.45, .15]]) K.C(x + dx * r, y + dy * r * .8, 1, '#ffd2c6', 0);
+    K.E(x - r * .35, y - r * .35, r * .3, r * .15, 'rgba(255,255,255,.45)', -.4, 0);
+  }
+  for (const [x, y, a] of [[16, 44, .5], [30, 26, -.3], [46, 22, .2]]) { c.save(); c.translate(x, y); c.rotate(a); c.beginPath(); c.ellipse(0, 0, 3.4, 1.7, 0, 0, 7); c.fillStyle = '#4f9e45'; c.fill(); c.restore(); }
+  // бортик сзади: толстая румяная колбаска
+  c.beginPath(); c.moveTo(L[0], L[1]); c.quadraticCurveTo(28, 6, R[0], R[1]);
+  c.lineWidth = 11; c.strokeStyle = IK; c.stroke(); c.lineWidth = 7.5; c.strokeStyle = '#e6a556'; c.stroke();
+  c.beginPath(); c.moveTo(L[0] + 3, L[1] - 2.5); c.quadraticCurveTo(28, 3.5, R[0] - 4, R[1] - 2.5); c.lineWidth = 2.2; c.strokeStyle = 'rgba(255,230,170,.7)'; c.stroke();
+  K.D(top, null, 3);
+};
+const cakeIcon = K => {
+  const c = K.c, cx = 30, cy = 24, rx = 26, ry = 14, h = 18, a1 = -.45, a2 = .75;   // сектор a1..a2 вынут (справа)
+  K.E(cx + 2, cy + h + 5, rx + 2, ry - 3, 'rgba(90,58,36,.15)', 0, 0);
+  const p = a => [cx + rx * Math.cos(a), cy + ry * Math.sin(a)];
+  const sideCol = K.G(cx - rx, 0, cx + rx, 0, '#fff6f4', '#e2b4bc');
+  const face = q => {
+    const f = c => { c.moveTo(cx, cy); c.lineTo(q[0], q[1]); c.lineTo(q[0], q[1] + h); c.lineTo(cx, cy + h); c.closePath(); };
+    K.D(f, '#f7dca0', 0); c.save(); K.D(f, null, 0); c.clip();
+    for (const [dy, col, w] of [[2, '#fff6f4', 4.5], [7.5, '#ffd6de', 3], [13, '#fff6f4', 3]]) { c.beginPath(); c.moveTo(cx, cy + dy); c.lineTo(q[0], q[1] + dy); c.lineWidth = w; c.strokeStyle = col; c.stroke(); }
+    for (let t = .3; t < 1; t += .35) { c.beginPath(); c.arc(cx + (q[0] - cx) * t, cy + (q[1] - cy) * t + 7.5, 1.9, 0, 7); c.fillStyle = '#e0303e'; c.fill(); }
+    c.restore(); K.D(f, null, 2.6);
+  };
+  face(p(a1));   // дальний срез (сзади справа)
+  face(p(a2));   // ближний срез
+  // бок спереди: от a2 до π — рисуется последним из боковых, перекрывает всё, что за ним
+  K.D(c => { c.ellipse(cx, cy, rx, ry, 0, a2, Math.PI); c.lineTo(cx - rx, cy + h); c.ellipse(cx, cy + h, rx, ry, 0, Math.PI, a2, true); c.closePath(); }, sideCol, 3);
+  c.save(); c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, a2, Math.PI); c.lineTo(cx - rx, cy + h); c.ellipse(cx, cy + h, rx, ry, 0, Math.PI, a2, true); c.closePath(); c.clip();
+  c.beginPath(); c.ellipse(cx, cy + h * .55, rx, ry, 0, a2, Math.PI); c.lineWidth = 3.4; c.strokeStyle = '#f07c8f'; c.stroke(); c.restore();
+  // верх без сектора
+  const top = c => { c.moveTo(cx, cy); c.ellipse(cx, cy, rx, ry, 0, a2, a1 + Math.PI * 2); c.closePath(); };
+  K.D(top, '#fff8f6', 0); c.save(); K.D(top, null, 0); c.clip(); c.beginPath(); c.ellipse(cx, cy, rx * .55, ry * .55, 0, 0, 7); c.fillStyle = '#ffd6de'; c.fill(); c.restore();
+  K.D(top, null, 3);
+  for (const a of [1.2, 1.9, 2.6, 3.3, 4.0, 4.7, 5.4]) { const [x, y] = proj(cx, cy, rx, ry, a, .78); berry(K, x, y - 1, 4.2); }   // кольцо клубники по краю
+  { const [x, y] = proj(cx, cy, rx, ry, 3.6, .2); berry(K, x, y - 3, 7); }   // крупная в середине
+
+};
 // яблочный пирог: бок освещён слева, сверху крем и роза из крупных долек (кожура — толстая красная дуга)
 const pieIcon = K => {
   const c = K.c, cx = 32, cy = 27, rx = 28, ry = 17, h = 11;
@@ -3162,17 +3235,10 @@ const ICON_DRAW = {
     K.P([[6, 34], [58, 30], [58, 50], [6, 54]], K.G(0, 30, 0, 54, '#ffd24a', '#e6a822'));
     for (const [x, y, r] of [[16, 44, 3.5], [30, 40, 4.5], [46, 44, 3], [38, 49, 2.2], [24, 49, 2]]) K.E(x, y, r * 1.1, r, '#c98a12', 0, 0);
     K.E(36, 24, 3, 1.6, '#e6b030', 0, 0); K.H(20, 30, 6, 1.5, .5); },
-  '🍞': K => {   // буханка: длинная, тёмно-золотая, с косыми надрезами
-    K.D(c => { c.moveTo(6, 46); c.bezierCurveTo(4, 26, 18, 20, 32, 20); c.bezierCurveTo(46, 20, 60, 26, 58, 46); c.quadraticCurveTo(58, 54, 50, 54); c.lineTo(14, 54); c.quadraticCurveTo(6, 54, 6, 46); }, K.G(0, 20, 0, 54, '#e8a24a', '#a8581e'));
-    for (const x of [18, 30, 42]) { K.D(c => { c.moveTo(x - 4, 38); c.lineTo(x + 6, 26); }, null, 0); K.c.strokeStyle = '#ffe0a8'; K.c.lineWidth = 3.5; K.c.lineCap = 'round'; K.c.stroke(); }
-    K.L(10, 50, 54, 50, 'rgba(100,50,15,.35)', 2); K.H(16, 30, 4, 2.5, .4); },
+  '🍞': K => breadIcon(K),
   '🥧': K => pieIcon(K),   // яблочный пирог: высокий бисквит, сверху розой крупные дольки с красной кожурой
-  '🍕': K => { K.P([[8, 14], [56, 14], [32, 62]], K.G(0, 14, 0, 62, '#ffe080', '#f2b840')); K.R(6, 8, 52, 10, 5, '#d98a3a');
-    for (const [x, y] of [[22, 26], [40, 28], [31, 42]]) { K.C(x, y, 5, '#d8443a', 2); K.H(x - 1.5, y - 1.5, 1.5, 1, .5); } K.C(26, 36, 2, '#5fae4e', 0); K.C(36, 20, 2, '#5fae4e', 0); },
-  '🎂': K => { for (const x of [24, 32, 40]) { K.R(x - 2, 12, 4, 12, 1, '#7fa9f0', 2); K.E(x, 8, 2.5, 4, '#ffb83a', 0, 1.5); }
-    K.R(8, 34, 48, 24, 5, K.G(0, 34, 0, 58, '#fff6ea', '#f0dcc4')); K.R(8, 40, 48, 4, 0, '#ff9cc0', 0);
-    K.D(c => { c.moveTo(8, 30); c.quadraticCurveTo(8, 24, 14, 24); c.lineTo(50, 24); c.quadraticCurveTo(56, 24, 56, 30); c.lineTo(56, 36); for (let x = 56; x > 8; x -= 8) c.quadraticCurveTo(x - 4, 42, x - 8, 36); c.closePath(); }, '#ff9cc0');
-    K.C(32, 26, 4, '#e0393e', 2); },
+  '🍕': K => pizzaIcon(K),
+  '🎂': K => cakeIcon(K),
   '🌙': K => { const c = K.c; K.C(32, 32, 24, IK, 0); K.C(32, 32, 21, K.G(0, 10, 0, 54, '#fff09a', '#ffc93c'), 0);
     c.save(); c.globalCompositeOperation = 'destination-out'; K.C(44, 22, 19, '#000', 0); c.restore();
     c.save(); c.beginPath(); c.arc(32, 32, 22.5, 0, 7); c.clip(); K.D(cc => cc.arc(44, 22, 19, 0, 7), null, 3); c.restore(); K.C(24, 42, 3, 'rgba(230,180,40,.6)', 0); },
