@@ -529,7 +529,7 @@ const UPGRADES = {
   house:  { name: 'Дом фермера',       ico: '🏠', desc: l => l === 0 ? 'Веранда и кухня: помощники сыты и работают на 20% быстрее' : 'Второй этаж: помощники работают ещё на 20% быстрее (всего +40%)', cost: l => [3000, 7000][l], max: 2 },
   millBin:  { name: 'Бункер мельницы',   ico: '📦', desc: l => `Очередь на помол длиннее: ${PROD.mill.cap * (1 + l)} → ${PROD.mill.cap * (2 + l)} мешков — загрузил утром, мелет до вечера`, cost: l => [2500][l], max: 1, need: () => S.up.mill >= 1, needText: 'Откроется, когда построишь мельницу 🌬️' },
   dairyBin: { name: 'Чаны сыроварни',    ico: '🪣', desc: l => `Очередь длиннее: ${PROD.dairy.cap * (1 + l)} → ${PROD.dairy.cap * (2 + l)} сыров`, cost: l => [3500][l], max: 1, need: () => S.up.dairy >= 1, needText: 'Откроется, когда построишь сыроварню 🧀' },
-  trays:  { name: 'Противни',          ico: '🥘', desc: l => `В каждое отделение печи — по ${l + 2} одинаковых штуки за раз (сейчас по ${l + 1})`, cost: l => [3000, 6000][l], max: 2, need: () => S.up.bakery >= 1, needText: 'Откроется, когда пристроишь пекарню 🥖' },
+  trays:  { name: 'Противни',          ico: '🥘', desc: l => `Больше места в печи: за раз печётся ${OVENS * (l + 2)} шт. вместо ${OVENS * (l + 1)} — выпечки в день в ${((l + 2) / (l + 1)).toFixed(1).replace('.0', '').replace('.', ',')} раза больше`, cost: l => [3000, 6000][l], max: 2, need: () => S.up.bakery >= 1, needText: 'Откроется, когда пристроишь пекарню 🥖' },
   bakery: { name: 'Пекарня',           ico: '🥖', desc: l => l === 0 ? 'Пристройка к дому. Печёт из 🍚 муки и продуктов фермы: 🍞 хлеб, 🥧 пирог, 🍕 пиццу и 🎂 торт' : 'Печёт вдвое быстрее', cost: l => [6000, 9000][l], max: 2, need: () => S.up.mill >= 1, needText: 'Откроется после новой постройки в лесу 🪓' },
   cozy:   { name: 'Уют',               ico: '🌷', desc: l => `${COZY[l]}. Покупателям нравится — платят на 2% больше (+${l * 2}% → +${(l + 1) * 2}%)`, cost: l => [600, 1200, 2000, 3200, 5000][l],
             get max() { return Math.max(S.up.cozy || 0, S.up.house ? 5 : 4); } },   // фонарики висят на веранде — последний уровень после «Дома фермера»
@@ -868,7 +868,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.104';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.105';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -2003,7 +2003,7 @@ function openBakery() {
   };
   const pd = (lv, tr) => Math.floor(OVENS * DAY_LEN / (BAKE[sel].time / lv) * tr);
   h += row('bakery', 'Жар печи', `~${pd(sp, trayN())} ${GOODS[sel].e} в день`, `~${pd(sp + 1, trayN())} ${GOODS[sel].e} в день`, '🫕');
-  h += row('trays', 'Противни', `по ${trayN()} шт. в отделение`, `по ${trayN() + 1} шт.`);
+  h += row('trays', 'Противни', `печёт ${OVENS * trayN()} шт. за раз`, `${OVENS * (trayN() + 1)} шт. за раз · ~${pd(sp, trayN() + 1)} ${GOODS[sel].e} в день`);
   if (!S.night) h += `<div style="font-size:12px;color:#7a6650;margin-top:4px">🌙 Улучшения покупаются ночью</div>`;
   $('sheet').dataset.view = 'bakery'; $('sheet').dataset.sig = bakeSig(); $('sheet').innerHTML = h;
   $('overlay').classList.add('show');
