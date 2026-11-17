@@ -257,6 +257,18 @@
   .pkeep b { color: #4a2e18; } .pkeep small { display: block; font-size: 12px; color: #7a6650; }
   .stp { display: flex; align-items: center; gap: 8px; } .stp button { width: 36px; height: 36px; border-radius: 50%; border: none; background: #ffd34d; font: 900 20px system-ui; color: #4a2e18; box-shadow: 0 2px 0 #c98f1c; padding: 0; } .stp b { min-width: 28px; text-align: center; font-size: 17px; }
   .phelp { margin-top: 8px; font-size: 13px; color: #7a6650; } .phelp a { color: #b0503a; font-weight: 800; }
+  .bshelf { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; border: 2.5px dashed #d9c49c; border-radius: 16px; padding: 8px 10px; background: #fbf3e2; }
+  .bshelf.has { border: 2.5px solid #8cc56a; background: #effae6; }
+  .bsh-t { font-weight: 900; color: #4a2e18; font-size: 15px; } .bsh-empty { color: #7a6650; font-size: 13px; }
+  .bsh-items { display: flex; gap: 8px; flex: 1; flex-wrap: wrap; } .bsh-items span { display: inline-flex; align-items: center; gap: 2px; background: #fff; border-radius: 12px; padding: 2px 8px; } .bsh-items i { font-style: normal; font-size: 26px; } .bsh-items b { font-size: 17px; color: #2f6b2a; }
+  .bshelf button { margin-left: auto; background: #6cbf4f; color: #fff; border: none; border-radius: 12px; padding: 8px 12px; font: 900 15px system-ui, sans-serif; box-shadow: 0 3px 0 #4a8f35; }
+  .rcp { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .rc { position: relative; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 8px 4px 6px; border-radius: 16px; border: 2.5px solid #ead9b5; background: #fff; box-shadow: 0 3px 0 #d9c49c; font: inherit; color: #4a2e18; text-align: center; }
+  .rc:active { transform: translateY(2px); box-shadow: none; } .rc.off { opacity: .55; }
+  .rc-e { font-size: 34px; line-height: 1.05; } .rc b { font-size: 14px; line-height: 1.15; } .rc small { font-size: 11.5px; color: #7a6650; }
+  .rc-q { position: absolute; top: 6px; right: 8px; font-style: normal; min-width: 20px; height: 20px; border-radius: 10px; background: #f4a92b; color: #fff; font-size: 12px; font-weight: 900; line-height: 20px; }
+  .rc-ing { display: flex; gap: 6px; justify-content: center; margin: 3px 0 1px; } .rc-ing span { display: inline-flex; align-items: center; gap: 1px; font-weight: 900; font-size: 13px; } .rc-ing i { font-style: normal; font-size: 17px; } .rc-ing .no { color: #d0453a; }
+  .rc .rc-f { font-size: 11px; }
   .nightline { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 6px 0 2px; color: #7a6650; font-size: 13px; } .nightline b { color: #4a2e18; font-size: 16px; }
   .feedrow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; margin: 8px 0 4px; }
   .feedrow.many .feedlbl { flex-basis: 100%; }
@@ -856,7 +868,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.99';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.100';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1917,6 +1929,7 @@ function bakeState() {   // что сейчас с печью — одной ф�
   return { hot: true, t: 'Печь топится', s: `Оба отделения пекут одновременно${trayN() > 1 ? `, в каждом до ${trayN()} шт.` : ''}` };
 }
 function addBake(r, n) {
+  if (!canMake(r) || !bakeHave(r) || !bakeRoom(r, 1)) { toast(!canMake(r) ? `${GOODS[r].e} пока не из чего печь` : !bakeHave(r) ? `Для ${GOODS[r].e} нужно ${bakeNeed(r)}` : '📋 Очередь полная — подожди, пока освободится отделение'); return; }
   if (loadBake(r, n) && !S.night) beginClock();
   save(); renderUI(); openBakery();
 }
@@ -1955,11 +1968,6 @@ function openBakery() {
   const sel = BAKE[st.sel] ? st.sel : 'bread', perDay = r => Math.floor(OVENS * DAY_LEN / (BAKE[r].time / sp) * trayN());
   const helper = S.helpers.map((c, i) => c.stations.includes('bakery') ? i + 1 : 0).filter(Boolean);
   let h = `<h2>🥖 Пекарня</h2><div class="fpinfo">Добавь рецепт — продукты сразу уходят со склада в очередь, а печь берёт из очереди в свободное отделение. Печь работает только днём. Нажми на штуку в печи или в очереди, чтобы убрать её — продукты вернутся на склад. Готовое лежит в пекарне (до 20 штук), пока его не заберут.</div>
-    <div class="chain">
-      <div class="ch"><span class="ce">📋</span><b>${q.length}</b><small>в очереди из ${BAKE_CAP}</small></div><i class="arr">›</i>
-      <div class="ch work"><span class="ce">${ov.hot ? '🔥' : '🥖'}</span><b>${busy}/${OVENS}</b><small>${ov.hot ? 'печёт' : !bakeBusy() ? 'пусто' : bakeOut() >= 20 ? 'полка полна' : S.night ? 'ночью стоит' : 'ждёт начала дня'}</small></div><i class="arr">›</i>
-      <div class="ch done${bakeOut() ? ' has' : ''}"><span class="ce">🧺</span><b>${bakeOut()}</b><small>готово</small></div>
-    </div>
     <div class="oven${ov.hot ? ' hot' : ''}"><div class="ov-row">`;
   st.ov.forEach((o, i) => {
     h += o ? `<button class="ov-cell" onclick="unOven(${i})"><div class="ov-mouth"><span class="ov-item">${GOODS[o.r].e}</span>${o.n > 1 ? `<b class="ov-n">×${o.n}</b>` : ''}<span class="ov-fire">${ov.hot ? '🔥' : ''}</span><i class="ov-x">✕</i></div>
@@ -1970,22 +1978,22 @@ function openBakery() {
   for (let i = 0; i < BAKE_CAP; i++) h += q[i]
     ? `<button class="bq-s" onclick="unBake(${i})"><span>${GOODS[q[i]].e}</span><small>${i + 1}-й</small><i>✕</i></button>`
     : `<div class="bq-s empty">${i === q.length ? '+' : ''}</div>`;
-  h += `</div><div class="pfacts" style="margin-top:8px"><span>${OVENS} отделения</span><span>по ${trayN()} шт. за раз</span><span>~${perDay(sel)} ${GOODS[sel].e} в день</span>${bakeOut() ? `<span>🧺 ${cnt(st.out)}</span>` : ''}</div>`;
+  h += `</div>`;
+  const outs = Object.entries(st.out).filter(([, k]) => k);
+  h += `<div class="bshelf${outs.length ? ' has' : ''}"><div class="bsh-t">🧺 Готово</div>${outs.length
+    ? `<div class="bsh-items">${outs.map(([g, k]) => `<span><i>${GOODS[g].e}</i><b>×${k}</b></span>`).join('')}</div><button onclick="${S.night ? 'collectBake(); refreshSheet()' : 'closeNight(); setTasks([{ ...BAKE_SPOT, fn: collectBake }])'}">🧑‍🌾 Забрать</button>`
+    : `<div class="bsh-empty">пока ничего не готово</div>`}</div>`;
+  h += `<h3 class="bk-h">Добавить в печь <small>тап — 1 шт. в очередь</small></h3><div class="rcp">`;
+  for (const r in BAKE) {
+    const ok = canMake(r), have = bakeHave(r), room = ok ? bakeRoom(r, 1) : 0, inQ = q.filter(x => x === r).length;
+    const ing = Object.entries(BAKE[r].in).map(([g, k]) => `<span class="${(S.inv[g] || 0) >= k ? '' : 'no'}">${k}<i>${GOODS[g].e}</i></span>`).join('');
+    const foot = !ok ? `нужен ${Object.keys(BAKE[r].in).filter(g => !canMake(g)).map(g => GOODS[g].e).join(' ')}` : !have ? 'не хватает продуктов' : !room ? 'очередь полная' : `хватит на ${have}`;
+    h += `<button class="rc${ok && have && room ? '' : ' off'}" onclick="addBake('${r}',1)"><span class="rc-e">${GOODS[r].e}</span>${inQ ? `<i class="rc-q">${inQ}</i>` : ''}
+      <b>${GOODS[r].name}</b><small>${sellPrice(r)}💰 · ${fmtSec(BAKE[r].time / sp)}</small><div class="rc-ing">${ing}</div><small class="rc-f">${foot}</small></button>`;
+  }
+  h += `</div><div class="pfacts" style="margin-top:10px"><span>${OVENS} отделения</span><span>по ${trayN()} шт. за раз</span><span>~${perDay(sel)} ${GOODS[sel].e} в день</span></div>`;
   h += `<div class="phelp">${helper.length ? `🧑‍🌾 Помощник ${helper.join(', ')} забирает готовое и доливает очередь:` : `🧑‍🌾 Помощник не назначен — ${S.up.helper ? '<a href="#" onclick="event.preventDefault();openHelpers()">назначить в «Команде»</a>' : 'наймёшь — поставь его на станцию 🥖'}`}</div>`;
   if (helper.length) h += `<div class="chips">${Object.keys(BAKE).filter(canMake).map(r => `<button class="chip${r === st.sel ? ' on' : ''}" onclick="setBake('${r}')">${GOODS[r].e} ${GOODS[r].name}</button>`).join('')}</div>`;
-  if (bakeOut()) h += `<button class="wide" style="width:100%;margin-top:8px" onclick="${S.night ? 'collectBake(); refreshSheet()' : 'closeNight(); setTasks([{ ...BAKE_SPOT, fn: collectBake }])'}">🧑‍🌾 Забрать ${cnt(st.out)}</button>`;
-  h += `<h3 class="bk-h">Добавить в печь</h3>`;
-  for (const r in BAKE) {
-    const ok = canMake(r), have = bakeHave(r), n = ok ? bakeRoom(r, have) : 0;
-    const raw = Object.entries(BAKE[r].in).reduce((a, [g, k]) => a + k * sellPrice(g), 0), gain = sellPrice(r) - raw;
-    const ing = Object.entries(BAKE[r].in).map(([g, k]) => `<span class="${(S.inv[g] || 0) >= k ? 'ok' : 'no'}">${k}${GOODS[g].e}<sub>${S.inv[g] || 0}</sub></span>`).join(' ');
-    const why = !ok ? `Нужен источник: ${Object.keys(BAKE[r].in).filter(g => !canMake(g)).map(g => GOODS[g].e).join(' ')}` : !have ? 'Не хватает продуктов' : '';
-    h += `<div class="bk-r${ok ? '' : ' off'}"><span class="re">${GOODS[r].e}</span>
-      <div class="rt"><b>${GOODS[r].name}</b> <small>· ${sellPrice(r)}💰 · ${fmtSec(BAKE[r].time / sp)}</small>
-        <div class="ing">${ing}</div>
-        <small>${why ? `<span style="color:#b0503a">${why}</span>` : `хватит на ${have} шт.`}${gain > 0 ? ` · <b style="color:#3e9b3a">+${gain}💰</b> к цене продуктов` : ''}</small></div>
-      <div class="bk-b"><button ${n ? '' : 'disabled'} onclick="addBake('${r}',1)">+1</button>${n > 1 ? `<button onclick="addBake('${r}',${n})">+${n}</button>` : ''}</div></div>`;
-  }
   // улучшения пекарни: «сейчас → будет»
   h += `<h3 class="bk-h">⬆️ Улучшения</h3>`;
   const row = (u, title, now, next) => {
