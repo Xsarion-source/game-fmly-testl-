@@ -884,7 +884,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.112';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.113';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -4500,22 +4500,51 @@ function drawMillBody(d, t) {
   circle(hub.x, hub.y, 5, INK); circle(hub.x, hub.y, 3.8, '#a8603f'); circle(hub.x - 1, hub.y - 1, 1.2, '#f0c08a'); }));
 }
 // Сыроварня: кремовый домик с черепичной крышей, трубой и вывеской-сыром
+// бидон: металлическое ведро-цилиндр с крышкой и ручками
+function milkCan(x, y, s = 1) {
+  const p = lift(x, y, 0), w = 4.2 * s, h = 11 * s;
+  ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(p.x + 1, p.y + 1, w + 1.5, w * .5 + 1, 0, 0, 7); ctx.fill();
+  const g = ctx.createLinearGradient(p.x - w, 0, p.x + w, 0); g.addColorStop(0, '#f2f5f8'); g.addColorStop(1, '#a9b3bd');
+  ctx.beginPath(); ctx.moveTo(p.x - w, p.y); ctx.lineTo(p.x - w, p.y - h * .62); ctx.quadraticCurveTo(p.x - w, p.y - h * .8, p.x - w * .55, p.y - h * .86); ctx.lineTo(p.x - w * .55, p.y - h);
+  ctx.lineTo(p.x + w * .55, p.y - h); ctx.lineTo(p.x + w * .55, p.y - h * .86); ctx.quadraticCurveTo(p.x + w, p.y - h * .8, p.x + w, p.y - h * .62); ctx.lineTo(p.x + w, p.y);
+  ctx.ellipse(p.x, p.y, w, w * .5, 0, 0, Math.PI); ctx.closePath(); ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.3; ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(p.x, p.y - h * .35, w, w * .5, 0, 0, Math.PI); ctx.strokeStyle = 'rgba(90,100,110,.6)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(p.x, p.y - h, w * .65, w * .3, 0, 0, 7); ctx.fillStyle = '#c7d0d8'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(p.x - w * .3, p.y - h * .7); ctx.lineTo(p.x - w * .3, p.y - h * .3); ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 1.2; ctx.stroke();
+}
+// маслобойка: деревянная кадушка, обручи и мутовка
+function churn(x, y, s = 1) {
+  const p = lift(x, y, 0), wb = 5 * s, wt = 3.6 * s, h = 12 * s;
+  ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(p.x + 1, p.y + 1, wb + 1.5, wb * .5 + 1, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = INK; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(p.x, p.y - h); ctx.lineTo(p.x, p.y - h - 7 * s); ctx.stroke();
+  ctx.strokeStyle = '#c98a4a'; ctx.lineWidth = .9; ctx.stroke();
+  const g = ctx.createLinearGradient(p.x - wb, 0, p.x + wb, 0); g.addColorStop(0, '#e2a868'); g.addColorStop(1, '#9a5e2c');
+  ctx.beginPath(); ctx.moveTo(p.x - wb, p.y); ctx.lineTo(p.x - wt, p.y - h); ctx.lineTo(p.x + wt, p.y - h); ctx.lineTo(p.x + wb, p.y); ctx.ellipse(p.x, p.y, wb, wb * .5, 0, 0, Math.PI); ctx.closePath();
+  ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.3; ctx.stroke();
+  for (const f of [.25, .75]) { const ww = wb + (wt - wb) * f; ctx.beginPath(); ctx.ellipse(p.x, p.y - h * f, ww, ww * .5, 0, 0, Math.PI); ctx.strokeStyle = '#7d8790'; ctx.lineWidth = 1.6; ctx.stroke(); }
+  ctx.beginPath(); ctx.ellipse(p.x, p.y - h, wt, wt * .45, 0, 0, 7); ctx.fillStyle = '#fff6dc'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.1; ctx.stroke();
+  const t = lift(x, y, 0); ctx.fillStyle = '#a8703c'; ctx.fillRect(t.x - 2.5 * s, t.y - h - 8 * s, 5 * s, 2 * s);
+}
+// Сыроварня; после перестройки в Молочный дом (S.up.dhouse) — белые стены, голубые крыша и дверь, бидоны и маслобойка
 function drawDairy(d, t) {
   if (!S.up.dairy) return;
+  const MD = S.up.dhouse > 0;
   const x0 = 17.1, y0 = 8.1, w = 1.8, h = 28, rz = 46, X = x0 + w, Y = y0 + w, mid = y0 + w / 2;
   softShadow(x0, y0, X, Y, .28);
-  gface(fY(x0, X, Y, 0, h), '#fde49a', '#e5bf5c'); gface(fX(X, y0, Y, 0, h), '#ecc96e', '#c99f40');
-  gface([lift(X, y0, h), lift(X, Y, h), lift(X, mid, rz)], '#ecc96e', '#ddb655', INK, 1.4);   // фронтон
-  for (const [x, y] of [[x0, Y], [X, Y], [X, y0]]) { vline(x, y, 0, h, INK, 4); vline(x, y, 0, h, '#b07a46', 2.4); }   // деревянные углы
+  const wl = MD ? ['#ffffff', '#e9e5db'] : ['#fde49a', '#e5bf5c'], wr = MD ? ['#eeeae0', '#cfc9bd'] : ['#ecc96e', '#c99f40'];
+  gface(fY(x0, X, Y, 0, h), wl[0], wl[1]); gface(fX(X, y0, Y, 0, h), wr[0], wr[1]);
+  gface([lift(X, y0, h), lift(X, Y, h), lift(X, mid, rz)], wr[0], wr[1], INK, 1.4);   // фронтон
+  for (const [x, y] of [[x0, Y], [X, Y], [X, y0]]) { vline(x, y, 0, h, INK, 4); vline(x, y, 0, h, MD ? '#7fa7c8' : '#b07a46', 2.4); }   // углы
   gface(fY(x0, X, Y, 0, 4), '#a29b8f', '#7d766b', INK, 1); gface(fX(X, y0, Y, 0, 4), '#8d867a', '#6a645a', INK, 1);
-  gface(fX(X, 8.6, 9.2, 0, 19), '#b07a46', '#7e5230', '#5b3a22', 2.2);   // дверь к тропинке
+  gface(fX(X, 8.6, 9.2, 0, 19), MD ? '#7fb0e0' : '#b07a46', MD ? '#4f7fb8' : '#7e5230', '#5b3a22', 2.2);   // дверь к тропинке
   const dk = lift(X, 9.1, 9); circle(dk.x, dk.y, 1.5, '#ffd54a');
   toonWin('y', Y, 17.4, 18.1, 10, 20, true);
-  gableRoofX(x0, y0, X, Y, h, rz, .12, '#d0825a', '#a85c3a', 5);
+  if (MD) gableRoofX(x0, y0, X, Y, h, rz, .12, '#7fb0e0', '#4f7fb8', 5); else gableRoofX(x0, y0, X, Y, h, rz, .12, '#d0825a', '#a85c3a', 5);
   toonBox(17.5, mid - .15, .28, .28, 10, ['#c46a4a', '#9c4a32'], ['#a8573c', '#843d28'], null, rz - 4, 1.2);   // труба на коньке
   toonBox(17.47, mid - .18, .34, .34, 2.5, ['#7a7068', '#5e554e'], ['#6a615a', '#4f4741'], ['#9a918a', '#857c75'], rz + 6, 1);
   const sg = lift(X, 9.65, 27);   // круглая вывеска
-  circle(sg.x + 2, sg.y, 8.5, INK); circle(sg.x + 2, sg.y, 7.3, '#fff3d0'); emoji('🧀', sg.x + 2, sg.y, 10);
+  circle(sg.x + 2, sg.y, 8.5, INK); circle(sg.x + 2, sg.y, 7.3, MD ? '#e8f2fb' : '#fff3d0'); emoji(MD ? '🧈' : '🧀', sg.x + 2, sg.y, 10);
+  if (MD) { milkCan(19.08, 7.72, .95); milkCan(19.26, 7.97, .85); churn(17.0, 10.15); }   // бидоны у двери, маслобойка под окном
   if (prodQ('dairy') && S.started && !S.night) anim(() => smoke(lift(17.64, mid, rz + 10), t, .8));
 }
 // Теплица: стеклянные стенки (задние — до грядок, передние — после) и прозрачная двускатная крыша
