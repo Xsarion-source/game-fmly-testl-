@@ -884,7 +884,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.113';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.114';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3899,7 +3899,8 @@ function draw(t) {
   drawMarker(t);
 
   const list = [];
-  const DRAW = { tree: d => d.lot == null || S.up.clear <= d.lot ? drawTree(d) : (!prodAt(d.x, d.y) || !S.up[prodAt(d.x, d.y)]) && !Object.values(PROD).some(P => P.spot.x === d.x && P.spot.y === d.y) && drawStump(d), mill: drawMill, dairy: drawDairy, house: drawHouse, bakery: drawBakery, mailbox: drawMailbox, trophies: drawTrophies, flowers: drawFlowers, doghouse: drawDoghouse, well: drawWell, swing: drawSwing, stall: drawStall, season: drawSeasonStand, coop: drawCoop, barn: drawBarn, trough: drawTrough, fence: drawFence, billboard: drawBillboard, sack: drawSack, bench: drawBench, glass: drawGlass, ghroof: drawGhRoof };
+  // вырубленный лес — чистая трава, без пеньков
+  const DRAW = { tree: d => (d.lot == null || S.up.clear <= d.lot) && drawTree(d), mill: drawMill, dairy: drawDairy, house: drawHouse, bakery: drawBakery, mailbox: drawMailbox, trophies: drawTrophies, flowers: drawFlowers, doghouse: drawDoghouse, well: drawWell, swing: drawSwing, stall: drawStall, season: drawSeasonStand, coop: drawCoop, barn: drawBarn, trough: drawTrough, fence: drawFence, billboard: drawBillboard, sack: drawSack, bench: drawBench, glass: drawGlass, ghroof: drawGhRoof };
   const settled = zoomSettled(t);
   for (const d of decor) {   // постройка рисуется в своих координатах, сдвинутая на смещение группы (LAYOUT)
     if (settled && bakedTrees && bakedTrees.has(d)) continue;   // уже в картинке фона
@@ -4411,15 +4412,6 @@ function drawZones() {
   });
 }
 
-function drawStump(d) {   // пенёк: кора по бокам, годичные кольца сверху
-  const c = iso(d.x + .5, d.y + .5);
-  ctx.fillStyle = 'rgba(30,50,15,.22)'; ctx.beginPath(); ctx.ellipse(c.x + 2, c.y, 9, 4, 0, 0, 7); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(c.x - 7, c.y - 5); ctx.lineTo(c.x - 7, c.y - 1); ctx.ellipse(c.x, c.y - 1, 7, 3.4, 0, Math.PI, 0, true); ctx.lineTo(c.x + 7, c.y - 5); ctx.closePath();
-  ctx.fillStyle = '#7a4a2a'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.3; ctx.stroke();
-  ctx.fillStyle = '#e2b679'; ctx.beginPath(); ctx.ellipse(c.x, c.y - 5, 7, 3.4, 0, 0, 7); ctx.fill(); ctx.stroke();
-  ctx.strokeStyle = 'rgba(140,90,40,.6)'; ctx.lineWidth = .9; ctx.beginPath(); ctx.ellipse(c.x, c.y - 5, 4, 1.9, 0, 0, 7); ctx.stroke();
-  circle(c.x, c.y - 5, 1, '#a8743f');
-}
 // Мельница: классическая голландская — кирпичный низ, восьмигранная соломенная башня с галереей,
 // шапка-«лодочка» и четыре решётчатых крыла (крутятся, пока мелет)
 const MILL_C = { x: 18.5, y: 5.5 }, MILL_S = 1.6;   // мельница — в центре участка 3×3, в 1,6 раза крупнее прежней
