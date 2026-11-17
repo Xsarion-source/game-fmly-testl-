@@ -899,7 +899,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.119';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.120';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -5676,7 +5676,7 @@ const wxR = (i, k) => { const v = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; 
 function drawWeather(t) {
   if (S.night || fairOn()) return;
   const w = weather(); if (w === 'sun') return;
-  const W = cv.width, H = cv.height, k = dpr, s = t / 1000;
+  const W = cv.width, H = cv.height, k = dpr, s = t;   // draw() получает время уже в секундах
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   if (w === 'rain') {
     ctx.fillStyle = 'rgba(40,62,95,.12)'; ctx.fillRect(0, 0, W, H);
