@@ -245,6 +245,18 @@
   .dstop { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; } .dstop span { background: #fff; border-radius: 999px; padding: 2px 9px; font-weight: 800; font-size: 13px; color: #4a2e18; }
   .dsev { font-size: 13px; color: #7a6650; margin-top: 6px; } .dsev a { color: #b0503a; font-weight: 800; }
   .dsnext { border-top: 1.5px dashed #d9c49c; margin-top: 10px; padding-top: 8px; }
+  .chain { display: flex; align-items: stretch; gap: 4px; margin: 6px 0 8px; }
+  .chain .ch { flex: 1; min-width: 0; background: #fff; border: 2px solid #ead9b5; border-radius: 14px; padding: 6px 4px; display: flex; flex-direction: column; align-items: center; line-height: 1.15; }
+  .chain .ch .ce { font-size: 26px; } .chain .ch b { font-size: 18px; color: #4a2e18; } .chain .ch small { font-size: 11px; color: #7a6650; text-align: center; }
+  .chain .ch.work { border-color: #e9c46a; background: #fff8e3; } .chain .ch.done.has { border-color: #8cc56a; background: #effae6; }
+  .chain .arr { align-self: center; font-style: normal; font-weight: 900; font-size: 20px; color: #c9a86a; }
+  .pbar { width: 86%; height: 7px; border-radius: 4px; background: #eadbbb; overflow: hidden; margin-top: 4px; } .pbar i { display: block; height: 100%; background: #f4a92b; transition: width .45s linear; }
+  .pfacts { display: flex; flex-wrap: wrap; gap: 5px; } .pfacts span { background: #f3e7cc; border-radius: 999px; padding: 2px 9px; font-size: 12.5px; font-weight: 700; color: #5a4430; }
+  .pneed { margin-top: 8px; font-size: 13.5px; font-weight: 700; color: #2f6b2a; } .pneed.low { color: #b0503a; }
+  .pkeep { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; background: #f6ecd6; border-radius: 14px; padding: 8px 10px; }
+  .pkeep b { color: #4a2e18; } .pkeep small { display: block; font-size: 12px; color: #7a6650; }
+  .stp { display: flex; align-items: center; gap: 8px; } .stp button { width: 36px; height: 36px; border-radius: 50%; border: none; background: #ffd34d; font: 900 20px system-ui; color: #4a2e18; box-shadow: 0 2px 0 #c98f1c; padding: 0; } .stp b { min-width: 28px; text-align: center; font-size: 17px; }
+  .phelp { margin-top: 8px; font-size: 13px; color: #7a6650; } .phelp a { color: #b0503a; font-weight: 800; }
   .nightline { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 6px 0 2px; color: #7a6650; font-size: 13px; } .nightline b { color: #4a2e18; font-size: 16px; }
   .feedrow { display: flex; align-items: stretch; gap: 8px; margin: 8px 0 4px; }
   .feedlbl { flex: 1; align-self: center; font-weight: 800; font-size: 15px; color: #4a2e18; line-height: 1.2; } .feedlbl small { display: block; font-weight: 600; font-size: 11.5px; color: #7a6650; margin-top: 3px; }
@@ -456,8 +468,8 @@ const isoG = (g, x, y) => iso(x + LAYOUT[g][0], y + LAYOUT[g][1]);
 const liftG = (g, x, y, z) => lift(x + LAYOUT[g][0], y + LAYOUT[g][1], z);
 // Производство: сырьё со склада → товар. Работает днём, как растут грядки
 const PROD = {
-  mill:  { name: 'Мельница',  ico: '🌬️', in: 'wheat', n: 3, out: 'flour',  time: 36, cap: 8, spot: at('mill', 18, 7) },
-  dairy: { name: 'Сыроварня', ico: '🧀', in: 'milk',  n: 2, out: 'cheese', time: 54, cap: 8, spot: at('dairy', 19, 9) },   // у двери сбоку — клетку видно, крыша её не закрывает
+  mill:  { name: 'Мельница',  ico: '🌬️', in: 'wheat', n: 3, out: 'flour',  time: 12, cap: 20, spot: at('mill', 18, 7) },
+  dairy: { name: 'Сыроварня', ico: '🧀', in: 'milk',  n: 2, out: 'cheese', time: 18, cap: 20, spot: at('dairy', 19, 9) },   // у двери сбоку — клетку видно, крыша её не закрывает
 };
 // Пекарня — пристройка к дому: печёт из муки и продуктов фермы по выбранному рецепту
 const BAKE = {
@@ -498,9 +510,11 @@ const UPGRADES = {
   pasture:{ name: 'Большое пастбище',  ico: '🐄', desc: l => `+2 места для коров (сейчас ${3 + 2 * l}). Новых коров покупай в «Коровнике»`, cost: l => [2000, 4000][l], max: 2, need: () => S.up.barn >= 3, needText: 'Откроется, когда в коровнике будет 3 коровы 🐄' },
   greenhouse: { name: 'Теплица',      ico: '🏡', desc: l => l === 0 ? 'Стеклянная теплица на 3 грядки. Только в ней растут 🍅 помидоры и 🍓 клубника — медленнее, зато гроздью по 6' : '+3 грядки в теплице', cost: l => [260, 380][l], max: 2 },
   clear:  { name: 'Расчистить лес',    ico: '🪓', desc: l => l === 0 ? 'Вырубить лес справа от пастбища — место под новое здание' : 'Вырубить лес у теплицы — место ещё под одно здание', cost: l => [2500, 4000][l], max: 2 },
-  mill:   { name: 'Мельница',          ico: '🌬️', desc: l => l === 0 ? 'Мелет пшеницу: 3 🌾 → 1 🍚 мука (продаётся за 30💰)' : 'Мелет вдвое быстрее', cost: l => [3500, 5500][l], max: 2, need: () => S.up.clear >= 1, needText: 'Откроется, когда расчистишь лес 🪓' },
-  dairy:  { name: 'Сыроварня',         ico: '🧀', desc: l => l === 0 ? 'Варит сыр: 2 🥛 → 1 🧀 (продаётся за 85💰)' : 'Варит вдвое быстрее', cost: l => [5000, 8000][l], max: 2, need: () => S.up.clear >= 2, needText: 'Откроется, когда расчистишь второй участок леса 🪓' },
+  mill:   { name: 'Мельница',          ico: '🌬️', desc: l => l === 0 ? `Мелет пшеницу: 3 🌾 → 1 🍚 мука, ~${prodPerDay('mill', 1)} мешков в день` : `Жернова быстрее: ${prodPerDay('mill', l)} → ${prodPerDay('mill', l + 1)} 🍚 в день`, cost: l => [3500, 5500][l], max: 2, need: () => S.up.clear >= 1, needText: 'Откроется, когда расчистишь лес 🪓' },
+  dairy:  { name: 'Сыроварня',         ico: '🧀', desc: l => l === 0 ? `Варит сыр: 2 🥛 → 1 🧀, ~${prodPerDay('dairy', 1)} в день` : `Котлы быстрее: ${prodPerDay('dairy', l)} → ${prodPerDay('dairy', l + 1)} 🧀 в день`, cost: l => [5000, 8000][l], max: 2, need: () => S.up.clear >= 2, needText: 'Откроется, когда расчистишь второй участок леса 🪓' },
   house:  { name: 'Дом фермера',       ico: '🏠', desc: l => l === 0 ? 'Веранда и кухня: помощники сыты и работают на 20% быстрее' : 'Второй этаж: помощники работают ещё на 20% быстрее (всего +40%)', cost: l => [3000, 7000][l], max: 2 },
+  millBin:  { name: 'Бункер мельницы',   ico: '📦', desc: l => `Очередь на помол длиннее: ${PROD.mill.cap * (1 + l)} → ${PROD.mill.cap * (2 + l)} мешков — загрузил утром, мелет до вечера`, cost: l => [2500][l], max: 1, need: () => S.up.mill >= 1, needText: 'Откроется, когда построишь мельницу 🌬️' },
+  dairyBin: { name: 'Чаны сыроварни',    ico: '🪣', desc: l => `Очередь длиннее: ${PROD.dairy.cap * (1 + l)} → ${PROD.dairy.cap * (2 + l)} сыров`, cost: l => [3500][l], max: 1, need: () => S.up.dairy >= 1, needText: 'Откроется, когда построишь сыроварню 🧀' },
   trays:  { name: 'Противни',          ico: '🍪', desc: l => `В каждое отделение печи — по ${l + 2} одинаковых штуки за раз (сейчас по ${l + 1})`, cost: l => [3000, 6000][l], max: 2, need: () => S.up.bakery >= 1, needText: 'Откроется, когда пристроишь пекарню 🥖' },
   bakery: { name: 'Пекарня',           ico: '🥖', desc: l => l === 0 ? 'Пристройка к дому. Печёт из 🍚 муки и продуктов фермы: 🍞 хлеб, 🥧 пирог, 🍕 пиццу и 🎂 торт' : 'Печёт вдвое быстрее', cost: l => [6000, 9000][l], max: 2, need: () => S.up.mill >= 1, needText: 'Откроется после новой постройки в лесу 🪓' },
   cozy:   { name: 'Уют',               ico: '🌷', desc: l => `${COZY[l]}. Покупателям нравится — платят на 2% больше (+${l * 2}% → +${(l + 1) * 2}%)`, cost: l => [600, 1200, 2000, 3200, 5000][l],
@@ -518,7 +532,7 @@ const UPGRADES = {
 };
 
 // с какого уровня фермы ⭐ открывается улучшение (уже купленное не закрывается никогда)
-const UP_LVL = { land: 1, fert: 1, ads: 1, sign: 1, bench: 1, slots: 2, orchard: 3, coop: 4, helper: 4, nests: 5, fairstall: 7, cozy: 6, greenhouse: 5, barn: 7, rooster: 8, milker: 8, clover: 9, yard: 10, house: 10, clear: 11, hay: 11, pasture: 12, mill: 12, stall2: 13, dairy: 14, bakery: 15, fairbake: 16, trays: 16, seasonstand: 1 };
+const UP_LVL = { land: 1, fert: 1, ads: 1, sign: 1, bench: 1, slots: 2, orchard: 3, coop: 4, helper: 4, nests: 5, fairstall: 7, cozy: 6, greenhouse: 5, barn: 7, rooster: 8, milker: 8, clover: 9, yard: 10, house: 10, clear: 11, hay: 11, pasture: 12, mill: 12, stall2: 13, millBin: 13, dairy: 14, dairyBin: 15, bakery: 15, fairbake: 16, trays: 16, seasonstand: 1 };
 const upLvl = key => S.up[key] ? 0 : UP_LVL[key] || 1;
 const lvlLocked = key => farmLevel() < upLvl(key);
 const upLocked = key => lvlLocked(key) || !!(UPGRADES[key].need && !UPGRADES[key].need());   // ещё не открыто
@@ -614,7 +628,7 @@ function syncFair() {   // S.fair.stock — сумма по ящикам (из �
   while (S.fair.crates.length && !S.fair.crates[S.fair.crates.length - 1]) S.fair.crates.pop();
   S.fair.stock = {}; for (const c of S.fair.crates) if (c) S.fair.stock[c.id] = (S.fair.stock[c.id] || 0) + c.n;
 }
-const stockOf = c => fairOn() ? S.fair.stock[c] || 0 : S.inv[c] || 0;   // откуда продаём сейчас
+const stockOf = c => fairOn() ? S.fair.stock[c] || 0 : Math.max(0, (S.inv[c] || 0) - (S.keep?.[c] || 0));   // откуда продаём сейчас (без запаса для пекарни)
 const sellSpot = () => fairOn() ? FAIR_SELL : COUNTER;
 
 // Сад слева от дома: 4 места под деревья
@@ -794,6 +808,7 @@ S.picnic ??= 0; S.special ??= []; S.trophies ??= []; S.contestDay ??= 0; S.spOn 
 if (!S.fair.crates) { S.fair.crates = []; for (const [c, n0] of Object.entries(S.fair.stock || {})) for (let n = n0; n > 0; n -= CRATE) S.fair.crates.push({ id: c, n: Math.min(CRATE, n) }); }   // ящики — явным списком
 syncFair(); syncSpecial();   // особые находки и кубки конкурсов   // товары, снятые с продажи (копятся для заказов и производства)
 S.up.nests ??= 0; S.up.rooster ??= 0; S.up.yard ??= 0;
+S.up.millBin ??= 0; S.up.dairyBin ??= 0; S.keep ??= {};   // бункер мельницы, чаны сыроварни, запас для пекарни
 S.up.milker ??= 0; S.up.clover ??= 0; S.up.hay ??= 0; S.up.pasture ??= 0;
 S.coop.gold ??= 0; S.coop.extra ??= 0; S.coop.chicks ??= 0;
 S.bake ??= { sel: 'bread', q: [], t: 0, out: {} };
@@ -839,7 +854,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.96';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.97';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1407,7 +1422,7 @@ function spawnVisitor() {
   } else if (spSale.length && Math.random() < .15) items = [{ id: pick(spSale), n: 1 }];   // за выставленной находкой приходит особый покупатель
   else {
     // корзинка: только из того, что стоит на прилавке и есть на складе (пустой ящик никто не просит)
-    const shops = [0, 1].filter(k => k === 0 || S.up.stall2).map(k => ({ k, g: shopGoods().filter(id => shopOf(id) === k && !GOODS[id].sp && S.inv[id] > 0),
+    const shops = [0, 1].filter(k => k === 0 || S.up.stall2).map(k => ({ k, g: shopGoods().filter(id => shopOf(id) === k && !GOODS[id].sp && stockOf(id) > 0),
       q: visitors.filter(v => v.state !== 'leaving' && (v.shop || 0) === k).length })).filter(x => x.g.length);
     if (!shops.length) {   // прилавок пустой — покупатель проходит мимо
       S.spawned++;
@@ -1708,7 +1723,7 @@ function prodHave(k, byHelper) {   // сколько сырья можно вз�
 }
 function loadProd(k, byHelper) {
   const P = PROD[k], st = S.prod[k];
-  const n = Math.min(P.cap - st.q, Math.floor(prodHave(k, byHelper) / P.n));
+  const n = Math.min(prodCap(k) - st.q, Math.floor(prodHave(k, byHelper) / P.n));
   if (n <= 0) return 0;
   S.inv[P.in] -= n * P.n; st.q += n;
   addFloat(P.spot.x + .5, P.spot.y + .5, `−${n * P.n} ${GOODS[P.in].e}`);
@@ -1728,7 +1743,7 @@ function prodAct(k, byHelper) {   // забрать готовое и догру
   if (!S.up[k]) return false;
   const got = collectProd(k), n = loadProd(k, byHelper);
   if (!got && !n) {
-    if (!byHelper) toast(st.q >= P.cap ? `${P.ico} ${P.name} загружена полностью — ${st.q} ${GOODS[P.out].e} в работе`
+    if (!byHelper) toast(st.q >= prodCap(k) ? `${P.ico} ${P.name} загружена полностью — ${st.q} ${GOODS[P.out].e} в работе`
       : `${P.ico} Нужно ${P.n} ${GOODS[P.in].e} на 1 ${GOODS[P.out].e}, на складе ${S.inv[P.in] || 0}`);
     return false;
   }
@@ -1738,18 +1753,75 @@ function prodAct(k, byHelper) {   // забрать готовое и догру
 }
 function tapProd(k) {
   if (!S.up[k]) { toast(`${PROD[k].ico} Ночью тапни сюда — построишь: ${PROD[k].name.toLowerCase()}`); return; }
-  setTasks([{ ...PROD[k].spot, fn: () => prodAct(k) }]);
+  openProd(k);
 }
 function updateProd(dt) {
   for (const k in PROD) {
     if (!S.up[k]) continue;
     const st = S.prod[k], T = PROD[k].time;
     if (!st.q) { st.t = 0; continue; }
-    if (st.out >= 20) continue;   // склад здания полон — ждёт, пока заберут
+    if (st.out >= Math.max(20, prodCap(k))) continue;   // склад здания полон — ждёт, пока заберут
     st.t += dt * prodSpeed(k);
     while (st.t >= T && st.q > 0) { st.t -= T; st.q--; st.out++; }
   }
 }
+
+// ---------- 🏭 Окно цеха (мельница, сыроварня и будущие): цепочка сырьё → в работе → готово, запас, улучшения ----------
+const PROD_BIN = { mill: 'millBin', dairy: 'dairyBin' };   // улучшение «бункер» у каждого цеха
+const prodCap = k => PROD[k].cap * (1 + (S.up[PROD_BIN[k]] || 0));   // мест в очереди
+const prodPerDay = (k, lvl = S.up[k]) => Math.floor(DAY_LEN / PROD[k].time * lvl);   // сколько сделает за день
+const keepOf = c => fairOn() ? 0 : (S.keep?.[c] || 0);   // сколько не продавать покупателям (запас для пекарни)
+const bakeUses = g => Object.keys(BAKE).filter(r => BAKE[r].in[g]);
+// сколько пекарне нужно в день, если печь выбранное (или первое подходящее) весь день
+function bakeNeedDay(g) {
+  if (!S.up.bakery) return 0;
+  const r = BAKE[S.bake.sel]?.in[g] ? S.bake.sel : bakeUses(g)[0]; if (!r) return 0;
+  return Math.round(OVENS * DAY_LEN / (BAKE[r].time / S.up.bakery) * trayN() * BAKE[r].in[g]);
+}
+const fmtMs = s => { s = Math.max(0, Math.round(s)); return s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : `${s} с`; };
+let prodOpen = null;
+function openProd(k) {
+  const P = PROD[k], st = S.prod[k], inE = GOODS[P.in].e, outE = GOODS[P.out].e;
+  prodOpen = k;
+  const loadN = Math.min(prodCap(k) - st.q, Math.floor((S.inv[P.in] || 0) / P.n));
+  const helper = S.helpers.map((c, i) => c.stations.includes(k) ? i + 1 : 0).filter(Boolean);
+  const need = bakeUses(P.out).length ? bakeNeedDay(P.out) : 0;
+  let h = `<h2>${P.ico} ${P.name}</h2><div class="fpinfo">${P.n} ${inE} со склада превращаются в 1 ${outE}. Загрузи сырьё — цех работает днём, пока не кончится очередь. Готовое лежит в цеху, пока его не заберут (ты или помощник).</div>
+    <div class="chain">
+      <div class="ch"><span class="ce">${inE}</span><b>${S.inv[P.in] || 0}</b><small>на складе</small></div><i class="arr">›</i>
+      <div class="ch work"><span class="ce">${P.ico}</span><b id="pdQ">${st.q}</b><small>в очереди из ${prodCap(k)}</small><div class="pbar"><i id="pdBar" style="width:${st.q ? Math.min(100, st.t / P.time * 100) : 0}%"></i></div></div><i class="arr">›</i>
+      <div class="ch done${st.out ? ' has' : ''}"><span class="ce">${outE}</span><b id="pdOut">${st.out}</b><small>готово</small></div>
+    </div>
+    <div class="pfacts"><span>${P.n} ${inE} → 1 ${outE}</span><span>1 ${outE} за ${fmtMs(P.time / S.up[k])}</span><span>~${prodPerDay(k)} ${outE} в день</span><span id="pdEta">${st.q ? `очередь — ещё ${fmtMs(((st.q - 1) * P.time + P.time - st.t) / S.up[k])}` : 'очередь пуста'}</span></div>`;
+  if (need) h += `<div class="pneed${need > prodPerDay(k) ? ' low' : ''}">🥖 Пекарне нужно ~${need} ${outE} в день${need > prodPerDay(k) ? ' — больше, чем делает цех' : ''}</div>`;
+  if (bakeUses(P.out).length && S.up.bakery) {
+    const kp = S.keep?.[P.out] || 0;
+    h += `<div class="pkeep"><div><b>Оставлять для пекарни</b><small>покупатели не возьмут последние ${kp} ${outE}</small></div><div class="stp"><button onclick="setKeep('${P.out}', -5)">−</button><b>${kp}</b><button onclick="setKeep('${P.out}', 5)">+</button></div></div>`;
+  }
+  h += `<div class="phelp">${helper.length ? `🧑‍🌾 Загружает и забирает помощник ${helper.join(', ')}` : '🧑‍🌾 Помощник не назначен — <a href="#" onclick="event.preventDefault();openHelpers()">назначить в «Команде»</a>'}</div>`;
+  h += `<button class="wide" style="width:100%;margin-top:8px" ${loadN > 0 || st.out ? '' : 'disabled'} onclick="closeNight(); setTasks([{ ...PROD['${k}'].spot, fn: () => prodAct('${k}') }])">🧑‍🌾 ${loadN > 0 ? `Загрузить +${loadN} ${outE}` : ''}${loadN > 0 && st.out ? ' и ' : ''}${st.out ? `забрать ${st.out} ${outE}` : ''}${!(loadN > 0) && !st.out ? (st.q >= prodCap(k) ? 'Очередь полная' : `Нужно ${P.n} ${inE}`) : ''}</button>`;
+  // улучшения цеха: «сейчас → будет»
+  const ups = [k, PROD_BIN[k]].filter(u => UPGRADES[u]);
+  h += `<h3 style="margin:14px 0 4px">⬆️ Улучшения</h3>`;
+  for (const u of ups) {
+    const U = UPGRADES[u], l = S.up[u], maxed = l >= U.max, cost = U.cost(l), lock = upLocked(u);
+    const now = u === k ? `${prodPerDay(k)} ${outE} в день` : `очередь ${prodCap(k)}`;
+    const next = maxed ? 'максимум' : u === k ? `${prodPerDay(k, l + 1)} ${outE} в день` : `очередь ${PROD[k].cap * (2 + l)}`;
+    h += `<div class="up" data-why="${maxed ? 'Улучшено до максимума' : lock ? '🔒 ' + needTxt(u) : S.night ? 'Недостаточно средств' : '🌙 Улучшения покупаются ночью'}"><div class="ico">${U.ico}</div><div class="txt"><b>${u === k ? 'Жернова и привод' : U.name} <small>ур. ${l}/${U.max}</small></b><small>${maxed ? now + ' · максимум' : lock ? needTxt(u) : `${now} → <b>${next}</b>`}</small></div>
+      <button ${maxed || lock || !S.night || S.coins < cost ? 'disabled' : ''} onclick="buyUpgrade('${u}')">${maxed ? '✔' : lock ? (lvlLocked(u) ? '⭐' + upLvl(u) : '🔒') : cost + '💰'}</button></div>`;
+  }
+  if (!S.night) h += `<div style="font-size:12px;color:#7a6650;margin-top:4px">🌙 Улучшения покупаются ночью</div>`;
+  $('sheet').dataset.view = 'prod:' + k; $('sheet').innerHTML = h; $('overlay').classList.add('show');
+}
+function setKeep(g, d) { S.keep ??= {}; S.keep[g] = Math.max(0, Math.min(200, (S.keep[g] || 0) + d)); save(); renderUI(); refreshSheet(); }
+// пока окно открыто — полоска и цифры живые (без перестройки окна)
+setInterval(() => {
+  const v = $('sheet').dataset.view || ''; if (!v.startsWith('prod:') || !$('overlay').classList.contains('show')) return;
+  const k = v.slice(5), P = PROD[k], st = S.prod[k]; if (!P || !$('pdBar')) return;
+  $('pdBar').style.width = (st.q ? Math.min(100, st.t / P.time * 100) : 0) + '%';
+  if ($('pdQ').textContent !== String(st.q) || $('pdOut').textContent !== String(st.out)) { refreshSheet(); return; }
+  $('pdEta').textContent = st.q ? `очередь — ещё ${fmtMs(((st.q - 1) * P.time + P.time - st.t) / S.up[k])}` : 'очередь пуста';
+}, 500);
 
 // ---------- Пекарня ----------
 // можно ли вообще получить товар на ферме (для покупателей, рецептов и заказов)
@@ -2117,7 +2189,7 @@ function upSpot(key) {
   const l = S.up[key];
   return {
     land: PLOT_SLOTS[Math.min(S.plots.length, MAX_PLOTS - 1)], orchard: ORCHARD_SLOTS[Math.min(S.trees.length, 3)],
-    coop: at('coop', 8, 10), nests: at('coop', 8.6, 9), rooster: at('coop', 6.6, 10.2), yard: at('coop', 9.4, 11), barn: at('barn', 14, 5), milker: at('barn', 16.4, 2.6), clover: at('barn', 15, 4), hay: at('barn', 13, 1.4), pasture: at('barn', 12.5, 6), clear: S.up.clear ? at('dairy', 18, 9) : at('mill', 18, 5), mill: at('mill', 18, 5), dairy: at('dairy', 17, 9), greenhouse: at('gh', 14, S.up.greenhouse ? 9 : 8), helper: at('home', 3, 3),
+    coop: at('coop', 8, 10), nests: at('coop', 8.6, 9), rooster: at('coop', 6.6, 10.2), yard: at('coop', 9.4, 11), barn: at('barn', 14, 5), milker: at('barn', 16.4, 2.6), clover: at('barn', 15, 4), hay: at('barn', 13, 1.4), pasture: at('barn', 12.5, 6), clear: S.up.clear ? at('dairy', 18, 9) : at('mill', 18, 5), mill: at('mill', 18, 5), dairy: at('dairy', 17, 9), millBin: at('mill', 18, 5), dairyBin: at('dairy', 17, 9), greenhouse: at('gh', 14, S.up.greenhouse ? 9 : 8), helper: at('home', 3, 3),
     house: at('home', 2, 2), bakery: at('home', 4, 3), trays: at('home', 4, 2), cozy: COZY_SPOTS[Math.min(l, 4)], ads: at('ads', 12, 10),
     fert: at('fert', 12, 2), sign: at('stall', 4, 10), slots: at('stall', 3, 10), stall2: at('stall', 0, 10), seasonstand: at('stall', 2, 10), fairstall: { x: 21 + 2 * Math.min(l, 1), y: 23 }, fairbake: { x: 16, y: 28 }, bench: BENCHES[Math.min(l, BENCHES.length - 1)],
   }[key];
@@ -2152,6 +2224,8 @@ const BADGE_GROUPS = [
   { name: '🥖 Пекарня', keys: ['bakery', 'trays'], at: () => liftG('home', 5.2, 3.2, S.up.bakery ? 74 : 34) },
   { name: '🐔 Курятник', keys: ['coop', 'nests', 'rooster', 'yard'], at: () => liftG('coop', 7, 8.5, hens() ? 90 : 34) },
   { name: '🐄 Коровник', keys: ['barn', 'milker', 'clover', 'hay', 'pasture'], at: () => liftG('barn', 15, 2, cows() ? 114 : 40) },
+  { name: '🌬️ Мельница', keys: ['mill', 'millBin'], prod: 'mill', at: () => { const s = upSpot('mill'); return lift(s.x + .5, s.y + .5, BADGE_Z.mill); } },
+  { name: '🧀 Сыроварня', keys: ['dairy', 'dairyBin'], prod: 'dairy', at: () => { const s = upSpot('dairy'); return lift(s.x + .5, s.y + .5, BADGE_Z.dairy); } },
   { name: '🧺 Лавка', keys: ['sign', 'slots', 'bench'], at: () => liftG('stall', 4, 10.1, 96) },
 ];
 const BADGE_Z = { fert: 72, greenhouse: 56, clear: 62, mill: 170, dairy: 58, ads: 74 };
@@ -2189,6 +2263,7 @@ function drawUpBadges(t) {
 }
 // тап по самому зданию — то же, что по значку над ним: у здания с несколькими улучшениями — их список
 function openUpPlace(key) {
+  const pk = Object.keys(PROD).find(k => k === key || PROD_BIN[k] === key); if (pk && S.up[pk]) { openProd(pk); return; }   // построенный цех — его окно
   const g = BADGE_GROUPS.find(g => g.keys.includes(key));
   g ? openUpGroup(g) : openUpgrade(key);
 }
@@ -2196,6 +2271,7 @@ function openUpPlace(key) {
 function openUpBadge(b) { b.group ? openUpGroup(b.group) : openUpgrade(b.keys[0]); }
 let upGroupCur = null;
 function openUpGroup(g) {
+  if (g.prod && S.up[g.prod]) { openProd(g.prod); return; }
   upGroupCur = g;
   const rank = k => upAvail(k) ? 0 : upLocked(k) ? 1 : 2;   // сначала что можно купить, потом закрытое, в конце — готовое
   let h = `<h2>${g.name}</h2>`;
@@ -2224,7 +2300,7 @@ function openUpgrade(key) {
   }
   let h = `<h2>${u.ico} ${u.name}</h2><div class="uplvl">Уровень <b>${l}</b> из ${u.max}</div>
     <div class="summary">${maxed ? (key === 'cozy' && l < 5 ? `Следующее: ${COZY[l]} — фонарики висят на веранде, сначала улучши 🏠 «Дом фермера»` : 'Улучшено до максимума ✔') : u.desc(l)}</div>`;
-  if (PROD[key] && l) { const P = PROD[key], st = S.prod[key]; h += `<div class="summary">${P.ico} В работе: ${st.q} ${GOODS[P.out].e} (место на ${P.cap}), готово: ${st.out}. Нужно ${P.n} ${GOODS[P.in].e} на 1 ${GOODS[P.out].e}, на складе ${S.inv[P.in] || 0}</div>`; }
+  if (PROD[key] && l) { const P = PROD[key], st = S.prod[key]; h += `<div class="summary">${P.ico} В работе: ${st.q} ${GOODS[P.out].e} (место на ${prodCap(key)}), готово: ${st.out}. Нужно ${P.n} ${GOODS[P.in].e} на 1 ${GOODS[P.out].e}, на складе ${S.inv[P.in] || 0}</div>`; }
   if (key === 'coop' && hens()) {
     const fed = fedTomorrow();
     h += `<div class="summary">🐔 Кур: ${hens()}, накормлено на завтра: ${fed}. Нужно по ${FEED_PER_HEN} растения на курицу, на складе ${feedStock()}</div>`;
@@ -2480,7 +2556,7 @@ function helperJobs(cfg) {
   });
   for (const k in PROD) if (has(k) && S.up[k]) {
     const st = S.prod[k];
-    if ((st.out > 0 && fits(PROD[k].out)) || (st.q < PROD[k].cap && prodHave(k, true) >= PROD[k].n)) jobs.push({ ...PROD[k].spot, k, act: () => prodAct(k, true) });
+    if ((st.out > 0 && fits(PROD[k].out)) || (st.q < prodCap(k) && prodHave(k, true) >= PROD[k].n)) jobs.push({ ...PROD[k].spot, k, act: () => prodAct(k, true) });
   }
   if (has('bakery') && S.up.bakery && ((bakeOut() > 0 && bakeFits()) || (bakeHave(S.bake.sel) > 0 && bakeRoom(S.bake.sel, 1) > 0))) jobs.push({ ...BAKE_SPOT, k: 'bakery', act: () => bakeAct(true) });
   if (has('orchard')) S.trees.forEach((t, i) => { if (treeReady(t) && fits(TREES[t.kind].fruit, TREES[t.kind].yield)) jobs.push({ x: ORCHARD_SLOTS[i].x, y: ORCHARD_SLOTS[i].y, k: 'orchard', act: () => treeAct(i, 'harvest') }); });
@@ -2836,8 +2912,8 @@ function onTap(sx, sy) {
   if (cows() && hit('barn', 14, 1, 16, 3, 58)) { S.night ? openUpPlace('barn') : tapBarn(); return; }
   if (S.up.ads && hit('ads', 12, 10, 13.1, 11, S.up.ads >= 3 ? 64 : 40)) { S.night ? openUpgrade('ads') : toast(`📣 Реклама ур. ${S.up.ads} — приводит покупателей. Улучшить можно ночью`); return; }   // щит — по всей картинке
   if (hit('pond', 14, 12, 16, 13, 62)) { fairLockedToast() || openTrophies(); return; }   // доска почёта — по всей картинке
-  if (S.up.dairy && hit('dairy', 17, 8, 18, 9, 60)) { S.night ? openUpPlace('dairy') : tapProd('dairy'); return; }   // по картинке здания, вместе с крышей
-  if (S.up.mill && hit('mill', 17, 4, 19, 6, 150)) { S.night ? openUpPlace('mill') : tapProd('mill'); return; }
+  if (S.up.dairy && hit('dairy', 17, 8, 18, 9, 60)) { openProd('dairy'); return; }   // по картинке здания, вместе с крышей
+  if (S.up.mill && hit('mill', 17, 4, 19, 6, 150)) { openProd('mill'); return; }
   const fx = (wx / (TW / 2) + wy / (TH / 2)) / 2, fy = (wy / (TH / 2) - wx / (TW / 2)) / 2;
   const tx = Math.floor(fx), ty = Math.floor(fy);
   if (fairOn() && ((tx >= 17 && tx <= 19 + 2 * (S.up.fairstall || 0) && ty >= 22 && ty <= 25) || (S.up.fairbake && tx >= 15 && tx <= 17 && ty >= 27 && ty <= 28))) { goFair(); return; }   // лотки фермы
@@ -5920,6 +5996,7 @@ function refreshSheet() {
   else if (v === 'cal') openCalendar(calSeason);
   else if (v === 'upgroup' && upGroupCur) openUpGroup(upGroupCur);
   else if (v.startsWith('up:')) openUpgrade(v.slice(3));
+  else if (v.startsWith('prod:')) openProd(v.slice(5));
   else return;
   $('sheet').scrollTop = top;
 }
