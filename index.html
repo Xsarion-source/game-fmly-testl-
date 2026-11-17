@@ -413,7 +413,7 @@ const GOODS = {
 // Чтобы раздвинуть или передвинуть что-то — поменяй смещение здесь (сохранения от этого не зависят).
 const LAYOUT = {
   home: [1, 0], mail: [4, 1], dog: [0, 1], orchard: [0, 2], flowers: [1, 2], well: [1, 4], swing: [0, 2],
-  stall: [2, 5], stall2: [-1, 5], benchA: [3, 5], benchB: [0, 5], ads: [8, 5], field: [3, 0], fert: [4, 0], coop: [3, 3], pond: [5, 4],
+  stall: [2, 5], stall2: [-1, 5], benchA: [3, 5], benchB: [0, 5], ads: [9, 4], field: [3, 0], fert: [4, 0], coop: [3, 3], pond: [5, 4],
   barn: [6, 1], gh: [7, 2], mill: [8, 1], dairy: [8, 2], path: [2, 0],
 };
 const at = (g, x, y) => ({ x: x + LAYOUT[g][0], y: y + LAYOUT[g][1] });   // клетка/точка постройки на новой карте
@@ -660,7 +660,7 @@ const lotAt = (x, y) => LOTS.findIndex(L => x >= L.x0 && x <= L.x1 && y >= L.y0 
 const prodAt = (x, y) => Object.keys(FOOT).find(k => x >= FOOT[k].x0 && x <= FOOT[k].x1 && y >= FOOT[k].y0 && y <= FOOT[k].y1) || null;
 deco('mail', { kind: 'mailbox', z: 4 + 5 + 1 }); blocked[MAIL.y][MAIL.x] = true;
 const TROPHY = at('pond', 14, 12);   // доска почёта с кубками — у дороги, между прудом и рекламным щитом
-decor.push({ kind: 'trophies', x: TROPHY.x, y: TROPHY.y, z: TROPHY.x + TROPHY.y + 1 }); blocked[TROPHY.y][TROPHY.x] = true;
+decor.push({ kind: 'trophies', x: TROPHY.x, y: TROPHY.y, z: TROPHY.x + TROPHY.y + 2 }); blocked[TROPHY.y][TROPHY.x] = blocked[TROPHY.y][TROPHY.x + 1] = true;   // доска 2 клетки в ширину
 deco('home', { kind: 'bakery', z: 4 + 2 + 2 + 2 - 1.01 });   // пристройка справа от дома (клетки 4–5 × 2–3)
 deco('flowers', { kind: 'flowers', z: 4 + 6 + .9 });
 deco('dog', { kind: 'doghouse', z: 1 + 4 + 1 });
@@ -804,7 +804,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.89';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.90';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -2790,6 +2790,8 @@ function onTap(sx, sy) {
     const xs = ps.map(q => q.x + o.x), ys = ps.map(q => q.y + o.y); return wx > Math.min(...xs) + 6 && wx < Math.max(...xs) - 6 && wy > Math.min(...ys) - h && wy < Math.max(...ys); };
   if (hens() && hit('coop', 6, 8, 8, 9, 44)) { S.night ? openUpPlace('coop') : tapCoop(); return; }   // ночью здание — это его улучшения
   if (cows() && hit('barn', 14, 1, 16, 3, 58)) { S.night ? openUpPlace('barn') : tapBarn(); return; }
+  if (S.up.ads && hit('ads', 12, 10, 13.1, 11, S.up.ads >= 3 ? 64 : 40)) { S.night ? openUpgrade('ads') : toast(`📣 Реклама ур. ${S.up.ads} — приводит покупателей. Улучшить можно ночью`); return; }   // щит — по всей картинке
+  if (hit('pond', 14, 12, 16, 13, 62)) { fairLockedToast() || openTrophies(); return; }   // доска почёта — по всей картинке
   if (S.up.dairy && hit('dairy', 17, 8, 18, 9, 60)) { S.night ? openUpPlace('dairy') : tapProd('dairy'); return; }   // по картинке здания, вместе с крышей
   if (S.up.mill && hit('mill', 17, 4, 19, 6, 150)) { S.night ? openUpPlace('mill') : tapProd('mill'); return; }
   const fx = (wx / (TW / 2) + wy / (TH / 2)) / 2, fy = (wy / (TH / 2) - wx / (TW / 2)) / 2;
@@ -2798,7 +2800,7 @@ function onTap(sx, sy) {
   if (tx >= 3 && tx <= 33 && ty >= 19 && ty <= 34) { fairLockedToast() || openTrophies(); return; }   // ярмарка за дорогой
   if (tx < 0 || ty < 0 || tx >= W || ty >= H) return;
   if (S.night) { const k = upAtNight(tx, ty); if (k) { openUpPlace(k); return; } }
-  if (tx === TROPHY.x && ty === TROPHY.y) { fairLockedToast() || openTrophies(); return; }
+  if (tx >= TROPHY.x && tx <= TROPHY.x + 1 && ty >= TROPHY.y - 1 && ty <= TROPHY.y) { fairLockedToast() || openTrophies(); return; }   // доска и клетки перед ней
   if (tx === MAIL.x && ty === MAIL.y) { openMail(); return; }
   { const b = at('home', 4, 2); if ((tx === b.x || tx === b.x + 1) && (ty === b.y || ty === b.y + 1)) { tapBakery(); return; } }
   const si = slotAt(tx, ty);
@@ -4325,18 +4327,18 @@ function drawBakery(d, t) {
 function toonPost(x, y, z0, z1, w = .07, c = ['#c99a62', '#9e7140']) {   // тонкий брус
   toonBox(x - w, y - w, w * 2, w * 2, z1 - z0, c, [darken(c[0], .85), darken(c[1], .85)], [c[0], c[0]], z0, 1.1);
 }
-function drawTrophies(d) {   // доска почёта: две полки, кубки по местам
-  const x = d.x, y = d.y;
-  softShadow(x + .1, y + .2, x + .9, y + .8, .25);
-  toonPost(x + .15, y + .5, 0, 44); toonPost(x + .85, y + .5, 0, 44);
-  gface(fY(x + .05, x + .95, y + .5, 22, 46), '#c99a62', '#9e7140', INK, 1.4);   // задник
-  gface(fY(x + .1, x + .9, y + .5, 40, 45.5), '#2f6b2a', '#24561f', INK, 1);   // табличка
-  textOnX(x + .1, y + .5, 42.7, .8, 'ПОЧЁТ', '#ffe9a8', 5.5);
-  for (const z of [22, 31]) toonBox(x + .05, y + .5, .9, .22, 2, ['#e0b47a', '#b8834d'], ['#b8834d', '#8f5b2b'], ['#f0c98e', '#dcae70'], z, 1);
-  const cups = S.trophies.slice(-8);
-  if (!cups.length) { const p = lift(x + .5, y + .62, 26); ctx.globalAlpha = .45; emoji('🏆', p.x, p.y - 2, 10); ctx.globalAlpha = 1; return; }
+function drawTrophies(d) {   // доска почёта: две клетки в ширину, две полки по 5 кубков
+  const x = d.x, y = d.y, W = 2;
+  softShadow(x + .1, y + .2, x + W - .1, y + .8, .25);
+  for (const px of [.15, W / 2, W - .15]) toonPost(x + px, y + .5, 0, 56);
+  gface(fY(x + .05, x + W - .05, y + .5, 24, 58), '#c99a62', '#9e7140', INK, 1.4);   // задник
+  gface(fY(x + .4, x + W - .4, y + .5, 49, 58.5), '#2f6b2a', '#24561f', INK, 1.2);   // табличка
+  textOnX(x + .4, y + .5, 53.8, W - .8, 'ДОСКА ПОЧЁТА', '#ffe9a8', 7.5);
+  for (const z of [24, 36]) toonBox(x + .05, y + .5, W - .1, .24, 2.4, ['#e0b47a', '#b8834d'], ['#b8834d', '#8f5b2b'], ['#f0c98e', '#dcae70'], z, 1);
+  const cups = S.trophies.slice(-10);
+  if (!cups.length) { const p = lift(x + W / 2, y + .62, 30); ctx.globalAlpha = .45; emoji('🏆', p.x, p.y - 3, 14); ctx.globalAlpha = 1; return; }
   cups.forEach((t, k) => {
-    const row = k < 4 ? 1 : 0, col = k % 4, p = lift(x + .2 + col * .2, y + .61, row ? 33 : 24), M = MEDAL[t.p], s = t.p === 1 ? 1.15 : 1;
+    const row = k < 5 ? 1 : 0, col = k % 5, p = lift(x + .25 + col * .375, y + .62, row ? 38.4 : 26.4), M = MEDAL[t.p], s = (t.p === 1 ? 1.15 : 1) * 1.25;
     ctx.fillStyle = INK; ctx.fillRect(p.x - 3 * s, p.y - 2, 6 * s, 2.5);   // подставка
     ctx.beginPath(); ctx.moveTo(p.x - 4.2 * s, p.y - 9 * s); ctx.quadraticCurveTo(p.x - 4 * s, p.y - 3 * s, p.x, p.y - 3 * s); ctx.quadraticCurveTo(p.x + 4 * s, p.y - 3 * s, p.x + 4.2 * s, p.y - 9 * s); ctx.closePath();
     const g = ctx.createLinearGradient(p.x - 4, 0, p.x + 4, 0); g.addColorStop(0, M.col[0]); g.addColorStop(1, M.col[1]);
