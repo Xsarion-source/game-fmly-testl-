@@ -884,7 +884,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.109';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.110';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3279,23 +3279,31 @@ const mailIcon = (K, flag) => {
   else { K.LL(56, 34, 46, 34, '#ff5a52', 3); }
   K.H(46, 18, 6, 2.5, .5);
 };
-// круассан: дуга из налезающих валиков, к концам тоньше
-function croissant3(K, o) {
-  const c = K.c, N = o.n, ox = 32, oy = o.oy, R = o.R, span = o.span;
+// круассан M: дольки-«лепестки» — широкий выпуклый край снаружи, сужаются к внутренней стороне полумесяца
+function croissant4(K, o) {
+  const c = K.c, N = o.n, ox = 32, oy = o.oy, Ri = o.Ri, span = o.span, f = o.flat;
   K.E(32, 54, 27, 5, 'rgba(90,58,36,.16)', 0, 0);
+  const P = (a, r) => [ox + Math.cos(a) * r, oy + Math.sin(a) * r * f];
   const segs = [];
   for (let i = 0; i < N; i++) {
     const u = i / (N - 1), a = -Math.PI / 2 + (u - .5) * 2 * span, t = 1 - Math.abs(u - .5) * 2;
-    const th = o.tMin + (o.tMax - o.tMin) * Math.pow(t, o.pow || 1);
-    segs.push({ x: ox + Math.cos(a) * R, y: oy + Math.sin(a) * R * o.flat, a: Math.atan2(Math.sin(a) * o.flat, Math.cos(a)), th, t });
+    segs.push({ a, t, th: o.tMin + (o.tMax - o.tMin) * Math.pow(t, o.pow || 1) });
   }
+  const step = 2 * span / (N - 1);
   segs.sort((p, q) => p.t - q.t);
-  const el = (s, k = 0) => { c.save(); c.translate(s.x, s.y); c.rotate(s.a + Math.PI / 2); c.beginPath(); c.ellipse(0, 0, s.th * o.along + k, s.th + k, 0, 0, 7); c.restore(); };
-  for (const s of segs) { el(s, 1.6); c.fillStyle = IK; c.fill(); }                 // общий контур
   for (const s of segs) {
-    el(s); c.fillStyle = K.G(0, s.y - s.th, 0, s.y + s.th, '#ffd98a', '#b65f24'); c.fill();
-    c.lineWidth = 1.8; c.strokeStyle = 'rgba(110,50,15,.8)'; c.stroke();
-    c.save(); c.translate(s.x, s.y); c.rotate(s.a + Math.PI / 2); c.beginPath(); c.ellipse(-s.th * o.along * .1, -s.th * .38, s.th * o.along * .45, s.th * .3, 0, 0, 7); c.fillStyle = 'rgba(255,246,210,.55)'; c.fill(); c.restore();
+    const wo = step * (o.wo || .75), wi = step * (o.wi || .35), Ro = Ri + s.th;
+    const shape = c => {
+      const p1 = P(s.a - wi, Ri), p2 = P(s.a + wi, Ri), p3 = P(s.a + wo, Ro * .97), p4 = P(s.a - wo, Ro * .97);
+      const cR = P(s.a + wo * 1.05, (Ri + Ro) / 2), cL = P(s.a - wo * 1.05, (Ri + Ro) / 2), top = P(s.a, Ro * (o.bul || 1.12));
+      c.moveTo(...p1); c.quadraticCurveTo(...P(s.a, Ri * 1.02), ...p2);
+      c.quadraticCurveTo(...cR, ...p3);
+      c.bezierCurveTo(...P(s.a + wo * .6, Ro * 1.1), ...P(s.a + wo * .2, Ro * (o.bul || 1.12)), ...top);
+      c.bezierCurveTo(...P(s.a - wo * .2, Ro * (o.bul || 1.12)), ...P(s.a - wo * .6, Ro * 1.1), ...p4);
+      c.quadraticCurveTo(...cL, ...p1); c.closePath();
+    };
+    const [gx, gy] = P(s.a, Ro), [hx, hy] = P(s.a, Ri);
+    K.D(shape, K.G(gx, gy, hx, hy, '#ffd98c', '#b0591f'), 2.6);
   }
 }
 const ICON_DRAW = {
@@ -3560,7 +3568,7 @@ const ICON_DRAW = {
   '📥': K => { K.R(6, 34, 52, 24, 5, K.G(0, 34, 0, 58, '#e2b679', '#b98a55')); K.R(18, 34, 28, 10, 2, '#8a5a36', 2); K.LL(32, 4, 32, 26, '#3e9b3a', 4); K.P([[22, 20], [42, 20], [32, 32]], '#3e9b3a', 2.5); },
   '📤': K => { K.R(6, 34, 52, 24, 5, K.G(0, 34, 0, 58, '#e2b679', '#b98a55')); K.R(18, 34, 28, 10, 2, '#8a5a36', 2); K.LL(32, 30, 32, 10, '#e0703a', 4); K.P([[22, 14], [42, 14], [32, 2]], '#e0703a', 2.5); },
   '🍪': K => { K.C(32, 34, 26, K.G(0, 8, 0, 60, '#f2c278', '#c88a42')); for (const [x, y, r] of [[22, 24, 4], [38, 20, 3.5], [44, 36, 4], [28, 42, 3.5], [18, 36, 2.6], [36, 50, 3]]) K.E(x, y, r, r * .85, '#6b3e1f', .3, 0); K.H(20, 18, 4, 2, .4); },
-  '🥐': K => croissant3(K, { n: 7, oy: 52, R: 24, span: 1.3, tMin: 4, tMax: 11.5, along: .72, flat: .75, pow: .8 }),
+  '🥐': K => croissant4(K, { n: 7, oy: 52, Ri: 13, span: 1.38, tMin: 7, tMax: 23, flat: .75, pow: .8 }),
 
   '🍦': K => { K.P([[18, 30], [46, 30], [32, 62]], K.G(18, 0, 46, 0, '#f2c278', '#c88a42')); K.L(23, 38, 40, 34, 'rgba(120,60,15,.45)', 1.6); K.L(26, 46, 37, 42, 'rgba(120,60,15,.45)', 1.6);
     K.D(c => { c.moveTo(14, 32); c.bezierCurveTo(8, 14, 24, 4, 32, 6); c.bezierCurveTo(42, 4, 56, 14, 50, 32); c.quadraticCurveTo(46, 38, 42, 32); c.quadraticCurveTo(36, 38, 30, 32); c.quadraticCurveTo(22, 38, 14, 32); }, K.G(0, 6, 0, 36, '#fffaf2', '#f2dcc2'));
