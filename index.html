@@ -422,7 +422,7 @@ const liftG = (g, x, y, z) => lift(x + LAYOUT[g][0], y + LAYOUT[g][1], z);
 // Производство: сырьё со склада → товар. Работает днём, как растут грядки
 const PROD = {
   mill:  { name: 'Мельница',  ico: '🌬️', in: 'wheat', n: 3, out: 'flour',  time: 36, cap: 8, spot: at('mill', 18, 7) },
-  dairy: { name: 'Сыроварня', ico: '🧀', in: 'milk',  n: 2, out: 'cheese', time: 54, cap: 8, spot: at('dairy', 17, 7) },
+  dairy: { name: 'Сыроварня', ico: '🧀', in: 'milk',  n: 2, out: 'cheese', time: 54, cap: 8, spot: at('dairy', 19, 9) },   // у двери сбоку — клетку видно, крыша её не закрывает
 };
 // Пекарня — пристройка к дому: печёт из муки и продуктов фермы по выбранному рецепту
 const BAKE = {
@@ -804,7 +804,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.87';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.88';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3385,10 +3385,11 @@ function draw(t) {
   drawPond(t);
   drawZones();
   drawReserved();
+  drawPickups();
   drawMarker(t);
 
   const list = [];
-  const DRAW = { tree: d => d.lot == null || S.up.clear <= d.lot ? drawTree(d) : (!prodAt(d.x, d.y) || !S.up[prodAt(d.x, d.y)]) && drawStump(d), mill: drawMill, dairy: drawDairy, house: drawHouse, bakery: drawBakery, mailbox: drawMailbox, trophies: drawTrophies, flowers: drawFlowers, doghouse: drawDoghouse, well: drawWell, swing: drawSwing, stall: drawStall, season: drawSeasonStand, coop: drawCoop, barn: drawBarn, trough: drawTrough, fence: drawFence, billboard: drawBillboard, sack: drawSack, bench: drawBench, glass: drawGlass, ghroof: drawGhRoof };
+  const DRAW = { tree: d => d.lot == null || S.up.clear <= d.lot ? drawTree(d) : (!prodAt(d.x, d.y) || !S.up[prodAt(d.x, d.y)]) && !Object.values(PROD).some(P => P.spot.x === d.x && P.spot.y === d.y) && drawStump(d), mill: drawMill, dairy: drawDairy, house: drawHouse, bakery: drawBakery, mailbox: drawMailbox, trophies: drawTrophies, flowers: drawFlowers, doghouse: drawDoghouse, well: drawWell, swing: drawSwing, stall: drawStall, season: drawSeasonStand, coop: drawCoop, barn: drawBarn, trough: drawTrough, fence: drawFence, billboard: drawBillboard, sack: drawSack, bench: drawBench, glass: drawGlass, ghroof: drawGhRoof };
   const settled = zoomSettled(t);
   for (const d of decor) {   // постройка рисуется в своих координатах, сдвинутая на смещение группы (LAYOUT)
     if (settled && bakedTrees && bakedTrees.has(d)) continue;   // уже в картинке фона
@@ -4089,6 +4090,26 @@ function drawReserved() {
   }
 }
 
+// Клетка, куда подходят забрать товар у постройки, подсвечена на земле (готово — ярче).
+// Новый цех из PROD попадает сюда сам; другую постройку — допиши в PICKUP.
+const PICKUP = [
+  { on: () => hens() > 0, spot: () => COOP_SPOT, ready: () => coopReady() > 0 },
+  { on: () => cows() > 0, spot: () => BARN_SPOT, ready: () => S.barn.milk > 0 },
+  { on: () => S.up.bakery > 0, spot: () => BAKE_SPOT, ready: () => bakeOut() > 0 },
+];
+const pickupSpots = () => [
+  ...PICKUP.filter(p => p.on()).map(p => ({ ...p.spot(), ready: p.ready() })),
+  ...Object.keys(PROD).filter(k => S.up[k]).map(k => ({ ...PROD[k].spot, ready: S.prod[k].out > 0 })),
+];
+function drawPickups() {
+  for (const p of pickupSpots()) {
+    const r = .1, q = [iso(p.x + r, p.y + r), iso(p.x + 1 - r, p.y + r), iso(p.x + 1 - r, p.y + 1 - r), iso(p.x + r, p.y + 1 - r)];
+    poly(q, p.ready ? 'rgba(255,214,90,.42)' : 'rgba(255,240,190,.26)', p.ready ? 'rgba(255,246,200,.95)' : 'rgba(255,250,225,.8)', p.ready ? 2.2 : 1.5);
+    const c = iso(p.x + .5, p.y + .5);   // следы-«ступеньки» к центру: здесь встаёт фермер
+    ctx.fillStyle = p.ready ? 'rgba(150,95,20,.55)' : 'rgba(120,90,50,.3)';
+    ctx.beginPath(); ctx.ellipse(c.x - 4, c.y, 2.6, 1.6, 0, 0, 7); ctx.ellipse(c.x + 4, c.y - 1.5, 2.6, 1.6, 0, 0, 7); ctx.fill();
+  }
+}
 function drawMarker(t) {
   if (!tasks.length) return;
   const tk = tasks[0], r = 0.12 + Math.sin(t * 6) * 0.04;
