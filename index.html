@@ -468,7 +468,7 @@ const isoG = (g, x, y) => iso(x + LAYOUT[g][0], y + LAYOUT[g][1]);
 const liftG = (g, x, y, z) => lift(x + LAYOUT[g][0], y + LAYOUT[g][1], z);
 // Производство: сырьё со склада → товар. Работает днём, как растут грядки
 const PROD = {
-  mill:  { name: 'Мельница',  ico: '🌬️', in: 'wheat', n: 3, out: 'flour',  time: 12, cap: 20, spot: at('mill', 18, 7) },
+  mill:  { name: 'Мельница',  ico: '🌬️', in: 'wheat', n: 3, out: 'flour',  time: 7.5, cap: 25, spot: at('mill', 18, 7) },
   dairy: { name: 'Сыроварня', ico: '🧀', in: 'milk',  n: 2, out: 'cheese', time: 18, cap: 20, spot: at('dairy', 19, 9) },   // у двери сбоку — клетку видно, крыша её не закрывает
 };
 // Пекарня — пристройка к дому: печёт из муки и продуктов фермы по выбранному рецепту
@@ -854,7 +854,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.97';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.98';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1778,14 +1778,13 @@ function bakeNeedDay(g) {
   const r = BAKE[S.bake.sel]?.in[g] ? S.bake.sel : bakeUses(g)[0]; if (!r) return 0;
   return Math.round(OVENS * DAY_LEN / (BAKE[r].time / S.up.bakery) * trayN() * BAKE[r].in[g]);
 }
-const fmtMs = s => { s = Math.max(0, Math.round(s)); return s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : `${s} с`; };
+const fmtMs = s => { if (s > 0 && s < 10 && Math.abs(s - Math.round(s)) > .05) return s.toFixed(1).replace('.', ',') + ' с'; s = Math.max(0, Math.round(s)); return s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : `${s} с`; };
 let prodOpen = null;
 function openProd(k) {
   const P = PROD[k], st = S.prod[k], inE = GOODS[P.in].e, outE = GOODS[P.out].e;
   prodOpen = k;
   const loadN = Math.min(prodCap(k) - st.q, Math.floor((S.inv[P.in] || 0) / P.n));
   const helper = S.helpers.map((c, i) => c.stations.includes(k) ? i + 1 : 0).filter(Boolean);
-  const need = bakeUses(P.out).length ? bakeNeedDay(P.out) : 0;
   let h = `<h2>${P.ico} ${P.name}</h2><div class="fpinfo">${P.n} ${inE} со склада превращаются в 1 ${outE}. Загрузи сырьё — цех работает днём, пока не кончится очередь. Готовое лежит в цеху, пока его не заберут (ты или помощник).</div>
     <div class="chain">
       <div class="ch"><span class="ce">${inE}</span><b>${S.inv[P.in] || 0}</b><small>на складе</small></div><i class="arr">›</i>
@@ -1793,13 +1792,12 @@ function openProd(k) {
       <div class="ch done${st.out ? ' has' : ''}"><span class="ce">${outE}</span><b id="pdOut">${st.out}</b><small>готово</small></div>
     </div>
     <div class="pfacts"><span>${P.n} ${inE} → 1 ${outE}</span><span>1 ${outE} за ${fmtMs(P.time / S.up[k])}</span><span>~${prodPerDay(k)} ${outE} в день</span><span id="pdEta">${st.q ? `очередь — ещё ${fmtMs(((st.q - 1) * P.time + P.time - st.t) / S.up[k])}` : 'очередь пуста'}</span></div>`;
-  if (need) h += `<div class="pneed${need > prodPerDay(k) ? ' low' : ''}">🥖 Пекарне нужно ~${need} ${outE} в день${need > prodPerDay(k) ? ' — больше, чем делает цех' : ''}</div>`;
   if (bakeUses(P.out).length && S.up.bakery) {
     const kp = S.keep?.[P.out] || 0;
     h += `<div class="pkeep"><div><b>Оставлять для пекарни</b><small>покупатели не возьмут последние ${kp} ${outE}</small></div><div class="stp"><button onclick="setKeep('${P.out}', -5)">−</button><b>${kp}</b><button onclick="setKeep('${P.out}', 5)">+</button></div></div>`;
   }
   h += `<div class="phelp">${helper.length ? `🧑‍🌾 Загружает и забирает помощник ${helper.join(', ')}` : '🧑‍🌾 Помощник не назначен — <a href="#" onclick="event.preventDefault();openHelpers()">назначить в «Команде»</a>'}</div>`;
-  h += `<button class="wide" style="width:100%;margin-top:8px" ${loadN > 0 || st.out ? '' : 'disabled'} onclick="closeNight(); setTasks([{ ...PROD['${k}'].spot, fn: () => prodAct('${k}') }])">🧑‍🌾 ${loadN > 0 ? `Загрузить +${loadN} ${outE}` : ''}${loadN > 0 && st.out ? ' и ' : ''}${st.out ? `забрать ${st.out} ${outE}` : ''}${!(loadN > 0) && !st.out ? (st.q >= prodCap(k) ? 'Очередь полная' : `Нужно ${P.n} ${inE}`) : ''}</button>`;
+  h += `<button class="wide" style="width:100%;margin-top:8px" ${loadN > 0 || st.out ? '' : 'disabled'} onclick="closeNight(); setTasks([{ ...PROD['${k}'].spot, fn: () => prodAct('${k}') }])">🧑‍🌾 ${loadN > 0 ? `Засыпать ${loadN * P.n} ${inE}` : ''}${loadN > 0 && st.out ? ' · ' : ''}${st.out ? `${loadN > 0 ? 'забрать' : 'Забрать'} ${st.out} ${outE}` : ''}${!(loadN > 0) && !st.out ? (st.q >= prodCap(k) ? 'Очередь полная — сырьё не нужно' : `Нужно хотя бы ${P.n} ${inE}`) : ''}</button>`;
   // улучшения цеха: «сейчас → будет»
   const ups = [k, PROD_BIN[k]].filter(u => UPGRADES[u]);
   h += `<h3 style="margin:14px 0 4px">⬆️ Улучшения</h3>`;
