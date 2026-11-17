@@ -899,7 +899,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.122';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.124';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1249,6 +1249,11 @@ const LOOKS = {
   winter: { g: ['#eaf0f4', '#e2e9ee'], out: ['#dbe4ea', '#d4dde4'], crowns: [['#4f8466', '#3c6b51', '#f4f8fb']], bg: '#b7c6d0', bush: ['#9fb4bf', '#b2c4cd'] },
 };
 const look = () => LOOKS[season().id];
+const MEADOW = {   // пастбище: g — трава, c — с клевером; зимой как всё вокруг (снег)
+  spring: { g: ['#a8de7a', '#a0d773'], c: ['#93d96f', '#8bd268'] },
+  summer: { g: ['#6fbf4c', '#68b746'], c: ['#62b843', '#5bb03d'] },
+  autumn: { g: ['#b4c35f', '#acbb59'], c: ['#a2bd57', '#9ab551'] },
+};
 function applySeasonBg() { const c = look().bg; document.body.style.background = c; $('app').style.background = c; }
 const priceMult = () => 1 + S.up.sign * 0.05 + (S.up.cozy || 0) * 0.02 + prestige();
 const homeMult = () => 1 + (S.up.house || 0) * 0.2 + (picnicOn() ? 0.15 : 0);   // дом: помощники сыты и работают быстрее
@@ -3848,7 +3853,7 @@ function panRect() {   // всё, что камера может показат�
 const inside = (a, b) => a.x0 >= b.x0 && a.x1 <= b.x1 && a.y0 >= b.y0 && a.y1 <= b.y1;
 function drawBackdrop(now) {
   if (!zoomSettled(now)) { drawOutside(viewRect()); drawGround(0); drawPaths(); drawPicnic(); drawOutsideTrees(); return; }   // зум пальцами — напрямую
-  const k = dpr * zoom, key = k + '/' + groundSig(), view = viewRect();
+  const k = dpr * zoom, key = k + '/' + groundSig() + swayOn(), view = viewRect();
   if (key !== bg.key || !bg.r || !inside(view, bg.r)) {
     let R = panRect();
     if ((R.x1 - R.x0) * (R.y1 - R.y0) * k * k > 14e6 || Math.max(R.x1 - R.x0, R.y1 - R.y0) * k > 4000) R = viewRect(Math.min(cw, ch) / zoom * .3);   // слишком большой масштаб — с запасом вокруг экрана
@@ -3859,7 +3864,7 @@ function drawBackdrop(now) {
     const main = ctx; ctx = bg.cv.getContext('2d');
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = look().bg; ctx.fillRect(0, 0, w, h);
     ctx.setTransform(k, 0, 0, k, -bg.ox, -bg.oy);
-    try { drawOutside(R); drawGround(0); drawPaths(); drawPicnic(); if (bakedFor !== clearKey()) bakedTrees = null; bakedTrees ??= bakeTreeSet(); drawOutsideTrees(true); } finally { ctx = main; }
+    try { drawOutside(R); drawGround(0); drawPaths(); drawPicnic(); if (bakedFor !== clearKey()) bakedTrees = null; bakedTrees ??= bakeTreeSet(); if (swayOn()) drawFairGround(); else drawOutsideTrees(true); } finally { ctx = main; }
   }
   const T = camT();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -3956,7 +3961,12 @@ function drawSprite(d, fn, key, now, o, raw) {
   }
   if (!sp.empty) {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    const T = camT(); ctx.drawImage(sp.cv, sp.ox + T.x, sp.oy + T.y);
+    const T = camT();
+    if (d.kind === 'tree' && swayOn()) {   // наклон кроны от основания ствола: порывами, у каждого дерева своя фаза
+      const by = iso(d.x + .5, d.y + .5).y * k + T.y, g = .55 + .45 * Math.sin(now * .7), a = .045 * g * Math.sin(now * 2.1 + d.x * .7 + d.y * .45);
+      ctx.setTransform(1, 0, -a, 1, a * by, 0);
+    }
+    ctx.drawImage(sp.cv, sp.ox + T.x, sp.oy + T.y);
     setWorld();
   }
   if (SPRITE_ANIM.has(d.kind)) {   // поверх — дым, гирлянды, флаг, крылья…
@@ -3984,12 +3994,13 @@ function draw(t) {
   const DRAW = { tree: d => (d.lot == null || !lotCleared(d.lot)) && drawTree(d), mill: drawMill, dairy: drawDairy, house: drawHouse, bakery: drawBakery, mailbox: drawMailbox, trophies: drawTrophies, flowers: drawFlowers, doghouse: drawDoghouse, well: drawWell, swing: drawSwing, stall: drawStall, season: drawSeasonStand, coop: drawCoop, barn: drawBarn, trough: drawTrough, fence: drawFence, billboard: drawBillboard, sack: drawSack, bench: drawBench, glass: drawGlass, ghroof: drawGhRoof };
   const settled = zoomSettled(t);
   for (const d of decor) {   // постройка рисуется в своих координатах, сдвинутая на смещение группы (LAYOUT)
-    if (settled && bakedTrees && bakedTrees.has(d)) continue;   // уже в картинке фона
+    if (settled && bakedTrees && bakedTrees.has(d) && !swayOn()) continue;   // уже в картинке фона
     const sk = SPRITE_KEY[d.kind], o = d.g ? isoG(d.g, 0, 0) : null, raw = () => DRAW[d.kind](d, t);
     const moved = o ? () => { ctx.save(); ctx.translate(o.x, o.y); try { raw(); } finally { ctx.restore(); } } : raw;
     list.push({ z: d.z, f: sk ? () => drawSprite(d, moved, sk(d), t, o, raw) : moved });
   }
-  if (settled && bakedTrees) for (const o of liftedOut) list.push({ z: o.z, f: () => drawSprite(o, () => drawTree(o), SPRITE_KEY.tree(o), t) });   // лес перед деревьями фермы
+  if (settled && swayOn()) for (const o of outTrees) { o.kind = 'tree'; list.push({ z: o.x + o.y + 1, f: () => drawSprite(o, () => drawTree(o), SPRITE_KEY.tree(o), t) }); }
+  else if (settled && bakedTrees) for (const o of liftedOut) list.push({ z: o.z, f: () => drawSprite(o, () => drawTree(o), SPRITE_KEY.tree(o), t) });   // лес перед деревьями фермы
   S.trees.forEach((tr, i) => { if (tr.kind) { const s = ORCHARD_SLOTS[i]; list.push({ z: s.x + s.y + 1, f: () => drawOrchardTree(i, t) }); } });
   for (const h of hensState) list.push({ z: h.x + h.y, f: () => { const key = animKey(h, (h.rooster ? 'r' : '') + (h.peck ? 'p' : '')); drawCachedAt(h, key, 34, 40, 17, 32, o => drawHen({ ...o, phase: phaseOf(key) }, 0)); } });
   for (const h of chicksState) list.push({ z: h.x + h.y, f: () => { const key = animKey(h, ''); drawCachedAt(h, key, 16, 18, 8, 13, o => drawChick({ ...o, phase: phaseOf(key) }, 0)); } });
@@ -4027,6 +4038,7 @@ function draw(t) {
 // Мир вокруг фермы: лес позади, луг впереди, дорога уходит за край — экран заполнен на любом устройстве
 const hash = (x, y) => { const v = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return v - Math.floor(v); };
 let outTrees = [];
+const swayOn = () => weather() === 'wind' && !S.night && !fairOn();   // в ветер деревья качаются — рисуем их поштучно, а не в картинке фона
 function drawOutside(V = viewRect()) {
   const R = 30, trees = outTrees = [];
   for (let y = -R; y < H + R; y++) for (let x = -R; x < W + R; x++) {
@@ -4402,7 +4414,7 @@ function drawGround(t) {
     else if (g === 'w') col = '#5bb0e0';
     else if (g === 'o') col = season().id === 'summer' ? ((x + y) % 2 ? '#84c260' : '#7ebc5b') : grass;
     else if (g === 'y') col = hens() ? ((x + y) % 2 ? '#cfae78' : '#c9a771') : grass;
-    else if (g === 'm') col = season().id === 'winter' ? grass : cows() ? (S.up.clover ? ((x + y) % 2 ? '#7fd46a' : '#76cc61') : ((x + y) % 2 ? '#93d36b' : '#8bcc63')) : grass;
+    else if (g === 'm') { const M = MEADOW[season().id]; col = !M || !cows() ? grass : (S.up.clover ? M.c : M.g)[(x + y) % 2]; }   // пастбище чуть сочнее травы вокруг, но по сезону
     else if (g === 's' || (g === 'h' && S.up.greenhouse)) {
       const arr = g === 's' ? S.plots : S.gh, i = g === 's' ? slotAt(x, y) : ghAt(x, y);
       if (i < arr.length) col = arr[i].crop && arr[i].prog < 1 ? '#6b4327' : '#8a5a36';
