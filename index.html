@@ -151,6 +151,27 @@
   .seed.sel { border-color: var(--accent); background: #fff1d1; transform: scale(1.08); }
   .seed.dis { opacity: .45; }
   .seed .ghb { position: absolute; top: -4px; right: -4px; font-size: 13px; background: #fff; border-radius: 50%; width: 19px; height: 19px; display: flex; align-items: center; justify-content: center; }
+  #seeds { display: none !important; }   /* семена — в полоске над «Засеять» */
+  #plantAll { position: relative; }
+  #plantAll .pr { position: absolute; top: -6px; right: -8px; background: #fff; border: 2px solid #e9c46a; border-radius: 10px; font-size: 10.5px; font-weight: 900; padding: 1px 5px; line-height: 1.2; color: #4a2e18; }
+  #plantAll .chev { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); font-size: 9px; line-height: 1.3; color: #7a4a2a; background: #ffe08a; border-radius: 8px; padding: 0 6px; font-weight: 900; }
+  #plantAll.open { background: #ffe08a; box-shadow: 0 0 0 3px #e0a52a; }
+  #seedTray { display: none; pointer-events: auto; align-self: stretch; max-width: 560px; width: 100%; margin: 0 auto; box-sizing: border-box; background: rgba(255,248,231,.97); border-radius: 22px; padding: 8px 10px 10px;
+              box-shadow: 0 6px 18px rgba(0,0,0,.25), 0 3px 0 rgba(0,0,0,.15); border: 2.5px solid #e9c46a; animation: up .2s; touch-action: pan-x; }
+  #seedTray.show { display: block; }
+  #seedTray .grab { width: 40px; height: 5px; border-radius: 3px; background: #d9c49c; margin: 0 auto 8px; }
+  #seedTray .th { display: flex; gap: 8px; margin: 0 2px 8px; }
+  #seedTray .cnt { display: inline-flex; align-items: center; gap: 4px; background: #efe3c8; border-radius: 999px; padding: 3px 10px; font-size: 15px; font-weight: 900; color: #4a2e18; }
+  #seedTray .row { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 7px 2px 3px; margin-top: -7px; }
+  #seedTray .row::-webkit-scrollbar { display: none; }
+  #seedTray .sd { position: relative; flex: none; width: 56px; height: 66px; border-radius: 16px; background: #fff; border: 2.5px solid #ead9b5; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 2px 0 #d9c49c; padding: 0; font: inherit; color: #4a2e18; }
+  #seedTray .sd .e { font-size: 28px; line-height: 1.1; } #seedTray .sd .c { font-size: 11.5px; font-weight: 900; }
+  #seedTray .sd.sel { border-color: #f4a92b; background: #fff1d1; }
+  #seedTray .sd.dis { opacity: .5; }
+  #seedTray .sd .gh { position: absolute; top: -7px; right: -6px; font-size: 12px; background: #fff; border: 1.5px solid #ead9b5; border-radius: 9px; padding: 0 3px; line-height: 1.3; }
+  #seedTray .all { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; margin-top: 10px; padding: 9px 10px; border-radius: 16px; border: none; background: #ffd34d; box-shadow: 0 3px 0 #c98f1c; font: 900 18px system-ui, sans-serif; color: #4a2e18; }
+  #seedTray .all:disabled { background: #e8dcc2; box-shadow: 0 3px 0 #cbb994; color: #8a7a63; }
+  #seedTray .all .sub { font-size: 14px; font-weight: 800; background: rgba(255,255,255,.55); border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
   #actions { position: absolute; left: 0; right: 0; bottom: 0; padding: 0 10px calc(10px + env(safe-area-inset-bottom));
              display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
   #actions button { pointer-events: auto; }
@@ -346,6 +367,7 @@
     <div id="actions">
       <button class="wide sunrise" id="restBtn" style="display:none;background:#9ad67a" onclick="openSunday()">🏖 Выходной — чем заняться?</button>
       <button class="wide sunrise" id="dayBtn" style="display:none">☀️ Начать день 2</button>
+      <div id="seedTray"></div>
       <div class="arow">
         <button class="act" id="harvestAll"><span>🧺</span>Собрать</button>
         <button class="act" id="plantAll"><span>🌱</span>Засеять</button>
@@ -804,7 +826,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.90';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.91';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1489,7 +1511,7 @@ function tapVisitor(v) {
 // ---------- Грядки ----------
 // что сажать в теплице: выбранное справа, иначе что росло, иначе первое открытое
 function ghPick() { return GH_CROPS.includes(S.sel) ? S.sel : null; }   // в теплицу — только выбранные 🍅 или 🍓
-const GH_WRONG = () => `🏡 В теплице растут только 🍅 и 🍓 — выбери их справа${GH_CROPS.some(id => S.unlocked.includes(id)) ? '' : ' (сначала открой ночью)'}`;
+const GH_WRONG = () => `🏡 В теплице растут только 🍅 и 🍓 — выбери их в «Засеять»${GH_CROPS.some(id => S.unlocked.includes(id)) ? '' : ' (сначала открой ночью)'}`;
 function harvestBed(p, s, gh) {   // в теплице — гроздь из GH_YIELD плодов
   const n = gh ? GH_YIELD : 1;
   if (!fits(p.crop, n)) { storeFullNote(p.crop); return false; }   // склад полон — урожай ждёт на грядке
@@ -1506,7 +1528,7 @@ function plotAct(i, mode, gh, crop) {
     const id = crop || (gh ? ghPick() : S.sel), c = CROP[id];
     if (!c) { toast(GH_WRONG()); return; }
     if (!gh && GH_CROPS.includes(id)) { toast(`${c.e} ${c.name} растёт только в теплице 🏡`); return; }
-    if (S.coins < c.seed) { toast(gh ? `Семена ${c.e} стоят ${c.seed}💰` : 'Не хватает монет — посади бесплатный подсолнух 🌻'); return; }
+    if (S.coins < c.seed) { toast(gh ? `Семена ${c.e} стоят ${c.seed}💰` : 'Не хватает монет — посади подсолнух 🌻, он бесплатный'); return; }
     spend(c.seed, 'seeds'); p.crop = c.id; p.prog = 0;
   } else return;
   beginClock();
@@ -1529,7 +1551,7 @@ function tapPlot(i) {
   if (!p.crop && GH_CROPS.includes(S.sel)) { toast(`${CROP[S.sel].e} растёт только в теплице 🏡${S.up.greenhouse ? '' : ' — построй её ночью'}`); return; }
   const crop = p.crop ? null : S.sel, cost = crop ? CROP[crop].seed : 0;
   const queued = tasks.some(t => t.q && t.x === s.x && t.y === s.y);
-  if (crop && !queued && S.coins < cost + queuedSeeds()) { toast(queuedSeeds() ? 'На эту грядку монет уже не хватит' : 'Не хватает монет — посади бесплатный подсолнух 🌻'); return; }
+  if (crop && !queued && S.coins < cost + queuedSeeds()) { toast(queuedSeeds() ? 'На эту грядку монет уже не хватит' : 'Не хватает монет — посади подсолнух 🌻, он бесплатный'); return; }
   queueBed({ x: s.x, y: s.y, q: true, crop, cost, fn: () => plotAct(i, undefined, false, crop) });
 }
 function tapGh(i) {
@@ -2598,7 +2620,7 @@ function openHelpers() {
       h += `<div style="font-size:12px;color:#7a6650;margin:8px 0 4px">🚜 На поле: собирать и сажать… (семена за твои монеты, 💰 над головой — не хватает)</div><div class="chips">`;
       h += chip(!cfg.replant, '🧺 Только сбор', `setField(${i},null)`);
       h += chip(cfg.replant && cfg.seed === 'same', '🔁 То же, что росло', `setField(${i},'same')`);
-      for (const id of S.unlocked) if (!GH_CROPS.includes(id)) h += chip(cfg.replant && cfg.seed === id, `${CROP[id].e} ${CROP[id].seed || 'даром'}`, `setField(${i},'${id}')`);
+      for (const id of S.unlocked) if (!GH_CROPS.includes(id)) h += chip(cfg.replant && cfg.seed === id, `${CROP[id].e} ${CROP[id].seed}💰`, `setField(${i},'${id}')`);
       h += `</div>`;
     }
     if (cfg.stations.includes('gh')) {
@@ -2773,6 +2795,11 @@ cv.addEventListener('pointercancel', e => { pointers.delete(e.pointerId); pinch 
 
 function onTap(sx, sy) {
   const wx = (sx - cw / 2) / zoom + cam.x, wy = (sy - ch / 2) / zoom + cam.y;
+  if (trayOpen) {   // открыта полоска семян: тап по грядке сажает, по любому другому месту — только закрывает её
+    const tx = Math.floor((wx / (TW / 2) + wy / (TH / 2)) / 2), ty = Math.floor((wy / (TH / 2) - wx / (TW / 2)) / 2);
+    const si = slotAt(tx, ty), gi = ghAt(tx, ty);
+    if (!((si >= 0 && si < S.plots.length) || (gi >= 0 && gi < S.gh.length))) { closeTray(); return; }
+  }
   // сначала покупатели (вместе с облачком над головой)
   if (S.night) for (const b of badgeHits) if (Math.hypot(wx - b.x, wy - b.y) < BADGE_R + 9) { openUpBadge(b); return; }
   let bv = null, bdv = 1e9;
@@ -3028,6 +3055,10 @@ const ICON_DRAW = {
   '📬': K => mailIcon(K, true),
   '📭': K => mailIcon(K, false),
   '✉️': K => { K.R(6, 14, 52, 36, 5, K.G(0, 14, 0, 50, '#fffdf6', '#efe2c8')); K.D(c => { c.moveTo(8, 17); c.lineTo(32, 36); c.lineTo(56, 17); }, null, 3); K.C(32, 36, 5, '#e0473e', 2.5); },
+  '🟫': K => {   // грядка: земляной короб с бороздами (значок «пустые грядки»)
+    K.P([[4, 30], [32, 44], [32, 54], [4, 40]], '#6b3e1f', 2.5); K.P([[32, 44], [60, 30], [60, 40], [32, 54]], '#55301a', 2.5);
+    K.P([[32, 16], [60, 30], [32, 44], [4, 30]], K.G(0, 16, 0, 44, '#a8703f', '#7f4d29'), 2.5);
+    for (const t of [.25, .5, .75]) K.L(6 + 28 * t, 30 - 14 * t, 30 + 28 * t, 42 - 14 * t, '#c58f5a', 3.2); },
   '📦': K => { K.P([[32, 8], [58, 20], [32, 32], [6, 20]], '#f0c98e'); K.P([[6, 20], [32, 32], [32, 60], [6, 46]], '#d9a066'); K.P([[32, 32], [58, 20], [58, 46], [32, 60]], '#b8834d');
     K.P([[19, 14], [45, 26], [45, 32], [19, 20]], 'rgba(255,240,210,.7)', 1.5); },
   '❓': K => K.T('?', 32, 34, 54, '#e0473e', 7),
@@ -5136,15 +5167,7 @@ function renderUI() {
     const when = d === 0 ? 'сегодня!' : d === 1 ? 'завтра' : `через ${d} ${d < 5 ? 'дня' : 'дней'}`;
     fb.innerHTML = `<i class="glow"></i>🎪<small>${d === 0 ? 'сегодня' : d === 1 ? 'завтра' : d + ' дн.'}</small>`; fb.title = `Ярмарка ${when} · ящиков ${used} из ${allCrates()}`;
     fb.classList.toggle('hot', !used && (d === 1 || d === 2)); fb.classList.toggle('soon', d === 1 || d === 2 || (d === 0 && !S.night)); }   // светится за 2 дня и в сам день ярмарки; рамка — если ящики пустые
-  const s = $('seeds'); s.innerHTML = '';
-  for (const id of S.unlocked) {
-    const c = CROP[id], d = document.createElement('div');
-    d.className = 'seed' + (S.sel === id ? ' sel' : '') + (S.coins < c.seed ? ' dis' : '');
-    const gh = GH_CROPS.includes(id);
-    d.innerHTML = `<div class="e">${c.e}</div><div class="c">${c.seed ? c.seed + '💰' : 'даром'}</div>${gh ? '<span class="ghb">🏡</span>' : ''}`;
-    d.onclick = () => { S.sel = id; toast(`${c.e} ${c.name}: семена ${c.seed ? c.seed + '💰' : 'даром'} → продажа ${sellPrice(id)}💰 · растёт ${Math.round(c.grow * (gh ? GH_SLOW : 1) / growMult() / seasonGrow(id, gh))}с${seasonGrow(id, gh) > 1 ? ' ' + season().e : ''}${gh ? ` · только в теплице 🏡, гроздь ×${GH_YIELD}` : ''}`); renderUI(); };
-    s.appendChild(d);
-  }
+  renderSeedBtn();
   renderHud();
 }
 
@@ -5457,7 +5480,7 @@ function copyToSlot(n) {   // только в пустую ячейку — чу
 }
 function openHelp() {
   $('sheet').dataset.view = ''; $('sheet').innerHTML = `<h2>📖 Как играть</h2><div style="font-size:14px;line-height:1.5">
-    🌱 Выбери семена справа и тапни по грядке (или «Засеять»). День начинается с первой посадки.<br>
+    🌱 Нажми «Засеять», выбери семечко и тапни по грядке — или «Засеять всё». День начинается с первой посадки.<br>
     🧺 Собирай урожай, яблоки и яйца — кнопка «Собрать» обходит всё сама.<br>
     🏪 Тапни по лавке — фермер встанет за прилавок и будет продавать всем, на кого хватает товара. Тапни ещё раз (или на товары вверху) — выбери, что продавать, а что копить для заказов и производства.<br>
     🌙 Ночью тапай по значкам на ферме — улучшения, сад, курятник. Кур корми ночью — днём будут яйца.<br>
@@ -5964,22 +5987,56 @@ function harvestRoute(again) {   // грядки, яблони и гнездо �
   setTasks([...crops, ...routeThrough(list.filter(t => t.steady), last)], true);
   return true;
 }
-$('plantAll').onclick = () => {
+// ---------- Посев: кнопка «Засеять» с текущим семечком и полоска семян над ней ----------
+// Тап по семечку — только выбрать; тап по пустой грядке сажает выбранное (полоска остаётся открытой);
+// «Засеять всё» — фермер идёт сажать, полоска закрывается. Закрыть без посева: снова «Засеять», свайп вниз, тап по карте.
+let trayOpen = false;
+const sowHelperField = i => { const o = zoneOwner(zoneOf(i)); return o >= 0 && S.helpers[o].replant; };   // там сажает помощник
+const sowHelperGh = () => S.helpers.some(h => h.stations.includes('gh') && h.ghReplant);
+const emptyBeds = () => S.plots.filter((p, i) => !p.crop && !sowHelperField(i)).length;
+const emptyGh = () => sowHelperGh() ? 0 : S.gh.filter(p => !p.crop).length;
+function renderSeedBtn() {
+  const c = CROP[S.sel] || CROP.sunflower, b = $('plantAll');
+  b.classList.toggle('open', trayOpen);
+  b.innerHTML = `<span class="chev">${trayOpen ? '▼' : '▲'}</span><span>${c.e}</span>Засеять<span class="pr">${c.seed}💰</span>`;
+  if (trayOpen) renderTray();
+}
+function renderTray() {
+  const T = $('seedTray'), c = CROP[S.sel], gh = GH_CROPS.includes(S.sel);
+  const n = gh ? emptyGh() : emptyBeds(), can = c.seed ? Math.min(n, Math.floor(S.coins / c.seed)) : n;
+  const scroll = T.querySelector('.row')?.scrollLeft || 0;
+  T.innerHTML = `<div class="grab"></div><div class="th"><span class="cnt">🟫 ${emptyBeds()}</span>${S.gh.length ? `<span class="cnt">🏡 ${emptyGh()}</span>` : ''}</div>
+    <div class="row">${CROPS.map(c => c.id).filter(id => S.unlocked.includes(id)).map(id => { const k = CROP[id]; return `<button class="sd${S.sel === id ? ' sel' : ''}${S.coins < k.seed ? ' dis' : ''}" onclick="pickSeed('${id}')"><span class="e">${k.e}</span><span class="c">${k.seed}💰</span>${GH_CROPS.includes(id) ? '<span class="gh">🏡</span>' : ''}</button>`; }).join('')}</div>
+    <button class="all" ${can ? '' : 'disabled'} onclick="if (sowAll()) closeTray()">🧺 Засеять всё <span class="sub">${c.e} × ${gh ? '🏡' : '🟫'} ${can}${can < n ? `/${n}` : ''} = ${can * c.seed}💰</span></button>`;
+  T.querySelector('.row').scrollLeft = scroll;
+}
+function openTray() { trayOpen = true; $('seedTray').classList.add('show'); renderSeedBtn(); const r = $('seedTray').querySelector('.sd.sel'); r?.scrollIntoView?.({ inline: 'center', block: 'nearest' }); }
+function closeTray() { if (!trayOpen) return; trayOpen = false; $('seedTray').classList.remove('show'); renderSeedBtn(); }
+function pickSeed(id) {
+  const c = CROP[id], gh = GH_CROPS.includes(id); S.sel = id;
+  toast(`${c.e} ${c.name}: семена ${c.seed}💰 → продажа ${sellPrice(id)}💰 · растёт ${Math.round(c.grow * (gh ? GH_SLOW : 1) / growMult() / seasonGrow(id, gh))}с${seasonGrow(id, gh) > 1 ? ' ' + season().e : ''}${gh ? ` · только в теплице 🏡, гроздь ×${GH_YIELD}` : ''}`);
+  renderUI();
+}
+function sowAll() {   // засеять все пустые грядки выбранным (🍅 и 🍓 — в теплицу); true — фермер пошёл
   const c = CROP[S.sel], can = c.seed ? Math.floor(S.coins / c.seed) : Infinity;
   const list = [];
-  if (GH_CROPS.includes(S.sel)) {   // помидоры и клубника — в теплицу
-    if (!S.gh.length) { toast(`${c.e} растёт только в теплице 🏡 — построй её ночью`); return; }
-    const ghSows = S.helpers.some(h => h.stations.includes('gh') && h.ghReplant);
-    S.gh.forEach((p, i) => { if (!p.crop && !ghSows) list.push({ x: GH_SLOTS[i].x, y: GH_SLOTS[i].y, fn: () => plotAct(i, 'plant', true) }); });
-    if (!list.length) { toast(ghSows && S.gh.some(p => !p.crop) ? '🧑‍🌾 Теплицу засеет помощник' : 'В теплице свободных грядок нет'); return; }
+  if (GH_CROPS.includes(S.sel)) {
+    if (!S.gh.length) { toast(`${c.e} растёт только в теплице 🏡 — построй её ночью`); return false; }
+    S.gh.forEach((p, i) => { if (!p.crop && !sowHelperGh()) list.push({ x: GH_SLOTS[i].x, y: GH_SLOTS[i].y, fn: () => plotAct(i, 'plant', true) }); });
+    if (!list.length) { toast(sowHelperGh() && S.gh.some(p => !p.crop) ? '🧑‍🌾 Теплицу засеет помощник' : 'В теплице свободных грядок нет'); return false; }
   } else {
-    const sows = i => { const o = zoneOwner(zoneOf(i)); return o >= 0 && S.helpers[o].replant; };   // там сажает помощник
-    S.plots.forEach((p, i) => { if (!p.crop && !sows(i)) list.push({ x: PLOT_SLOTS[i].x, y: PLOT_SLOTS[i].y, fn: () => plotAct(i, 'plant') }); });
-    if (!list.length) { toast(S.plots.some((p, i) => !p.crop) ? '🧑‍🌾 Пустые грядки засеют помощники' : 'Свободных грядок нет'); return; }
+    S.plots.forEach((p, i) => { if (!p.crop && !sowHelperField(i)) list.push({ x: PLOT_SLOTS[i].x, y: PLOT_SLOTS[i].y, fn: () => plotAct(i, 'plant') }); });
+    if (!list.length) { toast(S.plots.some(p => !p.crop) ? '🧑‍🌾 Пустые грядки засеют помощники' : 'Свободных грядок нет'); return false; }
   }
-  if (!can) { toast('Не хватает монет — посади бесплатный подсолнух 🌻'); return; }
+  if (!can) { toast('Не хватает монет — посади подсолнух 🌻, он бесплатный'); return false; }
   setTasks(routeThrough(list).slice(0, can));
-};
+  return true;
+}
+$('plantAll').onclick = () => trayOpen ? closeTray() : openTray();
+{ const T = $('seedTray'); let y0 = null;   // свайп вниз по полоске — закрыть
+  T.addEventListener('touchstart', e => { y0 = e.touches[0].clientY; }, { passive: true });
+  T.addEventListener('touchend', e => { if (y0 != null && e.changedTouches[0].clientY - y0 > 40) closeTray(); y0 = null; });
+}
 $('nightBtn').onclick = () => openNight(false);
 $('dayBtn').onclick = () => morning();
 $('profileBtn').onclick = openProfile;
