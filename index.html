@@ -868,7 +868,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.101';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.102';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3009,6 +3009,31 @@ const henIcon = (K, rooster) => {
   K.P([[54, 20], [62, 24], [54, 28]], '#f2a43a', 2.5); K.C(52, 31, 3.2, '#e0393e', 2.5);
   K.C(47, 20, 2.2, '#222', 0); K.C(47.6, 19.4, .8, '#fff', 0);
 };
+// яблочный пирог: бок освещён слева, сверху крем и роза из крупных долек (кожура — толстая красная дуга)
+const pieIcon = K => {
+  const c = K.c, cx = 32, cy = 27, rx = 28, ry = 17, h = 11;
+  K.E(cx, cy + h + 5, rx + 1, ry - 3, 'rgba(90,58,36,.15)', 0, 0);
+  const side = c => { c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI); c.lineTo(cx - rx, cy + h); c.ellipse(cx, cy + h, rx, ry, 0, Math.PI, 0, true); c.closePath(); };
+  K.D(side, K.G(cx - rx, 0, cx + rx, 0, '#f0b463', '#a85d24'), 0);
+  c.save(); K.D(side, null, 0); c.clip(); c.fillStyle = K.G(0, cy + h - 4, 0, cy + h + ry, 'rgba(120,60,20,0)', 'rgba(120,60,20,.35)'); c.fillRect(cx - rx, cy, rx * 2, h + ry + 2); c.restore();
+  K.D(side, null, 3);
+  const slice = (x, y, ang, sz, peel) => {
+    c.save(); c.translate(x, y); c.rotate(ang);
+    c.beginPath(); c.arc(0, sz * .5, sz, Math.PI * 1.15, Math.PI * 1.85); c.arc(0, sz * 1.15, sz * .95, Math.PI * 1.78, Math.PI * 1.22, true); c.closePath();
+    c.fillStyle = '#fff1c8'; c.fill(); c.lineWidth = 1.4; c.strokeStyle = '#9a6a2a'; c.stroke();
+    c.beginPath(); c.arc(0, sz * .5, sz - peel / 2, Math.PI * 1.17, Math.PI * 1.83); c.lineWidth = peel; c.strokeStyle = '#d93c3c'; c.stroke();
+    c.beginPath(); c.arc(0, sz * .5, sz, Math.PI * 1.15, Math.PI * 1.85); c.lineWidth = 1.4; c.strokeStyle = '#7a2a20'; c.stroke();
+    c.restore();
+  };
+  c.save(); c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, 7); c.clip();
+  c.fillStyle = K.G(0, cy - ry, 0, cy + ry, '#f7da95', '#e9b35a'); c.fillRect(cx - rx, cy - ry, rx * 2, ry * 2);
+  c.translate(cx, cy); c.scale(1, ry / rx);
+  for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2 - Math.PI / 2; slice(Math.cos(a) * rx * .6, Math.sin(a) * rx * .6, a + Math.PI / 2 + .55, rx * .4, 3.4); }
+  for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; slice(Math.cos(a) * rx * .2, Math.sin(a) * rx * .2, a + Math.PI / 2 + .7, rx * .26, 2.6); }
+  c.restore();
+  c.save(); c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, 7); c.clip(); c.lineWidth = 5; c.strokeStyle = 'rgba(176,96,30,.5)'; c.stroke(); c.restore();   // румяная кромка
+  K.E(cx, cy, rx, ry, null, 0, 3);
+};
 const appleIcon = (K, a, b) => {
   K.D(c => { c.moveTo(32, 18); c.bezierCurveTo(10, 6, 2, 34, 14, 50); c.bezierCurveTo(22, 62, 30, 58, 32, 56); c.bezierCurveTo(34, 58, 42, 62, 50, 50); c.bezierCurveTo(62, 34, 54, 6, 32, 18); }, K.G(0, 12, 0, 60, a, b));
   K.LL(32, 18, 34, 6, '#8a5530', 3); K.E(43, 9, 8, 4, '#5fae4e', -.4, 2.5); K.H(20, 28, 5, 8, .55);
@@ -3141,13 +3166,7 @@ const ICON_DRAW = {
     K.D(c => { c.moveTo(6, 46); c.bezierCurveTo(4, 26, 18, 20, 32, 20); c.bezierCurveTo(46, 20, 60, 26, 58, 46); c.quadraticCurveTo(58, 54, 50, 54); c.lineTo(14, 54); c.quadraticCurveTo(6, 54, 6, 46); }, K.G(0, 20, 0, 54, '#e8a24a', '#a8581e'));
     for (const x of [18, 30, 42]) { K.D(c => { c.moveTo(x - 4, 38); c.lineTo(x + 6, 26); }, null, 0); K.c.strokeStyle = '#ffe0a8'; K.c.lineWidth = 3.5; K.c.lineCap = 'round'; K.c.stroke(); }
     K.L(10, 50, 54, 50, 'rgba(100,50,15,.35)', 2); K.H(16, 30, 4, 2.5, .4); },
-  '🥧': K => {   // пирог в форме: круглый, сверху решётка, между полосками — вишня
-    K.E(32, 42, 28, 13, K.G(0, 29, 0, 55, '#c4ccd8', '#808898')); K.E(32, 36, 26, 12, '#e8a050');
-    K.c.save(); K.c.beginPath(); K.c.ellipse(32, 36, 22, 9.5, 0, 0, 7); K.c.clip();
-    K.c.fillStyle = '#c8283c'; K.c.fillRect(8, 24, 48, 24);
-    for (const x of [16, 26, 36, 46]) K.R(x - 2.5, 24, 5, 24, 2, '#f2c070', 1.5);
-    for (const y of [31, 38]) K.R(8, y - 2.5, 48, 5, 2, '#f2c070', 1.5);
-    K.c.restore(); K.E(32, 36, 22, 9.5, null, 0, 2); K.H(18, 32, 3, 1.5, .5); },
+  '🥧': K => pieIcon(K),   // яблочный пирог: высокий бисквит, сверху розой крупные дольки с красной кожурой
   '🍕': K => { K.P([[8, 14], [56, 14], [32, 62]], K.G(0, 14, 0, 62, '#ffe080', '#f2b840')); K.R(6, 8, 52, 10, 5, '#d98a3a');
     for (const [x, y] of [[22, 26], [40, 28], [31, 42]]) { K.C(x, y, 5, '#d8443a', 2); K.H(x - 1.5, y - 1.5, 1.5, 1, .5); } K.C(26, 36, 2, '#5fae4e', 0); K.C(36, 20, 2, '#5fae4e', 0); },
   '🎂': K => { for (const x of [24, 32, 40]) { K.R(x - 2, 12, 4, 12, 1, '#7fa9f0', 2); K.E(x, 8, 2.5, 4, '#ffb83a', 0, 1.5); }
