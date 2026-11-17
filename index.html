@@ -258,7 +258,7 @@
   .sh-row h2 { flex: 1; margin: 0 !important; font-size: 22px !important; letter-spacing: .2px; }
   .sh-row .sp { flex: 1; }
   /* заголовок окна — лента-табличка на верхнем краю окна, над фермой */
-  #sheetTitle { position: absolute; left: 50%; bottom: calc(min(82%, 760px) - 22px); transform: translateX(-50%); z-index: 5; pointer-events: none; display: none; animation: up .3s;
+  #sheetTitle { position: absolute; left: 50%; bottom: calc(min(82%, 760px) - 22px); transform: translateX(-50%); z-index: 5; pointer-events: none; display: none; animation: ribUp .3s;
                 max-width: calc(100% - 70px); white-space: nowrap; }
   #sheetTitle.show { display: block; }
   #sheetTitle .rib { position: relative; display: flex; align-items: center; gap: 6px; padding: 7px 26px 9px; border-radius: 14px; border: 3px solid #7a4a2a;
@@ -319,6 +319,7 @@
            width: max-content; max-width: calc(100% - 40px); text-align: center; }
   #toast.show { opacity: 1; pointer-events: auto; cursor: pointer; }
   @keyframes up { from { transform: translateY(100%) } to { transform: none } }
+  @keyframes ribUp { from { transform: translate(-50%, min(82vh, 760px)) } to { transform: translateX(-50%) } }   /* лента заголовка едет вместе с окном и всё время по центру */
 </style>
 </head>
 <body>
@@ -802,7 +803,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.83';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.84';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
