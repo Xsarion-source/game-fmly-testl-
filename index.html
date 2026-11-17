@@ -884,7 +884,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.107';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.108';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3279,6 +3279,25 @@ const mailIcon = (K, flag) => {
   else { K.LL(56, 34, 46, 34, '#ff5a52', 3); }
   K.H(46, 18, 6, 2.5, .5);
 };
+// круассан: дуга из налезающих валиков, к концам тоньше
+function croissant3(K, o) {
+  const c = K.c, N = o.n, ox = 32, oy = o.oy, R = o.R, span = o.span;
+  K.E(32, 54, 27, 5, 'rgba(90,58,36,.16)', 0, 0);
+  const segs = [];
+  for (let i = 0; i < N; i++) {
+    const u = i / (N - 1), a = -Math.PI / 2 + (u - .5) * 2 * span, t = 1 - Math.abs(u - .5) * 2;
+    const th = o.tMin + (o.tMax - o.tMin) * Math.pow(t, o.pow || 1);
+    segs.push({ x: ox + Math.cos(a) * R, y: oy + Math.sin(a) * R * o.flat, a: Math.atan2(Math.sin(a) * o.flat, Math.cos(a)), th, t });
+  }
+  segs.sort((p, q) => p.t - q.t);
+  const el = (s, k = 0) => { c.save(); c.translate(s.x, s.y); c.rotate(s.a + Math.PI / 2); c.beginPath(); c.ellipse(0, 0, s.th * o.along + k, s.th + k, 0, 0, 7); c.restore(); };
+  for (const s of segs) { el(s, 1.6); c.fillStyle = IK; c.fill(); }                 // общий контур
+  for (const s of segs) {
+    el(s); c.fillStyle = K.G(0, s.y - s.th, 0, s.y + s.th, '#ffd98a', '#b65f24'); c.fill();
+    c.lineWidth = 1.8; c.strokeStyle = 'rgba(110,50,15,.8)'; c.stroke();
+    c.save(); c.translate(s.x, s.y); c.rotate(s.a + Math.PI / 2); c.beginPath(); c.ellipse(-s.th * o.along * .1, -s.th * .38, s.th * o.along * .45, s.th * .3, 0, 0, 7); c.fillStyle = 'rgba(255,246,210,.55)'; c.fill(); c.restore();
+  }
+}
 const ICON_DRAW = {
   '💰': K => {   // стопка монет и одна монета рядом, на ребре
     for (let i = 0; i < 4; i++) { const y = 54 - i * 8; K.R(8, y - 5, 36, 10, 5, i % 2 ? '#e8b030' : '#f2c040', 2.5); }
@@ -3395,35 +3414,28 @@ const ICON_DRAW = {
     K.P([[6, 34], [58, 30], [58, 50], [6, 54]], K.G(0, 30, 0, 54, '#ffd24a', '#e6a822'));
     for (const [x, y, r] of [[16, 44, 3.5], [30, 40, 4.5], [46, 44, 3], [38, 49, 2.2], [24, 49, 2]]) K.E(x, y, r * 1.1, r, '#c98a12', 0, 0);
     K.E(36, 24, 3, 1.6, '#e6b030', 0, 0); K.H(20, 30, 6, 1.5, .5); },
-  '🧈': K => {   // масло: брусок в обёртке с завитком
-    const c = K.c;
-    K.E(32, 52, 27, 6, 'rgba(90,58,36,.16)', 0, 0);
-    // бумага-обёртка снизу (ромб чуть больше бруска)
-    K.P([[4, 40], [30, 30], [60, 40], [34, 52]], K.G(0, 30, 0, 52, '#ffffff', '#e2e6ea'), 2.6);
-    const top = [[10, 28], [30, 20], [54, 28], [34, 37]];
-    // передняя левая грань и правая грань
-    K.P([[10, 28], [34, 37], [34, 47], [10, 38]], K.G(10, 0, 34, 0, '#ffe07a', '#f2c040'), 3);
-    K.P([[34, 37], [54, 28], [54, 38], [34, 47]], K.G(34, 0, 54, 0, '#f0bf3e', '#d9a12a'), 3);
-    K.P(top, K.G(0, 20, 0, 37, '#fff4b8', '#ffe27a'), 3);
-    K.H(24, 26, 6, 2, .6);
-    // завиток масла сверху
-    K.D(c => { c.moveTo(26, 25); c.bezierCurveTo(26, 18, 40, 16, 40, 23); c.bezierCurveTo(40, 28, 30, 29, 30, 25); c.bezierCurveTo(30, 22, 36, 21, 36, 24); }, null, 0);
-    c.lineWidth = 6; c.strokeStyle = IK; c.stroke(); c.lineWidth = 3.6; c.strokeStyle = '#fff6c8'; c.stroke();
+  '🧈': K => {   // масло: простой брусок
+    K.E(32, 50, 27, 6, 'rgba(90,58,36,.16)', 0, 0);
+    K.P([[6, 30], [32, 41], [32, 52], [6, 41]], K.G(6, 0, 32, 0, '#ffe58a', '#f4c94a'), 3);    // левая грань
+    K.P([[32, 41], [58, 30], [58, 41], [32, 52]], K.G(32, 0, 58, 0, '#ecbc3c', '#d59f28'), 3);  // правая грань
+    K.P([[6, 30], [32, 19], [58, 30], [32, 41]], K.G(0, 19, 0, 41, '#fff6c4', '#ffe58a'), 3);   // верх
+    K.L(12, 31, 30, 23.5, 'rgba(255,255,255,.75)', 2.6);
   },
-  '🫙': K => {   // сметана: глиняная миска с белой «шапкой» и ложкой
+
+  '🫙': K => {   // сметана: глиняная миска, ложка воткнута в сметану
     const c = K.c;
     K.E(32, 56, 26, 5, 'rgba(90,58,36,.16)', 0, 0);
-    // ложка сзади
-    K.LL(40, 30, 54, 4, '#c98a4a', 4);
     const bowl = c => { c.moveTo(6, 32); c.quadraticCurveTo(8, 56, 32, 56); c.quadraticCurveTo(56, 56, 58, 32); c.closePath(); };
     K.D(bowl, K.G(6, 0, 58, 0, '#e8916a', '#a8502e'), 3);
-    K.D(c => { c.moveTo(10, 42); c.quadraticCurveTo(32, 48, 54, 42); }, null, 0); c.lineWidth = 3; c.strokeStyle = '#fff1d8'; c.stroke();   // белая полоска-узор
-    K.E(32, 32, 26, 8, '#8e4426', 0, 3);   // край миски
+    K.D(c => { c.moveTo(10, 42); c.quadraticCurveTo(32, 48, 54, 42); }, null, 0); c.lineWidth = 3; c.strokeStyle = '#fff1d8'; c.stroke();
+    K.E(32, 32, 26, 8, '#8e4426', 0, 3);
     K.D(c => { c.moveTo(9, 32); c.bezierCurveTo(12, 22, 22, 26, 26, 20); c.bezierCurveTo(30, 14, 36, 22, 40, 20); c.bezierCurveTo(46, 18, 52, 26, 55, 32); c.quadraticCurveTo(32, 40, 9, 32); }, K.G(0, 14, 0, 38, '#ffffff', '#f1ebdf'), 2.6);
-    K.D(c => { c.moveTo(24, 24); c.quadraticCurveTo(30, 19, 34, 24); }, null, 0); c.lineWidth = 2; c.strokeStyle = 'rgba(160,140,110,.45)'; c.stroke();
-    K.E(40, 28, 6, 3, '#c98a4a', -.4, 2.4);   // ложка в сметане
-    K.H(18, 28, 5, 2, .8);
+    K.D(c => { c.moveTo(22, 25); c.quadraticCurveTo(28, 20, 32, 25); }, null, 0); c.lineWidth = 2; c.strokeStyle = 'rgba(160,140,110,.45)'; c.stroke();
+    K.LL(41, 25, 54, 3, '#c98a4a', 4);                 // ручка ложки — из сметаны вверх
+    K.D(c => { c.ellipse(41, 26, 5, 2.6, -.5, Math.PI * 1.05, Math.PI * 2.05); }, '#ffffff', 0);   // сметана у ложки
+    K.H(17, 28, 5, 2, .8);
   },
+
   '🥄': K => {   // маслобойка: деревянная кадушка с мутовкой
     const c = K.c;
     K.E(32, 58, 20, 4, 'rgba(90,58,36,.16)', 0, 0);
@@ -3548,16 +3560,8 @@ const ICON_DRAW = {
   '📥': K => { K.R(6, 34, 52, 24, 5, K.G(0, 34, 0, 58, '#e2b679', '#b98a55')); K.R(18, 34, 28, 10, 2, '#8a5a36', 2); K.LL(32, 4, 32, 26, '#3e9b3a', 4); K.P([[22, 20], [42, 20], [32, 32]], '#3e9b3a', 2.5); },
   '📤': K => { K.R(6, 34, 52, 24, 5, K.G(0, 34, 0, 58, '#e2b679', '#b98a55')); K.R(18, 34, 28, 10, 2, '#8a5a36', 2); K.LL(32, 30, 32, 10, '#e0703a', 4); K.P([[22, 14], [42, 14], [32, 2]], '#e0703a', 2.5); },
   '🍪': K => { K.C(32, 34, 26, K.G(0, 8, 0, 60, '#f2c278', '#c88a42')); for (const [x, y, r] of [[22, 24, 4], [38, 20, 3.5], [44, 36, 4], [28, 42, 3.5], [18, 36, 2.6], [36, 50, 3]]) K.E(x, y, r, r * .85, '#6b3e1f', .3, 0); K.H(20, 18, 4, 2, .4); },
-  '🥐': K => {   // круассан: слоистый полумесяц
-    const c = K.c;
-    K.E(32, 53, 26, 5, 'rgba(90,58,36,.16)', 0, 0);
-    const body = c => { c.moveTo(4, 46); c.bezierCurveTo(4, 22, 20, 14, 32, 14); c.bezierCurveTo(44, 14, 60, 22, 60, 46); c.quadraticCurveTo(54, 50, 50, 44); c.bezierCurveTo(46, 32, 40, 30, 32, 30); c.bezierCurveTo(24, 30, 18, 32, 14, 44); c.quadraticCurveTo(10, 50, 4, 46); };
-    K.D(body, K.G(0, 14, 0, 48, '#f8cf7c', '#b8662a'), 0);
-    c.save(); K.D(body, null, 0); c.clip();
-    for (const [x0, x1] of [[13, 19], [22, 25], [32, 32], [42, 39], [51, 45]]) { c.beginPath(); c.moveTo(x0, 6); c.quadraticCurveTo((x0 + x1) / 2 + (x0 < 32 ? -4 : x0 > 32 ? 4 : 0), 26, x1, 48); c.lineWidth = 4.5; c.strokeStyle = 'rgba(120,55,15,.55)'; c.stroke(); c.lineWidth = 1.6; c.strokeStyle = 'rgba(255,230,170,.7)'; c.stroke(); }
-    c.restore(); K.D(body, null, 3);
-    K.H(22, 21, 5, 2.2, .55);
-  },
+  '🥐': K => croissant3(K, { n: 7, oy: 50, R: 22, span: 1.4, tMin: 3.5, tMax: 15, along: .62, flat: .8, pow: .75 }),
+
   '🍦': K => { K.P([[18, 30], [46, 30], [32, 62]], K.G(18, 0, 46, 0, '#f2c278', '#c88a42')); K.L(23, 38, 40, 34, 'rgba(120,60,15,.45)', 1.6); K.L(26, 46, 37, 42, 'rgba(120,60,15,.45)', 1.6);
     K.D(c => { c.moveTo(14, 32); c.bezierCurveTo(8, 14, 24, 4, 32, 6); c.bezierCurveTo(42, 4, 56, 14, 50, 32); c.quadraticCurveTo(46, 38, 42, 32); c.quadraticCurveTo(36, 38, 30, 32); c.quadraticCurveTo(22, 38, 14, 32); }, K.G(0, 6, 0, 36, '#fffaf2', '#f2dcc2'));
     K.C(38, 8, 4.5, '#e0393e', 2.5); K.H(22, 16, 4, 2.5, .6); },
