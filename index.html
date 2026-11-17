@@ -884,7 +884,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.111';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.112';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1894,13 +1894,14 @@ function openDairy() {
   const helper = S.helpers.map((c, i) => c.stations.includes(k) ? i + 1 : 0).filter(Boolean);
   const milk = S.inv.milk || 0, room = prodCap(k) - prodQ(k);
   let h = `<h2>${P.ico} ${P.name}</h2><div class="fpinfo">Ночью выбери, что сварить завтра: каждый тап по рецепту — 1 порция в план, молоко сразу уходит со склада. Днём ${K > 1 ? 'два котла варят' : 'котёл варит'} по плану. Нажми на котёл или на «−», чтобы убрать порцию, — молоко вернётся. Готовое лежит здесь, пока его не заберут (ты или помощник).</div>
-    <div class="oven dh${hot ? ' hot' : ''}"><div class="ov-row"${K < 2 ? ' style="grid-template-columns:1fr"' : ''}>`;
+    <div class="oven dh${hot ? ' hot' : ''}"><div class="ov-row">`;
   for (let i = 0; i < K; i++) {
     const o = st.kt[i];
     h += o ? `<button class="ov-cell" onclick="unKettle(${i})"><div class="ov-mouth"><span class="ov-item">${GOODS[o.r].e}</span><span class="ov-fire">${hot ? '🔥' : ''}</span><i class="ov-x">✕</i></div>
         <div class="ov-bar"><i id="dkBar${i}" style="width:${Math.min(100, 100 * o.t / DAIRY[o.r].time)}%"></i></div><small id="dkT${i}">ещё ${fmtSec(kLeft(o))}</small></button>`
       : `<div class="ov-cell"><div class="ov-mouth"></div><div class="ov-bar"></div><small>свободен</small></div>`;
   }
+  if (K < 2) h += `<div class="ov-cell" style="opacity:.6"><div class="ov-mouth" style="background:#4d6677"><span style="font-size:22px">🔒</span></div><div class="ov-bar"></div><small>Молочный дом</small></div>`;   // второй котёл — после перестройки
   const pl = Object.entries(st.plan).filter(([, n]) => n);
   h += `</div><div class="dh-plan">${pl.length ? `Дальше по плану: ${pl.map(([g, n]) => `<b>${n}</b> ${GOODS[g].e}`).join(' · ')}` : 'План пуст'}<small>${prodQ(k)} из ${prodCap(k)}</small></div></div>`;
   const outs = Object.entries(st.out).filter(([, n]) => n);
