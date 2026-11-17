@@ -899,7 +899,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.120';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.121';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -5696,25 +5696,27 @@ function drawWeather(t) {
       const y = ((wxR(i, 1) * H + s * vy) % (H + 20 * k)) - 10 * k, x = (wxR(i, 2) * W + Math.sin(s * .9 + i) * 14 * k + W) % W;
       ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
     }
-  } else if (w === 'wind') {   // время от времени по экрану проплывает волнистая полоска и тает
-    ctx.lineCap = 'round';
-    for (let j = 0; j < 3; j++) {
-      const P = 3.6, ph = s / P + j / 3, cyc = Math.floor(ph), f = ph - cyc;   // f: 0→1 жизнь полоски
-      const id = cyc * 3 + j + 1; if (wxR(id, 7) < .2) continue;                                 // иногда пропуск — ветер порывами
-      const y0 = (.12 + wxR(id, 9) * .7) * H, len = (110 + wxR(id, 3) * 90) * k, x0 = W * (f * 1.3 - .25) - len - wxR(id, 2) * 60 * k;   // слева направо
-      ctx.globalAlpha = Math.sin(Math.PI * f) * .75;
-      ctx.beginPath();
-      for (let q = 0; q <= 24; q++) { const u = q / 24, x = x0 + u * len, y = y0 + Math.sin(u * Math.PI * 2 + s * 3 + j) * 5 * k; q ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
-      ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 3.2 * k; ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-    const LEAF = { spring: ['#d9f08a', '#a6d85a'], summer: ['#cfe86a', '#9fd14a'], autumn: ['#f6b23a', '#e0662a'], winter: null }[season().id];   // светлее травы, чтобы было видно
-    if (LEAF) for (let i = 0; i < 9; i++) {   // листья летят по ветру, кувыркаясь
-      const P = 5 + wxR(i, 11) * 3, ph = s / P + wxR(i, 12), cyc = Math.floor(ph), f = ph - cyc, id = cyc * 9 + i;
-      const x = -20 * k + f * (W + 40 * k), y = (.1 + wxR(id, 13) * .8) * H + Math.sin(f * 9 + i) * 18 * k + f * 40 * k;
-      ctx.save(); ctx.translate(x, y); ctx.rotate(s * (2 + wxR(i, 14) * 3) + i); ctx.scale(1, .55 + .45 * Math.sin(s * 5 + i));
-      ctx.beginPath(); ctx.moveTo(-7 * k, 0); ctx.quadraticCurveTo(0, -5.5 * k, 7 * k, 0); ctx.quadraticCurveTo(0, 5.5 * k, -7 * k, 0);
-      ctx.fillStyle = LEAF[i % 2]; ctx.fill(); ctx.strokeStyle = 'rgba(60,40,20,.75)'; ctx.lineWidth = 1.2 * k; ctx.stroke(); ctx.beginPath(); ctx.moveTo(-6 * k, 0); ctx.lineTo(6 * k, 0); ctx.lineWidth = .8 * k; ctx.stroke(); ctx.restore();
+  } else if (w === 'wind') {   // редкие порывы: раз в ~17 с на 3 с проплывают 1–2 извивающиеся полоски и пара листьев, потом тихо
+    const G = 17, gi = Math.floor(s / G), u = (s - gi * G) / 3;
+    if (u < 1) {
+      const fade = Math.sin(Math.PI * u), n = wxR(gi, 21) < .5 ? 1 : 2;
+      ctx.lineCap = 'round';
+      for (let j = 0; j < n; j++) {
+        const y0 = (.15 + wxR(gi, 22 + j) * .65) * H, len = (130 + wxR(gi, 24 + j) * 70) * k, x0 = -len + u * (W + len) * 1.1 + j * 40 * k;
+        ctx.globalAlpha = fade * .7; ctx.beginPath();
+        for (let q = 0; q <= 24; q++) { const v = q / 24; ctx[q ? 'lineTo' : 'moveTo'](x0 + v * len, y0 + Math.sin(v * Math.PI * 2 + s * 5 + j) * 5 * k); }   // волна бежит — полоска извивается
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 3 * k; ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      const LEAF = { spring: ['#d9f08a', '#a6d85a'], summer: ['#cfe86a', '#9fd14a'], autumn: ['#f6b23a', '#e0662a'], winter: null }[season().id];   // светлее травы, чтобы было видно
+      if (LEAF) for (let i = 0; i < 3; i++) {   // пара листьев летит вместе с порывом
+        const x = -20 * k + (u * 1.15 - i * .08) * (W + 40 * k), y = (.2 + wxR(gi, 30 + i) * .6) * H + Math.sin(u * 6 + i) * 14 * k + u * 30 * k;
+        ctx.globalAlpha = Math.min(1, fade * 1.5);
+        ctx.save(); ctx.translate(x, y); ctx.rotate(u * 8 + i); ctx.scale(1, .55 + .45 * Math.sin(u * 12 + i));
+        ctx.beginPath(); ctx.moveTo(-7 * k, 0); ctx.quadraticCurveTo(0, -5.5 * k, 7 * k, 0); ctx.quadraticCurveTo(0, 5.5 * k, -7 * k, 0);
+        ctx.fillStyle = LEAF[i % 2]; ctx.fill(); ctx.strokeStyle = 'rgba(60,40,20,.75)'; ctx.lineWidth = 1.2 * k; ctx.stroke(); ctx.beginPath(); ctx.moveTo(-6 * k, 0); ctx.lineTo(6 * k, 0); ctx.lineWidth = .8 * k; ctx.stroke(); ctx.restore();
+      }
+      ctx.globalAlpha = 1;
     }
   } else if (w === 'heat') {
     const g = ctx.createRadialGradient(W * .85, -H * .1, 0, W * .85, -H * .1, Math.max(W, H));
