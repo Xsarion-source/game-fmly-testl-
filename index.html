@@ -884,7 +884,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.108';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.109';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3414,27 +3414,27 @@ const ICON_DRAW = {
     K.P([[6, 34], [58, 30], [58, 50], [6, 54]], K.G(0, 30, 0, 54, '#ffd24a', '#e6a822'));
     for (const [x, y, r] of [[16, 44, 3.5], [30, 40, 4.5], [46, 44, 3], [38, 49, 2.2], [24, 49, 2]]) K.E(x, y, r * 1.1, r, '#c98a12', 0, 0);
     K.E(36, 24, 3, 1.6, '#e6b030', 0, 0); K.H(20, 30, 6, 1.5, .5); },
-  '🧈': K => {   // масло: простой брусок
-    K.E(32, 50, 27, 6, 'rgba(90,58,36,.16)', 0, 0);
-    K.P([[6, 30], [32, 41], [32, 52], [6, 41]], K.G(6, 0, 32, 0, '#ffe58a', '#f4c94a'), 3);    // левая грань
-    K.P([[32, 41], [58, 30], [58, 41], [32, 52]], K.G(32, 0, 58, 0, '#ecbc3c', '#d59f28'), 3);  // правая грань
-    K.P([[6, 30], [32, 19], [58, 30], [32, 41]], K.G(0, 19, 0, 41, '#fff6c4', '#ffe58a'), 3);   // верх
-    K.L(12, 31, 30, 23.5, 'rgba(255,255,255,.75)', 2.6);
+  '🧈': K => {   // масло: прямоугольный брусок
+  K.E(32, 50, 28, 6, 'rgba(90,58,36,.16)', 0, 0);
+  const A = [4, 30], B = [20, 22], C = [60, 34], D = [44, 42], h = 11;
+  K.P([A, D, [D[0], D[1] + h], [A[0], A[1] + h]], K.G(4, 0, 44, 0, '#ffe58a', '#f4c94a'), 3);
+  K.P([D, C, [C[0], C[1] + h], [D[0], D[1] + h]], K.G(44, 0, 60, 0, '#ecbc3c', '#d59f28'), 3);
+  K.P([A, B, C, D], K.G(0, 22, 0, 42, '#fff6c4', '#ffe58a'), 3);
   },
 
-  '🫙': K => {   // сметана: глиняная миска, ложка воткнута в сметану
-    const c = K.c;
-    K.E(32, 56, 26, 5, 'rgba(90,58,36,.16)', 0, 0);
-    const bowl = c => { c.moveTo(6, 32); c.quadraticCurveTo(8, 56, 32, 56); c.quadraticCurveTo(56, 56, 58, 32); c.closePath(); };
-    K.D(bowl, K.G(6, 0, 58, 0, '#e8916a', '#a8502e'), 3);
-    K.D(c => { c.moveTo(10, 42); c.quadraticCurveTo(32, 48, 54, 42); }, null, 0); c.lineWidth = 3; c.strokeStyle = '#fff1d8'; c.stroke();
-    K.E(32, 32, 26, 8, '#8e4426', 0, 3);
-    K.D(c => { c.moveTo(9, 32); c.bezierCurveTo(12, 22, 22, 26, 26, 20); c.bezierCurveTo(30, 14, 36, 22, 40, 20); c.bezierCurveTo(46, 18, 52, 26, 55, 32); c.quadraticCurveTo(32, 40, 9, 32); }, K.G(0, 14, 0, 38, '#ffffff', '#f1ebdf'), 2.6);
-    K.D(c => { c.moveTo(22, 25); c.quadraticCurveTo(28, 20, 32, 25); }, null, 0); c.lineWidth = 2; c.strokeStyle = 'rgba(160,140,110,.45)'; c.stroke();
-    K.LL(41, 25, 54, 3, '#c98a4a', 4);                 // ручка ложки — из сметаны вверх
-    K.D(c => { c.ellipse(41, 26, 5, 2.6, -.5, Math.PI * 1.05, Math.PI * 2.05); }, '#ffffff', 0);   // сметана у ложки
-    K.H(17, 28, 5, 2, .8);
+
+  '🫙': K => {   // сметана: светлая миска с синей каёмкой, ложка в сметане
+  const c = K.c;
+  K.E(32, 56, 26, 5, 'rgba(90,58,36,.16)', 0, 0);
+  const bowl = c => { c.moveTo(6, 32); c.quadraticCurveTo(8, 56, 32, 56); c.quadraticCurveTo(56, 56, 58, 32); c.closePath(); };
+  K.D(bowl, K.G(6, 0, 58, 0, '#ffffff', '#d9e2ea'), 3);
+  K.D(c => { c.moveTo(9, 40); c.quadraticCurveTo(32, 47, 55, 40); }, null, 0); c.lineWidth = 3.5; c.strokeStyle = '#5a8fd6'; c.stroke();
+  K.E(32, 32, 26, 8, '#e6edf3', 0, 3);
+  K.D(c => { c.moveTo(9, 32); c.bezierCurveTo(12, 22, 22, 26, 26, 20); c.bezierCurveTo(30, 14, 36, 22, 40, 20); c.bezierCurveTo(46, 18, 52, 26, 55, 32); c.quadraticCurveTo(32, 40, 9, 32); }, K.G(0, 14, 0, 38, '#ffffff', '#f3eee4'), 2.6);
+  K.D(c => { c.moveTo(22, 25); c.quadraticCurveTo(28, 20, 32, 25); }, null, 0); c.lineWidth = 2; c.strokeStyle = 'rgba(160,140,110,.45)'; c.stroke();
+  K.LL(41, 25, 54, 3, '#c98a4a', 4);
   },
+
 
   '🥄': K => {   // маслобойка: деревянная кадушка с мутовкой
     const c = K.c;
@@ -3560,7 +3560,7 @@ const ICON_DRAW = {
   '📥': K => { K.R(6, 34, 52, 24, 5, K.G(0, 34, 0, 58, '#e2b679', '#b98a55')); K.R(18, 34, 28, 10, 2, '#8a5a36', 2); K.LL(32, 4, 32, 26, '#3e9b3a', 4); K.P([[22, 20], [42, 20], [32, 32]], '#3e9b3a', 2.5); },
   '📤': K => { K.R(6, 34, 52, 24, 5, K.G(0, 34, 0, 58, '#e2b679', '#b98a55')); K.R(18, 34, 28, 10, 2, '#8a5a36', 2); K.LL(32, 30, 32, 10, '#e0703a', 4); K.P([[22, 14], [42, 14], [32, 2]], '#e0703a', 2.5); },
   '🍪': K => { K.C(32, 34, 26, K.G(0, 8, 0, 60, '#f2c278', '#c88a42')); for (const [x, y, r] of [[22, 24, 4], [38, 20, 3.5], [44, 36, 4], [28, 42, 3.5], [18, 36, 2.6], [36, 50, 3]]) K.E(x, y, r, r * .85, '#6b3e1f', .3, 0); K.H(20, 18, 4, 2, .4); },
-  '🥐': K => croissant3(K, { n: 7, oy: 50, R: 22, span: 1.4, tMin: 3.5, tMax: 15, along: .62, flat: .8, pow: .75 }),
+  '🥐': K => croissant3(K, { n: 7, oy: 52, R: 24, span: 1.3, tMin: 4, tMax: 11.5, along: .72, flat: .75, pow: .8 }),
 
   '🍦': K => { K.P([[18, 30], [46, 30], [32, 62]], K.G(18, 0, 46, 0, '#f2c278', '#c88a42')); K.L(23, 38, 40, 34, 'rgba(120,60,15,.45)', 1.6); K.L(26, 46, 37, 42, 'rgba(120,60,15,.45)', 1.6);
     K.D(c => { c.moveTo(14, 32); c.bezierCurveTo(8, 14, 24, 4, 32, 6); c.bezierCurveTo(42, 4, 56, 14, 50, 32); c.quadraticCurveTo(46, 38, 42, 32); c.quadraticCurveTo(36, 38, 30, 32); c.quadraticCurveTo(22, 38, 14, 32); }, K.G(0, 6, 0, 36, '#fffaf2', '#f2dcc2'));
