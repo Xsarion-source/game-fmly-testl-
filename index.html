@@ -494,7 +494,7 @@ const liftG = (g, x, y, z) => lift(x + LAYOUT[g][0], y + LAYOUT[g][1], z);
 const PROD = {
   mill:  { name: 'Мельница',  ico: '🌬️', in: 'wheat', n: 3, out: 'flour',  time: 7.5, cap: 25, spot: at('mill', 18, 7) },
   dairy: { get name() { return S.up.dhouse ? 'Молочный дом' : 'Сыроварня'; }, get ico() { return S.up.dhouse ? '🧈' : '🧀'; }, multi: true,   // несколько рецептов — см. DAIRY
-           in: 'milk',  n: 2, out: 'cheese', time: 18, cap: 20, spot: at('dairy', 19, 9) },   // у двери сбоку — клетку видно, крыша её не закрывает
+           in: 'milk',  n: 2, out: 'cheese', time: 18, cap: 20, get spot() { return dhBig ? at('dairy', 20, 9) : at('dairy', 19, 9); } },   // у двери сбоку; Молочный дом 3×3 — клеткой правее
 };
 // Молочный дом: котлы варят по плану — сыр сразу, сметана и масло после перестройки (S.up.dhouse)
 const DAIRY = { cheese: { n: 2, time: 18 }, sour: { n: 2, time: 8 }, butter: { n: 3, time: 24 } };
@@ -734,8 +734,11 @@ BENCHES.forEach((b, i) => decor.push({ kind: 'bench', i, x: b.x, y: b.y, z: b.x 
 // Лес справа (x 17–21). Два участка можно вырубить и построить на них мельницу и сыроварню
 const shiftR = (g, r) => { const [dx, dy] = LAYOUT[g]; return { ...r, x0: r.x0 + dx, x1: r.x1 + dx, y0: r.y0 + dy, y1: r.y1 + dy }; };
 const LOTS = [shiftR('mill', { x0: 17, y0: 4, x1: 19, y1: 6, b: 'mill' }), shiftR('dairy', { x0: 17, y0: 8, x1: 19, y1: 10, b: 'dairy' })];
-const FOOT = { mill: shiftR('mill', { x0: 17, y0: 4, x1: 19, y1: 6 }), dairy: shiftR('dairy', { x0: 17, y0: 8, x1: 18, y1: 9 }) };   // место под здание
+var dhBig = false;   // Молочный дом занимает весь участок 3×3 (выставляет applyLots)
+const FOOT = { mill: shiftR('mill', { x0: 17, y0: 4, x1: 19, y1: 6 }), get dairy() { return shiftR('dairy', dhBig ? { x0: 17, y0: 8, x1: 19, y1: 10 } : { x0: 17, y0: 8, x1: 18, y1: 9 }); } };   // место под здание
 const lotAt = (x, y) => LOTS.findIndex(L => x >= L.x0 && x <= L.x1 && y >= L.y0 && y <= L.y1);
+const lotCleared = lot => lot === 2 ? S.up.dhouse > 0 : (S.up.clear || 0) > lot;   // участок 2 — ряд леса перед Молочным домом
+const clearKey = () => (S.up.clear || 0) + (S.up.dhouse ? 10 : 0);
 const prodAt = (x, y) => Object.keys(FOOT).find(k => x >= FOOT[k].x0 && x <= FOOT[k].x1 && y >= FOOT[k].y0 && y <= FOOT[k].y1) || null;
 deco('mail', { kind: 'mailbox', z: 4 + 5 + 1 }); blocked[MAIL.y][MAIL.x] = true;
 const TROPHY = at('pond', 14, 12);   // доска почёта с кубками — у дороги, между прудом и рекламным щитом
@@ -762,12 +765,15 @@ for (const [x, y] of treeSpots) {
   decor.push({ kind: 'tree', x, y, s: 0.85 + rnd() * 0.35, z: x + y + 1, lot: lot >= 0 ? lot : null });
   blocked[y][x] = true;
 }
+for (const d of decor) if (d.kind === 'tree' && d.lot == null) { const a = at('dairy', 16, 12); if (((d.y === a.y || d.y === a.y + 1) && d.x >= a.x && d.x <= a.x + 5) || (d.x === a.x + 5 && d.y >= a.y - 5 && d.y < a.y)) d.lot = 2; }   // два ряда леса перед Молочным домом и ряд перед его дверью
 // лес сразу за правым краем фермы — среди построек, чтобы правильно перекрываться с лесом внутри
 const edgeTree = (x, y) => x >= W && x < W + 4 && y >= -1 && y < ROAD;
 { const hs = (x, y) => { const v = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return v - Math.floor(v); };   // как hash() ниже
   for (let x = W; x < W + 4; x++) for (let y = -1; y < ROAD; y++) if (hs(x, y) > (x > W + 1 ? 0.25 : 0.5)) decor.push({ kind: 'tree', x, y, s: 0.8 + hs(y, x) * 0.45, z: x + y + 1, lot: null }); }
 // вырубленные участки проходимы, кроме места под построенным зданием
 function applyLots() {
+  dhBig = S.up.dhouse > 0;
+  const dd = decor.find(d => d.kind === 'dairy'); if (dd) dd.z = (dhBig ? 17 + 3 + 8 + 3 - 1.01 : 17 + 2 + 8 + 2 - 1.01) + LAYOUT.dairy[0] + LAYOUT.dairy[1];
   LOTS.forEach((L, k) => {
     for (let y = L.y0; y <= L.y1; y++) for (let x = L.x0; x <= L.x1; x++) {
       const b = prodAt(x, y);
@@ -884,7 +890,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.114';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.115';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3092,7 +3098,7 @@ function onTap(sx, sy) {
   if (cows() && hit('barn', 14, 1, 16, 3, 58)) { S.night ? openUpPlace('barn') : tapBarn(); return; }
   if (S.up.ads && hit('ads', 12, 10, 13.1, 11, S.up.ads >= 3 ? 64 : 40)) { S.night ? openUpgrade('ads') : toast(`📣 Реклама ур. ${S.up.ads} — приводит покупателей. Улучшить можно ночью`); return; }   // щит — по всей картинке
   if (hit('pond', 14, 12, 16, 13, 62)) { fairLockedToast() || openTrophies(); return; }   // доска почёта — по всей картинке
-  if (S.up.dairy && hit('dairy', 17, 8, 18, 9, 60)) { openProd('dairy'); return; }   // по картинке здания, вместе с крышей
+  if (S.up.dairy && hit('dairy', 17, 8, dhBig ? 19 : 18, dhBig ? 10 : 9, dhBig ? 70 : 60)) { openProd('dairy'); return; }   // по картинке здания, вместе с крышей
   if (S.up.mill && hit('mill', 17, 4, 19, 6, 150)) { openProd('mill'); return; }
   const fx = (wx / (TW / 2) + wy / (TH / 2)) / 2, fy = (wy / (TH / 2) - wx / (TW / 2)) / 2;
   const tx = Math.floor(fx), ty = Math.floor(fy);
@@ -3735,8 +3741,8 @@ function outTreeAt(x, y) {
 // Деревья фермы и леса считаются вместе: иначе незапечённое дерево фермы рисуется поверх стоящего перед ним дерева леса
 function bakeTreeSet() {
   const trees = new Map();
-  bakedFor = S.up.clear || 0;   // нерасчищенный участок — обычный лес; расчистили — пересчитываем
-  for (const d of decor) if (d.kind === 'tree') trees.set(d.x + ',' + d.y, { d, lot: d.lot != null && bakedFor > d.lot });
+  bakedFor = clearKey();   // нерасчищенный участок — обычный лес; расчистили — пересчитываем
+  for (const d of decor) if (d.kind === 'tree') trees.set(d.x + ',' + d.y, { d, lot: d.lot != null && lotCleared(d.lot) });
   for (let y = -14; y < ROAD; y++) for (let x = -14; x < W + 16; x++) { const k = x + ',' + y, sz = outTreeAt(x, y); if (sz && !trees.has(k)) trees.set(k, { x, y, s: sz }); }
   const ok = new Set([...trees.keys()].filter(k => !trees.get(k).lot));
   for (let changed = true; changed;) {
@@ -3778,7 +3784,7 @@ function drawBackdrop(now) {
     const main = ctx; ctx = bg.cv.getContext('2d');
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = look().bg; ctx.fillRect(0, 0, w, h);
     ctx.setTransform(k, 0, 0, k, -bg.ox, -bg.oy);
-    try { drawOutside(R); drawGround(0); drawPaths(); drawPicnic(); if (bakedFor !== (S.up.clear || 0)) bakedTrees = null; bakedTrees ??= bakeTreeSet(); drawOutsideTrees(true); } finally { ctx = main; }
+    try { drawOutside(R); drawGround(0); drawPaths(); drawPicnic(); if (bakedFor !== clearKey()) bakedTrees = null; bakedTrees ??= bakeTreeSet(); drawOutsideTrees(true); } finally { ctx = main; }
   }
   const T = camT();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -3900,7 +3906,7 @@ function draw(t) {
 
   const list = [];
   // вырубленный лес — чистая трава, без пеньков
-  const DRAW = { tree: d => (d.lot == null || S.up.clear <= d.lot) && drawTree(d), mill: drawMill, dairy: drawDairy, house: drawHouse, bakery: drawBakery, mailbox: drawMailbox, trophies: drawTrophies, flowers: drawFlowers, doghouse: drawDoghouse, well: drawWell, swing: drawSwing, stall: drawStall, season: drawSeasonStand, coop: drawCoop, barn: drawBarn, trough: drawTrough, fence: drawFence, billboard: drawBillboard, sack: drawSack, bench: drawBench, glass: drawGlass, ghroof: drawGhRoof };
+  const DRAW = { tree: d => (d.lot == null || !lotCleared(d.lot)) && drawTree(d), mill: drawMill, dairy: drawDairy, house: drawHouse, bakery: drawBakery, mailbox: drawMailbox, trophies: drawTrophies, flowers: drawFlowers, doghouse: drawDoghouse, well: drawWell, swing: drawSwing, stall: drawStall, season: drawSeasonStand, coop: drawCoop, barn: drawBarn, trough: drawTrough, fence: drawFence, billboard: drawBillboard, sack: drawSack, bench: drawBench, glass: drawGlass, ghroof: drawGhRoof };
   const settled = zoomSettled(t);
   for (const d of decor) {   // постройка рисуется в своих координатах, сдвинутая на смещение группы (LAYOUT)
     if (settled && bakedTrees && bakedTrees.has(d)) continue;   // уже в картинке фона
@@ -4520,24 +4526,41 @@ function churn(x, y, s = 1) {
 // Сыроварня; после перестройки в Молочный дом (S.up.dhouse) — белые стены, голубые крыша и дверь, бидоны и маслобойка
 function drawDairy(d, t) {
   if (!S.up.dairy) return;
-  const MD = S.up.dhouse > 0;
+  if (S.up.dhouse) { drawDairyHouse(t); return; }
   const x0 = 17.1, y0 = 8.1, w = 1.8, h = 28, rz = 46, X = x0 + w, Y = y0 + w, mid = y0 + w / 2;
   softShadow(x0, y0, X, Y, .28);
-  const wl = MD ? ['#ffffff', '#e9e5db'] : ['#fde49a', '#e5bf5c'], wr = MD ? ['#eeeae0', '#cfc9bd'] : ['#ecc96e', '#c99f40'];
-  gface(fY(x0, X, Y, 0, h), wl[0], wl[1]); gface(fX(X, y0, Y, 0, h), wr[0], wr[1]);
-  gface([lift(X, y0, h), lift(X, Y, h), lift(X, mid, rz)], wr[0], wr[1], INK, 1.4);   // фронтон
-  for (const [x, y] of [[x0, Y], [X, Y], [X, y0]]) { vline(x, y, 0, h, INK, 4); vline(x, y, 0, h, MD ? '#7fa7c8' : '#b07a46', 2.4); }   // углы
+  gface(fY(x0, X, Y, 0, h), '#fde49a', '#e5bf5c'); gface(fX(X, y0, Y, 0, h), '#ecc96e', '#c99f40');
+  gface([lift(X, y0, h), lift(X, Y, h), lift(X, mid, rz)], '#ecc96e', '#ddb655', INK, 1.4);   // фронтон
+  for (const [x, y] of [[x0, Y], [X, Y], [X, y0]]) { vline(x, y, 0, h, INK, 4); vline(x, y, 0, h, '#b07a46', 2.4); }   // деревянные углы
   gface(fY(x0, X, Y, 0, 4), '#a29b8f', '#7d766b', INK, 1); gface(fX(X, y0, Y, 0, 4), '#8d867a', '#6a645a', INK, 1);
-  gface(fX(X, 8.6, 9.2, 0, 19), MD ? '#7fb0e0' : '#b07a46', MD ? '#4f7fb8' : '#7e5230', '#5b3a22', 2.2);   // дверь к тропинке
+  gface(fX(X, 8.6, 9.2, 0, 19), '#b07a46', '#7e5230', '#5b3a22', 2.2);   // дверь к тропинке
   const dk = lift(X, 9.1, 9); circle(dk.x, dk.y, 1.5, '#ffd54a');
   toonWin('y', Y, 17.4, 18.1, 10, 20, true);
-  if (MD) gableRoofX(x0, y0, X, Y, h, rz, .12, '#7fb0e0', '#4f7fb8', 5); else gableRoofX(x0, y0, X, Y, h, rz, .12, '#d0825a', '#a85c3a', 5);
+  gableRoofX(x0, y0, X, Y, h, rz, .12, '#d0825a', '#a85c3a', 5);
   toonBox(17.5, mid - .15, .28, .28, 10, ['#c46a4a', '#9c4a32'], ['#a8573c', '#843d28'], null, rz - 4, 1.2);   // труба на коньке
   toonBox(17.47, mid - .18, .34, .34, 2.5, ['#7a7068', '#5e554e'], ['#6a615a', '#4f4741'], ['#9a918a', '#857c75'], rz + 6, 1);
   const sg = lift(X, 9.65, 27);   // круглая вывеска
-  circle(sg.x + 2, sg.y, 8.5, INK); circle(sg.x + 2, sg.y, 7.3, MD ? '#e8f2fb' : '#fff3d0'); emoji(MD ? '🧈' : '🧀', sg.x + 2, sg.y, 10);
-  if (MD) { milkCan(19.08, 7.72, .95); milkCan(19.26, 7.97, .85); churn(17.0, 10.15); }   // бидоны у двери, маслобойка под окном
+  circle(sg.x + 2, sg.y, 8.5, INK); circle(sg.x + 2, sg.y, 7.3, '#fff3d0'); emoji('🧀', sg.x + 2, sg.y, 10);
   if (prodQ('dairy') && S.started && !S.night) anim(() => smoke(lift(17.64, mid, rz + 10), t, .8));
+}
+// Молочный дом 3×3: белые стены, голубые крыша и двери, два окна, бидоны и маслобойка
+function drawDairyHouse(t) {
+  const x0 = 17.1, y0 = 8.1, X = 19.9, Y = 10.9, h = 34, rz = 58, mid = (y0 + Y) / 2;
+  softShadow(x0, y0, X, Y, .28);
+  gface(fY(x0, X, Y, 0, h), '#ffffff', '#e9e5db'); gface(fX(X, y0, Y, 0, h), '#eeeae0', '#cfc9bd');
+  gface([lift(X, y0, h), lift(X, Y, h), lift(X, mid, rz)], '#eeeae0', '#cfc9bd', INK, 1.4);   // фронтон
+  for (const [x, y] of [[x0, Y], [X, Y], [X, y0]]) { vline(x, y, 0, h, INK, 4.4); vline(x, y, 0, h, '#7fa7c8', 2.8); }   // голубые углы
+  gface(fY(x0, X, Y, 0, 5), '#a29b8f', '#7d766b', INK, 1); gface(fX(X, y0, Y, 0, 5), '#8d867a', '#6a645a', INK, 1);
+  gface(fX(X, 9.7, 10.45, 0, 23), '#7fb0e0', '#4f7fb8', '#5b3a22', 2.4);   // дверь к тропинке
+  const dk = lift(X, 10.33, 11); circle(dk.x, dk.y, 1.7, '#ffd54a');
+  toonWin('x', X, 8.65, 9.25, 12, 24, false);                                // окошко рядом с дверью
+  toonWin('y', Y, 17.55, 18.25, 12, 24, true); toonWin('y', Y, 18.85, 19.55, 12, 24, true);   // два окна с фасада
+  gableRoofX(x0, y0, X, Y, h, rz, .14, '#7fb0e0', '#4f7fb8', 6, 7, true);
+  toonBox(17.7, mid - .17, .34, .34, 12, ['#c46a4a', '#9c4a32'], ['#a8573c', '#843d28'], null, rz - 5, 1.2);   // труба на коньке
+  toonBox(17.67, mid - .2, .4, .4, 3, ['#7a7068', '#5e554e'], ['#6a615a', '#4f4741'], ['#9a918a', '#857c75'], rz + 7, 1);
+  milkCan(20.12, 8.2, 1); milkCan(20.3, 8.48, .9);   // бидоны у торца
+  churn(17.25, 11.2, 1.1);                          // маслобойка у угла
+  if (prodQ('dairy') && S.started && !S.night) anim(() => smoke(lift(17.87, mid, rz + 12), t, .9));
 }
 // Теплица: стеклянные стенки (задние — до грядок, передние — после) и прозрачная двускатная крыша
 function glassPane(pts, back) {   // стекло: лёгкий голубой отлив и косые блики
@@ -4581,7 +4604,7 @@ function drawProdBubbles() {
     let text = null, ok = false;
     if (prodOut(k)) { text = `${prodOutE(k)}${prodOut(k)}`; ok = true; }
     else if (!prodQ(k) && !S.night) text = `${GOODS[P.in].e}?`;
-    if (text) drawBubbleAt(k === 'mill' ? liftG('mill', 18.5, 5.5, 200) : liftG('dairy', 18, 9, 66), text, ok);
+    if (text) drawBubbleAt(k === 'mill' ? liftG('mill', 18.5, 5.5, 200) : dhBig ? liftG('dairy', 18.5, 9.5, 80) : liftG('dairy', 18, 9, 66), text, ok);
   }
 }
 
@@ -5026,13 +5049,14 @@ function drawSwing(d, t) {   // уют 4: качели у лавки
 
 const LIGHT_COLORS = ['#ffd84d', '#ff6b6b', '#6bd3ff', '#9cff6b'];
 // двускатная крыша с коньком вдоль x: задний скат, передний скат с черепицей, торец карниза
-function gableRoofX(x0, y0, X, Y, h, rz, o, light, dark, rows = 4) {
+function gableRoofX(x0, y0, X, Y, h, rz, o, light, dark, rows = 4, th = 4, backEdge = false) {   // th — толщина кровли; backEdge — толщина и у дальнего ската
   const mid = (y0 + Y) / 2;
   const back = [lift(x0 - o, y0 - o, h), lift(X + o, y0 - o, h), lift(X + o, mid, rz), lift(x0 - o, mid, rz)];
   const front = [lift(x0 - o, mid, rz), lift(X + o, mid, rz), lift(X + o, Y + o, h), lift(x0 - o, Y + o, h)];
   gface(back, darken(dark, .9), darken(dark, .75), INK, 1.4);
-  gface([lift(X + o, mid, rz), lift(X + o, Y + o, h), lift(X + o, Y + o, h - 4), lift(X + o, mid, rz - 4)], darken(dark, .7), darken(dark, .6), INK, 1.2);   // торец ската
-  gface([front[3], front[2], { x: front[2].x, y: front[2].y + 4 }, { x: front[3].x, y: front[3].y + 4 }], darken(dark, .75), darken(dark, .6), INK, 1.2);   // карниз
+  if (backEdge) gface([lift(X + o, y0 - o, h), lift(X + o, mid, rz), lift(X + o, mid, rz - th), lift(X + o, y0 - o, h - th)], darken(dark, .62), darken(dark, .52), INK, 1.2);   // торец дальнего ската
+  gface([lift(X + o, mid, rz), lift(X + o, Y + o, h), lift(X + o, Y + o, h - th), lift(X + o, mid, rz - th)], darken(dark, .7), darken(dark, .6), INK, 1.2);   // торец ската
+  gface([front[3], front[2], { x: front[2].x, y: front[2].y + th }, { x: front[3].x, y: front[3].y + th }], darken(dark, .75), darken(dark, .6), INK, 1.2);   // карниз
   gface(front, light, dark, INK, 1.5);
   for (let k = 1; k < rows; k++) { const f = k / rows, a = mix(front[0], front[3], f), b = mix(front[1], front[2], f);
     seg(a, b, 'rgba(70,25,15,.35)', 1.3); seg({ x: a.x, y: a.y + 1.5 }, { x: b.x, y: b.y + 1.5 }, 'rgba(255,220,200,.2)', 1); }
@@ -5580,7 +5604,7 @@ function drawLighting() {
     if (hens()) glows.push([liftG('coop', 6.4, 9, 17), 45]);
     if (cows()) glows.push([liftG('barn', 16, 2, 40), 50]);
     if (S.up.mill) glows.push([liftG('mill', 18.5, 6.9, 40), 70]);
-    if (S.up.dairy) glows.push([liftG('dairy', 18.5, 10, 26), 50]);
+    if (S.up.dairy) glows.push([dhBig ? liftG('dairy', 19, 11, 30) : liftG('dairy', 18.5, 10, 26), 50]);
     if (S.up.ads) glows.push([liftG('ads', 12.55, 10.5, S.up.ads >= 3 ? 42 : 24), S.up.ads >= 5 ? 85 : S.up.ads >= 3 ? 65 : 42, .6]);   // подсветка щита
     if (S.up.greenhouse) glows.push([liftG('gh', 14.5, 9, 30), 60]);
     if (S.up.house >= 2) glows.push([liftG('home', 4, 2.4, 60), 55], [liftG('home', 2.5, 4, 60), 55]);
