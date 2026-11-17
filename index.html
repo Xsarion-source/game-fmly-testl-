@@ -884,7 +884,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.106';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.107';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -2008,12 +2008,11 @@ const bakeNeed = r => Object.entries(BAKE[r].in).map(([g, n]) => `${n} ${GOODS[g
 // очередь — штуки, которые ждут; отделение берёт из неё одинаковые штуки, сколько влезет на противень
 function fillOven(q = S.bake.q, ov = S.bake.ov) {
   for (let i = 0; i < OVENS; i++) {
-    const o = ov[i];
-    if (o && o.t > 0) continue;   // уже печётся — не докладываем
+    const o = ov[i];   // есть место на противне — докладываем такую же выпечку, даже если уже печётся: будет готова вместе со всеми
     const r = o ? o.r : q[0]; if (!r) continue;
     let n = o ? o.n : 0;
     for (let j = 0; j < q.length && n < trayN();) if (q[j] === r) { q.splice(j, 1); n++; } else j++;
-    if (n) ov[i] = { r, n, t: 0 };
+    if (n) ov[i] = { r, n, t: o ? o.t : 0 };
   }
 }
 function bakeRoom(r, want) {   // сколько штук r ещё поместится (в отделения и очередь)
@@ -2129,7 +2128,7 @@ function openBakery() {
   let h = `<h2>🥖 Пекарня</h2><div class="fpinfo">Добавь рецепт — продукты сразу уходят со склада в очередь, а печь берёт из очереди в свободное отделение. Печь работает только днём. Нажми на штуку в печи или в очереди, чтобы убрать её — продукты вернутся на склад. Готовое лежит в пекарне (до 20 штук), пока его не заберут.</div>
     <div class="oven${ov.hot ? ' hot' : ''}"><div class="ov-row">`;
   st.ov.forEach((o, i) => {
-    h += o ? `<button class="ov-cell" onclick="unOven(${i})"><div class="ov-mouth"><span class="ov-item">${GOODS[o.r].e}</span>${o.n > 1 ? `<b class="ov-n">×${o.n}</b>` : ''}<span class="ov-fire">${ov.hot ? '🔥' : ''}</span><i class="ov-x">✕</i></div>
+    h += o ? `<button class="ov-cell" onclick="unOven(${i})"><div class="ov-mouth"><span class="ov-item">${GOODS[o.r].e}</span>${trayN() > 1 ? `<b class="ov-n">${o.n < trayN() ? `${o.n} из ${trayN()}` : `×${o.n}`}</b>` : ''}<span class="ov-fire">${ov.hot ? '🔥' : ''}</span><i class="ov-x">✕</i></div>
         <div class="ov-bar"><i id="ovBar${i}" style="width:${Math.min(100, 100 * o.t / BAKE[o.r].time)}%"></i></div><small id="ovT${i}">ещё ${fmtSec(ovLeft(o))}</small></button>`
       : `<div class="ov-cell"><div class="ov-mouth"></div><div class="ov-bar"></div><small>свободно</small></div>`;
   });
