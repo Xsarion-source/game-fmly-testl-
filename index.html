@@ -220,6 +220,8 @@
   .tabs { position: sticky; top: -14px; z-index: 2; display: flex; gap: 6px; margin: 12px -14px 4px; padding: 8px 14px; background: var(--panel); }
   .tabs button { flex: 1; padding: 9px 4px; border-radius: 12px; border: 1.5px solid #ecdcb8; background: #f3e8cf; color: #6b5440; font-weight: 800; font-size: 14px; box-shadow: none; position: relative; }
   .tabs button.on { background: #fff; color: var(--ink); border-color: #f0c24a; box-shadow: 0 2px 0 #dba93c; }
+  #nightBtn { position: relative; }
+  #nightBtn .nb { position: absolute; top: -5px; right: -5px; min-width: 22px; height: 22px; padding: 0 6px; box-sizing: border-box; border-radius: 11px; background: var(--accent); color: #fff; font: 900 13px/22px system-ui, sans-serif; font-style: normal; box-shadow: 0 0 0 2px #fff; }
   .tabs .n { position: absolute; top: -7px; right: -4px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: var(--accent); color: #fff; font-size: 12px; line-height: 20px; }
   .calnav { display: flex; align-items: center; justify-content: space-between; margin: 10px 0 6px; font-size: 16px; }
   .calnav button { width: 40px; height: 34px; padding: 0; border-radius: 10px; font-size: 20px; }
@@ -827,7 +829,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.93';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.94';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -5151,6 +5153,11 @@ function renderUI() {
   hudSig = ''; hudCoins = null; applySeasonBg();
   for (const id in S.inv) if (S.inv[id] > 0 && !S.seenGoods.includes(id) && GOODS[id] && !GOODS[id].sp) S.seenGoods.push(id);   // запоминаем товары — чтобы их можно было снять с продажи и при нуле
   $('nightBtn').style.display = S.night ? '' : 'none';
+  if (S.night) {   // сколько улучшений можно купить прямо сейчас (как цифры на вкладках)
+    const R = shopRows(), n = Object.values(R).reduce((a, rows) => a + rows.filter(r => r.rank === 0).length, 0), nb = $('nightBtn');
+    let b = nb.querySelector('.nb'); if (!b) { b = document.createElement('i'); b.className = 'nb'; nb.appendChild(b); }
+    b.textContent = n; b.style.display = n ? '' : 'none';
+  }
   $('plantAll').style.display = '';   // сажать можно и ночью — к утру прорастёт
   $('dayBtn').style.display = S.night ? '' : 'none';
   { const ns = cal(S.day + 1).sday === 1 ? season(S.day + 1) : null;   // завтра новый сезон — кнопка в его цветах
