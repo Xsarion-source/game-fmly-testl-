@@ -210,6 +210,7 @@
   .cal .n { font-size: 12px; font-weight: 800; align-self: flex-start; }
   .cal .ev { font-size: 13px; line-height: 1.1; }
   .cal .m { font-size: 10px; font-weight: 800; color: #3e7d32; margin-top: auto; }
+  .uplvl { margin: 2px 0 6px; color: #7a6650; font-size: 14px; } .uplvl b { color: #4a2e18; }
   .nightline { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 6px 0 2px; color: #7a6650; font-size: 13px; } .nightline b { color: #4a2e18; font-size: 16px; }
   .feedrow { display: flex; align-items: stretch; gap: 8px; margin: 8px 0 4px; }
   .feedlbl { flex: 1; align-self: center; font-weight: 800; font-size: 15px; color: #4a2e18; line-height: 1.2; } .feedlbl small { display: block; font-weight: 600; font-size: 11.5px; color: #7a6650; margin-top: 3px; }
@@ -803,7 +804,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.85';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.86';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -2151,6 +2152,12 @@ function drawUpBadges(t) {
     ctx.globalAlpha = 1;
   }
 }
+// тап по самому зданию — то же, что по значку над ним: у здания с несколькими улучшениями — их список
+function openUpPlace(key) {
+  const g = BADGE_GROUPS.find(g => g.keys.includes(key)), ks = g ? g.keys.filter(upAvail) : [];
+  if (ks.length > 1) openUpBadge({ keys: ks, name: g.name });
+  else openUpgrade(ks[0] || key);
+}
 // тап по значку: одно улучшение — сразу его карточка, несколько — список улучшений этого здания
 function openUpBadge(b) {
   if (b.keys.length === 1) { openUpgrade(b.keys[0]); return; }
@@ -2170,12 +2177,11 @@ function openUpgrade(key) {
   const u = UPGRADES[key], l = S.up[key], maxed = l >= u.max, cost = u.cost(l);
   if (upLocked(key)) {   // ждёт уровня фермы — название видно, чтобы было к чему стремиться
     const known = lvlLocked(key) && !(u.need && !u.need());
-    $('sheet').dataset.view = ''; $('sheet').innerHTML = `<div class="up" style="border:none"><div class="ico" style="font-size:40px;width:52px">${known ? u.ico : '❓'}</div><div class="txt"><b style="font-size:18px">${known ? u.name : '???'}</b></div></div>
-      <div class="summary">🔒 ${needTxt(key)}</div><div class="row"><button class="wide alt" onclick="openNight(false)">🌙 Все улучшения</button><button class="wide alt" onclick="closeNight()">Закрыть</button></div>`;
+    $('sheet').dataset.view = ''; $('sheet').innerHTML = `<h2>${known ? u.ico + ' ' + u.name : '❓ ???'}</h2>
+      <div class="summary">🔒 ${needTxt(key)}</div><div class="row"><button class="wide alt" onclick="openNight(false)">⬆️ Все улучшения</button><button class="wide alt" onclick="closeNight()">Закрыть</button></div>`;
     $('overlay').classList.add('show'); return;
   }
-  let h = `<div class="up" style="border:none"><div class="ico" style="font-size:40px;width:52px">${u.ico}</div><div class="txt"><b style="font-size:18px">${u.name}</b>
-    <small>Уровень ${l} из ${u.max}</small></div></div>
+  let h = `<h2>${u.ico} ${u.name}</h2><div class="uplvl">Уровень <b>${l}</b> из ${u.max}</div>
     <div class="summary">${maxed ? (key === 'cozy' && l < 5 ? `Следующее: ${COZY[l]} — фонарики висят на веранде, сначала улучши 🏠 «Дом фермера»` : 'Улучшено до максимума ✔') : u.desc(l)}</div>`;
   if (PROD[key] && l) { const P = PROD[key], st = S.prod[key]; h += `<div class="summary">${P.ico} В работе: ${st.q} ${GOODS[P.out].e} (место на ${P.cap}), готово: ${st.out}. Нужно ${P.n} ${GOODS[P.in].e} на 1 ${GOODS[P.out].e}, на складе ${S.inv[P.in] || 0}</div>`; }
   if (key === 'coop' && hens()) {
@@ -2196,7 +2202,7 @@ function openUpgrade(key) {
     : upLocked(key) ? `<button class="wide" disabled>🔒 ${needTxt(key)}</button>`
     : `<button class="wide" ${S.coins < cost ? 'disabled' : ''} onclick="buyUpgrade('${key}')">Купить за ${cost}💰</button>`;
   h += `</div>${!maxed && S.coins < cost ? `<div style="text-align:center;font-size:13px;margin-top:6px;color:#b0503a">Не хватает ${cost - S.coins}💰</div>` : ''}
-    <div class="row"><button class="wide alt" onclick="openNight(false)">🌙 Все улучшения</button><button class="wide alt" onclick="closeNight()">Закрыть</button></div>`;
+    <div class="row"><button class="wide alt" onclick="openNight(false)">⬆️ Все улучшения</button><button class="wide alt" onclick="closeNight()">Закрыть</button></div>`;
   $('sheet').dataset.view = 'up:' + key; $('sheet').innerHTML = h;
   $('overlay').classList.add('show');
 }
@@ -2787,7 +2793,7 @@ function onTap(sx, sy) {
   if (fairOn() && ((tx >= 17 && tx <= 19 + 2 * (S.up.fairstall || 0) && ty >= 22 && ty <= 25) || (S.up.fairbake && tx >= 15 && tx <= 17 && ty >= 27 && ty <= 28))) { goFair(); return; }   // лотки фермы
   if (tx >= 3 && tx <= 33 && ty >= 19 && ty <= 34) { fairLockedToast() || openTrophies(); return; }   // ярмарка за дорогой
   if (tx < 0 || ty < 0 || tx >= W || ty >= H) return;
-  if (S.night) { const k = upAtNight(tx, ty); if (k) { openUpgrade(k); return; } }
+  if (S.night) { const k = upAtNight(tx, ty); if (k) { openUpPlace(k); return; } }
   if (tx === TROPHY.x && ty === TROPHY.y) { fairLockedToast() || openTrophies(); return; }
   if (tx === MAIL.x && ty === MAIL.y) { openMail(); return; }
   { const b = at('home', 4, 2); if ((tx === b.x || tx === b.x + 1) && (ty === b.y || ty === b.y + 1)) { tapBakery(); return; } }
@@ -5887,6 +5893,8 @@ function decorateSheet() {
   const row = head.lastChild, first = sh.firstElementChild;
   const T = $('sheetTitle');
   if (first && first.tagName === 'H2') {
+    const opening = (sh.getAnimations?.() || []).some(a => a.animationName === 'up' && a.playState === 'running');
+    T.style.animation = opening ? '' : 'none';
     T.innerHTML = `<div class="rib">${first.innerHTML}</div>`; T.classList.add('show');
     first.remove(); row.innerHTML = '<span class="sp"></span>'; head.classList.add('titled');
     const nx = sh.firstElementChild;
