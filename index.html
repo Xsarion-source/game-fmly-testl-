@@ -179,6 +179,7 @@
   .act { --s: min(64px, calc((100vw - 20px - var(--n, 5) * 6px) / var(--n, 5))); width: var(--s); height: var(--s); flex: none; padding: 0; border-radius: 50%; background: rgba(255,248,231,.96); box-shadow: 0 3px 0 rgba(0,0,0,.2);
          display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; line-height: 1.1; }
   .act span { font-size: 24px; line-height: 1; margin-bottom: 2px; }
+  #dayBtn, #restBtn { margin-bottom: 8px; }   /* не липнет к стрелке над «Засеять» */
   .sunrise { background: #ffd34d; padding: 12px 22px; border-radius: 999px; font-size: 17px; box-shadow: 0 3px 0 rgba(0,0,0,.2); animation: pulse 1.6s 4; }
   @keyframes pulse { 50% { transform: scale(1.04); } }
   .menu button { display: block; width: 100%; text-align: left; margin-top: 6px; background: #f0e5cb; padding: 12px; }
@@ -372,7 +373,7 @@
         <button class="act" id="harvestAll"><span>🧺</span>Собрать</button>
         <button class="act" id="plantAll"><span>🌱</span>Засеять</button>
         <button class="act" id="nightBtn" style="display:none"><span>⬆️</span>Улучшить</button>
-        <button class="act" id="stallBtn" onclick="openStall()"><span>🏪</span>Прилавок</button>
+        <button class="act" id="stallBtn" onclick="openStall()"><span>🏪</span>Лавка</button>
         <button class="act" id="bakeBtn" style="display:none" onclick="openBakery()"><span>🥖</span>Пекарня</button>
         <button class="act" id="helperBtn" style="display:none"><span>🧑‍🌾</span>Команда</button>
       </div>
@@ -826,7 +827,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.91';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-17.92';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1398,7 +1399,7 @@ function spawnVisitor() {
       q: visitors.filter(v => v.state !== 'leaving' && (v.shop || 0) === k).length })).filter(x => x.g.length);
     if (!shops.length) {   // прилавок пустой — покупатель проходит мимо
       S.spawned++;
-      if (Date.now() - emptyShopT > 25000) { emptyShopT = Date.now(); toast(shopGoods().length ? '🏪 Ящики на прилавке пустые — покупатели проходят мимо. Принеси товар со склада' : '🏪 На прилавке пусто — покупатели проходят мимо. Выставь товар: «Прилавок»'); }
+      if (Date.now() - emptyShopT > 25000) { emptyShopT = Date.now(); toast(shopGoods().length ? '🏪 Ящики на прилавке пустые — покупатели проходят мимо. Принеси товар со склада' : '🏪 На прилавке пусто — покупатели проходят мимо. Выставь товар: «Лавка»'); }
       return;
     }
     const sh = shops.sort((x, y) => x.q - y.q || Math.random() - .5)[0];   // идут туда, где очередь короче
@@ -2087,8 +2088,8 @@ function buyUpgrade(key) {
     hay: '🟨 Сеновал построен — каждую ночь сам кормит коров со склада',
     pasture: `🐄 Пастбище больше — места для ${3 + 2 * S.up.pasture} коров. Покупай коров в «Коровнике»`,
     fert: '🧪 Мешки удобрений у поля', sign: '🪧 Новая вывеска над лотком', bench: '🪑 Скамейка у очереди',
-    stall2: '🏪 Вторая лавка открыта! Выставь на неё товар: «Прилавок» → «Лавка 2». Поставь на станцию «Лавка» второго помощника — один встанет за первую лавку, другой за вторую',
-    slots: `🧺 На прилавке теперь ${shopN()} мест — выставь ещё товар: «Прилавок»`,
+    stall2: '🏪 Вторая лавка открыта! Выставь на неё товар: «Лавка» → «Лавка 2». Поставь на станцию «Лавка» второго помощника — один встанет за первую лавку, другой за вторую',
+    slots: `🧺 На прилавке теперь ${shopN()} мест — выставь ещё товар: «Лавка»`,
     fairbake: `🥐 Хлебный лоток на ярмарке — ещё ${BAKE_CRATES} ящика для выпечки. Собирай их до субботы кнопкой 🎪`,
     fairstall: `🎪 Новый лоток на ярмарке — теперь ${fairCrates()} ящиков товара. Собирай их до субботы кнопкой 🎪`,
   }[key] || `${u.ico} ${u.name} — готово!`;
@@ -5734,7 +5735,7 @@ function openStall(sel, shop) {
   const has = { apple: S.up.orchard, egg: hens(), goldegg: hens(), chick: S.up.rooster, milk: cows(), flour: S.up.mill, cheese: S.up.dairy, bread: S.up.bakery, pie: S.up.bakery, pizza: S.up.bakery, cake: S.up.bakery };
   // всё, что ферма умеет производить или когда-либо было на складе — даже если сейчас 0 шт.
   const known = Object.keys(GOODS).filter(id => !GOODS[id].sp && (S.inv[id] > 0 || S.shop.a.includes(id) || S.unlocked.includes(id) || has[id] || S.seenGoods.includes(id) || (S.life.sold || {})[id]));
-  let h = `<h2>🏪 Прилавок</h2><div class="fpinfo">Покупатели приходят только за тем, что стоит на прилавке, и берут со склада. Остальное копится — для заказов, ярмарки и производства. Менять можно в любой момент.</div>
+  let h = `<h2>🏪 Лавка</h2><div class="fpinfo">Покупатели приходят только за тем, что стоит на прилавке, и берут со склада. Остальное копится — для заказов, ярмарки и производства. Менять можно в любой момент.</div>
     
     ${S.up.stall2 ? `<div class="pmrow" style="margin-bottom:8px">${['🏪 Лавка 1', '🏪 Лавка 2'].map((t, k) => `<button class="${k === shopSel ? '' : 'alt'}" onclick="openStall(0, ${k})">${t}</button>`).join('')}</div>
       <div class="fpinfo" style="margin-top:-4px">${shopSel ? 'У второй лавки своя очередь. Продаёшь ты или помощник со станцией «Лавка».' : 'Здесь продаёшь ты или помощник со станцией «Лавка».'}</div>` : ''}
@@ -5963,7 +5964,7 @@ function decorateSheet() {
   const move = (y, e) => { if (y0 == null) return; dy = y - y0; if (dy <= 0 && !fromHead) { y0 = null; sh.style.transform = ''; return; }
     if (dy > 6) { sh.classList.add('drag'); sh.style.transform = $('sheetTitle').style.transform = `translateY(${Math.max(0, dy)}px)`; $('sheetTitle').style.transform = `translate(-50%, ${Math.max(0, dy)}px)`; e.cancelable && e.preventDefault(); } };
   const end = () => { if (y0 == null) return; y0 = null; sh.classList.remove('drag');
-    if (dy > 90) { sh.style.transition = 'transform .18s'; sh.style.transform = 'translateY(110%)'; $('sheetTitle').style.opacity = 0; setTimeout(() => { sh.style.transition = ''; sh.style.transform = ''; $('sheetTitle').style.transform = ''; $('sheetTitle').style.opacity = ''; S.night && $('sheet').dataset.view !== 'night' && $('sheet').dataset.view !== 'night-sum' ? openNight(false) : closeNight(); }, 170); }
+    if (dy > 90) { sh.style.transition = 'transform .18s'; sh.style.transform = 'translateY(110%)'; $('sheetTitle').style.opacity = 0; setTimeout(() => { sh.style.transition = ''; sh.style.transform = ''; $('sheetTitle').style.transform = ''; $('sheetTitle').style.opacity = ''; closeNight(); }, 170); }
     else { sh.style.transition = 'transform .15s'; sh.style.transform = ''; $('sheetTitle').style.transform = ''; setTimeout(() => sh.style.transition = '', 160); } };
   sh.addEventListener('touchstart', e => start(e.touches[0].clientY, e.target), { passive: true });
   sh.addEventListener('touchmove', e => move(e.touches[0].clientY, e), { passive: false });
@@ -6010,13 +6011,13 @@ function renderTray() {
     <button class="all" ${can ? '' : 'disabled'} onclick="if (sowAll()) closeTray()">🧺 Засеять всё <span class="sub">${c.e} × ${gh ? '🏡' : '🟫'} ${can}${can < n ? `/${n}` : ''} = ${can * c.seed}💰</span></button>`;
   T.querySelector('.row').scrollLeft = scroll;
 }
-function openTray() { trayOpen = true; $('seedTray').classList.add('show'); renderSeedBtn(); const r = $('seedTray').querySelector('.sd.sel'); r?.scrollIntoView?.({ inline: 'center', block: 'nearest' }); }
-function closeTray() { if (!trayOpen) return; trayOpen = false; $('seedTray').classList.remove('show'); renderSeedBtn(); }
-function pickSeed(id) {
-  const c = CROP[id], gh = GH_CROPS.includes(id); S.sel = id;
-  toast(`${c.e} ${c.name}: семена ${c.seed}💰 → продажа ${sellPrice(id)}💰 · растёт ${Math.round(c.grow * (gh ? GH_SLOW : 1) / growMult() / seasonGrow(id, gh))}с${seasonGrow(id, gh) > 1 ? ' ' + season().e : ''}${gh ? ` · только в теплице 🏡, гроздь ×${GH_YIELD}` : ''}`);
-  renderUI();
+function openTray() { trayOpen = true; $('seedTray').classList.add('show'); renderSeedBtn(); const row = $('seedTray').querySelector('.row'), r = row.querySelector('.sd.sel'); if (r) row.scrollLeft = r.offsetLeft - row.clientWidth / 2 + r.offsetWidth / 2; }
+function closeTray() {
+  if (!trayOpen) return; trayOpen = false; renderSeedBtn();
+  const T = $('seedTray'); T.style.transition = 'transform .18s ease-in, opacity .18s'; T.style.transform = 'translateY(110%)'; T.style.opacity = '0';
+  setTimeout(() => { if (!trayOpen) T.classList.remove('show'); T.style.transition = T.style.transform = T.style.opacity = ''; }, 180);
 }
+function pickSeed(id) { S.sel = id; renderUI(); }   // цена и теплица видны на плитке — подсказка не нужна
 function sowAll() {   // засеять все пустые грядки выбранным (🍅 и 🍓 — в теплицу); true — фермер пошёл
   const c = CROP[S.sel], can = c.seed ? Math.floor(S.coins / c.seed) : Infinity;
   const list = [];
@@ -6034,8 +6035,10 @@ function sowAll() {   // засеять все пустые грядки выб�
 }
 $('plantAll').onclick = () => trayOpen ? closeTray() : openTray();
 { const T = $('seedTray'); let y0 = null;   // свайп вниз по полоске — закрыть
-  T.addEventListener('touchstart', e => { y0 = e.touches[0].clientY; }, { passive: true });
-  T.addEventListener('touchend', e => { if (y0 != null && e.changedTouches[0].clientY - y0 > 40) closeTray(); y0 = null; });
+  T.addEventListener('touchstart', e => { y0 = e.touches[0].clientY; T.style.transition = ''; }, { passive: true });
+  T.addEventListener('touchmove', e => { if (y0 == null) return; const dy = e.touches[0].clientY - y0; T.style.transform = dy > 0 ? `translateY(${dy}px)` : ''; }, { passive: true });
+  T.addEventListener('touchend', e => { if (y0 == null) return; const dy = e.changedTouches[0].clientY - y0; y0 = null;
+    if (dy > 40) closeTray(); else { T.style.transition = 'transform .15s'; T.style.transform = ''; } });
 }
 $('nightBtn').onclick = () => openNight(false);
 $('dayBtn').onclick = () => morning();
