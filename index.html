@@ -1014,7 +1014,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-18.144';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-18.145';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3246,11 +3246,24 @@ function tick(now) {
   // Если сцена стоит (ночь, все на месте) — меняются лишь дым, крылья мельницы и полоски,
   // им хватает 20 кадров в секунду: телефон не греется, рисуя одну и ту же картинку 60 раз
   const sig = motionSig();
-  if (sig !== drawSig || pointers.size || now - lastDraw >= 48) { draw(now / 1000); lastDraw = now; drawSig = sig; }
+  const gap = FPS30 && !pointers.size ? 31 : 0;   // режим 30 кадров: рисуем через кадр (пока палец на экране — каждый кадр, чтобы карта ехала плавно)
+  if (now - lastDraw >= gap && (sig !== drawSig || pointers.size || now - lastDraw >= 48)) { const d0 = performance.now(); draw(now / 1000); perfNote(performance.now() - d0, now); lastDraw = now; drawSig = sig; }
   renderHud();
   requestAnimationFrame(tick);
 }
 let lastDraw = -1e9, drawSig = NaN;
+let FPS30 = false; try { FPS30 = localStorage.getItem('farm-fps30') === '1'; } catch {}
+function toggleFps() { FPS30 = !FPS30; try { localStorage.setItem('farm-fps30', FPS30 ? '1' : '0'); } catch {} openMenu(); toast(FPS30 ? '🎞 30 кадров в секунду — телефон греется меньше' : '🎞 60 кадров в секунду — плавнее'); }
+// замер скорости на телефоне: среднее время кадра и кадры в секунду за последнюю секунду (включается в меню отладки)
+let PERF = null;
+function perfNote(ms, now) {
+  if (!PERF) return;
+  PERF.ms += ms; PERF.n++; PERF.max = Math.max(PERF.max, ms);
+  if (now - PERF.t0 >= 1000) { $('perfBox').textContent = `кадр ${(PERF.ms / PERF.n).toFixed(1)} мс · макс ${PERF.max.toFixed(0)} · ${Math.round(PERF.n * 1000 / (now - PERF.t0))} к/с`; PERF = { ms: 0, n: 0, max: 0, t0: now }; }
+}
+function togglePerf() { let b = $('perfBox'); if (PERF) { PERF = null; b?.remove(); return; }
+  if (!b) { b = document.createElement('div'); b.id = 'perfBox'; Object.assign(b.style, { position: 'fixed', left: '8px', bottom: 'calc(110px + env(safe-area-inset-bottom))', zIndex: 50, background: 'rgba(0,0,0,.65)', color: '#fff', font: '700 13px system-ui', padding: '4px 8px', borderRadius: '8px', pointerEvents: 'none' }); document.body.appendChild(b); }
+  b.textContent = 'замер…'; PERF = { ms: 0, n: 0, max: 0, t0: performance.now() }; }
 function motionSig() {   // одно число от всего, что двигается: изменилось — значит, кадр нужен сразу
   let s = cam.x * 7.13 + cam.y * 3.31 + zoom * 977 + cw + ch * 2.17 + floats.length * 13.7 + (S.night ? 5 : 0);
   const V = viewRect(70);   // кто идёт за краем экрана, кадр не торопит
@@ -6403,6 +6416,7 @@ function openMenu() {
       <button onclick="openCalendar()">📅 Календарь <small style="color:#7a6650">— ${WEEKDAYS[cal().dow].toLowerCase()}, ${season().name.toLowerCase()}</small></button>
       <button onclick="openProfile()">👤 Профиль</button>
       <button onclick="toggleEco()">🔋 Экономия батареи <small style="color:#7a6650">— ${ECO ? 'включена' : 'выключена'}</small></button>
+      <button onclick="toggleFps()">🎞 Кадров в секунду <small style="color:#7a6650">— ${FPS30 ? '30 (меньше греется)' : '60'}</small></button>
       <button onclick="openSaves()">💾 Сохранения <small style="color:#7a6650">— ${esc(slotNames()[SLOT - 1])}</small></button>
       <button onclick="openEconomy()">💰 Экономика</button>
       <button onclick="openHelp()">📖 Как играть</button>
@@ -7222,6 +7236,7 @@ const CHEATS = {
     syncHelpers(); syncTrees(); syncHens(); syncCows(); syncGh(); applyLots();
   }],
   feed:    ['🐔🐄 Накормить всех', () => { if (hens()) { S.coop.fedDay = S.night ? S.day + 1 : S.day; S.coop.fedHens = hens(); } if (cows()) { S.barn.fedDay = S.night ? S.day + 1 : S.day; S.barn.fedCows = cows(); } }],
+  perf:    ['⏱ Замер скорости (вкл/выкл)', () => togglePerf()],
   truck:   ['🚚 Грузовик приехал', () => { if (!S.up.store) { toast('Сначала построй склад 📦'); return; } if (!S.truck.c) S.truck.c = truckMake(); if (S.night || !S.truck.c) { toast('🚚 Только днём'); return; } S.truck.c.due = S.day; truckCar = null; }],
   visitor: ['🧍 Покупатель', () => { if (!S.night && queueCount() < MAX_QUEUE) { spawnVisitor(); S.spawned--; } }],
   evening: ['🌇 Вечер', () => { if (!S.night) { S.started = true; S.t = Math.max(S.t, DAY_LEN * 0.75); } }],
