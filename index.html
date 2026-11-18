@@ -1014,7 +1014,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-18.142';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-18.143';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -4594,7 +4594,7 @@ function fairDrawList(list, t) {
   }
   for (const f of fairFolk) list.push({ z: f.x + f.y, f: () => {
     if (!f.kid) { drawPersonC(f, f.look); return; }
-    const c = iso(f.x, f.y); ctx.save(); ctx.translate(c.x, c.y); ctx.scale(.7, .7); ctx.translate(-c.x, -c.y); drawPerson(f, f.look); ctx.restore();
+    drawPersonC(f, f.look, .7);
   } });
 }
 // гости ярмарки: семьи приходят по дороге, гуляют между шатрами, катаются на колесе и уходят
@@ -5897,8 +5897,29 @@ function drawBubbleAt(c, text, ok) {
   emoji(text, c.x, c.y, 13);
 }
 
+// растения на грядках — из готовых картинок: на культуру и ступень роста (рост округлён до 1/20) одна картинка на всю ферму
+const CROP_CACHE = { k: 0, m: new Map() };
 function drawCrop(i, t, gh) {
-  const s = (gh ? GH_SLOTS : PLOT_SLOTS)[i], p = (gh ? S.gh : S.plots)[i], c = lift(s.x + .5, s.y + .5, 3.5);
+  const s = (gh ? GH_SLOTS : PLOT_SLOTS)[i], p = (gh ? S.gh : S.plots)[i], k = dpr * zoom;
+  if (ctx !== MAIN_CTX || !zoomSettled(performance.now() / 1000)) { drawCropAt(p, gh, lift(s.x + .5, s.y + .5, 3.5)); return; }
+  if (CROP_CACHE.k !== k) { CROP_CACHE.k = k; CROP_CACHE.m.clear(); }
+  const st = p.prog >= 1 ? 20 : Math.min(19, Math.floor(p.prog * 20)), key = p.crop + (gh ? 'g' : 'f') + st;
+  let img = CROP_CACHE.m.get(key);
+  if (!img) {
+    const W = 64, H = 64, ax = 32, ay = 50;   // картинка вокруг точки грядки: ±32 по ширине, 50 вверх и 14 вниз
+    img = document.createElement('canvas'); img.width = Math.ceil(W * k) + 2; img.height = Math.ceil(H * k) + 2;
+    const c = img.getContext('2d'); c.setTransform(k, 0, 0, k, ax * k + 1, ay * k + 1);
+    const main = ctx; ctx = c;
+    try { drawCropAt({ crop: p.crop, prog: st >= 20 ? 1 : (st + .5) / 20 }, gh, { x: 0, y: 0 }); } finally { ctx = main; }
+    if (CROP_CACHE.m.size > 200) CROP_CACHE.m.clear();
+    CROP_CACHE.m.set(key, img); img.ax = ax; img.ay = ay;
+  }
+  const c = lift(s.x + .5, s.y + .5, 3.5), T = camT();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(img, Math.round(T.x + c.x * k - img.ax * k - 1), Math.round(T.y + c.y * k - img.ay * k - 1));
+  setWorld();
+}
+function drawCropAt(p, gh, c) {
   const leaf = (x, y, rx, ry, a, col) => { ctx.beginPath(); ctx.ellipse(x, y, rx, ry, a, 0, 7); ctx.fillStyle = col; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = .9; ctx.stroke(); };
   if (p.prog >= 1) {
     const b = 0;   // созревшее не качается
@@ -5937,17 +5958,17 @@ function drawCrop(i, t, gh) {
 // Человечки рисуются из готовых картинок: на каждый вид — кадры походки (16 фаз), лицом влево/вправо.
 // Вектором каждый кадр — это треть всей работы при отрисовке; из картинки — одно копирование.
 const PCACHE = new WeakMap(), PH = 16;
-function drawPersonC(p, L) {
+function drawPersonC(p, L, sc = 1) {
   const k = dpr * zoom;
-  if (ctx !== MAIN_CTX || !zoomSettled(performance.now() / 1000)) { drawPerson(p, L); return; }
+  if (ctx !== MAIN_CTX || !zoomSettled(performance.now() / 1000)) { const c = iso(p.x, p.y); ctx.save(); ctx.translate(c.x, c.y); ctx.scale(sc, sc); ctx.translate(-c.x, -c.y); drawPerson(p, L); ctx.restore(); return; }
   const ph = p.moving ? Math.round(((p.phase % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) / (Math.PI * 2) * PH) % PH : -1;
   const wk = p.work > 0 ? Math.round(Math.sin(p.work * 30) * 3) : 0;
   let M = PCACHE.get(L); if (!M || M.k !== k) PCACHE.set(L, M = { k, m: new Map() });
-  const key = ph * 100 + wk * 10 + (p.flip ? 1 : 0);
+  const key = ph * 100 + wk * 10 + (p.flip ? 1 : 0) + (sc !== 1 ? .5 : 0);
   let img = M.m.get(key);
   if (!img) {
     img = document.createElement('canvas'); img.width = Math.ceil(30 * k) + 2; img.height = Math.ceil(62 * k) + 2;
-    const c = img.getContext('2d'); c.setTransform(k, 0, 0, k, 15 * k + 1, 53 * k + 1);
+    const c = img.getContext('2d'); c.setTransform(k * sc, 0, 0, k * sc, 15 * k + 1, 53 * k + 1);
     const main = ctx; ctx = c;
     try { drawPerson({ x: 0, y: 0, moving: ph >= 0, phase: ph * Math.PI * 2 / PH, flip: p.flip, workOff: wk }, L, true); } finally { ctx = main; }
     M.m.set(key, img);
