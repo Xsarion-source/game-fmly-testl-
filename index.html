@@ -1014,7 +1014,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-18.139';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-18.140';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1587,6 +1587,7 @@ const TRUCK_SPR = Object.fromEntries(Object.entries(TRUCK_SRC).map(([k, src]) =>
 const truckResText = r => r.money + r.bonus > 0 ? `🚚 Грузовик забрал заказ: +${r.money + r.bonus}💰${r.bonus ? ` (премия ${r.bonus}💰 за весь заказ)` : ''}` : '🚚 Грузовик уехал пустым — в следующий раз погрузи товар заранее';
 // воскресенье конца месяца: пикап едет по дороге, сворачивает на грунтовку к складу, грузится и уезжает
 let truckCar = null;
+const TRUCK_FOOT = { front: [104, 171], back: [122, 153] };   // середина между колёсами ближнего борта (в пикселях картинки 260 шир.) — ставим на землю
 const TRUCK_Y = ROAD + .45, TRUCK_PARK = 14.8;
 function updateTruck(dt) {
   if (S.night || !truckOn()) { truckCar = null; return; }
@@ -1600,6 +1601,13 @@ function updateTruck(dt) {
   if (T.wait > 0) { T.wait -= dt; if (T.wait <= 0) { T.loaded = true; toast('📦 Заказ погружен'); } return; }
   const w = T.wps[0]; if (!w) return;
   const dx = w.x - T.x, dy = w.y - T.y, d = Math.hypot(dx, dy), v = 3.2 * dt;
+  if (d > .01) {   // впереди человек — грузовик ждёт, пока он отойдёт (но не дольше 6 с)
+    const ux = dx / d, uy = dy / d, ppl = [P, ...visitors, ...helpers, ...fairFolk, ...(clerkOn() ? [clerk] : [])];
+    const blocked = ppl.some(p => { const rx = p.x - T.x, ry = p.y - T.y, al = rx * ux + ry * uy; return al > -.2 && al < 1.9 && Math.abs(rx * uy - ry * ux) < .75; });
+    if (blocked && (T.hold = (T.hold || 0) + dt) < 6) { T.moving = false; return; }
+    if (!blocked) T.hold = 0;
+  }
+  T.moving = true; T.ph = (T.ph || 0) + dt * 13;
   if (Math.abs(dx) > .01 || Math.abs(dy) > .01) { T.f = dx > .01 || dy > .01 ? 'front' : 'back'; T.mir = Math.abs(dy) > Math.abs(dx); }   // вдоль y — то же, отражённое
   if (d <= v) { T.x = w.x; T.y = w.y; T.wps.shift();
     if (w.park) T.wait = w.park;
@@ -1608,9 +1616,12 @@ function updateTruck(dt) {
 }
 function drawTruckCar() {
   const T = truckCar, im = TRUCK_SPR[T.f + (T.loaded ? '_loaded' : '_empty')]; if (!im?.complete || !im.width) return;
-  const c = iso(T.x, T.y), w = 118, h = w * im.height / im.width;
-  ctx.fillStyle = 'rgba(30,40,20,.22)'; ctx.beginPath(); ctx.ellipse(c.x, c.y + 4, 50, 15, 0, 0, 7); ctx.fill();
-  ctx.save(); ctx.translate(c.x, c.y); if (T.mir) ctx.scale(-1, 1); ctx.drawImage(im, -w / 2, -h + 16, w, h); ctx.restore();
+  const c = iso(T.x, T.y), w = 118, k = w / im.width, h = im.height * k, A = TRUCK_FOOT[T.f];
+  const mv = T.moving && !T.wait, bob = mv ? Math.abs(Math.sin(T.ph)) * 1.6 : 0, tilt = mv ? Math.sin(T.ph * .5) * .012 : 0;   // пружинит на ходу, как человечки
+  ctx.save(); ctx.translate(c.x, c.y); if (T.mir) ctx.scale(-1, 1);
+  ctx.fillStyle = 'rgba(30,40,20,.24)'; ctx.beginPath(); ctx.ellipse(-4, 3, 46, 14, 0, 0, 7); ctx.fill();   // тень — под колёсами
+  ctx.translate(-12, 8 - bob); ctx.rotate(tilt);
+  ctx.drawImage(im, -A[0] * k, -A[1] * k, w, h); ctx.restore();
 }
 // красный амбар склада: 4×2.6 клетки, большие ворота и рампа к дороге
 function drawStoreBarn(d) {
