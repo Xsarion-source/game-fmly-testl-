@@ -270,6 +270,11 @@
   .rc-q { position: absolute; top: 6px; right: 8px; font-style: normal; min-width: 20px; height: 20px; border-radius: 10px; background: #f4a92b; color: #fff; font-size: 12px; font-weight: 900; line-height: 20px; }
   .rc-ing { display: flex; gap: 6px; justify-content: center; margin: 3px 0 1px; } .rc-ing span { display: inline-flex; align-items: center; gap: 1px; font-weight: 900; font-size: 13px; } .rc-ing i { font-style: normal; font-size: 17px; } .rc-ing .no { color: #d0453a; }
   .rc .rc-f { font-size: 11px; }
+  .upmax { margin-top: 14px; padding: 12px; border-radius: 14px; background: #effae6; border: 2px solid #8cc56a; color: #2f6b2a; font-weight: 800; text-align: center; }
+  .ov-cell.pick .ov-mouth { box-shadow: 0 0 0 3px #ffd34d; } .ov-sw { position: absolute; right: 8px; top: 6px; font-style: normal; font-size: 14px; opacity: .8; }
+  .kpick { margin-top: 10px; background: rgba(255,255,255,.14); border-radius: 12px; padding: 8px; } .kp-t { font-weight: 800; margin-bottom: 6px; }
+  .rc.on { border-color: #6cbf4f; box-shadow: 0 3px 0 #4a8f35; }
+  .oven.dh .ov-cell.idle .ov-mouth { background: #2e4352 !important; }
   .hold { margin-top: 10px; background: #f6ecd6; border-radius: 14px; padding: 8px 10px; }
   .hold-t { font-weight: 800; font-size: 14px; color: #4a2e18; margin-bottom: 4px; } .hold-t small { display: block; font-weight: 600; font-size: 12px; color: #7a6650; }
   .hold-r { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-top: 1px solid #e8d9b8; } .hold-r .he { font-size: 26px; width: 32px; text-align: center; }
@@ -545,10 +550,10 @@ const UPGRADES = {
   greenhouse: { name: 'Теплица',      ico: '🏡', desc: l => l === 0 ? 'Стеклянная теплица на 3 грядки. Только в ней растут 🍅 помидоры и 🍓 клубника — медленнее, зато гроздью по 6' : '+3 грядки в теплице', cost: l => [260, 380][l], max: 2 },
   clear:  { name: 'Расчистить лес',    ico: '🪓', desc: l => l === 0 ? 'Вырубить лес справа от пастбища — место под новое здание' : 'Вырубить лес у теплицы — место ещё под одно здание', cost: l => [2500, 4000][l], max: 2 },
   mill:   { name: 'Мельница',          ico: '🌬️', desc: l => l === 0 ? `Мелет пшеницу: 3 🌾 → 1 🍚 мука, ~${prodPerDay('mill', 1)} мешков в день` : `Жернова быстрее: ${prodPerDay('mill', l)} → ${prodPerDay('mill', l + 1)} 🍚 в день`, cost: l => [3500, 5500][l], max: 2, need: () => S.up.clear >= 1, needText: 'Откроется, когда расчистишь лес 🪓' },
-  dairy:  { name: 'Сыроварня',         ico: '🧀', desc: l => l === 0 ? `Варит сыр: 2 🥛 → 1 🧀, ~${prodPerDay('dairy', 1)} в день` : `Котлы быстрее: ${prodPerDay('dairy', l)} → ${prodPerDay('dairy', l + 1)} 🧀 в день`, cost: l => [5000, 8000][l], max: 2, need: () => S.up.clear >= 2, needText: 'Откроется, когда расчистишь второй участок леса 🪓' },
+  dairy:  { get name() { return S.up?.dhouse ? 'Котлы' : 'Сыроварня'; },         ico: '🧀', desc: l => l === 0 ? `Варит сыр: 2 🥛 → 1 🧀, ~${prodPerDay('dairy', 1)} в день` : `Котлы быстрее: ${prodPerDay('dairy', l)} → ${prodPerDay('dairy', l + 1)} 🧀 в день`, cost: l => [5000, 8000][l], max: 2, need: () => S.up.clear >= 2, needText: 'Откроется, когда расчистишь второй участок леса 🪓' },
   house:  { name: 'Дом фермера',       ico: '🏠', desc: l => l === 0 ? 'Веранда и кухня: помощники сыты и работают на 20% быстрее' : 'Второй этаж: помощники работают ещё на 20% быстрее (всего +40%)', cost: l => [3000, 7000][l], max: 2 },
   millBin:  { name: 'Бункер мельницы',   ico: '📦', desc: l => `Очередь на помол длиннее: ${PROD.mill.cap * (1 + l)} → ${PROD.mill.cap * (2 + l)} мешков — загрузил утром, мелет до вечера`, cost: l => [2500][l], max: 1, need: () => S.up.mill >= 1, needText: 'Откроется, когда построишь мельницу 🌬️' },
-  dairyBin: { name: 'Чаны сыроварни',    ico: '🪣', desc: l => `План длиннее: ${PROD.dairy.cap * (1 + l)} → ${PROD.dairy.cap * (2 + l)} порций за раз`, cost: l => [3500][l], max: 1, need: () => S.up.dairy >= 1, needText: 'Откроется, когда построишь сыроварню 🧀' },
+  dairyBin: { name: 'Чаны сыроварни',    ico: '🪣', desc: l => `Котлы вместительнее: ${PROD.dairy.cap * (1 + l)} → ${PROD.dairy.cap * (2 + l)} порций в каждом`, cost: l => [3500][l], max: 1, need: () => S.up.dairy >= 1, needText: 'Откроется, когда построишь сыроварню 🧀' },
   dhouse: { name: 'Молочный дом',      ico: '🧈', desc: l => 'Сыроварня перестраивается: второй котёл, а ещё 🫙 сметана и 🧈 масло. Из масла в пекарне пекут 🥐 круассаны', cost: l => [7000][l], max: 1, need: () => S.up.dairy >= 1, needText: 'Откроется, когда построишь сыроварню 🧀' },
   churn:  { name: 'Маслобойка',        ico: '🥄', desc: l => `Масло сбивается в 1,5 раза быстрее: 🧈 за ${fmtMs(DAIRY.butter.time / dairyRate('butter'))} → ${fmtMs(DAIRY.butter.time / ((S.up.dairy || 1) * 1.5))}`, cost: l => [4000][l], max: 1, need: () => S.up.dhouse >= 1, needText: 'Откроется в Молочном доме 🧈' },
   stones: { name: 'Жернова',           ico: '🪨', desc: l => `Новые жернова мелют чище — муки больше с той же пшеницы: +${l * 25}% → +${(l + 1) * 25}% 🍚`, cost: l => [3000, 6000][l], max: 2, need: () => S.up.mill >= 1, needText: 'Откроется, когда построишь мельницу 🌬️' },
@@ -899,7 +904,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-17.125';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-18.126';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1793,7 +1798,7 @@ function prodHave(k, byHelper) {   // сколько сырья можно вз�
   return Math.max(0, have);
 }
 function loadProd(k, byHelper) {
-  if (PROD[k].multi) { if (!byHelper) return 0; let n = 0, r; while ((r = dairyWant()) && dairyLoad(r, 1)) n++; return n; }   // план котлов составляет игрок; помощник — по норме
+  if (PROD[k].multi) return dairyLoad();   // молоко поровну по котлам
   const P = PROD[k], st = S.prod[k];
   const n = Math.min(prodCap(k) - st.q, Math.floor(prodHave(k, byHelper) / P.n));
   if (n <= 0) return 0;
@@ -1814,14 +1819,14 @@ function collectProd(k) {
 function prodAct(k, byHelper) {   // забрать готовое и догрузить сырьё
   const P = PROD[k], st = S.prod[k];
   if (!S.up[k]) return false;
-  const got = collectProd(k), n = S.night ? loadProd(k, byHelper) : 0;   // засыпают ночью, днём только забирают готовое
-  const out = P.multi ? st.sel : P.out, need = prodNeed(k);
+  const got = collectProd(k), n = S.night || P.multi ? loadProd(k, byHelper) : 0;   // мельницу засыпают ночью; молоко в котлы — когда угодно
+  const out = P.multi ? st.k[0].r : P.out, need = prodNeed(k);
   if (!got && !n) {
-    if (!byHelper) toast(!S.night ? `${P.ico} Забирать пока нечего. Засыпать ${GOODS[P.in].e} можно ночью 🌙` : prodQ(k) >= prodCap(k) ? `${P.ico} ${P.name}: загружено полностью — ${prodQ(k)} в работе`
+    if (!byHelper) toast(!S.night && !P.multi ? `${P.ico} Забирать пока нечего. Засыпать ${GOODS[P.in].e} можно ночью 🌙` : prodFull(k) ? `${P.ico} ${P.name}: загружено полностью — ${prodQ(k)} в работе`
       : `${P.ico} Нужно ${need} ${GOODS[P.in].e} на 1 ${GOODS[out].e}, на складе ${S.inv[P.in] || 0}`);
     return false;
   }
-  if (n && !byHelper) toast(`${P.ico} Загружено ${n * need} ${GOODS[P.in].e} → будет ${n} ${GOODS[out].e}${S.night ? ' (утром)' : ''}`);
+  if (n && !byHelper) toast(P.multi ? `${P.ico} Молоко залито в котлы — будет ${n} порций` : `${P.ico} Загружено ${n * need} ${GOODS[P.in].e} → будет ${n} ${GOODS[out].e}${S.night ? ' (утром)' : ''}`);
   if (n && !S.night) beginClock();
   save(); renderUI(); return true;
 }
@@ -1842,41 +1847,44 @@ function updateProd(dt) {
   }
 }
 
-// общее для всех цехов: у мельницы одна очередь, у молочного дома — план по рецептам и котлы
+// общее для всех цехов: у мельницы одна очередь, у молочного дома — у каждого котла своя (свой рецепт)
 const sumO = o => Object.values(o || {}).reduce((a, b) => a + b, 0);
 function prodOut(k) { return PROD[k].multi ? sumO(S.prod[k].out) : S.prod[k].out; }   // готово, ждёт сбора
-function prodQ(k) { const st = S.prod[k]; return PROD[k].multi ? sumO(st.plan) + st.kt.filter(Boolean).length : st.q; }   // в работе и в очереди
-function prodOutE(k) { const st = S.prod[k]; return PROD[k].multi ? GOODS[Object.keys(st.out).find(g => st.out[g]) || st.sel].e : GOODS[PROD[k].out].e; }
+function prodQ(k) { const st = S.prod[k]; return PROD[k].multi ? st.k.slice(0, kettles()).reduce((a, o) => a + o.q, 0) : st.q; }   // в работе и в очереди
+function prodOutE(k) { const st = S.prod[k]; return PROD[k].multi ? GOODS[Object.keys(st.out).find(g => st.out[g]) || st.k[0].r].e : GOODS[PROD[k].out].e; }
 function prodFits(k) { const st = S.prod[k]; return PROD[k].multi ? Object.keys(st.out).some(g => st.out[g] && fits(g)) : fits(PROD[k].out); }
-function prodNeed(k) { return PROD[k].multi ? DAIRY[S.prod[k].sel].n : PROD[k].n; }   // сырья на 1 штуку (что ставит помощник)
+function prodNeed(k) { return PROD[k].multi ? DAIRY[S.prod[k].k[0].r].n : PROD[k].n; }   // сырья на 1 штуку
+function prodFull(k) { return PROD[k].multi ? S.prod[k].k.slice(0, kettles()).every(o => o.q >= kCap()) : S.prod[k].q >= prodCap(k); }
 function initProd() {
   S.prod ??= {};
   for (const k in PROD) S.prod[k] ??= { q: 0, t: 0, out: 0 };
-  const d = S.prod.dairy;   // старая сыроварня: «q партий сыра» → план сыра, текущая партия — в первом котле
-  if (!d.plan) S.prod.dairy = { plan: { cheese: Math.max(0, (d.q || 0) - 1) }, kt: [d.q ? { r: 'cheese', t: d.t || 0 } : null, null], out: d.out ? { cheese: d.out } : {}, sel: 'cheese' };
-  S.prod.dairy.sel ??= 'cheese';
+  const d = S.prod.dairy;
+  if (d.k) return;
+  let milk = 0, out = {}, k0 = { r: 'cheese', q: 0, t: 0 };
+  if (d.plan) {   // прошлый вариант «план на день»: всё молоко из плана и котлов возвращаем на склад, готовое оставляем
+    for (const [r, n] of Object.entries(d.plan)) milk += n * (DAIRY[r]?.n || 2);
+    for (const o of d.kt || []) if (o) milk += DAIRY[o.r]?.n || 2;
+    out = d.out || {};
+  } else { k0.q = d.q || 0; k0.t = d.t || 0; if (d.out) out = { cheese: d.out }; }   // самая старая сыроварня: очередь сыра — в первый котёл
+  if (milk) S.inv.milk = (S.inv.milk || 0) + milk;
+  S.prod.dairy = { k: [k0, { r: S.up?.dhouse ? 'butter' : 'cheese', q: 0, t: 0 }], out };
 }
 
-// ---------- 🧈 Молочный дом: план на день (ночью) → котлы варят днём → полка «Готово» ----------
+// ---------- 🧈 Молочный дом: у каждого котла свой рецепт; засыпаешь молоко — котлы варят, готовое копится ----------
 const kettles = () => S.up.dhouse ? 2 : 1;
 const dairyOk = r => r === 'cheese' || S.up.dhouse > 0;
 const dairyRate = (r, lvl = S.up.dairy || 1) => lvl * (r === 'butter' ? 1 + .5 * (S.up.churn || 0) : 1);
-function fillKettles() {   // свободный котёл берёт рецепт, которого в плане больше всего (лучше тот, что не варится в соседнем)
-  const st = S.prod.dairy;
-  for (let i = 0; i < kettles(); i++) {
-    if (st.kt[i]) continue;
-    const c = Object.keys(DAIRY).filter(r => st.plan[r] > 0).sort((a, b) => st.plan[b] - st.plan[a]); if (!c.length) return;
-    const r = c.find(r => !st.kt.some(o => o && o.r === r)) || c[0];
-    st.plan[r]--; st.kt[i] = { r, t: 0 };
+const kCap = () => PROD.dairy.cap * (1 + (S.up.dairyBin || 0));   // порций в одном котле
+let kPick = -1;   // котёл, у которого открыт выбор рецепта
+function dairyLoadable() { const st = S.prod.dairy, m = S.inv.milk || 0; return st.k.slice(0, kettles()).some(o => o.q < kCap() && m >= DAIRY[o.r].n); }
+function dairyLoad() {   // молоко — поровну по котлам: по порции в тот, где очередь короче
+  const st = S.prod.dairy; let n = 0, used = 0;
+  for (;;) {
+    const c = st.k.slice(0, kettles()).filter(o => o.q < kCap() && (S.inv.milk || 0) >= DAIRY[o.r].n).sort((a, b) => a.q - b.q)[0];
+    if (!c) break;
+    S.inv.milk -= DAIRY[c.r].n; used += DAIRY[c.r].n; c.q++; n++;
   }
-}
-function dairyLoad(r, want = Infinity) {
-  const st = S.prod.dairy, D = DAIRY[r];
-  if (!D || !dairyOk(r)) return 0;
-  const n = Math.min(want, prodCap('dairy') - prodQ('dairy'), Math.floor((S.inv.milk || 0) / D.n));
-  if (n <= 0) return 0;
-  S.inv.milk -= n * D.n; st.plan[r] = (st.plan[r] || 0) + n; fillKettles();
-  addFloat(PROD.dairy.spot.x + .5, PROD.dairy.spot.y + .5, `−${n * D.n} ${GOODS.milk.e}`);
+  if (used) addFloat(PROD.dairy.spot.x + .5, PROD.dairy.spot.y + .5, `−${used} ${GOODS.milk.e}`);
   return n;
 }
 function dairyCollect() {
@@ -1893,98 +1901,83 @@ function dairyCollect() {
 }
 function dairyUpdate(dt) {
   const st = S.prod.dairy;
-  fillKettles();
-  if (sumO(st.out) >= Math.max(20, prodCap('dairy'))) return;   // полка заставлена — ждут, пока заберут
-  st.kt.forEach((o, i) => {
-    if (!o || i >= kettles()) return;
+  if (sumO(st.out) >= Math.max(20, kCap() * kettles())) return;   // полка заставлена — ждут, пока заберут
+  st.k.slice(0, kettles()).forEach(o => {
+    if (!o.q) { o.t = 0; return; }
     o.t += dt * dairyRate(o.r);
-    if (o.t >= DAIRY[o.r].time) { st.out[o.r] = (st.out[o.r] || 0) + 1; st.kt[i] = null; }
+    while (o.t >= DAIRY[o.r].time && o.q > 0) { o.t -= DAIRY[o.r].time; o.q--; st.out[o.r] = (st.out[o.r] || 0) + 1; }
   });
-  fillKettles();
 }
-function addDairy(r) {   // тап по рецепту ночью — +1 порция в план
-  if (!dairyOk(r)) { toast('🔒 Сметану и масло варят в Молочном доме — улучши сыроварню'); return; }
-  if (!S.night) { toast('🌙 План для котлов составляют ночью'); return; }
-  if (prodQ('dairy') >= prodCap('dairy')) { toast('📋 Котлы загружены полностью'); return; }
-  if ((S.inv.milk || 0) < DAIRY[r].n) { toast(`Для ${GOODS[r].e} нужно ${DAIRY[r].n} 🥛, на складе ${S.inv.milk || 0}`); return; }
-  dairyLoad(r, 1); save(); renderUI(); refreshSheet();
+function pickKettle(i) { kPick = kPick === i ? -1 : i; refreshSheet(); }
+function setKettle(i, r) {   // сменить рецепт котла: молоко из его очереди возвращается на склад
+  const o = S.prod.dairy.k[i]; if (!o || !dairyOk(r)) return;
+  if (o.r !== r && o.q) { S.inv.milk = (S.inv.milk || 0) + o.q * DAIRY[o.r].n; toast(`↩️ ${o.q * DAIRY[o.r].n} 🥛 из котла вернулись на склад`); }
+  if (o.r !== r) { o.r = r; o.q = 0; o.t = 0; }
+  kPick = -1; save(); renderUI(); refreshSheet();
 }
-function unDairy(r) {   // −1 порция: сначала из плана, потом из котла; молоко возвращается на склад
-  const st = S.prod.dairy;
-  if (st.plan[r] > 0) st.plan[r]--;
-  else { const i = st.kt.findIndex(o => o && o.r === r); if (i < 0) return; st.kt[i] = null; fillKettles(); }
-  S.inv.milk = (S.inv.milk || 0) + DAIRY[r].n;
-  save(); renderUI(); refreshSheet();
+// улучшения в окне здания: всё куплено — одна строка вместо списка
+function upList(keys, rows) {
+  const ks = keys.filter(u => UPGRADES[u]);
+  if (ks.length && ks.every(u => S.up[u] >= UPGRADES[u].max)) return `<div class="upmax">⭐ Здание улучшено на максимум</div>`;
+  return `<h3 class="bk-h">⬆️ Улучшения</h3>` + rows + (S.night ? '' : `<div style="font-size:12px;color:#7a6650;margin-top:4px">🌙 Улучшения покупаются ночью</div>`);
 }
-function unKettle(i) {
-  const st = S.prod.dairy, o = st.kt[i]; if (!o) return;
-  st.kt[i] = null; S.inv.milk = (S.inv.milk || 0) + DAIRY[o.r].n; fillKettles();
-  toast(`↩️ ${GOODS[o.r].e} вынут из котла, ${DAIRY[o.r].n} 🥛 вернулись на склад`);
-  save(); renderUI(); refreshSheet();
-}
-function setDairySel(r) { S.prod.dairy.sel = r; save(); refreshSheet(); }
 function upRow(u, title, now, next, ico) {   // строка улучшения в окне здания: «сейчас → будет»
   const U = UPGRADES[u], l = S.up[u], maxed = l >= U.max, cost = U.cost(l), lock = upLocked(u);
   return `<div class="up" data-why="${maxed ? 'Улучшено до максимума' : lock ? '🔒 ' + needTxt(u) : S.night ? 'Недостаточно средств' : '🌙 Улучшения покупаются ночью'}"><div class="ico">${ico || U.ico}</div><div class="txt"><b>${title} <small>ур. ${l}/${U.max}</small></b><small>${maxed ? now + ' · максимум' : lock ? needTxt(u) : `${now} → <b>${next}</b>`}</small></div>
     <button ${maxed || lock || !S.night || S.coins < cost ? 'disabled' : ''} onclick="buyUpgrade('${u}')">${maxed ? '✔' : lock ? (lvlLocked(u) ? '⭐' + upLvl(u) : '🔒') : cost + '💰'}</button></div>`;
 }
-const kLeft = o => Math.max(0, DAIRY[o.r].time - o.t) / dairyRate(o.r);
-function dairySig() { const st = S.prod.dairy; return [JSON.stringify(S.hold), JSON.stringify(st.plan), st.kt.map(o => o ? o.r : '-').join(), JSON.stringify(st.out), S.night, S.started, st.sel, S.inv.milk, S.up.dhouse].join('|'); }
+const kLeft = o => o.q ? ((o.q - 1) * DAIRY[o.r].time + DAIRY[o.r].time - o.t) / dairyRate(o.r) : 0;
+function dairySig() { const st = S.prod.dairy; return [st.k.map(o => o.r + o.q).join(), JSON.stringify(st.out), S.night, S.started, S.inv.milk, S.up.dhouse, S.up.dairy, S.up.dairyBin, S.up.churn, kPick].join('|'); }
 function openDairy() {
-  const k = 'dairy', P = PROD[k], st = S.prod[k], K = kettles(); prodOpen = k; fillKettles();
-  const hot = S.started && !S.night && st.kt.some(Boolean) && sumO(st.out) < Math.max(20, prodCap(k));
+  const k = 'dairy', P = PROD[k], st = S.prod[k], K = kettles(); prodOpen = k;
+  const hot = S.started && !S.night && sumO(st.out) < Math.max(20, kCap() * K);
   const helper = S.helpers.map((c, i) => c.stations.includes(k) ? i + 1 : 0).filter(Boolean);
-  const milk = S.inv.milk || 0, room = prodCap(k) - prodQ(k);
-  let h = `<h2>${P.ico} ${P.name}</h2><div class="fpinfo">Ночью выбери, что сварить завтра: каждый тап по рецепту — 1 порция в план, молоко сразу уходит со склада. Днём ${K > 1 ? 'два котла варят' : 'котёл варит'} по плану. Нажми на котёл или на «−», чтобы убрать порцию, — молоко вернётся. Готовое лежит здесь, пока его не заберут (ты или помощник).</div>
+  const milk = S.inv.milk || 0;
+  let h = `<h2>${P.ico} ${P.name}</h2><div class="fpinfo">У каждого котла свой рецепт — тапни на котёл, чтобы его выбрать. Заливай молоко в любое время: оно делится между котлами поровну, и котлы варят, пока есть очередь. Готовое лежит здесь, пока его не заберут.</div>
     <div class="oven dh${hot ? ' hot' : ''}"><div class="ov-row">`;
   for (let i = 0; i < K; i++) {
-    const o = st.kt[i];
-    h += o ? `<button class="ov-cell" onclick="unKettle(${i})"><div class="ov-mouth"><span class="ov-item">${GOODS[o.r].e}</span><span class="ov-fire">${hot ? '🔥' : ''}</span><i class="ov-x">✕</i></div>
-        <div class="ov-bar"><i id="dkBar${i}" style="width:${Math.min(100, 100 * o.t / DAIRY[o.r].time)}%"></i></div><small id="dkT${i}">ещё ${fmtSec(kLeft(o))}</small></button>`
-      : `<div class="ov-cell"><div class="ov-mouth"></div><div class="ov-bar"></div><small>свободен</small></div>`;
+    const o = st.k[i], on = hot && o.q;
+    h += `<button class="ov-cell${kPick === i ? ' pick' : ''}${on ? '' : ' idle'}" onclick="pickKettle(${i})"><div class="ov-mouth"><span class="ov-item">${GOODS[o.r].e}</span><i class="ov-sw">⇄</i></div>
+      <div class="ov-bar"><i id="dkBar${i}" style="width:${o.q ? Math.min(100, 100 * o.t / DAIRY[o.r].time) : 0}%"></i></div><small><b>${GOODS[o.r].name}</b> · <span id="dkQ${i}">${o.q ? `${o.q} из ${kCap()}` : 'пусто'}</span></small></button>`;
   }
   if (K < 2) h += `<div class="ov-cell" style="opacity:.6"><div class="ov-mouth" style="background:#4d6677"><span style="font-size:22px">🔒</span></div><div class="ov-bar"></div><small>Молочный дом</small></div>`;   // второй котёл — после перестройки
-  const pl = Object.entries(st.plan).filter(([, n]) => n);
-  h += `</div><div class="dh-plan">${pl.length ? `Дальше по плану: ${pl.map(([g, n]) => `<b>${n}</b> ${GOODS[g].e}`).join(' · ')}` : 'План пуст'}<small>${prodQ(k)} из ${prodCap(k)}</small></div></div>`;
-  const outs = Object.entries(st.out).filter(([, n]) => n);
-  h += `<div class="bshelf${outs.length ? ' has' : ''}"><div class="bsh-t">🧺 Готово</div>${outs.length
-    ? `<div class="bsh-items">${outs.map(([g, n]) => `<span><i>${GOODS[g].e}</i><b>×${n}</b></span>`).join('')}</div><button onclick="${S.night ? 'dairyCollect(); refreshSheet()' : `closeNight(); setTasks([{ ...PROD.dairy.spot, fn: () => prodAct('dairy') }])`}">🧑‍🌾 Забрать</button>`
-    : `<div class="bsh-empty">пока ничего не готово</div>`}</div>`;
-  h += `<h3 class="bk-h">${S.night ? 'План на завтра' : 'Рецепты'} <small>${S.night ? 'тап — 1 порция' : '🌙 план — ночью'}</small></h3><div class="rcp r3">`;
-  for (const r in DAIRY) {
-    const D = DAIRY[r], ok = dairyOk(r), cnt = (st.plan[r] || 0) + st.kt.filter(o => o && o.r === r).length;
-    const can = ok && S.night && milk >= D.n && room > 0;
-    const foot = !ok ? '🔒 Молочный дом' : milk < D.n ? 'мало молока' : S.night && !room ? 'котлы полны' : `хватит на ${Math.floor(milk / D.n)}`;
-    h += `<button class="rc${can ? '' : ' off'}" onclick="addDairy('${r}')"><span class="rc-e">${GOODS[r].e}</span>${cnt ? `<i class="rc-q">${cnt}</i>${S.night ? `<i class="rc-m" onclick="event.stopPropagation(); unDairy('${r}')">−</i>` : ''}` : ''}
-      <b>${GOODS[r].name}</b><small>${sellPrice(r)}💰 · ${fmtMs(D.time / dairyRate(r))}</small><div class="rc-ing"><span class="${milk >= D.n ? '' : 'no'}">${D.n}<i>🥛</i></span></div><small class="rc-f">${foot}</small></button>`;
-  }
   h += `</div>`;
+  if (kPick >= 0 && kPick < K) {   // выбор рецепта для котла
+    const o = st.k[kPick];
+    h += `<div class="kpick"><div class="kp-t">Котёл ${kPick + 1} варит:</div><div class="rcp r3">${Object.keys(DAIRY).map(r => { const D = DAIRY[r], ok = dairyOk(r);
+      return `<button class="rc${r === o.r ? ' on' : ''}${ok ? '' : ' off'}" onclick="${ok ? `setKettle(${kPick}, '${r}')` : "toast('🔒 Сметану и масло варят в Молочном доме')"}"><span class="rc-e">${GOODS[r].e}</span><b>${GOODS[r].name}</b><small>${sellPrice(r)}💰 · ${fmtMs(D.time / dairyRate(r))}</small><div class="rc-ing"><span>${D.n}<i>🥛</i></span></div><small class="rc-f">${!ok ? '🔒 Молочный дом' : r === o.r ? '✔ варит сейчас' : o.q ? 'молоко вернётся' : ''}</small></button>`; }).join('')}</div></div>`;
+  }
+  h += `<div class="dh-plan"><span>🥛 молока на складе: <b>${milk}</b></span><small>в котлах ${prodQ(k)} из ${kCap() * K}</small></div></div>`;
+  const outs = Object.entries(st.out).filter(([, n]) => n), can = dairyLoadable();
+  h += `<div class="bshelf${outs.length ? ' has' : ''}"><div class="bsh-t">🧺 Готово</div>${outs.length
+    ? `<div class="bsh-items">${outs.map(([g, n]) => `<span><i>${GOODS[g].e}</i><b>×${n}</b></span>`).join('')}</div>`
+    : `<div class="bsh-empty">пока ничего не готово</div>`}</div>`;
+  const act = S.night ? `prodAct('dairy'); refreshSheet()` : `closeNight(); setTasks([{ ...PROD.dairy.spot, fn: () => prodAct('dairy') }])`;
+  h += `<button class="wide" style="width:100%;margin-top:8px" ${can || outs.length ? '' : 'disabled'} onclick="${act}">🧑‍🌾 ${can ? 'Залить молоко' : ''}${can && outs.length ? ' и забрать' : ''}${!can && outs.length ? 'Забрать готовое' : ''}${!can && !outs.length ? (milk ? 'Котлы полные' : 'Нет молока 🥛') : ''}</button>`;
   for (const g of ['cheese', 'butter']) if (S.up.bakery && canMake(g) && bakeUses(g).length) {
     const kp = S.keep?.[g] || 0;
     h += `<div class="pkeep"><div><b>Оставлять для пекарни ${GOODS[g].e}</b><small>покупатели не возьмут последние ${kp} ${GOODS[g].e}</small></div><div class="stp"><button onclick="setKeep('${g}', -5)">−</button><b>${kp}</b><button onclick="setKeep('${g}', 5)">+</button></div></div>`;
   }
-  h += holdBlock(Object.keys(DAIRY).filter(dairyOk), helper, 'ночью ставит в план то, чего меньше нормы, и забирает готовое');
-  if (!helper.length) h += `<div class="phelp">${helper.length ? '' : `🧑‍🌾 Помощник не назначен — ${S.up.helper ? '<a href="#" onclick="event.preventDefault();openHelpers()">назначить в «Команде»</a>' : 'наймёшь — поставь его на станцию ' + P.ico}`}</div>`;
-  const sel = dairyOk(st.sel) ? st.sel : 'cheese', se = GOODS[sel].e;
-  h += `<h3 class="bk-h">⬆️ Улучшения</h3>`;
-  h += upRow('dairy', 'Котлы', `~${prodPerDay(k, S.up.dairy, sel)} ${se} в день`, `~${Math.floor(DAY_LEN / DAIRY[sel].time * dairyRate(sel, S.up.dairy + 1)) * K} ${se} в день`, '🔥');
-  h += upRow('dairyBin', 'Чаны', `план до ${prodCap(k)} порций`, `до ${PROD[k].cap * (2 + S.up.dairyBin)} порций`);
-  h += upRow('dhouse', 'Молочный дом', S.up.dhouse ? '2 котла · 🧀 🫙 🧈' : '1 котёл, только 🧀', `2 котла · 🫙 🧈 и 🥐 в пекарне`);
-  if (S.up.dhouse) h += upRow('churn', 'Маслобойка', `🧈 за ${fmtMs(DAIRY.butter.time / dairyRate('butter'))}`, `за ${fmtMs(DAIRY.butter.time / ((S.up.dairy || 1) * 1.5))}`);
-  if (!S.night) h += `<div style="font-size:12px;color:#7a6650;margin-top:4px">🌙 Улучшения покупаются ночью</div>`;
+  h += `<div class="phelp">${helper.length ? `🧑‍🌾 Помощник ${helper.join(', ')} заливает молоко и забирает готовое` : `🧑‍🌾 Помощник не назначен — ${S.up.helper ? '<a href="#" onclick="event.preventDefault();openHelpers()">назначить в «Команде»</a>' : 'наймёшь — поставь его на станцию ' + P.ico}`}</div>`;
+  const sel = st.k[0].r, se = GOODS[sel].e;
+  h += upList(['dairy', 'dairyBin', 'dhouse', 'churn'],
+    upRow('dairy', S.up.dhouse ? 'Котлы' : 'Сыроварня', `~${prodPerDay(k, S.up.dairy, sel)} ${se} в день`, `~${Math.floor(DAY_LEN / DAIRY[sel].time * dairyRate(sel, S.up.dairy + 1)) * K} ${se} в день`, '🔥')
+    + upRow('dairyBin', 'Чаны', `котёл на ${kCap()} порций`, `на ${PROD[k].cap * (2 + S.up.dairyBin)} порций`)
+    + upRow('dhouse', 'Молочный дом', S.up.dhouse ? '2 котла · 🧀 🫙 🧈' : '1 котёл, только 🧀', `2 котла · 🫙 🧈 и 🥐 в пекарне`)
+    + (S.up.dhouse ? upRow('churn', 'Маслобойка', `🧈 за ${fmtMs(DAIRY.butter.time / dairyRate('butter'))}`, `за ${fmtMs(DAIRY.butter.time / ((S.up.dairy || 1) * 1.5))}`) : ''));
   $('sheet').dataset.view = 'prod:' + k; $('sheet').dataset.sig = dairySig(); $('sheet').innerHTML = h; $('overlay').classList.add('show');
 }
 setInterval(() => {   // окно молочного дома открыто — полоски живые, при переменах перерисовываем
   const sh = $('sheet'); if (sh.dataset.view !== 'prod:dairy' || !$('overlay').classList.contains('show')) return;
   if (sh.dataset.sig !== dairySig()) { const top = sh.scrollTop; openDairy(); sh.scrollTop = top; return; }
-  S.prod.dairy.kt.forEach((o, i) => { const b = $('dkBar' + i), t = $('dkT' + i); if (!o || !b) return; b.style.width = Math.min(100, 100 * o.t / DAIRY[o.r].time) + '%'; t.textContent = 'ещё ' + fmtSec(kLeft(o)); });
+  S.prod.dairy.k.forEach((o, i) => { const b = $('dkBar' + i); if (b) b.style.width = (o.q ? Math.min(100, 100 * o.t / DAIRY[o.r].time) : 0) + '%'; });
 }, 500);
 
 // ---------- 🏭 Окно цеха (мельница, сыроварня и будущие): цепочка сырьё → в работе → готово, запас, улучшения ----------
 const PROD_BIN = { mill: 'millBin', dairy: 'dairyBin' };   // улучшение «бункер» у каждого цеха
 const prodCap = k => PROD[k].cap * (1 + (S.up[PROD_BIN[k]] || 0));   // мест в очереди
 const stonesMul = (l = S.up.stones || 0) => 1 + .25 * l;
-const prodPerDay = (k, lvl = S.up[k], r) => PROD[k].multi ? kettles() * Math.floor(DAY_LEN / DAIRY[r || S.prod?.[k]?.sel || 'cheese'].time * dairyRate(r || S.prod?.[k]?.sel || 'cheese', lvl || 1))
+const prodPerDay = (k, lvl = S.up[k], r) => PROD[k].multi ? kettles() * Math.floor(DAY_LEN / DAIRY[r || S.prod?.[k]?.k?.[0]?.r || 'cheese'].time * dairyRate(r || S.prod?.[k]?.k?.[0]?.r || 'cheese', lvl || 1))
   : Math.floor(DAY_LEN / PROD[k].time * lvl * (k === 'mill' ? stonesMul() : 1));   // сколько сделает за день
 const keepOf = c => fairOn() ? 0 : (S.keep?.[c] || 0);   // сколько не продавать покупателям (запас для пекарни)
 const bakeUses = g => Object.keys(BAKE).filter(r => BAKE[r].in[g]);
@@ -2018,15 +2011,15 @@ function openProd(k) {
   h += `<button class="wide" style="width:100%;margin-top:8px" ${ldN > 0 || st.out ? '' : 'disabled'} onclick="${S.night ? `prodAct('${k}'); refreshSheet()` : `closeNight(); setTasks([{ ...PROD['${k}'].spot, fn: () => prodAct('${k}') }])`}">🧑‍🌾 ${ldN > 0 ? `Засыпать ${ldN * P.n} ${inE}` : ''}${ldN > 0 && st.out ? ' · ' : ''}${st.out ? `${ldN > 0 ? 'забрать' : 'Забрать'} ${st.out} ${outE}` : ''}${!(ldN > 0) && !st.out ? (!S.night ? `🌙 Засыпать ${inE} — ночью` : st.q >= prodCap(k) ? 'Очередь полная' : `Нужно хотя бы ${P.n} ${inE}`) : ''}</button>${!S.night && st.out ? `<div style="font-size:12px;color:#7a6650;margin-top:4px">🌙 Засыпать ${inE} — ночью</div>` : ''}`;
   // улучшения цеха: «сейчас → будет»
   const ups = [k, PROD_BIN[k], k === 'mill' ? 'stones' : null].filter(u => UPGRADES[u]);
-  h += `<h3 style="margin:14px 0 4px">⬆️ Улучшения</h3>`;
+  let ur = '';
   for (const u of ups) {
     const U = UPGRADES[u], l = S.up[u], maxed = l >= U.max, cost = U.cost(l), lock = upLocked(u);
     const now = u === 'stones' ? `+${l * 25}% ${outE}` : u === k ? `${prodPerDay(k)} ${outE} в день` : `очередь ${prodCap(k)}`;
     const next = maxed ? 'максимум' : u === 'stones' ? `+${(l + 1) * 25}% ${outE} · ~${Math.floor(DAY_LEN / P.time * S.up[k] * stonesMul(l + 1))} в день` : u === k ? `${prodPerDay(k, l + 1)} ${outE} в день` : `очередь ${PROD[k].cap * (2 + l)}`;
-    h += `<div class="up" data-why="${maxed ? 'Улучшено до максимума' : lock ? '🔒 ' + needTxt(u) : S.night ? 'Недостаточно средств' : '🌙 Улучшения покупаются ночью'}"><div class="ico">${U.ico}</div><div class="txt"><b>${u === k ? 'Привод' : U.name} <small>ур. ${l}/${U.max}</small></b><small>${maxed ? now + ' · максимум' : lock ? needTxt(u) : `${now} → <b>${next}</b>`}</small></div>
+    ur += `<div class="up" data-why="${maxed ? 'Улучшено до максимума' : lock ? '🔒 ' + needTxt(u) : S.night ? 'Недостаточно средств' : '🌙 Улучшения покупаются ночью'}"><div class="ico">${U.ico}</div><div class="txt"><b>${u === k ? 'Привод' : U.name} <small>ур. ${l}/${U.max}</small></b><small>${maxed ? now + ' · максимум' : lock ? needTxt(u) : `${now} → <b>${next}</b>`}</small></div>
       <button ${maxed || lock || !S.night || S.coins < cost ? 'disabled' : ''} onclick="buyUpgrade('${u}')">${maxed ? '✔' : lock ? (lvlLocked(u) ? '⭐' + upLvl(u) : '🔒') : cost + '💰'}</button></div>`;
   }
-  if (!S.night) h += `<div style="font-size:12px;color:#7a6650;margin-top:4px">🌙 Улучшения покупаются ночью</div>`;
+  h += upList(ups, ur);
   $('sheet').dataset.view = 'prod:' + k; $('sheet').innerHTML = h; $('overlay').classList.add('show');
 }
 function setKeep(g, d) { S.keep ??= {}; S.keep[g] = Math.max(0, Math.min(200, (S.keep[g] || 0) + d)); save(); renderUI(); refreshSheet(); }
@@ -2095,7 +2088,6 @@ function collectBake() {
 function holdHave(g) {
   let n = S.inv[g] || 0;
   if (BAKE[g]) n += S.bake.q.filter(x => x === g).length + S.bake.ov.reduce((a, o) => a + (o && o.r === g ? o.n : 0), 0) + (S.bake.out[g] || 0);
-  if (DAIRY[g]) { const st = S.prod.dairy; n += (st.plan[g] || 0) + st.kt.filter(o => o && o.r === g).length + (st.out[g] || 0); }
   return n;
 }
 const holdGap = g => (S.hold[g] || 0) - holdHave(g);
@@ -2103,7 +2095,6 @@ function holdPick(list, can) {   // самый «недостающий» по �
   return list.filter(g => holdGap(g) > 0 && can(g)).sort((a, b) => holdGap(b) / S.hold[b] - holdGap(a) / S.hold[a])[0] || null;
 }
 const bakeWant = () => holdPick(Object.keys(BAKE), r => canMake(r) && bakeHave(r) > 0 && bakeRoom(r, 1) > 0);
-const dairyWant = () => holdPick(Object.keys(DAIRY), r => dairyOk(r) && (S.inv.milk || 0) >= DAIRY[r].n && prodQ('dairy') < prodCap('dairy'));
 function setHold(g, d) { S.hold[g] = Math.max(0, Math.min(99, (S.hold[g] || 0) + d)); save(); refreshSheet(); }
 function holdBlock(list, helper, place) {   // список рецептов со счётчиком «держать на складе»
   if (!helper.length) return '';
@@ -2221,16 +2212,14 @@ function openBakery() {
   h += holdBlock(Object.keys(BAKE).filter(canMake), helper, 'печёт то, чего меньше нормы, и забирает готовое');
   if (!helper.length) h += `<div class="phelp">${helper.length ? '' : `🧑‍🌾 Помощник не назначен — ${S.up.helper ? '<a href="#" onclick="event.preventDefault();openHelpers()">назначить в «Команде»</a>' : 'наймёшь — поставь его на станцию 🥖'}`}</div>`;
   // улучшения пекарни: «сейчас → будет»
-  h += `<h3 class="bk-h">⬆️ Улучшения</h3>`;
   const row = (u, title, now, next, ico) => {
     const U = UPGRADES[u], l = S.up[u], maxed = l >= U.max, cost = U.cost(l), lock = upLocked(u);
     return `<div class="up" data-why="${maxed ? 'Улучшено до максимума' : lock ? '🔒 ' + needTxt(u) : S.night ? 'Недостаточно средств' : '🌙 Улучшения покупаются ночью'}"><div class="ico">${ico || U.ico}</div><div class="txt"><b>${title} <small>ур. ${l}/${U.max}</small></b><small>${maxed ? now + ' · максимум' : lock ? needTxt(u) : `${now} → <b>${next}</b>`}</small></div>
       <button ${maxed || lock || !S.night || S.coins < cost ? 'disabled' : ''} onclick="buyUpgrade('${u}')">${maxed ? '✔' : lock ? (lvlLocked(u) ? '⭐' + upLvl(u) : '🔒') : cost + '💰'}</button></div>`;
   };
   const pd = (lv, tr) => Math.floor(OVENS * DAY_LEN / (BAKE[sel].time / lv) * tr);
-  h += row('bakery', 'Жар печи', `~${pd(sp, trayN())} ${GOODS[sel].e} в день`, `~${pd(sp + 1, trayN())} ${GOODS[sel].e} в день`, '🫕');
-  h += row('trays', 'Противни', `печёт ${OVENS * trayN()} шт. за раз`, `${OVENS * (trayN() + 1)} шт. за раз · ~${pd(sp, trayN() + 1)} ${GOODS[sel].e} в день`);
-  if (!S.night) h += `<div style="font-size:12px;color:#7a6650;margin-top:4px">🌙 Улучшения покупаются ночью</div>`;
+  h += upList(['bakery', 'trays'], row('bakery', 'Жар печи', `~${pd(sp, trayN())} ${GOODS[sel].e} в день`, `~${pd(sp + 1, trayN())} ${GOODS[sel].e} в день`, '🫕')
+    + row('trays', 'Противни', `печёт ${OVENS * trayN()} шт. за раз`, `${OVENS * (trayN() + 1)} шт. за раз · ~${pd(sp, trayN() + 1)} ${GOODS[sel].e} в день`));
   $('sheet').dataset.view = 'bakery'; $('sheet').dataset.sig = bakeSig(); $('sheet').innerHTML = h;
   $('overlay').classList.add('show');
 }
@@ -2803,7 +2792,7 @@ function helperJobs(cfg) {
   });
   for (const k in PROD) if (has(k) && S.up[k]) {
     const st = S.prod[k];
-    if ((prodOut(k) > 0 && prodFits(k)) || (S.night && (PROD[k].multi ? !!dairyWant() : prodQ(k) < prodCap(k) && prodHave(k, true) >= prodNeed(k)))) jobs.push({ ...PROD[k].spot, k, act: () => prodAct(k, true) });
+    if ((prodOut(k) > 0 && prodFits(k)) || (PROD[k].multi ? dairyLoadable() : S.night && prodQ(k) < prodCap(k) && prodHave(k, true) >= prodNeed(k))) jobs.push({ ...PROD[k].spot, k, act: () => prodAct(k, true) });
   }
   if (has('bakery') && S.up.bakery && ((bakeOut() > 0 && bakeFits()) || bakeWant())) jobs.push({ ...BAKE_SPOT, k: 'bakery', act: () => bakeAct(true) });
   if (has('orchard')) S.trees.forEach((t, i) => { if (treeReady(t) && fits(TREES[t.kind].fruit, TREES[t.kind].yield)) jobs.push({ x: ORCHARD_SLOTS[i].x, y: ORCHARD_SLOTS[i].y, k: 'orchard', act: () => treeAct(i, 'harvest') }); });
@@ -5667,7 +5656,7 @@ function drawBars() {
   });
   for (const k in PROD) {   // мельница и сыроварня: прогресс текущей партии
     const st = S.prod[k]; if (!S.up[k] || !prodQ(k)) continue;
-    if (PROD[k].multi) { st.kt.forEach((o, i) => { if (!o) return; const c = lift(PROD[k].spot.x + .5, PROD[k].spot.y + .7, 8); rr(c.x - 16, c.y + i * 7, 32, 5, 2.5, 'rgba(0,0,0,.35)'); rr(c.x - 16, c.y + i * 7, 32 * Math.min(1, o.t / DAIRY[o.r].time), 5, 2.5, '#ffd34d'); }); continue; }
+    if (PROD[k].multi) { st.k.slice(0, kettles()).forEach((o, i) => { if (!o.q) return; const c = lift(PROD[k].spot.x + .5, PROD[k].spot.y + .7, 8); rr(c.x - 16, c.y + i * 7, 32, 5, 2.5, 'rgba(0,0,0,.35)'); rr(c.x - 16, c.y + i * 7, 32 * Math.min(1, o.t / DAIRY[o.r].time), 5, 2.5, '#ffd34d'); }); continue; }
     const c = lift(PROD[k].spot.x + .5, PROD[k].spot.y + (k === 'mill' ? -.3 : .7), k === 'mill' ? 14 : 8);
     rr(c.x - 16, c.y, 32, 5, 2.5, 'rgba(0,0,0,.35)'); rr(c.x - 16, c.y, 32 * st.t / PROD[k].time, 5, 2.5, '#ffd34d');
   }
@@ -6184,8 +6173,8 @@ function feedTiles(only) {
   if (hens() && only !== 'cow') tile('🐔', 'кур', fedTomorrow(), hens(), feedStock() >= FEED_PER_HEN, 'feedHens()', helperFeeds('coop') ? '🧑‍🌾' : '');
   if (cows() && only !== 'hen') tile('🐄', 'коров', cowsFedTomorrow(), cows(), cowFoodStock() >= feedPerCow(), 'feedCows()', [S.up.hay ? '🟨' : '', helperFeeds('barn') ? '🧑‍🌾' : ''].join(''));
   if (!only) for (const k in PROD) if (S.up[k]) {   // цеха: засыпать на завтра
-    const P = PROD[k], st = S.prod[k], full = prodQ(k) >= prodCap(k), can = !full && prodHave(k) >= prodNeed(k), helped = S.helpers.some(c => c.stations.includes(k));
-    T.push(`<button class="feedt ${full ? 'ok' : can ? 'go' : 'no'}" onclick="${P.multi ? 'openDairy()' : `prodAct('${k}'); refreshSheet()`}"><span class="fe">${P.ico}</span><b>${full ? 'Засыпано' : P.multi ? 'План' : can ? 'Засыпать' : `Нет ${GOODS[P.in].e}`}</b><small>${full ? '✔ ' : ''}${prodQ(k)}/${prodCap(k)}${P.multi ? '' : ' ' + GOODS[P.out].e}</small>${helped ? '<i class="fa">🧑‍🌾</i>' : ''}</button>`);
+    const P = PROD[k], st = S.prod[k], full = prodFull(k), can = !full && (P.multi ? dairyLoadable() : prodHave(k) >= prodNeed(k)), helped = S.helpers.some(c => c.stations.includes(k));
+    T.push(`<button class="feedt ${full ? 'ok' : can ? 'go' : 'no'}" onclick="prodAct('${k}'); refreshSheet()"><span class="fe">${P.ico}</span><b>${full ? (P.multi ? 'Залито' : 'Засыпано') : can ? (P.multi ? 'Залить' : 'Засыпать') : `Нет ${GOODS[P.in].e}`}</b><small>${full ? '✔ ' : ''}${prodQ(k)}/${P.multi ? kCap() * kettles() : prodCap(k)}${P.multi ? '' : ' ' + GOODS[P.out].e}</small>${helped ? '<i class="fa">🧑‍🌾</i>' : ''}</button>`);
   }
   if (!T.length) return '';
   const legend = [helperFeeds('coop') || (cows() && helperFeeds('barn')) ? '🧑‍🌾 кормит помощник' : '', cows() && S.up.hay ? '🟨 сеновал кормит сам' : ''].filter(Boolean).join(' · ');
