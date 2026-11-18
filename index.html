@@ -1014,7 +1014,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-18.143';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-18.144';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -4133,9 +4133,41 @@ function bakeTreeSet() {
   return new Set([...trees.values()].filter(t => t.d && ok.has(t.d.x + ',' + t.d.y)).map(t => t.d));
 }
 function groundSig() {   // всё, от чего зависит земля (кроме мигания)
-  const pl = a => a.map(p => p.crop ? (p.prog < 1 ? 'w' : 'r') : '-').join('');
-  return [season().id, isFair() && !S.night, contestOf(), S.picnic === S.day && !S.night, JSON.stringify(S.up), pl(S.plots), pl(S.gh), S.trees.map(t => t.kind ? 1 : 0).join(''), hens(), cows()].join('|');
+  return [season().id, isFair() && !S.night, contestOf(), JSON.stringify(S.up)].join('|') + '|' + farmSig();
 }
+function farmSig() {   // то, что меняется только на самой ферме: сад, животные, пикник (грядки в фон не входят)
+  return [S.picnic === S.day && !S.night, S.trees.map(t => t.kind ? 1 : 0).join(''), hens(), cows()].join('|');
+}
+// грядки — поверх фона, из двух готовых картинок (влажная — засеянная, сухая — пустая)
+const PLOT_IMG = { k: 0 };
+function plotImg(wet, k) {
+  if (PLOT_IMG.k !== k) { PLOT_IMG.k = k; PLOT_IMG.w = PLOT_IMG.d = null; }
+  const id = wet ? 'w' : 'd'; if (PLOT_IMG[id]) return PLOT_IMG[id];
+  const c = document.createElement('canvas'), ax = 33, ay = 6; c.width = Math.ceil(66 * k) + 2; c.height = Math.ceil(40 * k) + 2;
+  const g = c.getContext('2d'); g.setTransform(k, 0, 0, k, ax * k + 1, ay * k + 1);
+  const main = ctx; ctx = g;
+  try { const x = 0, y = 0, e = .07, hz = 3.5, X = 1 - e, Y = 1 - e;
+    poly(tilePts(0, 0), wet ? '#6b4327' : '#8a5a36', wet ? '#6b4327' : '#8a5a36');
+    const top = [lift(x + e, y + e, hz), lift(X, y + e, hz), lift(X, Y, hz), lift(x + e, Y, hz)];
+    gface(fY(x + e, X, Y, 0, hz), wet ? '#5a3720' : '#7a4c2c', wet ? '#4a2c18' : '#653c22', INK, 1);
+    gface(fX(X, y + e, Y, 0, hz), wet ? '#4e3019' : '#6b4227', wet ? '#3e2512' : '#57351e', INK, 1);
+    gface(top, wet ? '#7a4c2c' : '#a06c42', wet ? '#5e3a20' : '#85552f', INK, 1.2);
+    for (const q of [.3, .55, .8]) { const a = lift(x + q, y + .14, hz), b = lift(x + q, y + .86, hz);
+      seg(a, b, 'rgba(40,20,8,.4)', 1.6); seg({ x: a.x - 1.2, y: a.y - .6 }, { x: b.x - 1.2, y: b.y - .6 }, 'rgba(255,220,180,.22)', 1); }
+  } finally { ctx = main; }
+  c.ax = ax; c.ay = ay; return PLOT_IMG[id] = c;
+}
+function drawPlotsLive() {
+  const k = dpr * zoom, T = camT(), V = viewRect(40);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const put = (p, s) => { const c = iso(s.x, s.y); if (c.x < V.x0 || c.x > V.x1 || c.y < V.y0 || c.y > V.y1) return; const im = plotImg(p.crop && p.prog < 1, k);
+    ctx.drawImage(im, Math.round(T.x + c.x * k - im.ax * k - 1), Math.round(T.y + c.y * k - im.ay * k - 1)); };
+  S.plots.forEach((p, i) => put(p, PLOT_SLOTS[i]));
+  S.gh.forEach((p, i) => { const s = GH_SLOTS[i]; if (ghOn(s.x, s.y)) put(p, s); });
+  setWorld();
+}
+let CULL = null;   // пока рисуется квадрат фона — его прямоугольник: остальное не рисуем
+const culled = (x, y) => { if (!CULL) return false; const c = iso(x + .5, y + .5); return c.x < CULL.x0 - 80 || c.x > CULL.x1 + 80 || c.y < CULL.y0 - 40 || c.y > CULL.y1 + 170; };
 function viewRect(pad = 0) { const hw = cw / 2 / zoom + pad, hh = ch / 2 / zoom + pad; return { x0: cam.x - hw, x1: cam.x + hw, y0: cam.y - hh, y1: cam.y + hh }; }
 function panRect() {   // всё, что камера может показать (см. clampCam)
   const hw = cw / 2 / zoom, hh = ch / 2 / zoom, minX = -(H + 17) * TW / 2 - 60, maxX = PAN_X1, minY = -380 - 180 / zoom, maxY = (W + H) * TH / 2 + 420 + 110 / zoom;
@@ -4153,12 +4185,15 @@ function bgTile(i, j, k) {
   ctx.fillStyle = look().bg; ctx.fillRect(0, 0, BG_TILE, BG_TILE);
   ctx.setTransform(k, 0, 0, k, -i * BG_TILE, -j * BG_TILE);
   const R = { x0: i * BG_TILE / k - 30, x1: (i + 1) * BG_TILE / k + 30, y0: j * BG_TILE / k, y1: (j + 1) * BG_TILE / k + 90 };   // с запасом: кроны деревьев снизу заходят в квадрат
-  try { drawOutside(R); drawGround(0); drawPaths(); drawPicnic(); drawOutsideTrees(true); } finally { ctx = main; }
+  CULL = { x0: i * BG_TILE / k, x1: (i + 1) * BG_TILE / k, y0: j * BG_TILE / k, y1: (j + 1) * BG_TILE / k };
+  try { drawOutside(R); drawGround(0); drawPaths(); drawPicnic(); drawOutsideTrees(true); } finally { ctx = main; CULL = null; }
+  const F = { x0: iso(0, H).x - 80, x1: iso(W, 0).x + 80, y0: -200, y1: iso(W, H).y + 40 };   // где на экране ферма
+  c.farm = CULL === null && !(R.x1 < F.x0 || R.x0 > F.x1 || R.y1 < F.y0 || R.y0 > F.y1) ? farmSig() : null;
   return c;
 }
 function drawBackdrop(now) {
   if (!zoomSettled(now)) { drawOutside(viewRect()); drawGround(0); drawPaths(); drawPicnic(); drawOutsideTrees(); return; }   // зум пальцами — напрямую
-  const k = dpr * zoom, key = k + '/' + groundSig() + swayOn();
+  const k = dpr * zoom, key = k + '/' + [season().id, isFair() && !S.night, contestOf(), JSON.stringify(S.up)].join('|') + swayOn(), fs = farmSig();
   if (bakedFor !== treeKey()) { bakedTrees = null; bgTiles.clear(); }
   bakedTrees ??= bakeTreeSet();
   if (key !== bg.key) { bg.key = key; bgTiles.clear(); }
@@ -4168,7 +4203,7 @@ function drawBackdrop(now) {
   let budget = 2;
   for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
     const id = i + ',' + j; let c = bgTiles.get(id);
-    if (!c) { c = bgTile(i, j, k); bgTiles.set(id, c); budget--; }   // видимый квадрат рисуем сразу
+    if (!c || (c.farm != null && c.farm !== fs)) { c = bgTile(i, j, k); bgTiles.set(id, c); budget--; }   // видимый квадрат рисуем сразу; на ферме — заново, только если там что-то поменялось
     else { bgTiles.delete(id); bgTiles.set(id, c); }   // свежий — в конец очереди
     ctx.drawImage(c, i * BG_TILE + T.x, j * BG_TILE + T.y);
   }
@@ -4177,7 +4212,7 @@ function drawBackdrop(now) {
   }
   while (bgTiles.size > BG_MAX) bgTiles.delete(bgTiles.keys().next().value);
   bg.r = V;
-  setWorld();
+  setWorld(); drawPlotsLive();
 }
 function drawGroundGlow(t) {   // мигающая рамка у созревшего — поверх закэшированной земли
   const a = `rgba(255,224,102,${.6 + Math.sin(t * 5) * .35})`;
@@ -4439,7 +4474,7 @@ function drawBridgeFront() { bridgeRail(ROAD + 2.05, BRIDGE.x0, BRIDGE.x1); }
 // деревья вокруг фермы — после земли фермы, иначе её клетки перекрывают стволы и кроны
 function drawOutsideTrees(baked) {   // в картинку фона — лес и впечённые деревья фермы одним списком по глубине
   const list = baked ? [...outTrees.filter(o => !liftedKeys.has(o.x + ',' + o.y)), ...bakedTrees] : outTrees;
-  list.sort((a, b) => (a.x + a.y) - (b.x + b.y)).forEach(d => drawTree(d)); drawFairGround();
+  list.filter(d => !culled(d.x, d.y)).sort((a, b) => (a.x + a.y) - (b.x + b.y)).forEach(d => drawTree(d)); if (!CULL || !(CULL.y1 < iso(0, ROAD).y - 40)) drawFairGround();   // площадь ярмарки — только в нижних квадратах
 }
 
 // ---------- Ярмарка за дорогой: по субботам — шатры, флажки, народ; в другие дни — табличка ----------
@@ -4644,6 +4679,7 @@ function updateFair(dt) {
 function drawFairPlaza() {
   const win = season().id === 'winter', C = win ? ['#e6eaea', '#dde3e3'] : ['#dcc492', '#d5bc89'];
   for (let ty = 23; ty <= 40; ty++) for (let tx = 4; tx <= 24; tx++) {
+    if (culled(tx, ty)) continue;
     if ((ty === 40 && (tx < 6 || tx > 22)) || (tx === 4 && ty > 38) || (tx === 24 && ty > 38)) continue;   // скруглённые углы
     poly(tilePts(tx, ty), C[(tx + ty) % 2], C[(tx + ty) % 2]);
     const h = hash(tx * 3, ty * 7);
@@ -4818,10 +4854,11 @@ function drawPicnic() {   // плед с корзинкой у пруда в д�
   });
 }
 function drawPaths() {   // вторым проходом — чтобы кромку не перекрыли соседние клетки
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const g = ground[y][x]; if (pathLike(g)) pathDeco(x, y, iso(x + .5, y + .5), g, hash(x, y)); }
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const g = ground[y][x]; if (pathLike(g) && !culled(x, y)) pathDeco(x, y, iso(x + .5, y + .5), g, hash(x, y)); }
 }
 function drawGround(t) {
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    if (culled(x, y)) continue;
     const g = ground[y][x], pts = tilePts(x, y);
     const LK = look().g, grass = (x + y) % 2 ? LK[0] : LK[1];
     let col = grass;
@@ -4833,7 +4870,7 @@ function drawGround(t) {
     else if (g === 'm') { const M = MEADOW[season().id]; col = !M || !cows() ? grass : (S.up.clover ? M.c : M.g)[(x + y) % 2]; }   // пастбище чуть сочнее травы вокруг, но по сезону
     else if (g === 's' || (g === 'h' && ghOn(x, y))) {
       const arr = g === 's' ? S.plots : S.gh, i = g === 's' ? slotAt(x, y) : ghAt(x, y);
-      if (i < arr.length) col = arr[i].crop && arr[i].prog < 1 ? '#6b4327' : '#8a5a36';
+      if (i < arr.length) col = !CULL && arr[i].crop && arr[i].prog < 1 ? '#6b4327' : '#8a5a36';
       else if (g === 'h') col = (x + y) % 2 ? '#d9d4c2' : '#d2ccb8';   // пол теплицы
     }
     poly(pts, col, col);
@@ -4870,6 +4907,7 @@ function drawGround(t) {
     if (g === 's' || (g === 'h' && ghOn(x, y))) {
       const arr = g === 's' ? S.plots : S.gh, i = g === 's' ? slotAt(x, y) : ghAt(x, y);
       if (i < arr.length) {
+        if (CULL) continue;   // в картинке фона грядок нет — они рисуются поверх, из готовых картинок (drawPlotsLive): посадка и сбор не перерисовывают фон
         const p = arr[i], wet = p.crop && p.prog < 1, e = .07, hz = 3.5, X = x + 1 - e, Y = y + 1 - e;
         const top = [lift(x + e, y + e, hz), lift(X, y + e, hz), lift(X, Y, hz), lift(x + e, Y, hz)];
         gface(fY(x + e, X, Y, 0, hz), wet ? '#5a3720' : '#7a4c2c', wet ? '#4a2c18' : '#653c22', INK, 1);
