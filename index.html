@@ -826,6 +826,7 @@ const FUTURE = [
   { name: 'Ж/Д станция', x0: 40, y0: -13, x1: 51, y1: -4, sign: [45, -4] },
   { name: 'Берег озера', x0: 26, y0: 21, x1: 33, y1: 33, sign: [29, 21] },
 ];
+const PAN_X1 = Math.max(...FUTURE.map(Z => (Z.x1 + 1 - Z.y0) * TW / 2)) + 60;   // камера вправо — до края самой дальней будущей зоны
 const zoneEdge = (x, y) => FUTURE.some(Z => x >= Z.x0 && x <= Z.x1 && y >= Z.y0 && y <= Z.y1 && (x === Z.x0 || x === Z.x1 || y === Z.y0 || y === Z.y1));
 for (const Z of FUTURE) decor.push({ kind: 'zoneSign', Z, x: Z.sign[0], y: Z.sign[1], z: Z.sign[0] + Z.sign[1] + 1.2 });   // таблички будущих зон
 function drawZoneRopes() {   // верёвка на колышках по краю каждой зоны
@@ -983,7 +984,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-18.137';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-18.138';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3176,7 +3177,7 @@ function resize() {
 }
 function clampCam() {
   const hw = cw / 2 / zoom, hh = ch / 2 / zoom;
-  const minX = -(H + 17) * TW / 2 - 60, maxX = (W + 3) * TW / 2 + 90,   // запас: край карты можно вытащить из-под кнопок
+  const minX = -(H + 17) * TW / 2 - 60, maxX = PAN_X1,   // запас: край карты можно вытащить из-под кнопок
         minY = -380 - 180 / zoom, maxY = (W + H) * TH / 2 + 420 + 110 / zoom;   // запас под верхнюю панель и нижние кнопки — на любом масштабе
   cam.x = hw * 2 >= maxX - minX ? (minX + maxX) / 2 : Math.max(minX + hw, Math.min(maxX - hw, cam.x));
   cam.y = hh * 2 >= maxY - minY ? (minY + maxY) / 2 : Math.max(minY + hh, Math.min(maxY - hh, cam.y));
@@ -3978,7 +3979,7 @@ function groundSig() {   // всё, от чего зависит земля (к�
 }
 function viewRect(pad = 0) { const hw = cw / 2 / zoom + pad, hh = ch / 2 / zoom + pad; return { x0: cam.x - hw, x1: cam.x + hw, y0: cam.y - hh, y1: cam.y + hh }; }
 function panRect() {   // всё, что камера может показать (см. clampCam)
-  const hw = cw / 2 / zoom, hh = ch / 2 / zoom, minX = -(H + 17) * TW / 2 - 60, maxX = (W + 3) * TW / 2 + 90, minY = -380 - 180 / zoom, maxY = (W + H) * TH / 2 + 420 + 110 / zoom;
+  const hw = cw / 2 / zoom, hh = ch / 2 / zoom, minX = -(H + 17) * TW / 2 - 60, maxX = PAN_X1, minY = -380 - 180 / zoom, maxY = (W + H) * TH / 2 + 420 + 110 / zoom;
   const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
   return { x0: Math.min(minX, cx - hw) - 8, x1: Math.max(maxX, cx + hw) + 8, y0: Math.min(minY, cy - hh) - 8, y1: Math.max(maxY, cy + hh) + 8 };
 }
@@ -4249,14 +4250,15 @@ function bridgeRail(y, x0, x1) {   // перила моста: столбики 
   for (let x = x0 + .1; x <= x1; x += (x1 - x0 - .2) / 4) toonPost(x, y, 3, 16, .05);
   const a = lift(x0 + .1, y, 16), b = lift(x1 - .1, y, 16); seg(a, b, INK, 4.4); seg(a, b, '#b07a48', 2.6);
 }
+const BRIDGE = { x0: W + .3, x1: W + 3.45 };   // настил — от берега до берега, концы лежат на дороге
 function drawBridgeDeck() {   // настил и задние перила — объектом поверх земли фермы, но под людьми
-  const x0 = W - .1, x1 = W + 3.1, y0 = ROAD - .15, y1 = ROAD + 2.15, hz = 3;
+  const x0 = BRIDGE.x0, x1 = BRIDGE.x1, y0 = ROAD - .05, y1 = ROAD + 2.05, hz = 3;
   gface(fY(x0, x1, y1, 0, hz), '#8a5a32', '#6b4426', INK, 1.2);
   gface([lift(x0, y0, hz), lift(x1, y0, hz), lift(x1, y1, hz), lift(x0, y1, hz)], '#c49060', '#a87648', INK, 1.4);
   for (let x = x0 + .25; x < x1; x += .25) seg(lift(x, y0 + .05, hz), lift(x, y1 - .05, hz), 'rgba(90,55,25,.45)', 1);
   bridgeRail(y0, x0, x1);
 }
-function drawBridgeFront() { bridgeRail(ROAD + 2.15, W - .1, W + 3.1); }
+function drawBridgeFront() { bridgeRail(ROAD + 2.05, BRIDGE.x0, BRIDGE.x1); }
 // деревья вокруг фермы — после земли фермы, иначе её клетки перекрывают стволы и кроны
 function drawOutsideTrees(baked) {   // в картинку фона — лес и впечённые деревья фермы одним списком по глубине
   const list = baked ? [...outTrees.filter(o => !liftedKeys.has(o.x + ',' + o.y)), ...bakedTrees] : outTrees;
