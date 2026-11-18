@@ -477,6 +477,7 @@ const CROP = Object.fromEntries(CROPS.map(c => [c.id, c]));
 const DAY_LEN = 180;      // секунд реального времени на день
 const MAX_QUEUE = 5;
 const PEOPLE_SLOW = .85;  // фермер и помощники на 15% медленнее (меньше суеты на экране)
+const PACE = .9;   // рост и все цеха на 10% медленнее — спокойнее темп (см. ниже, после рецептов)
 const SPEED = 3.2 * PEOPLE_SLOW;   // клеток в секунду
 
 // Деревья сада: сажаются один раз и потом плодоносят снова и снова.
@@ -533,6 +534,11 @@ const BAKE = {
   cake:  { in: { flour: 2, strawberry: 4, egg: 2, milk: 2 }, time: 60 },
   croissant: { in: { flour: 1, butter: 1 }, time: 35 },
 };
+// темп: всё растёт и производится на 10% дольше (времена меняются прямо в рецептах — подсказки и таймеры остаются честными)
+for (const c of CROPS) c.grow /= PACE;
+for (const t of Object.values(TREES)) { t.mature /= PACE; t.regrow /= PACE; }
+for (const P of Object.values(PROD)) P.time /= PACE;
+for (const D of [...Object.values(DAIRY), ...Object.values(BAKE)]) D.time /= PACE;
 const BAKE_CAP = 6, BAKE_SPOT = at('home', 4, 4);   // BAKE_CAP — мест в очереди (ждут, пока освободится отделение)
 const OVENS = 2, trayN = () => 1 + (S.up.trays || 0);   // в печи два отделения; противни — по 2–3 штуки в отделение
 const MAIL = at('mail', 4, 5), MAIL_SPOT = at('mail', 3, 5);   // почтовый ящик через тропинку от пекарни; фермер встаёт на тропинку
@@ -920,7 +926,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-18.132';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-18.133';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
