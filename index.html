@@ -782,7 +782,7 @@ deco('flowers', { kind: 'flowers', z: 4 + 6 + .9 });
 deco('dog', { kind: 'doghouse', z: 1 + 4 + 1 });
 deco('well', { kind: 'well', z: 4 + 8 + 1 });
 deco('swing', { kind: 'swing', z: 1 + 2 + 9 + 1 - 1.01 });
-decor.push({ kind: 'bridge', x: W, y: ROAD + 2, z: W + 1.5 + ROAD + 2.2 });
+decor.push({ kind: 'bridgeDeck', x: W, y: ROAD, z: W + ROAD - 1.5 }, { kind: 'bridge', x: W, y: ROAD + 2, z: W + 1.5 + ROAD + 2.2 });
 deco('mill', { kind: 'mill', z: 17 + 3 + 4 + 3 - 1.01 });
 deco('dairy', { kind: 'dairy', z: 17 + 2 + 8 + 2 - 1.01 });
 
@@ -950,7 +950,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-18.134';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-18.135';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3144,7 +3144,7 @@ function resize() {
 function clampCam() {
   const hw = cw / 2 / zoom, hh = ch / 2 / zoom;
   const minX = -(H + 17) * TW / 2 - 60, maxX = (W + 3) * TW / 2 + 90,   // запас: край карты можно вытащить из-под кнопок
-        minY = -70 - 180 / zoom, maxY = (W + H) * TH / 2 + 260 + 110 / zoom;   // запас под верхнюю панель и нижние кнопки — на любом масштабе
+        minY = -380 - 180 / zoom, maxY = (W + H) * TH / 2 + 420 + 110 / zoom;   // запас под верхнюю панель и нижние кнопки — на любом масштабе
   cam.x = hw * 2 >= maxX - minX ? (minX + maxX) / 2 : Math.max(minX + hw, Math.min(maxX - hw, cam.x));
   cam.y = hh * 2 >= maxY - minY ? (minY + maxY) / 2 : Math.max(minY + hh, Math.min(maxY - hh, cam.y));
 }
@@ -3944,7 +3944,7 @@ function groundSig() {   // всё, от чего зависит земля (к�
 }
 function viewRect(pad = 0) { const hw = cw / 2 / zoom + pad, hh = ch / 2 / zoom + pad; return { x0: cam.x - hw, x1: cam.x + hw, y0: cam.y - hh, y1: cam.y + hh }; }
 function panRect() {   // всё, что камера может показать (см. clampCam)
-  const hw = cw / 2 / zoom, hh = ch / 2 / zoom, minX = -(H + 17) * TW / 2 - 60, maxX = (W + 3) * TW / 2 + 90, minY = -70 - 180 / zoom, maxY = (W + H) * TH / 2 + 260 + 110 / zoom;
+  const hw = cw / 2 / zoom, hh = ch / 2 / zoom, minX = -(H + 17) * TW / 2 - 60, maxX = (W + 3) * TW / 2 + 90, minY = -380 - 180 / zoom, maxY = (W + H) * TH / 2 + 420 + 110 / zoom;
   const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
   return { x0: Math.min(minX, cx - hw) - 8, x1: Math.max(maxX, cx + hw) + 8, y0: Math.min(minY, cy - hh) - 8, y1: Math.max(maxY, cy + hh) + 8 };
 }
@@ -4088,7 +4088,7 @@ function draw(t) {
 
   const list = [];
   // вырубленный лес — чистая трава, без пеньков
-  const DRAW = { bridge: drawBridgeFront, tree: d => (d.lot == null || !lotCleared(d.lot)) && drawTree(d), mill: drawMill, dairy: drawDairy, house: drawHouse, bakery: drawBakery, mailbox: drawMailbox, trophies: drawTrophies, flowers: drawFlowers, doghouse: drawDoghouse, well: drawWell, swing: drawSwing, stall: drawStall, season: drawSeasonStand, coop: drawCoop, barn: drawBarn, trough: drawTrough, fence: drawFence, billboard: drawBillboard, sack: drawSack, bench: drawBench, glass: drawGlass, ghroof: drawGhRoof };
+  const DRAW = { bridgeDeck: drawBridgeDeck, bridge: drawBridgeFront, tree: d => (d.lot == null || !lotCleared(d.lot)) && drawTree(d), mill: drawMill, dairy: drawDairy, house: drawHouse, bakery: drawBakery, mailbox: drawMailbox, trophies: drawTrophies, flowers: drawFlowers, doghouse: drawDoghouse, well: drawWell, swing: drawSwing, stall: drawStall, season: drawSeasonStand, coop: drawCoop, barn: drawBarn, trough: drawTrough, fence: drawFence, billboard: drawBillboard, sack: drawSack, bench: drawBench, glass: drawGlass, ghroof: drawGhRoof };
   const settled = zoomSettled(t);
   for (const d of decor) {   // постройка рисуется в своих координатах, сдвинутая на смещение группы (LAYOUT)
     if (settled && bakedTrees && bakedTrees.has(d)) continue;   // уже в картинке фона
@@ -4183,12 +4183,6 @@ function drawRiver() {
     gface([lift(x0, RAIL_Y, hz), lift(x1, RAIL_Y, hz), lift(x1, RAIL_Y + 1, hz), lift(x0, RAIL_Y + 1, hz)], '#9a7a56', '#7a5a3a', INK, 1.2);
     for (let x = x0 + .1; x < x1; x += .34) seg(lift(x, RAIL_Y + .12, hz), lift(x, RAIL_Y + .88, hz), '#5a3f26', 3);
     for (const k of [.33, .67]) { seg(lift(x0, RAIL_Y + k, hz), lift(x1, RAIL_Y + k, hz), INK, 3); seg(lift(x0, RAIL_Y + k, hz), lift(x1, RAIL_Y + k, hz), '#a9b2bb', 1.6); } }
-  // мост на дороге: настил из досок через русло
-  const x0 = W - .1, x1 = W + 3.1, y0 = ROAD - .15, y1 = ROAD + 2.15, hz = 3;
-  gface(fY(x0, x1, y1, 0, hz), '#8a5a32', '#6b4426', INK, 1.2);
-  gface([lift(x0, y0, hz), lift(x1, y0, hz), lift(x1, y1, hz), lift(x0, y1, hz)], '#c49060', '#a87648', INK, 1.4);
-  for (let x = x0 + .25; x < x1; x += .25) seg(lift(x, y0 + .05, hz), lift(x, y1 - .05, hz), 'rgba(90,55,25,.45)', 1);
-  bridgeRail(y0, x0, x1);
 }
 const FIELD_COL = {   // цвет лоскута и бороздок по сезону
   spring: { wheat: ['#9fd36a', '#7fb64e'], green: ['#8fcc5c', '#6fae44'], soil: ['#a8744a', '#8a5a36'], sun: ['#92cc60', '#74b04a'], lav: ['#a3cf72', '#86b45a'] },
@@ -4219,6 +4213,13 @@ function drawRail() {   // шпалы и два рельса через всю �
 function bridgeRail(y, x0, x1) {   // перила моста: столбики и брус
   for (let x = x0 + .1; x <= x1; x += (x1 - x0 - .2) / 4) toonPost(x, y, 3, 16, .05);
   const a = lift(x0 + .1, y, 16), b = lift(x1 - .1, y, 16); seg(a, b, INK, 4.4); seg(a, b, '#b07a48', 2.6);
+}
+function drawBridgeDeck() {   // настил и задние перила — объектом поверх земли фермы, но под людьми
+  const x0 = W - .1, x1 = W + 3.1, y0 = ROAD - .15, y1 = ROAD + 2.15, hz = 3;
+  gface(fY(x0, x1, y1, 0, hz), '#8a5a32', '#6b4426', INK, 1.2);
+  gface([lift(x0, y0, hz), lift(x1, y0, hz), lift(x1, y1, hz), lift(x0, y1, hz)], '#c49060', '#a87648', INK, 1.4);
+  for (let x = x0 + .25; x < x1; x += .25) seg(lift(x, y0 + .05, hz), lift(x, y1 - .05, hz), 'rgba(90,55,25,.45)', 1);
+  bridgeRail(y0, x0, x1);
 }
 function drawBridgeFront() { bridgeRail(ROAD + 2.15, W - .1, W + 3.1); }
 // деревья вокруг фермы — после земли фермы, иначе её клетки перекрывают стволы и кроны
