@@ -461,7 +461,8 @@ const CROP = Object.fromEntries(CROPS.map(c => [c.id, c]));
 
 const DAY_LEN = 180;      // секунд реального времени на день
 const MAX_QUEUE = 5;
-const SPEED = 3.2;        // клеток в секунду
+const PEOPLE_SLOW = .85;  // фермер и помощники на 15% медленнее (меньше суеты на экране)
+const SPEED = 3.2 * PEOPLE_SLOW;   // клеток в секунду
 
 // Деревья сада: сажаются один раз и потом плодоносят снова и снова.
 // Чтобы добавить грушу — допиши сюда запись и товар в GOODS.
@@ -904,7 +905,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-18.129';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-18.130';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -2625,19 +2626,19 @@ function updatePlayer(dt) {
   } else {
     P.moving = false;
     if (tasks.length) {
-      const t = tasks.shift(); if (t.fn) { t.fn(); P.work = 0.2; } nextTask();
+      const t = tasks.shift(); if (t.fn) { t.fn(); P.work = 0.2 / PEOPLE_SLOW; } nextTask();
       if (!tasks.length && autoHarvest && !S.night && !harvestRoute(true)) autoHarvest = false;
     }
     else if (!S.night && ((Math.floor(P.x) === COOP_SPOT.x && Math.floor(P.y) === COOP_SPOT.y && coopReady()) || (Math.floor(P.x) === BARN_SPOT.x && Math.floor(P.y) === BARN_SPOT.y && S.barn.milk > 0)) && (P.colT = (P.colT || 0) - dt) <= 0) {
       P.colT = 1;   // стоишь у курятника или коровника — забираешь, что появилось
       if (coopReady() && Math.floor(P.x) === COOP_SPOT.x) collectEggs(); else collectMilk();
-      P.work = 0.2;
+      P.work = 0.2 / PEOPLE_SLOW;
     }
     else if (!S.night && [sellSpot(), COUNTER2].some(c => Math.floor(P.x) === c.x && Math.floor(P.y) === c.y) && (P.sellT = (P.sellT || 0) - dt) <= 0) {
       P.sellT = 0.5;   // стоишь за прилавком — торгуешь с его очередью, на кого хватает товара
       const two = !fairOn() && Math.floor(P.x) === COUNTER2.x && Math.floor(P.y) === COUNTER2.y;
       const v = visitors.find(v => v.state === 'waiting' && canSell(v) && (fairOn() || !!v.shop === two));
-      if (v) { sell(v); P.work = 0.25; }
+      if (v) { sell(v); P.work = 0.25 / PEOPLE_SLOW; }
     }
   }
 }
@@ -2820,20 +2821,20 @@ const shopSpot = k => k ? CLERK2 : STATIONS.stall.idle;   // где стоит �
 function helperSell(h, k = 0) {   // помощник за прилавком
   if ((h.sellT -= 1) > 0) return;
   const v = visitors.find(v => v.state === 'waiting' && canSell(v) && forShop(v, k));
-  if (v) { sell(v); h.work = 0.45; h.sellT = 1; }
+  if (v) { sell(v); h.work = 0.45 / PEOPLE_SLOW; h.sellT = 1; }
 }
 function updateHelper(h, dt) {
   if (h.work > 0) { h.work -= dt; h.moving = false; return; }
   if (h.path.length) {
     const [tx, ty] = h.path[0];
-    if (stepToward(h, tx + .5, ty + .5, 2.4 * homeMult(), dt)) h.path.shift();
+    if (stepToward(h, tx + .5, ty + .5, 2.4 * PEOPLE_SLOW * homeMult(), dt)) h.path.shift();
     h.moving = true; h.phase += dt * 12; return;
   }
   h.moving = false;
   const cfg = S.helpers[h.id] || { stations: [] };
   if (h.target) {                          // дошёл до места работы
     const job = h.target; h.target = null;
-    if (job.act()) h.work = 0.45 / homeMult();
+    if (job.act()) h.work = 0.45 / PEOPLE_SLOW / homeMult();
     if (job.ord != null) { h.cur = job.ord + 1; h.lastPlot = true; h.bedRun = (h.bedRun || 0) + 1; } else { h.lastPlot = false; h.bedRun = 0; (h.seen ||= {})[job.k] = (h.tick = (h.tick || 0) + 1); } h.lastK = job.k;
     h.think = 0.5;   // пауза полсекунды перед следующим делом
     return;
@@ -2974,12 +2975,10 @@ function openHelpers() {
 // ================== ЦИКЛ ==================
 let last = performance.now(), saveAcc = 0;
 let timeScale = 1;   // чит-ускорение
-const SPD = { r: 0, g: 0, f: 0, show: null };
 function tick(now) {
   // как раньше: за кадр — не больше 0,1 с игрового времени (этот темп и привычен)
   const real = Math.min(1, Math.max(0, (now - last) / 1000)), dt = Math.min(0.1, real); last = now;
   for (let k = 0; k < timeScale; k++) step(dt);
-  SPD.r += real; SPD.g += dt; SPD.f++; if (SPD.r >= 10) { SPD.show = [SPD.g / SPD.r, SPD.f / SPD.r]; SPD.r = SPD.g = SPD.f = 0; }   // замер для настройки: скорость игры и кадры
   floats.forEach(f => f.t += real); floats = floats.filter(f => f.t < 1.2);
   saveAcc += real; if (saveAcc > 5) { saveAcc = 0; save(); }
   updateCam(real);
@@ -5963,7 +5962,7 @@ function openSaves() {
   const names = slotNames();
   const cl = { local: '💾 Ферма сохраняется в этом приложении сама', ok: '☁️ Сохраняется в облако claude.ai — не пропадёт, даже если закрыть браузер', wait: '☁️ Подключаемся к облаку…', err: '⚠️ Облако сейчас не отвечает — сохраняем в браузере и попробуем ещё',
     off: '⚠️ Облако недоступно — ферма хранится только в этом браузере. Safari может её стереть: сохраняй код фермы ↓', nowrite: '⚠️ Облако недоступно для этого аккаунта — ферма только в этом браузере. Safari может её стереть: сохраняй код фермы ↓' }[CLOUD.state];
-  let h = `<h2>💾 Сохранения</h2><div style="font-size:13px;color:#7a6650;margin:-4px 0 6px">У каждой ячейки своя ферма. Игра сохраняется сама — переключайся когда угодно. <span style="opacity:.6">Версия ${BUILD}${SPD.show ? ` · скорость ${SPD.show[0].toFixed(2)}× · ${Math.round(SPD.show[1])} к/с` : ''}</span></div>
+  let h = `<h2>💾 Сохранения</h2><div style="font-size:13px;color:#7a6650;margin:-4px 0 6px">У каждой ячейки своя ферма. Игра сохраняется сама — переключайся когда угодно. <span style="opacity:.6">Версия ${BUILD}</span></div>
     <div style="font-size:13px;font-weight:700;color:${CLOUD.state === 'ok' || CLOUD.state === 'local' ? '#3e7d32' : '#b0503a'};margin:0 0 10px">${cl}</div>`
     + (EMBED && CLOUD.state !== 'ok' ? `<div class="summary" style="background:#e9f6e2;border:1.5px solid #9bd07f">📱 Надёжнее играть в приложении: открой <a href="${APP_URL}" target="_blank" rel="noopener" style="font-weight:800;color:#2f6b2a">${APP_URL.replace('https://', '')}</a> в Safari → «Поделиться» → «На экран „Домой“». Там ферма сохраняется сама. Перенеси её кодом ниже.</div>` : '');
   for (let n = 1; n <= SLOTS; n++) {
