@@ -904,7 +904,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-18.126';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-18.127';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1870,7 +1870,7 @@ function initProd() {
   S.prod.dairy = { k: [k0, { r: S.up?.dhouse ? 'butter' : 'cheese', q: 0, t: 0 }], out };
 }
 
-// ---------- 🧈 Молочный дом: у каждого котла свой рецепт; засыпаешь молоко — котлы варят, готовое копится ----------
+// ---------- 🧈 Молочный дом: у каждого котла свой рецепт; заливаешь молоко — котлы производят, готовое копится ----------
 const kettles = () => S.up.dhouse ? 2 : 1;
 const dairyOk = r => r === 'cheese' || S.up.dhouse > 0;
 const dairyRate = (r, lvl = S.up.dairy || 1) => lvl * (r === 'butter' ? 1 + .5 * (S.up.churn || 0) : 1);
@@ -1933,7 +1933,7 @@ function openDairy() {
   const hot = S.started && !S.night && sumO(st.out) < Math.max(20, kCap() * K);
   const helper = S.helpers.map((c, i) => c.stations.includes(k) ? i + 1 : 0).filter(Boolean);
   const milk = S.inv.milk || 0;
-  let h = `<h2>${P.ico} ${P.name}</h2><div class="fpinfo">У каждого котла свой рецепт — тапни на котёл, чтобы его выбрать. Заливай молоко в любое время: оно делится между котлами поровну, и котлы варят, пока есть очередь. Готовое лежит здесь, пока его не заберут.</div>
+  let h = `<h2>${P.ico} ${P.name}</h2><div class="fpinfo">У каждого котла свой рецепт — тапни на котёл, чтобы его выбрать. Заливай молоко в любое время: оно делится между котлами поровну, и котлы работают, пока есть очередь. Готовое лежит здесь, пока его не заберут.</div>
     <div class="oven dh${hot ? ' hot' : ''}"><div class="ov-row">`;
   for (let i = 0; i < K; i++) {
     const o = st.k[i], on = hot && o.q;
@@ -1944,8 +1944,8 @@ function openDairy() {
   h += `</div>`;
   if (kPick >= 0 && kPick < K) {   // выбор рецепта для котла
     const o = st.k[kPick];
-    h += `<div class="kpick"><div class="kp-t">Котёл ${kPick + 1} варит:</div><div class="rcp r3">${Object.keys(DAIRY).map(r => { const D = DAIRY[r], ok = dairyOk(r);
-      return `<button class="rc${r === o.r ? ' on' : ''}${ok ? '' : ' off'}" onclick="${ok ? `setKettle(${kPick}, '${r}')` : "toast('🔒 Сметану и масло варят в Молочном доме')"}"><span class="rc-e">${GOODS[r].e}</span><b>${GOODS[r].name}</b><small>${sellPrice(r)}💰 · ${fmtMs(D.time / dairyRate(r))}</small><div class="rc-ing"><span>${D.n}<i>🥛</i></span></div><small class="rc-f">${!ok ? '🔒 Молочный дом' : r === o.r ? '✔ варит сейчас' : o.q ? 'молоко вернётся' : ''}</small></button>`; }).join('')}</div></div>`;
+    h += `<div class="kpick"><div class="kp-t">Котёл ${kPick + 1} производит:</div><div class="rcp r3">${Object.keys(DAIRY).map(r => { const D = DAIRY[r], ok = dairyOk(r);
+      return `<button class="rc${r === o.r ? ' on' : ''}${ok ? '' : ' off'}" onclick="${ok ? `setKettle(${kPick}, '${r}')` : "toast('🔒 Сметану и масло делают в Молочном доме')"}"><span class="rc-e">${GOODS[r].e}</span><b>${GOODS[r].name}</b><small>${sellPrice(r)}💰 · ${fmtMs(D.time / dairyRate(r))}</small><div class="rc-ing"><span>${D.n}<i>🥛</i></span></div><small class="rc-f">${!ok ? '🔒 Молочный дом' : r === o.r ? '✔ сейчас' : o.q ? 'молоко вернётся' : ''}</small></button>`; }).join('')}</div></div>`;
   }
   h += `<div class="dh-plan"><span>🥛 молока на складе: <b>${milk}</b></span><small>в котлах ${prodQ(k)} из ${kCap() * K}</small></div></div>`;
   const outs = Object.entries(st.out).filter(([, n]) => n), can = dairyLoadable();
@@ -2699,7 +2699,7 @@ const STATIONS = {
   coop:    { ico: '🐔', name: 'Курятник', idle: at('coop', 8, 8),   hint: 'Собирает яйца' },
   barn:    { ico: '🐄', name: 'Коровник', idle: at('barn', 14, 7),  hint: 'Собирает молоко' },
   mill:    { ico: '🌬️', name: 'Мельница', idle: at('mill', 19, 7),  hint: 'Мелет пшеницу в муку (оставляет 🌾 коровам)' },
-  dairy:   { get ico() { return PROD.dairy.ico; }, get name() { return PROD.dairy.name; }, idle: at('dairy', 16, 7), get hint() { return S.up.dhouse ? 'Варит молочное — что выберешь в окне дома' : 'Варит сыр из молока'; } },
+  dairy:   { get ico() { return PROD.dairy.ico; }, get name() { return PROD.dairy.name; }, idle: at('dairy', 16, 7), get hint() { return S.up.dhouse ? 'Делает молочное — что выберешь в окне дома' : 'Варит сыр из молока'; } },
   bakery:  { ico: '🥖', name: 'Пекарня',  idle: at('home', 4, 4),   hint: 'Печёт выбранный рецепт и забирает готовое' },
   stall:   { ico: '🏪', name: 'Лавка',    idle: at('stall', 3, 9),  hint: 'Стоит за прилавком и продаёт то, что выставлено. Двое помощников делят обе лавки' },
 };
@@ -5689,7 +5689,7 @@ function drawWeather(t) {
   if (w === 'rain') {
     ctx.fillStyle = 'rgba(40,62,95,.12)'; ctx.fillRect(0, 0, W, H);
     ctx.strokeStyle = 'rgba(225,238,255,.7)'; ctx.lineWidth = 1.6 * k; ctx.lineCap = 'round'; ctx.beginPath();
-    const n = Math.round(W * H / (k * k) / 2600), vy = 620 * k, vx = .36 * vy, L = 15 * k;   // косой дождь — ветер слева направо, как полоски ветра
+    const n = Math.round(W * H / (k * k) / 4200), vy = 430 * k, vx = .36 * vy, L = 13 * k;   // спокойный дождь: реже и медленнее   // косой дождь — ветер слева направо, как полоски ветра
     for (let i = 0; i < n; i++) {
       const sp = .8 + wxR(i, 3) * .4, y = ((wxR(i, 1) * H + s * vy * sp) % (H + 40 * k)) - 20 * k;
       const x = (((wxR(i, 2) * W + s * vx * sp) % (W + 80 * k)) + W + 80 * k) % (W + 80 * k) - 40 * k;
