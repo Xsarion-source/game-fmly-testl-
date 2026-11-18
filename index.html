@@ -1014,7 +1014,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-18.145';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-18.146';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3323,7 +3323,8 @@ const cv = $('cv'); let ctx = cv.getContext('2d'); const MAIN_CTX = ctx;
 let cw = 1, ch = 1, dpr = 1, zoom = 1, userZoom = false;
 // Экономия батареи (по умолчанию включена, хранится на этом устройстве): картинка с чёткостью 1,5× вместо 2× —
 // телефон греется заметно меньше
-let ECO = true; try { ECO = localStorage.getItem('farm-eco') !== '0'; } catch {}
+let ECO = true, LOWRES = false; try { ECO = localStorage.getItem('farm-eco') !== '0'; LOWRES = localStorage.getItem('farm-lowres') === '1'; } catch {}
+function toggleLowres() { LOWRES = !LOWRES; try { localStorage.setItem('farm-lowres', LOWRES ? '1' : '0'); } catch {} bgTiles.clear(); resize(); openMenu(); toast(LOWRES ? '🔎 Низкая чёткость — в 2 раза меньше точек на экране' : '🔎 Обычная чёткость'); }
 function toggleEco() { ECO = !ECO; try { localStorage.setItem('farm-eco', ECO ? '1' : '0'); } catch {} resize(); openMenu(); toast(ECO ? '🔋 Экономия батареи включена' : '🔋 Экономия выключена — картинка чётче, телефон греется сильнее'); }
 const cam = { x: 0, y: 0 };
 const iso = (x, y) => ({ x: (x - y) * TW / 2, y: (x + y) * TH / 2 });
@@ -3337,7 +3338,7 @@ function centerCam() { cam.x = (WORLD.x0 + WORLD.x1) / 2 + 40 / zoom; cam.y = (W
 function resize() {
   const r = $('stage').getBoundingClientRect();
   cw = Math.max(1, r.width); ch = Math.max(1, r.height);
-  dpr = Math.min(ECO ? 1.5 : 2, window.devicePixelRatio || 1);
+  dpr = Math.min(LOWRES ? 1 : ECO ? 1.5 : 2, window.devicePixelRatio || 1);   // низкая чёткость — опыт: греется ли телефон от количества точек
   cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr);
   const wasTablet = tablet; tablet = cw >= 700;
   if (!userZoom) zoom = tablet ? fitZoom() : Math.max(0.55, Math.min(1.2, Math.max(cw / 700, ch / 1080)));
@@ -6416,6 +6417,7 @@ function openMenu() {
       <button onclick="openCalendar()">📅 Календарь <small style="color:#7a6650">— ${WEEKDAYS[cal().dow].toLowerCase()}, ${season().name.toLowerCase()}</small></button>
       <button onclick="openProfile()">👤 Профиль</button>
       <button onclick="toggleEco()">🔋 Экономия батареи <small style="color:#7a6650">— ${ECO ? 'включена' : 'выключена'}</small></button>
+      <button onclick="toggleLowres()">🔎 Чёткость <small style="color:#7a6650">— ${LOWRES ? 'низкая (опыт)' : 'обычная'}</small></button>
       <button onclick="toggleFps()">🎞 Кадров в секунду <small style="color:#7a6650">— ${FPS30 ? '30 (меньше греется)' : '60'}</small></button>
       <button onclick="openSaves()">💾 Сохранения <small style="color:#7a6650">— ${esc(slotNames()[SLOT - 1])}</small></button>
       <button onclick="openEconomy()">💰 Экономика</button>
