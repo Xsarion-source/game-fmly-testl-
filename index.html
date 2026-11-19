@@ -938,7 +938,7 @@ function newState() {
     barn: { fedDay: 0, fedCows: 0, milk: 0, milkT: 0 },
     spawned: 0, toSpawn: 0,
     stats: { earned: 0, served: 0, missed: 0 },
-    life: { earned: 0, served: 0, harvested: 0, eggs: 0 }, xp: 0,
+    life: { earned: 0, served: 0, harvested: 0, eggs: 0 }, xp: 0, xpv: 2,
     player: { x: 7.5, y: 9.5 },
     helpers: [],
   };
@@ -990,6 +990,7 @@ for (const c of S.helpers) if (!c.zones) {   // участки: раньше б�
   delete c.zone; if (z != null) c.zones.push(z);
 }
 for (const c of S.helpers) { c.feed ??= false; c.ghReplant ??= false; c.ghSeed ??= 'same'; c.fold ??= false; }
+if (!S.xpv) { S.xp = Math.round((S.xp || 0) * 3); S.xpv = 2; }   // уровни стали в 3 раза «длиннее»: старый опыт ×3 — уровень и полоска до следующего остаются как были
 S.up.store ??= 0; S.up.orchard ??= 0; S.up.coop ??= 0; S.up.greenhouse ??= 0;
 S.gh ??= [];
 for (const c of S.helpers) if (['tomato', 'strawberry'].includes(c.seed)) c.seed = 'same';   // помидоры и клубника переехали в теплицу
@@ -1014,7 +1015,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-18.147';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-18.148';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1109,7 +1110,7 @@ let floats = [];
 
 // ================== ПРАВИЛА ==================
 // ---------- Уровень фермы ⭐: опыт дают только продажи, отнять его нельзя ----------
-const LVL_XP = L => Math.round(40 * Math.pow(L - 1, 2.4));   // сколько опыта всего нужно для уровня L: 2 → 40, 5 → ~1100, 10 → ~7800, 20 → ~47000
+const LVL_XP = L => Math.round(120 * Math.pow(L - 1, 2.4));   // сколько опыта всего нужно для уровня L: 2 → 120, 5 → ~3300, 10 → ~23400 (темп ×3 медленнее, чем было)
 const farmLevel = () => { let L = 1; while (S.xp >= LVL_XP(L + 1)) L++; return L; };
 function gainXp(n) {
   const L0 = farmLevel(); S.xp += n; const L = farmLevel(); if (S.stats) S.stats.xp = (S.stats.xp || 0) + n;
