@@ -876,7 +876,7 @@ const zoneIn = (x, y) => FUTURE.find(Z => x >= Z.x0 && x <= Z.x1 && y >= Z.y0 &&
 // дорога к складу: от главной дороги вдоль левого края фермы и за её верхним рядом деревьев
 const laneAt = (x, y) => S.up.store > 0 && ((x === -1 && y >= -1 && y < ROAD) || (y === -1 && x >= -1 && x <= 17));
 const zoneEdge = (x, y) => FUTURE.some(Z => !zoneOpen(Z) && x >= Z.x0 && x <= Z.x1 && y >= Z.y0 && y <= Z.y1 && (x === Z.x0 || x === Z.x1 || y === Z.y0 || y === Z.y1));
-decor.push({ kind: 'storeBarn', x: 12, y: -5, z: 12 + 4 - 5 + 2.6 - 1.01 });   // амбар склада
+decor.push({ kind: 'storeBarn', x: 12, y: -5, z: 12 - 2.4 - 1.2 });   // раньше грузовика на дорожке перед ним (ящики у стены не перекрывают машину)   // амбар склада
 for (const Z of FUTURE) decor.push({ kind: 'zoneSign', Z, x: Z.sign[0], y: Z.sign[1], z: Z.sign[0] + Z.sign[1] + 1.2 });   // таблички будущих зон
 function drawZoneRopes() {   // верёвка на колышках по краю каждой зоны
   const win = season().id === 'winter';
@@ -1036,7 +1036,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-18.150';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-18.151';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1615,6 +1615,13 @@ const TRUCK_SPR = Object.fromEntries(Object.entries(TRUCK_SRC).map(([k, src]) =>
 const truckResText = r => r.money + r.bonus > 0 ? `🚚 Грузовик забрал заказ: +${r.money + r.bonus}💰${r.bonus ? ` (премия ${r.bonus}💰 за весь заказ)` : ''}` : '🚚 Грузовик уехал пустым — в следующий раз погрузи товар заранее';
 // воскресенье конца месяца: пикап едет по дороге, сворачивает на грунтовку к складу, грузится и уезжает
 let truckCar = null;
+// грузовик длинный: кто рядом с ним — рисуется перед ним или за ним по своей стороне дороги, а не по точке
+function tz(o, z) {
+  const T = truckCar; if (!T) return z;
+  const along = T.mir ? o.y - T.y : o.x - T.x, side = T.mir ? o.x - T.x : o.y - T.y;
+  if (Math.abs(along) > 1.9 || Math.abs(side) > 1.4) return z;
+  return T.x + T.y + (side >= 0 ? .05 : -.05);
+}
 // где колёса касаются земли (пиксели картинки шириной 260): ближние зад/перёд, дальние перёд/зад — по ним ставим машину и рисуем тень
 const TRUCK_WHEELS = { front: [[45, 153], [150, 190], [226, 172], [121, 135]], back: [[30, 118], [140, 180], [230, 165], [120, 103]] };
 const TRUCK_FOOT = Object.fromEntries(Object.entries(TRUCK_WHEELS).map(([k, p]) => [k, [p.reduce((a, q) => a + q[0], 0) / 4, p.reduce((a, q) => a + q[1], 0) / 4]]));
@@ -1631,12 +1638,16 @@ function updateTruck(dt) {
   const c = S.truck.c;
   if (!truckCar && c && S.day === c.due && S.started) {
     truckCar = { x: W + 16, y: TRUCK_Y, f: 'back', mir: false, loaded: false, wait: 0,
-      wps: [{ x: -.5, y: TRUCK_Y }, { x: -.5, y: -.5 }, { x: TRUCK_PARK, y: -.5, park: 6 }, { x: -.5, y: -.5 }, { x: -.5, y: TRUCK_Y }, { x: -26, y: TRUCK_Y, end: true }] };
+      wps: [{ x: -.5, y: TRUCK_Y }, { x: -.5, y: -.5 }, { x: TRUCK_PARK, y: -.5, park: 1 }, { x: -.5, y: -.5 }, { x: -.5, y: TRUCK_Y }, { x: -26, y: TRUCK_Y, end: true }] };
     for (const f of ['front', 'back']) for (const l of [false, true]) { const im = TRUCK_SPR[f + (l ? '_loaded' : '_empty')]; if (im.complete && im.width) truckCanvas(f + l, im, 118, im.height * 118 / im.width); }
     toast('🚚 Едет грузовик за заказом!');
   }
   const T = truckCar; if (!T) return;
-  if (T.wait > 0) { T.wait -= dt; if (T.wait <= 0) { T.loaded = true; toast('📦 Заказ погружен'); } return; }
+  if (T.wait > 0) {   // стоит у склада, пока не отправишь (кнопка в окне грузовика) или до вечера
+    if (!T.parked) { T.parked = true; toast('🚚 Грузовик у склада — погрузи товар и отправь его в окне 🚚'); }
+    if (T.go || S.t >= DAY_LEN * .88) { T.wait = 0; T.loaded = truckValue() > 0; toast(T.loaded ? '📦 Заказ погружен — грузовик уезжает' : '🚚 Грузовик уезжает'); }
+    return;
+  }
   const w = T.wps[0]; if (!w) return;
   const dx = w.x - T.x, dy = w.y - T.y, d = Math.hypot(dx, dy), v = 3.2 * dt;
   T.moving = true; T.ph = (T.ph || 0) + dt * 10;
@@ -1693,6 +1704,7 @@ function renderTruckBtn() {
   b.innerHTML = `<img src="${TRUCK_SRC.front_loaded}" alt=""><small>${d <= 0 ? 'сегодня' : d === 1 ? 'завтра' : d + ' дн.'}</small>`;
   b.classList.toggle('hot', d <= 1 && !truckDone());
 }
+function truckSend() { if (truckCar?.parked) { truckCar.go = true; closeNight(); } }
 function truckLoadAll() { const c = S.truck.c; if (!c) return; for (const id of Object.keys(c.items)) truckLoad(id); openTruck(); }
 function openTruck() {
   const c = S.truck.c, T = c ? TRUCK.tiers.find(t => t.id === c.tier) || TRUCK.tiers[0] : TRUCK.tiers[truckTierIdx()];
@@ -1716,6 +1728,7 @@ function openTruck() {
     const v = truckValue(), bonus = Math.round(c && Object.keys(c.items).reduce((s2, id) => s2 + c.items[id] * c.pay[id], 0) * TRUCK.full);
     h += `</div><div class="ty-pay"><span>В кузове на <b>${v}💰</b></span><small>${truckDone() ? `+ премия ${Math.round(v * TRUCK.full)}💰 ✨` : `за весь заказ + ${bonus}💰`}</small></div></div>`;
     if (can) h += `<button class="ty-all" onclick="truckLoadAll()">📦 Погрузить всё, что есть</button>`;
+    if (truckCar?.parked && !truckCar.go) h += `<button class="ty-all" style="background:#e0554a;box-shadow:0 4px 0 #a83a32" onclick="truckSend()">🚚 Отправить грузовик</button><div class="fpinfo" style="margin-top:6px">Грузовик ждёт у склада до вечера.</div>`;
   }
   const ti = truckTierIdx(), nx = TRUCK.tiers[ti + 1];
   if (nx) { const need = nx.rep - TRUCK.tiers[ti].rep, got = Math.max(0, S.truck.rep - TRUCK.tiers[ti].rep);
@@ -2565,7 +2578,7 @@ function openMail() {
       h += `<div class="stat"><span>${GOODS[g].e} ${GOODS[g].name}</span><b style="color:${have >= n ? '#3e9b3a' : '#b0503a'}">${Math.min(have, n)} / ${n}${have >= n ? ' ✔' : ''}</b></div>`;
     }
     h += `<div class="summary">Награда: <b>${money}💰</b> — на лотке это ушло бы за ${orderWorth(o)}💰<br>
-      Срок: ${left > 0 ? `ещё ${left + 1} дн. (до конца ${o.due}-го дня)` : '<b style="color:#b0503a">сегодня последний день</b>'}</div>
+      Срок: ${left > 0 ? `ещё ${left + 1} дн. — до ${WEEKDAYS[cal(o.due).dow].toLowerCase().replace(/а$/, 'у')} включительно` : '<b style="color:#b0503a">сегодня последний день</b>'}</div>
       <div class="row"><button class="wide" ${orderReady() ? '' : 'disabled'} onclick="closeNight(); setTasks([{ ...MAIL_SPOT, fn: deliverOrder }])">📦 Отправить</button>
       <button class="wide alt" onclick="declineOrder()">Отказаться</button></div>`;
   }
@@ -4401,20 +4414,20 @@ function draw(t) {
   for (const c of cowsState) list.push({ z: c.x + c.y, f: () => { const key = animKey(c, c.graze ? 'g' : ''); drawCachedAt(c, key, 70, 64, 35, 52, o => drawCow({ ...o, phase: phaseOf(key) }, 0)); } });
   S.plots.forEach((p, i) => { if (p.crop) { const s = PLOT_SLOTS[i]; list.push({ z: s.x + s.y + 1, f: () => drawCrop(i, t) }); } });
   S.gh.forEach((p, i) => { if (p.crop) { const s = GH_SLOTS[i]; list.push({ z: s.x + s.y + 1, f: () => drawCrop(i, t, true) }); } });
-  list.push({ z: P.x + P.y + 0.01, f: () => S.picnic === S.day && !S.night && !path.length && !P.moving && Math.floor(P.x) === PICNIC.x && Math.floor(P.y) === PICNIC.y ? drawSitting(P, PLAYER_LOOK) : drawPersonC(P, PLAYER_LOOK) });   // на пикнике фермер сидит на пледе
-  for (const h of helpers) list.push({ z: h.x + h.y, f: () => { const pose = picPose(h); if (pose) { drawHelperPose(h, pose, t); return; } drawPersonC(h, h.look); const c = iso(h.x, h.y); const cfg = S.helpers[h.id] || { stations: [] }, st = cfg.stations;
+  list.push({ z: tz(P, P.x + P.y + 0.01), f: () => S.picnic === S.day && !S.night && !path.length && !P.moving && Math.floor(P.x) === PICNIC.x && Math.floor(P.y) === PICNIC.y ? drawSitting(P, PLAYER_LOOK) : drawPersonC(P, PLAYER_LOOK) });   // на пикнике фермер сидит на пледе
+  for (const h of helpers) list.push({ z: tz(h, h.x + h.y), f: () => { const pose = picPose(h); if (pose) { drawHelperPose(h, pose, t); return; } drawPersonC(h, h.look); const c = iso(h.x, h.y); const cfg = S.helpers[h.id] || { stations: [] }, st = cfg.stations;
     const fieldIco = !cfg.replant ? '🧺' : cfg.seed === 'same' ? '🔁' : CROP[cfg.seed]?.e || '🧺';   // только сбор — корзинка, посев — значок культуры
     const icons = isRest() && !S.night ? [S.picnic === S.day ? '🧺' : REST.ico] : st.length ? st.map(k => k === 'field' ? (!cfg.zones.length ? '❓' : fieldIco) : k === 'gh' && cfg.ghReplant && cfg.ghSeed !== 'same' ? CROP[cfg.ghSeed].e : STATIONS[k].ico) : [REST.ico];
     if (h.broke) icons.push('💰');
     rr(c.x - icons.length * 6.5 - 3, c.y - 69, icons.length * 13 + 6, 18, 9, 'rgba(255,253,246,.95)');
     icons.forEach((e, k) => emoji(e, c.x + (k - (icons.length - 1) / 2) * 13, c.y - 59.5, 11)); } });
-  for (const v of visitors) list.push({ z: v.x + v.y + (v.sitting ? .3 : 0), f: () => v.sitting ? drawSitting(v, v.look) : drawPersonC(v, v.look) });
+  for (const v of visitors) list.push({ z: tz(v, v.x + v.y + (v.sitting ? .3 : 0)), f: () => v.sitting ? drawSitting(v, v.look) : drawPersonC(v, v.look) });
   if (clerkOn()) list.push({ z: clerk.x + clerk.y, f: () => drawPersonC(clerk, CLERK_LOOK) });
   archSlices(list);
   for (const id of S.decor || []) if (DECOR_SPOT[id]) { const q = DECOR_SPOT[id]; list.push({ z: id === 'flags' ? 8.5 + 10.5 : q.x + q.y + 1, f: () => drawSprite(DECOR_OBJ[id], () => drawDecor(id), id + S.night, t) }); }
   list.push({ z: CIRCUS.x + CIRCUS.y + .9, f: () => drawSprite(CIRCUS, drawCircus, (isFair() && !S.night) + season().id, t) });   // шатёр цирка у ярмарки
   if (fairOn()) fairDrawList(list, t);
-  if (truckCar) list.push({ z: truckCar.x + truckCar.y + .7, f: drawTruckCar });
+  if (truckCar) list.push({ z: truckCar.x + truckCar.y, f: drawTruckCar });
   list.sort((a, b) => a.z - b.z).forEach(o => o.f());
 
   drawLighting();
@@ -4680,7 +4693,7 @@ function fairDrawList(list, t) {
     for (let j = 0; j < 1 + (i % 2); j++) { const f = FAIR_STAND[(i * 2 + j) % FAIR_STAND.length], x = B.x0 + .7 + j * .9, y = B.y0 + 2.4;
       list.push({ z: x + y, f: () => drawPersonC({ x, y, moving: false, flip: j % 2 === 1, phase: 0 }, f) }); } });
   }
-  for (const f of fairFolk) list.push({ z: f.x + f.y, f: () => {
+  for (const f of fairFolk) list.push({ z: tz(f, f.x + f.y), f: () => {
     if (!f.kid) { drawPersonC(f, f.look); return; }
     drawPersonC(f, f.look, .7);
   } });
@@ -6876,6 +6889,7 @@ function dayEvents(d) {   // значки событий на день: новы
   if (S.order && S.order.due === d) ev.push(['📬', `Срок заказа: ${S.order.from}`]);
   if (cal(d).sday === 1) ev.push([SEASONS[cal(d).si].e, `Начало сезона: ${SEASONS[cal(d).si].name.toLowerCase()}`]);
   if (isFair(d)) ev.push(['🎪', `Ярмарка: покупателей больше · 🏆 конкурс ${SPECIAL[contestOf(d)].what} ${SPECIAL[contestOf(d)].e} · ${themeText(d)} дороже на ${Math.round(THEME_BONUS * 100)}%`]);
+  if (truckOn() && d === (S.truck.c && S.truck.c.due >= S.day ? S.truck.c.due : truckDue(d))) ev.push(['🚚', 'Приезжает грузовик за заказом — погрузи товар заранее']);
   if (isRest(d)) ev.push(['🧺', 'Выходной: лавка закрыта']);
   if (d > 1 && cal(d).si === 0 && cal(d).sday === 1) ev.push(['🎂', `Ферме ${cal(d).year - 1} ${cal(d).year - 1 === 1 ? 'год' : cal(d).year - 1 < 5 ? 'года' : 'лет'}!`]);
   return ev;
