@@ -705,7 +705,7 @@ function rivals() {
   const s = RIVALS_DEF.map(() => {
     const goods = [], st = {}, pr = {};
     while (goods.length < 3 && goods.length < pool.length) { const g = pool[Math.floor(r() * pool.length)]; if (!goods.includes(g)) goods.push(g); }
-    for (const g of goods) { st[g] = 10 + Math.floor(r() * 22); pr[g] = Math.max(1, Math.round(GOODS[g].price * seasonPrice(g) * themeMul(g, fd) * (1.05 + r() * .35))); }
+    for (const g of goods) { st[g] = 8 + Math.floor(r() * 14); pr[g] = Math.max(1, Math.round(fairBase(g, fd) * (.9 + r() * .22))); }   // соседи держат цены рядом с нашей «обычной»: кто-то чуть дешевле, кто-то дороже
     return { stock: st, price: pr };
   });
   S.fair.rv = { d: fd, s }; return s;
@@ -716,6 +716,8 @@ const CRATE = 20, CRATES_PER = 4;
 const BAKE_CRATE0 = 12, BAKE_CRATES = 4;   // хлебный лоток: ящики 12–15, только для выпечки
 // престиж фермы: очки за кубки (🥇3 🥈2 🥉1) + уровни уюта → наценка на ярмарке
 const prestigePts = () => S.trophies.reduce((a, t) => a + (4 - t.p), 0);   // только кубки (уют даёт свои +2% на лотке)
+const FAIR_BUY = 3.5;   // на ярмарку приезжают за покупками: каждый берёт в несколько раз больше, чем в лавке
+const fairBase = (g, d) => GOODS[g].price * priceMult() * seasonPrice(g) * fairMult() * themeMul(g, d);   // «обычная» ярмарочная цена (без нашей скидки/наценки)
 const fairMult = () => 1 + Math.min(.5, .05 + prestigePts() * .03);
 const PM = [.9, 1, 1.15], PM_NAME = ['Дешевле −10%', 'Обычная', 'Дороже +15%'];
 // тема конкурса: на ярмарке товары темы дороже у всех и спрашивают их вдвое чаще
@@ -1034,7 +1036,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-18.149';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-18.150';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1741,14 +1743,14 @@ function spawnVisitor() {
     const g = pick(pool), offers = [];
     if (S.fair.stock[g] > 0) offers.push({ who: -1, p: myFairPrice(g) });
     R.forEach((x, i) => { if (x.stock[g] > 0) offers.push({ who: i, p: x.price[g] }); });
-    const best = offers.map(o => ({ ...o, e: o.p * (.88 + Math.random() * .24) })).sort((a, b) => a.e - b.e)[0];
+    const best = offers.map(o => ({ ...o, e: o.p * (.94 + Math.random() * .12) })).sort((a, b) => a.e - b.e)[0];
     if (best.who >= 0) { rivalSale(best.who, g); S.spawned++; return; }
     pool.length = 0; pool.push(g);
   }
   let items, shop = 0;
   if (fairOn()) {   // на ярмарке — по одному товару, как раньше
     const g = pool[0], base = GOODS[g].price;
-    const n = g === 'goldegg' || GOODS[g].sp ? 1 : 1 + Math.floor(Math.random() * (base < 15 ? 4 : base < 40 ? 3 : 2));
+    const n = g === 'goldegg' || GOODS[g].sp ? 1 : Math.round((1 + Math.random() * (base < 15 ? 3 : base < 40 ? 2 : 1)) * FAIR_BUY);
     items = [{ id: g, n: Math.max(1, Math.min(n, S.fair.stock[g] || 1)) }];
   } else if (spSale.length && Math.random() < .15) items = [{ id: pick(spSale), n: 1 }];   // за выставленной находкой приходит особый покупатель
   else {
@@ -4840,7 +4842,7 @@ function openFairResult(r) {
 }
 function rivalSale(i, g) {   // покупатель ушёл к соседу: идёт к его ларьку, стоит у прилавка и уходит
   const x = rivals()[i], B = FAIR_STALLS.find(t => t.r === i);
-  const q = Math.min(x.stock[g], 1 + Math.floor(Math.random() * 3));
+  const q = Math.min(x.stock[g], Math.round((1 + Math.random() * 2) * FAIR_BUY));
   x.stock[g] -= q;
   { const L = fairLog(); L.rv[i] = (L.rv[i] || 0) + q * x.price[g]; if (!x.stock[g]) L.out.push({ i, g }); }
   if (!x.stock[g]) setTimeout(() => toast(`😮 У «${RIVALS_DEF[i].name}» кончилось: ${GOODS[g].e} ${GOODS[g].name.toLowerCase()}`), 400);
