@@ -651,7 +651,7 @@ const UPGRADES = {
   bakery: { name: 'Пекарня',           ico: '🥖', desc: l => l === 0 ? 'Пристройка к дому. Печёт из 🍚 муки и продуктов фермы: 🍞 хлеб, 🥧 пирог, 🍕 пиццу и 🎂 торт' : 'Печёт вдвое быстрее', cost: l => [6000, 9000][l], max: 2, need: () => S.up.mill >= 1, needText: 'Откроется после новой постройки в лесу 🪓' },
   cozy:   { name: 'Уют',               ico: '🌷', desc: l => `${COZY[l]}. Покупателям нравится — платят на 2% больше (+${l * 2}% → +${(l + 1) * 2}%)`, cost: l => [600, 1200, 2000, 3200, 5000][l],
             get max() { return Math.max(S.up.cozy || 0, S.up.house ? 5 : 4); } },   // фонарики висят на веранде — последний уровень после «Дома фермера»
-  ads:    { name: 'Реклама',           ico: '📣', desc: l => `Больше покупок в лавке: +½ покупателя в день (больше людей приводит уровень фермы ⭐)`, cost: l => [80, 160, 280, 450, 650, 900, 1200, 1600, 2100, 2700][l], max: 10 },
+  ads:    { name: 'Реклама',           ico: '📣', desc: l => `Больше покупателей в лавке: каждые 2 уровня рекламы — +1 покупатель в день (а ещё больше людей приводит уровень фермы ⭐)`, cost: l => [80, 160, 280, 450, 650, 900, 1200, 1600, 2100, 2700][l], max: 10 },
   fert:   { name: 'Удобрения',         ico: '🧪', desc: l => `Рост быстрее (+${l*20}% → +${(l+1)*20}%)`, cost: l => 50 + l*60, max: 5 },
   slots:  { name: 'Место на прилавке',  ico: '🧺', desc: l => `Ещё одно место для товара на прилавке: ${3 + l} → ${4 + l}`, cost: l => [150, 450, 1000][l], max: 3 },
   stall2: { name: 'Вторая лавка',      ico: '🏪', desc: l => 'Ещё одна лавка слева от первой: 6 мест под товар и своя очередь. Торгуют фермер и помощники со станцией «Лавка»', cost: l => [3000][l], max: 1, need: () => S.up.slots >= 3, needText: 'Откроется, когда на прилавке будет 6 мест 🧺' },
@@ -1124,7 +1124,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-18.157';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-18.158';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3064,7 +3064,7 @@ function updateVisitors(dt) {
     } else {
       v.moving = false;
       if (v.bench != null) {   // сидит на скамейке
-        v.sitting = true; v.flip = false;
+        v.sitting = true; v.flip = true;   // лицом от спинки скамейки — к дороге
         if ((v.sit -= dt) <= 0 || S.night) { v.bench = null; v.sitting = false; v.wps = [{ x: v.x, y: ROAD + 1.2 }, { x: -2, y: ROAD + 1.2 }]; }
         continue;
       }
@@ -6950,7 +6950,7 @@ function shopRows() {
     if (S.unlocked.includes(c.id)) return;
     const why = cropWhy(c), early = !!why;
     rows.crops.push({ rank: early ? 2 : S.coins >= c.unlockCost ? 0 : 1, cost: c.unlockCost, i, h: `<div class="up" data-why="${early ? why : 'Недостаточно средств'}"><div class="ico"${early ? ' style="opacity:.55"' : ''}>${c.e}</div><div class="txt"><b>${c.name}</b>
-      <small>${early ? why : `Семена ${c.seed}💰 · продаётся за ${c.price}💰 · ${GH_CROPS.includes(c.id) ? `🏡 только в теплице: растёт ${c.grow * GH_SLOW}с, гроздь ×${GH_YIELD}` : `растёт ${c.grow}с`}`}</small></div>
+      <small>${early ? why : `Семена ${c.seed}💰 · продаётся за ${c.price}💰 · ${GH_CROPS.includes(c.id) ? `🏡 только в теплице: растёт ${fmtMs(c.grow * GH_SLOW)}, гроздь ×${GH_YIELD}` : `растёт ${fmtMs(c.grow)}`}`}</small></div>
       <button ${early || S.coins < c.unlockCost ? 'disabled' : ''} onclick="unlockCrop('${c.id}')">${c.unlockCost}💰</button></div>` });
   });
   for (const k in rows) rows[k].sort((a, b) => a.rank - b.rank || (a.rank < 2 ? a.cost - b.cost : 0) || a.i - b.i);
