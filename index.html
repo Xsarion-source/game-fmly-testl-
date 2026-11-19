@@ -52,6 +52,8 @@
   .goal .gbar { height: 9px; border-radius: 5px; background: #ecdcb8; overflow: hidden; margin: 7px 0 5px; } .goal .gbar i { display: block; height: 100%; background: linear-gradient(#8fe07a, #4caf50); }
   .goal .grow { display: flex; align-items: center; justify-content: space-between; gap: 8px; } .goal small { color: #7a6650; font-size: 13px; }
   .goal .gswap { padding: 5px 10px; font-size: 13px; border-radius: 10px; background: #f3e8cf; border: 1.5px solid #e2cfa6; color: #7a5a3a; box-shadow: none; }
+  .goal.year { border-color: #9cc4e8; background: #eef6fd; }
+  .goal.big { border-color: #e9b23a; background: #fff6d8; } .gbig { display: block; font-weight: 900; color: #b07a10; font-size: 12px; margin-bottom: 2px; }
   .goal.done { background: #e9f6df; border-color: #a8d68f; } .goal.done .gt { color: #3e7d32; }
   .goal.lockd { opacity: .6; border-style: dashed; } .goal.lockd .gt { font-weight: 600; font-size: 14px; }
   #fairBtn .glow { position: absolute; inset: -2px; border-radius: 50%; pointer-events: none;
@@ -720,7 +722,8 @@ const fairOn = () => isFair() && !S.night;
 // соседи по ярмарке: у каждого свой ларёк, 3 товара с запасом на день и свои цены
 const RIVALS_DEF = [{ name: 'Ромашка' }, { name: 'Дядя Петя' }, { name: 'Солнышко' }];
 // по календарю ярмарка — в субботу 1-й и 2-й недели месяца (3-я неделя спокойная); уровень фермы здесь не учитывается
-const fairCal = d => cal(d).dow === 5 && cal(d).week <= 2;
+const isFinale = (d = S.day) => cal(d).si === 3 && cal(d).week === 3 && cal(d).dow === 5;   // «Зимняя ярмарка» — последняя суббота года, праздник без конкурса
+const fairCal = d => cal(d).dow === 5 && (cal(d).week <= 2 || isFinale(d));
 const nextFairDay = (from = S.day) => { let d = from; while (!fairCal(d) && d < from + 30) d++; return d; };
 function rivals() {
   const fd = isFair() ? S.day : nextFairDay();
@@ -748,7 +751,7 @@ const fairMult = () => 1 + Math.min(.5, .05 + prestigePts() * .03);
 const PM = [.9, 1, 1.15], PM_NAME = ['Дешевле −10%', 'Обычная', 'Дороже +15%'];
 // тема конкурса: на ярмарке товары темы дороже у всех и спрашивают их вдвое чаще
 const THEME_GOODS = { pumpkin: ['pumpkin'], cheese: ['cheese'], corn: ['corn'], goldegg: ['egg', 'goldegg'], strawberry: ['strawberry', 'cake'] }, THEME_BONUS = .35;
-const isTheme = (c, d) => (THEME_GOODS[contestOf(d)] || []).includes(c);
+const isTheme = (c, d = S.day) => !isFinale(d) && (THEME_GOODS[contestOf(d)] || []).includes(c);
 const themeMul = (c, d) => isTheme(c, d) ? 1 + THEME_BONUS : 1;
 const themeText = (d) => (THEME_GOODS[contestOf(d)] || []).map(g => GOODS[g].e).join('');
 const myFairPrice = c => Math.round(sellPrice(c) * fairMult() * themeMul(c) * PM[(S.fair.pm?.[c] ?? 0) + 1]);   // своя цена на ярмарке: базовая × престиж × выбранная
@@ -1124,7 +1127,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-18.158';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-18.159';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1261,33 +1264,78 @@ const DECOR = [
   { id: 'flags', name: '🎏 Флажки над тропинкой' }, { id: 'pots', name: '🪴 Кадки с цветами у крыльца' }, { id: 'lamp', name: '🏮 Фонарь у тропинки' },
   { id: 'scare', name: '🧑‍🌾 Пугало у поля' }, { id: 'bed', name: '🌼 Клумба у дома' }, { id: 'bird', name: '🐦 Скворечник' }, { id: 'pin', name: '🌀 Вертушка' },
 ];
+// ---------- 🎄 Год: цели года, счётчики, итоги ----------
+const yearIdx = (d = S.day) => Math.floor((d - 1) / (SEASON_LEN * 4));
+const YEAR_GOALS = {
+  fairWins: { e: '🥇', text: g => `Займи 1-е место по продажам на ${g.target} ярмарках`, can: () => fairUnlocked(), target: 3 },
+  truckFull: { e: '🚚', text: g => `Собери ${g.target} заказа грузовика целиком`, can: () => truckOn(), target: 3 },
+  mail: { e: '📬', text: g => `Отправь ${g.target} заказов по почте`, can: () => farmLevel() >= MAIL_LVL, target: 10 },
+  baked: { e: '🥖', text: g => `Испеки ${g.target} штук выпечки`, can: () => S.up.bakery > 0, target: 300 },
+  dairy: { e: '🧀', text: g => `Свари ${g.target} штук молочного`, can: () => S.up.dairy > 0, target: 200 },
+  harvested: { e: '🌾', text: g => `Собери ${g.target} штук урожая`, can: () => true, target: 2000 },
+  earned: { e: '💰', text: g => `Заработай за год ${g.target}💰`, can: () => true, target: 15000 },
+};
+// награды за цели года — особые украшения (по одной за каждую выполненную цель)
+const YEAR_DECOR = [{ id: 'fountain', name: '⛲ Фонтан у дома' }, { id: 'gazebo', name: '🌸 Беседка в цветах' }];
+function ensureYear() {
+  if (S.yr && S.yr.y === yearIdx()) return;
+  const pick3 = [['fairWins', 'harvested'], ['truckFull', 'mail', 'earned'], ['baked', 'dairy', 'earned', 'harvested']], used = [];
+  const goals = pick3.map(opts => { const k = opts.find(k => YEAR_GOALS[k].can() && !used.includes(k)) || opts.find(k => !used.includes(k)); used.push(k); return { k, target: YEAR_GOALS[k].target, done: false }; });
+  S.yr = { y: yearIdx(), goals, c: { fairWins: 0, truckFull: 0, mail: 0, baked: 0, dairy: 0, harvested: 0 }, prizes: [], shown: false };
+}
+const yearCount = k => k === 'earned' ? (S.hist || []).filter(h => yearIdx(h.d) === S.yr.y).reduce((a, h) => a + (h.e || 0), 0) + (S.night ? 0 : S.stats.earned || 0) : S.yr.c[k] || 0;
+function yearEv(k, n = 1) {
+  ensureYear(); if (k in S.yr.c) S.yr.c[k] += n;
+  for (const g of S.yr.goals) if (!g.done && yearCount(g.k) >= g.target) {
+    g.done = true; S.decor ??= [];
+    const d = YEAR_DECOR.find(x => !S.decor.includes(x.id));
+    if (d) { S.decor.push(d.id); S.yr.prizes.push(d.id); applyLots(); } else { S.coins += 3000; }   // украшения кончились — денежная награда
+    setTimeout(() => toast(`🎄 Цель года выполнена: ${YEAR_GOALS[g.k].text(g)}${d ? ` · награда: ${d.name}` : ' · награда: 3000💰'}`), 300);
+  }
+}
 // виды целей: что считаем, как пишем, можно ли сейчас (по тому, что открыто на ферме)
 const GOAL_KINDS = {
-  harvest: { can: () => true, make: (L, r) => { const c = S.unlocked.filter(id => !GH_CROPS.includes(id) || S.up.greenhouse); const id = c[Math.floor(r() * c.length)]; return { id, target: 12 + L * 2 + Math.floor(r() * 8) }; }, text: g => `Собери урожай: ${g.target} ${GOODS[g.id].e}` },
-  sell: { can: () => true, make: (L, r) => { const c = Object.keys(GOODS).filter(id => !GOODS[id].sp && id !== 'sunflower' && id !== 'chick' && id !== 'goldegg' && canMake(id)); const id = c[Math.floor(r() * c.length)]; return { id, target: 10 + L * 2 }; }, text: g => `Продай ${g.target} ${GOODS[g.id].e}` },
-  eggs: { can: () => hens() > 0, make: L => ({ id: 'egg', target: 15 + L * 2 }), text: g => `Собери ${g.target} 🥚 яиц`, ev: 'collect' },
-  milk: { can: () => cows() > 0, make: L => ({ id: 'milk', target: 12 + L * 2 }), text: g => `Надои ${g.target} 🥛 молока`, ev: 'collect' },
-  flour: { can: () => !!S.up.mill, make: L => ({ id: 'flour', target: 8 + L }), text: g => `Смели ${g.target} 🍚 муки`, ev: 'make' },
-  cheese: { can: () => !!S.up.dairy, make: L => ({ id: 'cheese', target: 5 + Math.floor(L / 2) }), text: g => `Свари ${g.target} 🧀 сыра`, ev: 'make' },
-  bake: { can: () => !!S.up.bakery, make: (L, r) => { const c = Object.keys(BAKE).filter(canMake); const id = c[Math.floor(r() * c.length)] || 'bread'; return { id, target: 6 + Math.floor(L / 2) }; }, text: g => `Испеки ${g.target} ${GOODS[g.id].e}`, ev: 'make' },
-  basket: { can: () => farmLevel() >= 3, make: L => ({ target: 8 + L }), text: g => `Обслужи ${g.target} покупателей с полной корзинкой 🧺` },
-  day: { can: () => (S.hist || []).length >= 2, make: () => { const h = (S.hist || []).slice(-5).map(x => x.e); const avg = h.reduce((a, b) => a + b, 0) / Math.max(1, h.length); return { target: Math.max(80, Math.round(avg * 1.3 / 10) * 10) }; }, text: g => `Заработай за один день ${g.target}💰`, max: true },
-  fair: { can: () => fairUnlocked(), make: () => { const h = (S.hist || []).slice(-5).map(x => x.e); const avg = h.reduce((a, b) => a + b, 0) / Math.max(1, h.length); return { target: Math.max(150, Math.round(avg * 1.5 / 10) * 10) }; }, text: g => `Заработай на одной ярмарке ${g.target}💰 🎪`, max: true },
-  truck: { can: () => truckOn(), make: L => ({ target: 20 + L * 3 }), text: g => `Погрузи в грузовик ${g.target} товаров 🚚` },
-  upgrade: { can: () => true, make: L => ({ target: L < 6 ? 2 : 3 }), text: g => `Купи ${g.target} улучшения ⬆️` },
+  harvest: { can: () => true, make: (L, r) => { const c = S.unlocked.filter(id => !GH_CROPS.includes(id) || S.up.greenhouse); const id = c[Math.floor(r() * c.length)]; return { id, target: 40 + L * 6 + Math.floor(r() * 15) }; }, text: g => `Собери урожай: ${g.target} ${GOODS[g.id].e}` },
+  sell: { can: () => true, make: (L, r) => { const c = Object.keys(GOODS).filter(id => !GOODS[id].sp && id !== 'sunflower' && id !== 'chick' && id !== 'goldegg' && canMake(id)); const id = c[Math.floor(r() * c.length)]; return { id, target: 30 + L * 5 }; }, text: g => `Продай ${g.target} ${GOODS[g.id].e}` },
+  eggs: { can: () => hens() > 0, make: L => ({ id: 'egg', target: 45 + L * 5 }), text: g => `Собери ${g.target} 🥚 яиц`, ev: 'collect' },
+  milk: { can: () => cows() > 0, make: L => ({ id: 'milk', target: 36 + L * 5 }), text: g => `Надои ${g.target} 🥛 молока`, ev: 'collect' },
+  flour: { can: () => !!S.up.mill, make: L => ({ id: 'flour', target: 25 + L * 3 }), text: g => `Смели ${g.target} 🍚 муки`, ev: 'make' },
+  cheese: { can: () => !!S.up.dairy, make: L => ({ id: 'cheese', target: 15 + L }), text: g => `Свари ${g.target} 🧀 сыра`, ev: 'make' },
+  bake: { can: () => !!S.up.bakery, make: (L, r) => { const c = Object.keys(BAKE).filter(canMake); const id = c[Math.floor(r() * c.length)] || 'bread'; return { id, target: 18 + L * 1.5 | 0 }; }, text: g => `Испеки ${g.target} ${GOODS[g.id].e}`, ev: 'make' },
+  basket: { can: () => farmLevel() >= 3, make: L => ({ target: 25 + L * 2 }), text: g => `Обслужи ${g.target} покупателей с полной корзинкой 🧺` },
+  day: { can: () => (S.hist || []).length >= 2, make: () => { const h = (S.hist || []).slice(-5).map(x => x.e); const avg = h.reduce((a, b) => a + b, 0) / Math.max(1, h.length); return { target: Math.max(150 + farmLevel() * 40, Math.round(avg * 1.3 / 10) * 10) }; }, text: g => `Заработай за один день ${g.target}💰`, max: true },
+  fair: { can: () => fairUnlocked(), make: () => { const h = (S.hist || []).slice(-5).map(x => x.e); const avg = h.reduce((a, b) => a + b, 0) / Math.max(1, h.length); return { target: Math.max(400 + farmLevel() * 120, Math.round(avg * 1.5 / 10) * 10) }; }, text: g => `Заработай на одной ярмарке ${g.target}💰 🎪`, max: true },
+  truck: { can: () => truckOn(), make: L => ({ target: 60 + L * 8 }), text: g => `Погрузи в грузовик ${g.target} товаров 🚚` },
+  // большие цели сезона — пятая; прогресс считается с начала сезона
+  bigEarn: { big: true, can: () => true, make: () => { const h = (S.hist || []).slice(-7).map(x => x.e || 0); const avg = h.length ? h.reduce((a, b) => a + b, 0) / h.length : 60; return { target: Math.max(2500 + farmLevel() * 400, Math.round(avg * 16 / 100) * 100) }; },
+    text: g => `Заработай за сезон ${g.target}💰`, calc: () => seasonEarned() },
+  bigFair: { big: true, can: () => fairUnlocked() && cal().week <= 1, make: () => ({ target: 1 }), text: () => `Займи призовое место по продажам на ярмарке 🎪`, calc: () => S.goals.fairTop || 0 },
+  bigTruck: { big: true, can: () => truckOn(), make: () => ({ target: 1 }), text: () => `Собери заказ грузовика целиком 🚚`, calc: () => S.truck.last && S.truck.last.si === seasonIdx() && S.truck.last.done ? 1 : 0 },
+  upgrade: { can: () => true, make: L => ({ target: L < 6 ? 4 : 6 }), text: g => `Купи ${g.target} улучшения ⬆️` },
 };
 function seeded(n) { let a = n * 2654435761 >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 function makeGoal(kind, r) { const L = farmLevel(), g = GOAL_KINDS[kind].make(L, r); return { kind, n: 0, done: false, ...g, coins: 40 + L * 25, xp: 15 + L * 6 }; }
 function newGoals() {
-  const r = seeded(S.farmId.length * 977 + seasonIdx() * 131 + S.day), kinds = Object.keys(GOAL_KINDS).filter(k => GOAL_KINDS[k].can()), list = [];
+  const r = seeded(S.farmId.length * 977 + seasonIdx() * 131 + S.day), kinds = Object.keys(GOAL_KINDS).filter(k => !GOAL_KINDS[k].big && GOAL_KINDS[k].can()), list = [];
   const pool = kinds.slice().sort(() => r() - .5);
-  while (list.length < 5) list.push(makeGoal(pool[list.length % pool.length], r));
-  S.goals = { si: seasonIdx(), list, swap: false, prize: false };
+  const multi = pool.filter(k => ['harvest', 'sell', 'bake'].includes(k));   // если видов мало — добираем вторую цель «на урожай/продажу» с другим товаром
+  for (let i = 0; list.length < 4; i++) { const k = i < pool.length ? pool[i] : multi[(i - pool.length) % Math.max(1, multi.length)] || 'harvest'; let g = makeGoal(k, r), t = 0;
+    while (list.some(x => x.kind === g.kind && x.id === g.id) && t++ < 8) g = makeGoal(k, r); list.push(g); }
+  const bigs = Object.keys(GOAL_KINDS).filter(k => GOAL_KINDS[k].big && GOAL_KINDS[k].can());
+  const big = makeGoal(bigs[Math.floor(r() * bigs.length)], r); big.coins *= 3; big.xp *= 3; list.push(big);
+  S.goals = { si: seasonIdx(), list, swap: false, prize: false, v: 2, fairTop: 0 };
+}
+const seasonEarned = () => (S.hist || []).filter(h => seasonIdx(h.d) === seasonIdx()).reduce((a, h) => a + (h.e || 0), 0) + (S.night ? 0 : S.stats.earned || 0);
+const goalsOpen = () => S.goals?.v === 2 ? [2, 4, 5][Math.min(2, cal().week - 1)] : 5;   // 1-я неделя — 2 цели, 2-я — ещё 2, 3-я — большая
+function goalsCheck() {   // большие цели считаются сами, по ходу сезона
+  if (!S.goals || S.goals.si !== seasonIdx()) return;
+  S.goals.list.forEach((g, i) => { const K = GOAL_KINDS[g.kind]; if (!K.calc || g.done) return; g.n = Math.min(g.target, K.calc()); if (g.n >= g.target && i < goalsOpen()) goalDone(g); });
 }
 function ensureGoals() { if (!S.goals || S.goals.si !== seasonIdx()) newGoals(); }
-const activeGoals = () => S.goals ? S.goals.list.filter(g => !g.done).slice(0, 3) : [];
+const activeGoals = () => !S.goals ? [] : S.goals.v === 2 ? S.goals.list.slice(0, goalsOpen()).filter(g => !g.done) : S.goals.list.filter(g => !g.done).slice(0, 3);
 // событие на ферме: засчитываем открытым целям того же вида
 function goalEv(type, id, n = 1) {
+  if (type === 'harvest') yearEv('harvested', n); else if (type === 'make' && BAKE[id]) yearEv('baked', n); else if (type === 'make' && DAIRY[id]) yearEv('dairy', n); else if (type === 'day') yearEv('earned', 0);
   if (!S.goals || S.goals.si !== seasonIdx()) return;
   for (const g of activeGoals()) {
     const K = GOAL_KINDS[g.kind], ev = K.ev || g.kind;
@@ -1295,6 +1343,7 @@ function goalEv(type, id, n = 1) {
     g.n = K.max ? Math.max(g.n, n) : g.n + n;
     if (g.n >= g.target) goalDone(g);
   }
+  goalsCheck();
   if ($('sheet').dataset.view === 'goals') openGoals();
   renderGoalBtn();
 }
@@ -1316,24 +1365,32 @@ function showGoalPrize(d) {
 }
 function swapGoal(i) {
   const g = S.goals.list[i]; if (S.goals.swap || g.done) return;
-  const r = seeded(S.day * 31 + i * 7 + 3), used = S.goals.list.map(x => x.kind), kinds = Object.keys(GOAL_KINDS).filter(k => GOAL_KINDS[k].can() && !used.includes(k));
+  const r = seeded(S.day * 31 + i * 7 + 3), used = S.goals.list.map(x => x.kind), big = !!GOAL_KINDS[g.kind].big, kinds = Object.keys(GOAL_KINDS).filter(k => !!GOAL_KINDS[k].big === big && GOAL_KINDS[k].can() && !used.includes(k));
   const k = kinds.length ? kinds[Math.floor(r() * kinds.length)] : g.kind;
-  S.goals.list[i] = makeGoal(k, r); S.goals.swap = true; save(); openGoals(); renderGoalBtn();
+  S.goals.list[i] = makeGoal(k, r); if (big) { S.goals.list[i].coins *= 3; S.goals.list[i].xp *= 3; } S.goals.swap = true; save(); openGoals(); renderGoalBtn();
 }
 function openGoals() {
   ensureGoals();
   const G = S.goals, act = activeGoals(), done = G.list.filter(g => g.done).length, se = season();
-  let h = `<h2>📒 Тетрадь фермера</h2><div class="intro">Цели на сезон: всего пять, одновременно открыты три. Выполнил одну — открывается следующая. За каждую — монеты и опыт, за все пять — украшение фермы. Раз в сезон одну цель можно заменить. Невыполненные цели просто сменятся новыми в следующем сезоне.</div>
+  let h = `<h2>📒 Тетрадь фермера</h2><div class="intro">${G.v === 2 ? 'Цели на сезон открываются по неделям: в 1-ю неделю — две, во 2-ю — ещё две, в 3-ю — большая цель сезона (она копится с самого начала).' : 'Цели на сезон: всего пять, одновременно открыты три. Выполнил одну — открывается следующая.'} За каждую — монеты и опыт, за все пять — украшение фермы. Раз в сезон одну цель можно заменить. Невыполненные цели просто сменятся новыми в следующем сезоне.</div>
     <div class="summary">${se.e} <b>${se.name}</b> · выполнено <b>${done} из 5</b>${G.prize ? ' · 🎉 украшение получено' : ` · за все пять — украшение`}</div><div class="goals">`;
   G.list.forEach((g, i) => {
     const K = GOAL_KINDS[g.kind], open = act.includes(g), pc = Math.min(100, g.n / g.target * 100);
     if (g.done) h += `<div class="goal done"><span class="gt">✔ ${K.text(g)}</span><small>+${g.coins}💰 +${g.xp}⭐</small></div>`;
-    else if (open) h += `<div class="goal"><span class="gt">${K.text(g)}</span><div class="gbar"><i style="width:${pc}%"></i></div>
+    else if (open) h += `<div class="goal${K.big ? ' big' : ''}">${K.big ? '<small class="gbig">⭐ Большая цель сезона</small>' : ''}<span class="gt">${K.text(g)}</span><div class="gbar"><i style="width:${pc}%"></i></div>
       <div class="grow"><small>${K.max ? (g.n ? `лучший результат: ${g.n}💰` : 'пока не было') : `${g.n} из ${g.target}`} · награда +${g.coins}💰 +${g.xp}⭐</small>${G.swap ? '' : `<button class="gswap" onclick="swapGoal(${i})">↻ Заменить</button>`}</div></div>`;
+    else if (G.v === 2) { const big = GOAL_KINDS[g.kind].big, wk = i < 4 ? 2 : 3;
+      h += `<div class="goal lockd${big ? ' big' : ''}"><span class="gt">🔒 ${big ? `Большая цель сезона — откроется на 3-й неделе<br><small>${K.text(g)} · уже копится: ${g.n} из ${g.target}</small>` : `Откроется на ${wk}-й неделе`}</span></div>`; }
     else h += `<div class="goal lockd"><span class="gt">🔒 Откроется, когда выполнишь одну из целей</span></div>`;
   });
   h += `</div>`;
-  const got = (S.decor || []).map(id => DECOR.find(d => d.id === id)?.name).filter(Boolean);
+  ensureYear();
+  h += `<h3 style="margin:14px 0 4px">🎄 Цели года ${S.yr.y + 1}</h3><div class="intro" style="margin-bottom:6px">Большие цели на весь год. За каждую — особое украшение фермы. Итоги — после Зимней ярмарки.</div><div class="goals">`;
+  for (const g of S.yr.goals) { const n = Math.min(yearCount(g.k), g.target);
+    h += g.done ? `<div class="goal done year"><span class="gt">✔ ${YEAR_GOALS[g.k].e} ${YEAR_GOALS[g.k].text(g)}</span></div>`
+      : `<div class="goal year"><span class="gt">${YEAR_GOALS[g.k].e} ${YEAR_GOALS[g.k].text(g)}</span><div class="gbar"><i style="width:${n / g.target * 100}%"></i></div><small>${n} из ${g.target} · награда: особое украшение</small></div>`; }
+  h += `</div>`;
+  const got = [...(S.decor || []).map(id => DECOR.find(d => d.id === id)?.name), ...(S.decor || []).map(id => YEAR_DECOR.find(d => d.id === id)?.name)].filter(Boolean);
   if (got.length) h += `<h3 style="margin:12px 0 4px">Украшения фермы</h3><div style="font-size:14px;line-height:1.7">${got.join('<br>')}</div>`;
   h += `<button class="wide" style="width:100%;margin-top:12px" onclick="closeNight()">Закрыть</button>`;
   $('sheet').dataset.view = 'goals'; const top = $('sheet').scrollTop; $('sheet').innerHTML = h; $('overlay').classList.add('show'); $('sheet').scrollTop = top;
@@ -1345,10 +1402,74 @@ function renderGoalBtn() {
   b.classList.toggle('low', getComputedStyle($('fairBtn')).display !== 'none');
 }
 // украшения фермы — призы тетради: стоят на свободных клетках у тропинки, дома и поля
-const DECOR_SPOT = { flags: { x: 7, y: 10 }, pots: { x: 5, y: 5 }, lamp: { x: 6, y: 7 }, scare: { x: 15, y: 4 }, bed: { x: 4, y: 6 }, bird: { x: 5, y: 9 }, pin: { x: 10, y: 10 } };
-const DECOR_CELLS = { flags: [[6, 10], [8, 10]] };   // какие клетки занимает (по умолчанию — своя)
+const DECOR_SPOT = { fountain: { x: 9, y: 6 }, gazebo: { x: 12, y: 6 }, carousel: { x: 15, y: 6 }, flags: { x: 7, y: 10 }, pots: { x: 5, y: 5 }, lamp: { x: 6, y: 7 }, scare: { x: 15, y: 4 }, bed: { x: 4, y: 6 }, bird: { x: 5, y: 9 }, pin: { x: 10, y: 10 } };
+const DECOR_CELLS = { flags: [[6, 10], [8, 10]], fountain: [[9, 6], [10, 6], [9, 7], [10, 7]], gazebo: [[12, 6], [13, 6], [12, 7], [13, 7]], carousel: [[15, 6], [16, 6], [15, 7], [16, 7]] };   // какие клетки занимает (по умолчанию — своя)
+// ⛲ фонтан 2×2: круглая каменная чаша, вода, чаша поменьше на столбике, струйки
+function drawFountain(x0, y0) {
+  const cx = x0 + 1, cy = y0 + 1, P = (r, a, z) => lift(cx + Math.cos(a) * r, cy + Math.sin(a) * r, z), N = 28;
+  const ring = (r, z) => Array.from({ length: N }, (_, i) => P(r, i / N * Math.PI * 2, z));
+  softShadow(x0 + .05, y0 + .05, x0 + 1.95, y0 + 1.95, .25);
+  const front = k => Math.cos((k + .5) / N * Math.PI * 2) + Math.sin((k + .5) / N * Math.PI * 2);
+  for (let k = 0; k < N; k++) if (front(k) > -.3) { const a = k / N * Math.PI * 2, b = (k + 1) / N * Math.PI * 2;
+    gface([P(.92, a, 0), P(.92, b, 0), P(.92, b, 11), P(.92, a, 11)], k % 2 ? '#d6d2c6' : '#c9c4b6', '#a9a497', INK, .9); }   // каменный бортик
+  poly(ring(.92, 11), '#e6e2d8', '#e6e2d8'); shape(ring(.92, 11)); ctx.strokeStyle = INK; ctx.lineWidth = 1.4; ctx.stroke();
+  const w = ring(.76, 10); shape(w); const g = ctx.createLinearGradient(0, w[0].y - 20, 0, w[0].y + 20); g.addColorStop(0, '#9ad8f4'); g.addColorStop(1, '#4aa3db'); ctx.fillStyle = g; ctx.fill();
+  for (const r of [.3, .55]) { shape(ring(r, 10)); ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 1.2; ctx.stroke(); }   // круги на воде
+  toonBox(cx - .12, cy - .12, .24, .24, 26, ['#e6e2d8', '#c9c4b6'], ['#c9c4b6', '#a9a497'], null, 10, 1.1);   // столбик
+  const top = ring(.42, 34); shape(top); ctx.fillStyle = '#e6e2d8'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.3; ctx.stroke();   // верхняя чаша
+  shape(ring(.32, 34.5)); ctx.fillStyle = '#7cc6ec'; ctx.fill();
+  const s = lift(cx, cy, 34); ctx.lineCap = 'round';
+  for (const [dx, h] of [[-14, 16], [14, 16], [-6, 22], [6, 22]]) { ctx.beginPath(); ctx.moveTo(s.x, s.y - 4); ctx.quadraticCurveTo(s.x + dx * .6, s.y - h, s.x + dx, s.y + 10); ctx.strokeStyle = 'rgba(160,215,245,.9)'; ctx.lineWidth = 2.4; ctx.stroke(); }   // струйки
+  circle(s.x, s.y - 8, 3, '#d8f0fc');
+}
+// 🌸 беседка 2×2: белые столбики, шатровая крыша, вьющиеся розы
+function drawGazebo(x0, y0) {
+  const a = x0 + .15, b = x0 + 1.85, c0 = y0 + .15, c1 = y0 + 1.85, H = 50, mx = (a + b) / 2, my = (c0 + c1) / 2;
+  softShadow(a, c0, b, c1, .25);
+  toonBox(a - .05, c0 - .05, b - a + .1, c1 - c0 + .1, 4, ['#c99a62', '#a87648'], ['#a87648', '#8a5a32'], ['#e2b679', '#c99a5e'], 0, 1.2);   // настил
+  const posts = [[a, c0], [b, c0], [b, c1], [a, c1]];
+  for (const [x, y] of posts.slice(0, 2)) toonPost(x, y, 4, H, .07, ['#fbf8f1', '#d8d0c0']);
+  // скамейка внутри у дальней стены
+  toonBox(a + .3, c0 + .15, b - a - .6, .3, 10, ['#c99a62', '#a87648'], ['#a87648', '#8a5a32'], ['#e2b679', '#c99a5e'], 4, 1);
+  for (const [x, y] of posts.slice(2)) toonPost(x, y, 4, H, .07, ['#fbf8f1', '#d8d0c0']);
+  // перила спереди
+  for (const [p, q] of [[[a, c1], [b, c1]], [[b, c0], [b, c1]]]) { const A = lift(p[0], p[1], 18), B = lift(q[0], q[1], 18); seg(A, B, INK, 4); seg(A, B, '#fbf8f1', 2.4); }
+  // крыша-шатёр
+  const R = [lift(a - .2, c0 - .2, H), lift(b + .2, c0 - .2, H), lift(b + .2, c1 + .2, H), lift(a - .2, c1 + .2, H)], T = lift(mx, my, H + 34);
+  gface([R[0], R[1], T], '#c84a5a', '#a83646', INK, 1.4); gface([R[1], R[2], T], '#e05a6a', '#b8404e', INK, 1.4); gface([R[3], R[2], T], '#f06e7e', '#d04a5a', INK, 1.4);
+  for (const k of [.33, .66]) { seg(mix(R[3], T, k), mix(R[2], T, k), 'rgba(255,255,255,.35)', 1.4); }
+  vline(mx, my, H + 34, H + 42, INK, 2); circle(T.x, T.y - 9, 3.2, '#ffd34d');
+  // розы, вьющиеся по передним столбикам
+  for (const [x, y] of [[a, c1], [b, c1], [b, c0]]) for (let z = 8; z < H - 2; z += 7) { const p = lift(x, y, z), o = (z / 7) % 2 ? 3 : -3; circle(p.x + o, p.y, 3, '#4f9a3c'); if ((z / 7) % 3 === 1) { circle(p.x + o, p.y - 1, 2.4, '#ff6b9a'); circle(p.x + o, p.y - 1, .9, '#ffd0e0'); } }
+}
+// 🎠 детская карусель 2×2: круглый помост, полосатый купол, лошадки на шестах
+function drawCarousel(x0, y0) {
+  const cx = x0 + 1, cy = y0 + 1, N = 24, P = (r, a, z) => lift(cx + Math.cos(a) * r, cy + Math.sin(a) * r, z);
+  const ring = (r, z) => Array.from({ length: N }, (_, i) => P(r, i / N * Math.PI * 2, z)), front = k => Math.cos((k + .5) / N * Math.PI * 2) + Math.sin((k + .5) / N * Math.PI * 2);
+  softShadow(x0 + .05, y0 + .05, x0 + 1.95, y0 + 1.95, .25);
+  for (let k = 0; k < N; k++) if (front(k) > -.3) { const a = k / N * Math.PI * 2, b = (k + 1) / N * Math.PI * 2; gface([P(.9, a, 0), P(.9, b, 0), P(.9, b, 7), P(.9, a, 7)], '#c99a62', '#a87648', INK, .9); }
+  shape(ring(.9, 7)); ctx.fillStyle = '#e2b679'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.3; ctx.stroke();
+  const H = 52, horses = [0, 1, 2, 3, 4, 5].map(i => i / 6 * Math.PI * 2 + .3), col = ['#ffffff', '#f4c6d6', '#c4dcf2', '#ffffff', '#f2dc8a', '#d6c4f2'];
+  const drawHorse = i => { const a = horses[i], b = P(.6, a, 7), t = P(.6, a, H - 4); seg(b, t, INK, 2.6); seg(b, t, '#ffd34d', 1.4);
+    const h = P(.6, a, 22); ctx.save(); ctx.translate(h.x, h.y); if (Math.sin(a) - Math.cos(a) > 0) ctx.scale(-1, 1);
+    ctx.beginPath(); ctx.ellipse(0, 0, 8, 4.5, 0, 0, 7); ctx.fillStyle = col[i]; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke();   // туловище
+    ctx.beginPath(); ctx.moveTo(5, -2); ctx.lineTo(8, -9); ctx.lineTo(12, -8); ctx.lineTo(10, -4); ctx.closePath(); ctx.fill(); ctx.stroke();   // голова
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.6; for (const dx of [-5, 4]) { ctx.beginPath(); ctx.moveTo(dx, 3); ctx.lineTo(dx + 1, 9); ctx.stroke(); }
+    ctx.restore(); };
+  const back = horses.map((a, i) => i).filter(i => Math.cos(horses[i]) + Math.sin(horses[i]) < 0), fr = horses.map((a, i) => i).filter(i => !back.includes(i));
+  back.forEach(drawHorse);
+  toonBox(cx - .08, cy - .08, .16, .16, H, ['#ffd34d', '#e0a91a'], ['#e0a91a', '#b8860b'], null, 7, 1.1);   // центральный столб
+  fr.forEach(drawHorse);
+  const rim = ring(1, H), T = lift(cx, cy, H + 26);   // полосатый купол
+  for (let k = 0; k < N; k++) { if (front(k) < -.5) continue; const A = rim[k], B = rim[(k + 1) % N]; gface([A, B, T], k % 2 ? '#fffaf0' : '#e0473e', k % 2 ? '#efe3cc' : '#b8352e', INK, .9); }
+  for (let k = 0; k < N; k++) { if (front(k) < 0) continue; const A = rim[k], B = rim[(k + 1) % N]; ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.quadraticCurveTo((A.x + B.x) / 2, (A.y + B.y) / 2 + 6, B.x, B.y); ctx.lineTo(B.x, B.y); ctx.fillStyle = k % 2 ? '#e0473e' : '#fffaf0'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = .9; ctx.stroke(); }   // фестоны
+  vline(cx, cy, H + 26, H + 36, INK, 2); ctx.beginPath(); const f = lift(cx, cy, H + 36); ctx.moveTo(f.x, f.y); ctx.lineTo(f.x + 9, f.y + 3); ctx.lineTo(f.x, f.y + 6); ctx.closePath(); ctx.fillStyle = '#4f8fe0'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1; ctx.stroke();
+}
 function drawDecor(id) {
   const q = DECOR_SPOT[id], c = iso(q.x + .5, q.y + .5);
+  if (id === 'fountain') return drawFountain(q.x, q.y);
+  if (id === 'gazebo') return drawGazebo(q.x, q.y);
+  if (id === 'carousel') return drawCarousel(q.x, q.y);
   if (id === 'flags') {   // два столбика и гирлянда флажков над тропинкой
     toonPost(6.5, 10.5, 0, 36, .05); toonPost(8.5, 10.5, 0, 36, .05);
     const a = lift(6.5, 10.5, 34), b = lift(8.5, 10.5, 34), m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 + 9 };
@@ -1389,7 +1510,7 @@ const peopleFor = D => Math.round(Math.min(17, 4 + D * .42));
 const visitorsBase = () => peopleFor(demandAt(farmLevel()));
 const basketMul = () => { const D = demandAt(farmLevel()); return D / Math.min(17, 4 + D * .42); };   // во сколько раз больше штук берёт каждый
 const basketMax = (L = farmLevel()) => L < 3 ? 1 : L < 6 ? 2 : L < 10 ? 3 : L < 15 ? 4 : 5;   // сколько разных товаров берёт один покупатель
-const visitorsPerDay = (d = S.day) => cal(d).dow === 6 ? 0 : Math.round(visitorsBase() * (isFair(d) ? 2.4 : 1) * (weather(d) === 'heat' ? 1.2 : 1));   // на ярмарке народу много — часть идёт к соседям   // суббота — ярмарка, воскресенье — выходной   // день 1 → 11 покупателей (~1 каждые 14 сек)
+const visitorsPerDay = (d = S.day) => cal(d).dow === 6 ? 0 : Math.round(visitorsBase() * (isFair(d) ? (isFinale(d) ? 3 : 2.4) : 1) * (weather(d) === 'heat' ? 1.2 : 1));   // на ярмарке народу много — часть идёт к соседям   // суббота — ярмарка, воскресенье — выходной   // день 1 → 11 покупателей (~1 каждые 14 сек)
 const growMult = () => 1 + S.up.fert * 0.2;
 // ---------- Календарь: неделя из 7 дней, месяц (он же сезон) — 3 недели (21 день), год — 4 сезона ----------
 const WEEKDAYS = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'], WD = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -1449,6 +1570,7 @@ const prestige = () => Math.min(.2, S.trophies.reduce((a, t) => a + (MEDAL[t.p]?
   + (() => { const t = S.trophies[S.trophies.length - 1]; return t && S.day - t.d >= 0 && S.day - t.d < 7 ? MEDAL[t.p]?.week || 0 : 0; })();   // свежая победа — неделю ещё дороже
 const prestigeGuests = () => Math.min(6, S.trophies.filter(t => t.p === 1).length);
 function contestReminder(d = S.day + 1) {   // накануне ярмарки: что за конкурс и как не продать то, что для него бережёшь
+  if (isFinale(d)) return '🎄 Завтра Зимняя ярмарка — праздник года, народу больше обычного, конкурса нет';
   const k = contestOf(d), sp = SPECIAL[k];
   if (k === 'goldegg') return S.inv.goldegg > 0 ? (onSale('goldegg') ? '🏆 Завтра конкурс золотых яиц — убери 🟡 с прилавка, чтобы не продать!' : '🏆 Завтра конкурс золотых яиц — 🟡 у тебя есть, береги его') : '🏆 Завтра конкурс золотых яиц 🟡';
   const has = S.special.some(x => x.k === k);
@@ -1546,7 +1668,8 @@ function endDay() {
   goalEv('day', null, S.stats.earned || 0); if (fairRes) goalEv('fair', null, fairRes.money || 0);
   if (S.up.hay && cows() && cowFoodStock() >= feedPerCow()) setTimeout(() => { if (S.night && cowsFedTomorrow() < cows()) { feedCows('hay'); refreshSheet(); } }, 900);   // сеновал кормит сам
   save(); renderUI();
-  if (fairRes) openFairResult(fairRes); else openCalendar();
+  if (fairRes && S.goals) { const all = [fairRes.money, ...RIVALS_DEF.map((x, i) => fairRes.rv[i] || 0)].sort((a, b) => b - a); if (all.indexOf(fairRes.money) < 3 && fairRes.money > 0) S.goals.fairTop = (S.goals.fairTop || 0) + 1; goalsCheck(); if (all[0] === fairRes.money && fairRes.money > 0) yearEv('fairWins'); }
+  if (fairRes) openFairResult(fairRes); else if (cal().si === 3 && cal().sday === SEASON_LEN) openYearResult(); else openCalendar();
 }
 
 // ================== 📦 СКЛАД и 🚚 ГРУЗОВИК — заготовка ==================
@@ -1678,7 +1801,7 @@ function truckArrive() {   // грузовик забирает погружен
   for (const id in c.got) { const extra = Math.max(0, (c.got[id] || 0) - (c.items[id] || 0)); if (extra) gain(id, extra, true); }   // лишнее — обратно
   const pay = money + bonus;
   if (pay) { S.coins += pay; S.stats.earned += pay; S.life.earned += pay; for (const st of [S.stats, S.life]) { st.sold ??= {}; st.sold.truck = (st.sold.truck || 0) + pay; } gainXp(xp); }
-  S.truck.rep += rep; S.truck.n++;
+  S.truck.rep += rep; S.truck.n++; if (done) yearEv('truckFull');
   S.truck.last = { si: c.si, day: S.day, tier: T.id, items: c.items, got: c.got, money, bonus, xp: pay ? xp : 0, rep, done, frac, up: truckTierIdx() > tierWas };
   S.truck.c = null;
   return S.truck.last;
@@ -2656,7 +2779,7 @@ function deliverOrder() {
   for (const st of [S.stats, S.life]) { st.sold ??= {}; st.sold.order = (st.sold.order || 0) + money; }
   addFloat(MAIL.x + .5, MAIL.y + .5, `+${money}💰`);
   toast(`📬 Заказ отправлен! ${o.from}: +${money}💰. Новый придёт завтра`);
-  S.order = null; S.orderNext = S.day + 1;
+  S.order = null; S.orderNext = S.day + 1; yearEv('mail');
   save(); renderUI(); return true;
 }
 function declineOrder() { S.order = null; S.orderNext = S.day + 1; save(); toast('📭 Новый заказ придёт завтра утром'); openMail(); }
@@ -5030,6 +5153,24 @@ function drawFairGround() {
 }
 function fairLogNew() { return { d: S.day, money: 0, served: 0, sold: {}, rv: [0, 0, 0], out: [] }; }
 function fairLog() { if (S.fair.log?.d !== S.day) S.fair.log = fairLogNew(); return S.fair.log; }
+function openYearResult() {
+  ensureYear(); const Y = S.yr, yi = Y.y, hist = (S.hist || []).filter(h => yearIdx(h.d) === yi);
+  const total = yearCount('earned'), sold = {};
+  for (const h of hist) for (const [g, m] of Object.entries(h.so || {})) if (GOODS[g]) sold[g] = (sold[g] || 0) + m;
+  for (const [g, m] of Object.entries(S.stats.sold || {})) if (GOODS[g] && !S.night) sold[g] = (sold[g] || 0) + m;
+  const top = Object.entries(sold).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const months = [0, 1, 2, 3].map(q => ({ q, m: hist.filter(h => cal(h.d).si === q).reduce((a, h) => a + (h.e || 0), 0) })).sort((a, b) => b.m - a.m);
+  const cups = S.trophies.filter(t => yearIdx(t.d) === yi);
+  let h = `<h2>🎄 Итоги года ${yi + 1}</h2><div class="fpinfo">Год на ферме позади. Вот что получилось.</div>`;
+  h += `<div class="fres2 gold yr"><div class="fr-top"><div class="fr-medal">🎄</div><div class="fr-head"><b>Заработано за год</b><div class="fr-money">${total}💰</div>${months[0].m ? `<span class="fr-chip grow">лучший сезон — ${SEASONS[months[0].q].e} ${SEASONS[months[0].q].name.toLowerCase()}: ${months[0].m}💰</span>` : ''}</div></div>
+    <div class="fr-stats"><span>🏆 кубков за год <b>${cups.length}</b></span>${cups.length ? `<span>${cups.map(t => MEDAL[t.p].e).join('')}</span>` : ''}</div></div>`;
+  if (top.length) h += `<h3 class="fr-h">Лучшие товары года</h3><div class="fr-grid">${top.map(([g, m], i) => `<div class="fr-t"><span class="rc-e">${GOODS[g].e}</span><b>${['🥇', '🥈', '🥉'][i]} ${GOODS[g].name}</b><small>${m}💰</small></div>`).join('')}</div>`;
+  h += `<h3 class="fr-h">Цели года</h3><div class="goals">${Y.goals.map(g => `<div class="goal${g.done ? ' done' : ''}"><span class="gt">${g.done ? '✅' : '🌱'} ${YEAR_GOALS[g.k].text(g)}</span><small>${g.done ? 'выполнено!' : `${Math.min(yearCount(g.k), g.target)} из ${g.target} — в следующем году получится`}</small></div>`).join('')}</div>`;
+  if (Y.prizes.length) h += `<h3 class="fr-h">Награды</h3><div class="fr-cup">${Y.prizes.map(id => YEAR_DECOR.find(d => d.id === id).name).join('<br>')} — уже стоят на ферме</div>`;
+  h += `<button class="wide" style="width:100%;margin-top:14px" onclick="openCalendar()">🌸 Встретить новый год</button>`;
+  Y.shown = true; save();
+  $('sheet').dataset.view = 'yearres'; $('sheet').innerHTML = h; $('overlay').classList.add('show'); decorateSheet(); $('sheet').scrollTop = 0;
+}
 function openFairResult(r) {
   const sold = Object.entries(r.sold).sort((a, b) => b[1].m - a[1].m);
   const all = [{ name: 'Твоя ферма', m: r.money, me: true }, ...RIVALS_DEF.map((x, i) => ({ name: x.name, m: r.rv[i] || 0 }))].sort((a, b) => b.m - a.m);
@@ -7050,8 +7191,9 @@ function openTrophies() {
   let h = `<h2>🏆 Трофеи и конкурс</h2>`;
   const pr = Math.round(prestige() * 100), g = prestigeGuests();
   h += `<div class="summary">Кубков у дома: <b>${S.trophies.length}</b>${S.trophies.length ? ` (${[1, 2, 3].map(p => S.trophies.filter(t => t.p === p).length ? MEDAL[p].e + '×' + S.trophies.filter(t => t.p === p).length : '').filter(Boolean).join(' ')})` : ''}<br>Престиж фермы: цены <b>+${pr}%</b>${g ? `, гостей <b>+${g}</b> в день` : ''}<br>🏅 Очки престижа: <b>${prestigePts()}</b> — на ярмарке цены <b>+${Math.round((fairMult() - 1) * 100)}%</b></div>`;
-  h += `<h3 style="margin:10px 0 4px">${sp.e} Конкурс ${sp.what} — ${isFair() ? '<b>сегодня!</b>' : days ? `в субботу (через ${days} дн.)` : 'в субботу'}</h3>`;
-  if (isFair() && !S.night) {
+  if (isFinale() || (!isFair() && isFinale(nextFairDay()))) h += `<h3 style="margin:10px 0 4px">🎄 Зимняя ярмарка ${isFair() ? '— <b>сегодня!</b>' : `через ${days} дн.`}</h3><div class="summary">Праздник года: покупателей больше обычного, конкурса нет. После неё — итоги года.</div>`;
+  else h += `<h3 style="margin:10px 0 4px">${sp.e} Конкурс ${sp.what} — ${isFair() ? '<b>сегодня!</b>' : days ? `в субботу (через ${days} дн.)` : 'в субботу'}</h3>`;
+  if (isFair() && !isFinale() && !S.night) {
     if (done) h += `<div class="summary">Ты уже выступил сегодня — приходи на следующую ярмарку.</div>`;
     else {
       const items = contestPick(k);
@@ -7067,7 +7209,7 @@ function openTrophies() {
   $('sheet').dataset.view = 'trophies'; $('sheet').innerHTML = h; $('overlay').classList.add('show');
 }
 function enterContest(i) {
-  if (!isFair() || S.night || S.contestDay === S.day) return;
+  if (!isFair() || isFinale() || S.night || S.contestDay === S.day) return;
   const k = contestOf(), sp = SPECIAL[k];
   let q;
   if (k === 'goldegg') { if (!(S.inv.goldegg > 0)) return; S.inv.goldegg--; q = Math.round(Math.min(100, 30 + Math.random() * 65 + (S.up.cozy || 0))); }
