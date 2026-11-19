@@ -390,6 +390,11 @@
   .fr-left { margin-top: 8px; font-size: 13px; color: #7a6650; } .fr-empty { font-size: 14px; color: #7a6650; }
   .fr-contest { display: flex; align-items: center; gap: 10px; margin-top: 10px; background: rgba(0,0,0,.16); border-radius: 14px; padding: 6px 12px; } .fr-cupe { font-size: 36px; line-height: 1; } .fr-contest small { display: block; font-size: 12px; opacity: .9; } .fr-contest b { font-size: 15px; }
   .fr-cup { margin-top: 12px; background: #f6ecd6; border-radius: 14px; padding: 10px 12px; font-size: 14px; font-weight: 700; color: #4a2e18; }
+  .mbox { padding: 12px; border-radius: 16px; background: linear-gradient(#5b8fd6, #3d6fb5); color: #fff6ea; box-shadow: inset 0 -4px 0 rgba(0,0,0,.2); }
+  .mbox.empty { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 22px 12px; text-align: center; } .mbox.empty b { font-size: 18px; } .mbox.empty small { font-size: 13px; opacity: .9; }
+  .mb-ico { font-size: 56px; line-height: 1; filter: drop-shadow(0 3px 2px rgba(0,0,0,.25)); }
+  .mb-letter { display: flex; align-items: center; gap: 12px; background: #fffaf0; color: #4a2e18; border-radius: 14px; padding: 8px 12px; box-shadow: 0 3px 0 rgba(0,0,0,.2); }
+  .mb-letter small { display: block; font-size: 12px; color: #7a6650; } .mb-letter b { display: block; font-size: 18px; margin-bottom: 4px; } .mb-letter .ty-chip { background: #f3e8cf; color: #7a5a3a; } .mb-letter .ty-chip.hot { background: #ffd34d; color: #6b3e1f; }
   .tyard { padding: 12px; border-radius: 16px; background: linear-gradient(#c4473b, #8e2f26); color: #fff6ea; box-shadow: inset 0 -4px 0 rgba(0,0,0,.2); }
   .ty-top { display: flex; align-items: center; gap: 10px; } .ty-img { width: 46%; max-width: 190px; filter: drop-shadow(0 4px 2px rgba(0,0,0,.3)); }
   .ty-cust { flex: 1; display: flex; flex-direction: column; gap: 6px; } .ty-cust b { font-size: 17px; line-height: 1.15; } .ty-cust small { font-size: 12px; opacity: .85; }
@@ -1036,7 +1041,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-18.151';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-18.152';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -2567,24 +2572,25 @@ function deliverOrder() {
 function declineOrder() { S.order = null; S.orderNext = S.day + 1; save(); toast('📭 Новый заказ придёт завтра утром'); openMail(); }
 function openMail() {
   const o = S.order;
-  let h = `<h2>📬 Почта</h2>`;
-  if (!o) h += `<div class="summary">Писем нет. ${farmLevel() < MAIL_LVL ? `Заказы по почте начнут приходить с ⭐ ${MAIL_LVL} уровня фермы.` : S.day < 3 ? 'Первые заказы придут с 3-го дня.' : 'Новый заказ придёт утром.'}</div>`;
-  else {
+  let h = `<h2>📬 Почта</h2><div class="fpinfo">Соседи присылают письма с заказами. Собери товар до срока и отправь — заплатят больше, чем в лавке. Не успел — ничего страшного, придёт новое письмо.</div>`;
+  if (!o) {
+    const why = farmLevel() < MAIL_LVL ? `Письма начнут приходить с ⭐ ${MAIL_LVL} уровня фермы` : S.day < 3 ? 'Первое письмо придёт на 3-й день' : 'Новое письмо придёт завтра утром';
+    h += `<div class="mbox empty"><span class="mb-ico">📭</span><b>Писем нет</b><small>${why}</small></div>`;
+  } else {
     o.seen = true;
-    const left = o.due - S.day, money = orderReward(o);
-    h += `<div class="summary">✉️ <b>${o.from}</b> просит прислать:</div>`;
+    const left = o.due - S.day, money = orderReward(o), worth = orderWorth(o), ready = orderReady();
+    const when = left <= 0 ? 'сегодня последний день' : left === 1 ? 'до завтра' : `ещё ${left + 1} дн.`;
+    h += `<div class="mbox"><div class="mb-letter"><span class="mb-ico">✉️</span><div><small>Письмо от</small><b>${o.from}</b><span class="ty-chip${left <= 0 ? ' hot' : ''}">⏳ ${when}</span></div></div><div class="ty-grid">`;
     for (const [g, n] of Object.entries(o.items)) {
-      const have = S.inv[g] || 0;
-      h += `<div class="stat"><span>${GOODS[g].e} ${GOODS[g].name}</span><b style="color:${have >= n ? '#3e9b3a' : '#b0503a'}">${Math.min(have, n)} / ${n}${have >= n ? ' ✔' : ''}</b></div>`;
+      const have = S.inv[g] || 0, ok = have >= n;
+      h += `<div class="ty-t${ok ? ' done' : ''}">${ok ? '<span class="ok">✅</span>' : ''}<span class="rc-e">${GOODS[g].e}</span><b>${GOODS[g].name}</b>
+        <div class="tb"><i style="width:${Math.round(Math.min(1, have / n) * 100)}%"></i></div><span class="tn">${Math.min(have, n)} / ${n}</span><small>${ok ? 'есть на складе' : `не хватает ${n - have}`}</small></div>`;
     }
-    h += `<div class="summary">Награда: <b>${money}💰</b> — на лотке это ушло бы за ${orderWorth(o)}💰<br>
-      Срок: ${left > 0 ? `ещё ${left + 1} дн. — до ${WEEKDAYS[cal(o.due).dow].toLowerCase().replace(/а$/, 'у')} включительно` : '<b style="color:#b0503a">сегодня последний день</b>'}</div>
-      <div class="row"><button class="wide" ${orderReady() ? '' : 'disabled'} onclick="closeNight(); setTasks([{ ...MAIL_SPOT, fn: deliverOrder }])">📦 Отправить</button>
-      <button class="wide alt" onclick="declineOrder()">Отказаться</button></div>`;
+    h += `</div><div class="ty-pay"><span>Награда <b>${money}💰</b></span><small>в лавке — ${worth}💰</small></div></div>`;
+    h += `<button class="ty-all"${ready ? '' : ' disabled style="opacity:.5"'} onclick="closeNight(); setTasks([{ ...MAIL_SPOT, fn: deliverOrder }])">📦 Отправить заказ</button>`;
+    h += `<button class="wide alt" style="width:100%;margin-top:8px" onclick="declineOrder()">Отказаться — пусть придёт другое письмо</button>`;
   }
-  h += `<button class="wide alt" style="width:100%;margin-top:10px" onclick="closeNight()">Закрыть</button>`;
-  $('sheet').dataset.view = ''; $('sheet').innerHTML = h;
-  $('overlay').classList.add('show');
+  $('sheet').dataset.view = 'mail'; $('sheet').innerHTML = h; $('overlay').classList.add('show'); decorateSheet();
   save();
 }
 
