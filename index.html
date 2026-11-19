@@ -273,7 +273,8 @@
   .rc-e { font-size: 34px; line-height: 1.05; } .rc b { font-size: 14px; line-height: 1.15; } .rc small { font-size: 11.5px; color: #7a6650; }
   .rc-q { position: absolute; top: 6px; right: 8px; font-style: normal; min-width: 20px; height: 20px; border-radius: 10px; background: #f4a92b; color: #fff; font-size: 12px; font-weight: 900; line-height: 20px; }
   .rc-ing { display: flex; gap: 6px; justify-content: center; margin: 3px 0 1px; } .rc-ing span { display: inline-flex; align-items: center; gap: 1px; font-weight: 900; font-size: 13px; } .rc-ing i { font-style: normal; font-size: 17px; } .rc-ing .no { color: #d0453a; }
-  .rc .rc-f { font-size: 11px; } .rc-season { position: absolute; left: 6px; top: 4px; font-style: normal; font-size: 15px; }
+  .rc .rc-f { font-size: 11px; } .rc.s-spring { background: #fdf0f4; border-color: #f4c6d6; } .rc.s-summer { background: #fdf6dc; border-color: #f2dc8a; } .rc.s-autumn { background: #fdeee0; border-color: #f0c39a; } .rc.s-winter { background: #eef5fb; border-color: #c4d9ec; }
+  .rc-season { position: absolute; left: 6px; top: 4px; font-style: normal; font-size: 15px; }
   .upmax { margin-top: 14px; padding: 12px; border-radius: 14px; background: #effae6; border: 2px solid #8cc56a; color: #2f6b2a; font-weight: 800; text-align: center; }
   .ov-cell.pick .ov-mouth { box-shadow: 0 0 0 3px #ffd34d; } .ov-sw { position: absolute; right: 8px; top: 6px; font-style: normal; font-size: 14px; opacity: .8; }
   .kpick { margin-top: 10px; background: rgba(255,255,255,.14); border-radius: 12px; padding: 8px; } .kp-t { font-weight: 800; margin-bottom: 6px; }
@@ -1123,7 +1124,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-18.155';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-18.156';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -2339,7 +2340,7 @@ function openDairy() {
       if (!recipeShown(r)) continue;
       const D = DAIRY[r], ok = dairyOk(r) && (!D.in || canMake(r, true)), hv = dHave(r), can = ok && hv >= 1 && o.q.length < cap;
       const ing = Object.entries(dIn(r)).map(([g, n]) => `<span class="${(S.inv[g] || 0) >= n ? '' : 'no'}">${n}<i>${GOODS[g].e}</i></span>`).join('');
-      h += `<button class="rc${can ? '' : ' off'}" onclick="addKettle('${r}')"><span class="rc-e">${GOODS[r].e}</span>${seasonal(r) ? `<i class="rc-season">${season().e}</i>` : ''}<b>${GOODS[r].name}</b><small>${sellPrice(r)}💰 · ${fmtMs(D.time / dairyRate(r))}</small><div class="rc-ing">${ing}</div><small class="rc-f">${!ok ? (D.in ? 'нужен ' + Object.keys(D.in).filter(g => !canMake(g)).map(g => GOODS[g].e).join(' ') : '🔒 Молочный дом') : !hv ? 'не хватает продуктов' : o.q.length >= cap ? 'очередь полная' : `хватит на ${hv}`}</small></button>`;
+      h += `<button class="rc${can ? '' : ' off'}${seasonal(r) ? ' s-' + GOODS[r].season : ''}" onclick="addKettle('${r}')"><span class="rc-e">${GOODS[r].e}</span>${seasonal(r) ? `<i class="rc-season">${season().e}</i>` : ''}<b>${GOODS[r].name}</b><small>${sellPrice(r)}💰 · ${fmtMs(D.time / dairyRate(r))}</small><div class="rc-ing">${ing}</div><small class="rc-f">${!ok ? (D.in ? 'нужен ' + Object.keys(D.in).filter(g => !canMake(g)).map(g => GOODS[g].e).join(' ') : '🔒 Молочный дом') : !hv ? 'не хватает продуктов' : o.q.length >= cap ? 'очередь полная' : `хватит на ${hv}`}</small></button>`;
     }
     h += `</div></div>`;
   }
@@ -2601,7 +2602,7 @@ function openBakery() {
     const ok = canMake(r, true), have = bakeHave(r), room = ok ? bakeRoom(r, 1) : 0, inQ = q.filter(x => x === r).length;
     const ing = Object.entries(BAKE[r].in).map(([g, k]) => `<span class="${(S.inv[g] || 0) >= k ? '' : 'no'}">${k}<i>${GOODS[g].e}</i></span>`).join('');
     const foot = !ok ? `нужен ${Object.keys(BAKE[r].in).filter(g => !canMake(g)).map(g => GOODS[g].e).join(' ')}` : !have ? 'не хватает продуктов' : !room ? 'очередь полная' : `хватит на ${have}`;
-    h += `<button class="rc${ok && have && room ? '' : ' off'}" onclick="addBake('${r}',1)"><span class="rc-e">${GOODS[r].e}</span>${seasonal(r) ? `<i class="rc-season">${season().e}</i>` : ''}${inQ ? `<i class="rc-q">${inQ}</i>` : ''}
+    h += `<button class="rc${ok && have && room ? '' : ' off'}${seasonal(r) ? ' s-' + GOODS[r].season : ''}" onclick="addBake('${r}',1)"><span class="rc-e">${GOODS[r].e}</span>${seasonal(r) ? `<i class="rc-season">${season().e}</i>` : ''}${inQ ? `<i class="rc-q">${inQ}</i>` : ''}
       <b>${GOODS[r].name}</b><small>${sellPrice(r)}💰 · ${fmtSec(BAKE[r].time / sp)}</small><div class="rc-ing">${ing}</div><small class="rc-f">${foot}</small></button>`;
   }
   h += `</div><div class="pfacts" style="margin-top:10px"><span>${OVENS} отделения</span><span>по ${trayN()} шт. за раз</span><span>~${perDay(sel)} ${GOODS[sel].e} в день</span></div>`;
@@ -3735,6 +3736,16 @@ const SEAS_ICON = {
   },
 
 };
+// кленовый лист: силуэт как у привычного эмодзи 🍁 — широкая средняя лопасть, две боковые под углом, две маленькие нижние, прямой черешок
+const MAPLE_P = [[31.9,4.0],[30.1,6.0],[28.6,9.7],[27.5,8.8],[26.8,9.0],[25.8,12.3],[25.7,16.2],[25.1,16.2],[22.7,14.6],[22.1,14.8],[22.2,20.2],[23.1,23.6],[25.8,30.0],[25.6,31.4],[25.1,31.4],[23.8,30.1],[20.6,25.6],[18.1,23.1],[17.4,23.5],[17.4,25.4],[17.1,25.7],[13.7,23.6],[10.3,22.3],[7.6,21.7],[7.0,22.6],[8.6,29.5],[10.1,32.3],[11.0,33.0],[10.7,33.4],[8.3,34.4],[11.5,37.4],[17.0,39.8],[16.9,40.3],[9.2,43.2],[9.1,43.9],[11.0,45.3],[15.4,47.0],[18.6,47.6],[23.1,47.5],[22.8,49.1],[23.0,49.9],[24.9,49.4],[27.4,48.1],[31.1,45.2],[30.9,54.1],[30.0,59.0],[30.8,59.7],[33.1,59.9],[34.0,59.7],[34.5,59.1],[33.6,54.6],[33.3,45.3],[38.3,49.3],[41.2,50.0],[41.6,49.7],[40.8,47.7],[41.0,47.4],[44.9,47.4],[50.0,46.7],[52.6,45.7],[54.8,44.1],[54.9,43.5],[54.4,43.1],[48.8,41.6],[46.6,40.6],[46.4,40.2],[50.6,38.3],[54.8,35.2],[54.7,34.7],[52.3,33.8],[55.4,28.5],[56.8,24.6],[56.9,22.6],[56.1,22.0],[54.0,22.2],[48.6,24.1],[46.4,25.4],[45.7,25.2],[45.6,23.9],[44.7,23.0],[42.0,26.0],[39.1,31.0],[38.2,31.6],[37.9,30.3],[38.3,28.1],[41.3,20.1],[41.4,15.9],[40.9,14.4],[40.4,14.4],[38.7,16.1],[38.2,15.8],[38.1,13.3],[37.3,10.1],[36.2,8.9],[35.3,9.9],[35.0,9.7],[34.0,6.3],[33.1,4.7]];
+const mapleLeaf = K => { const c = K.c, leaf = c => { MAPLE_P.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); };
+  const g = c.createRadialGradient(32, 34, 2, 32, 32, 30); g.addColorStop(0, '#ff9a2a'); g.addColorStop(.55, '#f2581e'); g.addColorStop(1, '#d42a1e');
+  K.D(leaf, g, 0);
+  c.save(); K.D(leaf, null, 0); c.clip();   // прожилки — внутри, не доходят до кончиков; контур рисуется после них и их не пускает наружу
+  for (const [x, y] of [[32, 11], [13, 25], [51, 25], [15, 43], [49, 43]]) K.L(32, 45, x, y, '#ffb03a', 1.8);
+  c.restore();
+  K.D(leaf, null, 3);
+};
 const henIcon = (K, rooster) => {
   if (rooster) { K.D(c => { c.moveTo(18, 36); c.quadraticCurveTo(2, 22, 10, 6); c.quadraticCurveTo(14, 22, 24, 28); }, '#3e7d32'); K.D(c => { c.moveTo(18, 38); c.quadraticCurveTo(0, 34, 4, 16); c.quadraticCurveTo(12, 30, 24, 32); }, '#c0392b'); }
   else K.P([[16, 32], [6, 18], [22, 26]], '#fbfaf5');
@@ -4233,7 +4244,7 @@ const ICON_DRAW = {
   '😮': K => { face(K, '#ffc93c'); K.C(23, 28, 2.8, IK, 0); K.C(41, 28, 2.8, IK, 0); K.E(32, 44, 6, 7.5, '#a8402a', 0, 2.5); },
   '🔋': K => { K.R(4, 18, 50, 28, 6, '#fffdf6'); K.R(54, 26, 6, 12, 2, '#9aa0b0', 2.5); K.R(9, 23, 30, 18, 3, K.G(0, 23, 0, 41, '#8fe07a', '#3e9b3a'), 0); K.R(4, 18, 50, 28, 6, null); },
   '🎈': K => { K.D(c => { c.moveTo(32, 46); c.quadraticCurveTo(36, 54, 30, 62); }, null, 2); K.E(32, 26, 18, 22, K.G(0, 4, 0, 48, '#ff7a6a', '#d8343a')); K.P([[28, 50], [36, 50], [32, 45]], '#d8343a', 2); K.H(24, 16, 4, 7, .55); },
-  '🍂': K => { K.D(c => { c.moveTo(10, 54); c.quadraticCurveTo(6, 22, 48, 8); c.quadraticCurveTo(58, 40, 10, 54); }, K.G(0, 8, 0, 54, '#f4b45e', '#c9542f')); K.L(12, 52, 44, 16, 'rgba(110,40,10,.6)', 2.5); for (const t of [.3, .5, .7]) K.L(12 + 32 * t, 52 - 36 * t, 12 + 32 * t + 9, 52 - 36 * t + 4, 'rgba(110,40,10,.45)', 1.8); },
+  '🍂': K => mapleLeaf(K),   // кленовый лист — значок осени
   '🍭': K => { K.LL(32, 40, 32, 62, '#fffaf0', 3); K.C(32, 24, 20, '#ff8fb1'); K.D(c => { for (let a = 0; a < 12; a += .3) { const r = a * 1.5; a ? c.lineTo(32 + Math.cos(a) * r, 24 + Math.sin(a) * r) : c.moveTo(32, 24); } }, null, 0); K.c.strokeStyle = '#fffaf0'; K.c.lineWidth = 3.5; K.c.stroke(); K.C(32, 24, 20, null); },
   '🎁': K => { K.R(8, 26, 48, 32, 4, K.G(0, 26, 0, 58, '#7fa9f0', '#4570c4')); K.R(4, 18, 56, 12, 3, '#8fb5f2'); K.R(28, 18, 8, 40, 0, '#ffd84d', 2);
     K.D(c => { c.moveTo(32, 18); c.quadraticCurveTo(14, 2, 18, 16); c.closePath(); }, '#ffd84d', 2.5); K.D(c => { c.moveTo(32, 18); c.quadraticCurveTo(50, 2, 46, 16); c.closePath(); }, '#ffd84d', 2.5); },
@@ -4287,7 +4298,7 @@ const ICON_DRAW = {
   '📨': K => { K.R(6, 16, 52, 36, 5, '#fffdf6'); K.D(c => { c.moveTo(8, 18); c.lineTo(32, 38); c.lineTo(56, 18); }, null, 2.5); K.P([[46, 4], [60, 10], [50, 16]], '#e0473e', 2); K.L(30, 8, 46, 9, IK, 2.5); },
   '💬': K => { K.D(c => { c.roundRect(4, 8, 56, 38, 14); c.moveTo(16, 44); c.lineTo(12, 58); c.lineTo(28, 46); }, '#fffdf6'); for (const x of [20, 32, 44]) K.C(x, 27, 3.5, '#8a6a4a', 0); },
 };
-const ICON_ALIAS = { '🌧': '🌧️', '❄': '❄️', '☁': '☁️', '⚠': '⚠️', '🌆': '🌇', '⬆': '⬆️', '☀': '☀️', '🌬': '🌬️', '✉': '✉️', '🛠️': '🛠' };
+const ICON_ALIAS = { '🍁': '🍂', '🌧': '🌧️', '❄': '❄️', '☁': '☁️', '⚠': '⚠️', '🌆': '🌇', '⬆': '⬆️', '☀': '☀️', '🌬': '🌬️', '✉': '✉️', '🛠️': '🛠' };
 const ICON_KEYS = new Set([...Object.keys(ICON_DRAW), ...Object.keys(ICON_ALIAS)]);
 const ICON_RE = new RegExp('(' + [...ICON_KEYS].sort((a, b) => b.length - a.length).map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')');
 const iconCache = {}, iconURLs = {};
@@ -6547,8 +6558,9 @@ function renderUI() {
   $('plantAll').style.display = '';   // сажать можно и ночью — к утру прорастёт
   $('dayBtn').style.display = S.night ? '' : 'none';
   { const ns = cal(S.day + 1).sday === 1 ? season(S.day + 1) : null;   // завтра новый сезон — кнопка в его цветах
-    $('dayBtn').textContent = ns ? `${ns.e} Встретить ${SEASON_ACC[ns.id]}` : `☀️ Начать день ${cal(S.day + 1).sday}`;
-    $('dayBtn').className = 'wide sunrise' + (ns ? ' season-' + ns.id : ''); }
+    const ts = season(S.day + 1);   // кнопка всегда в цветах сезона завтрашнего дня, со значком сезона
+    $('dayBtn').textContent = ns ? `${ns.e} Встретить ${SEASON_ACC[ns.id]}` : `${ts.e} Начать день ${cal(S.day + 1).sday}`;
+    $('dayBtn').className = 'wide sunrise season-' + ts.id; }
   $('helperBtn').style.display = S.up.helper > 0 ? '' : 'none';
   setTimeout(() => { const n = [...document.querySelectorAll('.arow .act')].filter(b => b.style.display !== 'none').length; const r = document.querySelector('.arow'); r.style.setProperty('--n', Math.max(5, n)); r.style.gap = n > 5 ? '6px' : ''; });
   $('bakeBtn').style.display = prodList().length ? '' : 'none';
@@ -7104,7 +7116,7 @@ function openCalendar(si, sel) {
   if (S.night) {
     const n = upCount(), nx = cal(S.day + 1).sday === 1;
     h += `<div class="row" style="margin-top:10px"><button class="wide alt" onclick="openNight()">⬆️ Улучшения${n ? ` <span class="cntb">${n}</span>` : ''}</button>
-      <button class="wide${nx ? ' season-' + season(S.day + 1).id : ''}" style="background:#ffd34d" onclick="morning()">${nx ? `${season(S.day + 1).e} Встретить ${SEASON_ACC[season(S.day + 1).id]}` : `☀️ Начать день ${cal(S.day + 1).sday}`}</button></div>`;
+      <button class="wide season-${season(S.day + 1).id}" onclick="morning()">${nx ? `${season(S.day + 1).e} Встретить ${SEASON_ACC[season(S.day + 1).id]}` : `${season(S.day + 1).e} Начать день ${cal(S.day + 1).sday}`}</button></div>`;
   } else h += `<button class="wide" style="width:100%;margin-top:8px" onclick="closeNight()">Закрыть</button>`;
   $('sheet').dataset.view = 'cal'; $('sheet').innerHTML = h; $('overlay').classList.add('show');
 }
