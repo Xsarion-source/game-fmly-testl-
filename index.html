@@ -556,9 +556,9 @@ const GOODS = {
 // Планировка: каждая постройка нарисована в своих «старых» координатах и сдвинута на [dx, dy] клеток.
 // Чтобы раздвинуть или передвинуть что-то — поменяй смещение здесь (сохранения от этого не зависят).
 const LAYOUT = {
-  home: [1, 0], mail: [4, 1], dog: [0, 1], orchard: [0, 2], flowers: [1, 2], well: [1, 4], swing: [0, 2],
-  stall: [2, 5], stall2: [-1, 5], benchA: [3, 5], benchB: [0, 5], ads: [10, 6], field: [3, 0], fert: [4, 0], coop: [3, 3], pond: [5, 4],
-  barn: [6, 1], gh: [7, 2], mill: [13, -1], dairy: [13, 3], path: [2, 0], gh2: [3, 5],
+  home: [1, 0], mail: [4, 1], dog: [0, 1], orchard: [0, 2], flowers: [1, 2], well: [-3, 3], swing: [14, 1],
+  stall: [2, 5], stall2: [-1, 5], benchA: [4, 5], benchB: [0, 5], ads: [10, 6], field: [3, 0], fert: [4, 0], coop: [4, 3], pond: [5, 4],
+  barn: [6, 1], gh: [7, 2], mill: [13, -1], dairy: [13, 3], path: [2, 0], gh2: [4, 5],
 };
 const at = (g, x, y) => ({ x: x + LAYOUT[g][0], y: y + LAYOUT[g][1] });   // клетка/точка постройки на новой карте
 const isoG = (g, x, y) => iso(x + LAYOUT[g][0], y + LAYOUT[g][1]);
@@ -866,6 +866,67 @@ const riverCX = y => y < ROAD ? W + 1.85 + .5 * Math.sin((y - ROAD) * .33) : W +
 const riverHW = y => RIVER_HW + sstep((y - MOUTH + 1) / 2) * .35;   // у самого озера русло чуть шире
 const inLake = (x, y, m = 0) => ((x - LAKE.x) / (LAKE.rx + m)) ** 2 + ((y - LAKE.y) / (LAKE.ry + m)) ** 2 < 1;
 const riverAt = (x, y, m = 0) => (y < MOUTH + 2 && Math.abs(x + .5 - riverCX(y + .5)) < riverHW(y + .5) + m) || inLake(x + .5, y + .5, m);   // клетка в воде (m — запас под берег)
+// Ворота фермы на тропинке от лавок к дому: с ростом фермы они богаче (5 ступеней, без надписей)
+const ARCH_LVL = [1, 8, 15, 25, 35];
+const goldCups = () => S.trophies.filter(t => t.p === 1).length;
+const archStage = (L = farmLevel()) => L >= 35 && goldCups() >= 3 ? 5 : L >= 25 ? 4 : L >= 15 ? 3 : L >= 8 ? 2 : 1;
+function drawFarmArch(d) {
+  const st = archStage(), Y = d.y;
+  const x0 = 6.3, x1 = 8.7, xm = (x0 + x1) / 2;
+  const wood = [['#c99a62', '#a87648'], ['#a87648', '#8a5a32'], ['#dcae74', '#c99a62']];
+  const dark = [['#8a5a36', '#6b4327'], ['#6b4327', '#553419'], ['#a06c42', '#8a5a36']];
+  const white = [['#fbf8f1', '#e4ddd0'], ['#e4ddd0', '#cbc3b4'], ['#ffffff', '#f1ece2']];
+  const brick = [['#c8674a', '#a8503a'], ['#a8503a', '#8a3f2e'], ['#d9806a', '#c8674a']];
+  const stone = [['#c9c6bd', '#a9a59a'], ['#a9a59a', '#8c887e'], ['#e2dfd6', '#c9c6bd']];
+  const H = [0, 60, 66, 70, 72, 74][st];   // выше человечка (~55): никто не задевает головой
+  const arc = (z0, rise, a = x0 + .05, b = x1 - .05, n = 16) => Array.from({ length: n + 1 }, (_, i) => { const f = i / n; return { x: a + (b - a) * f, z: z0 + Math.sin(f * Math.PI) * rise }; });
+  const P = q => lift(q.x, Y, q.z);
+  const beam = (pts, w, c1, c2) => { ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath(); pts.map(P).forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.strokeStyle = INK; ctx.lineWidth = w + 3; ctx.stroke(); ctx.strokeStyle = c1; ctx.lineWidth = w; ctx.stroke(); ctx.globalAlpha = .55; ctx.strokeStyle = c2; ctx.lineWidth = Math.max(1, w * .3); ctx.stroke(); ctx.globalAlpha = 1; };
+  const post = (x, w, h, col, z0 = 0) => toonBox(x - w / 2, Y - w / 2, w, w, h, ...col, z0, 1.3);
+  const lantern = (x, z0, len) => { const a = lift(x, Y + .02, z0), b = lift(x, Y + .02, z0 - len); seg(a, b, INK, 1.2); rr(b.x - 4.5, b.y - 1, 9, 11, 2.5, '#3a3a3a'); rr(b.x - 3, b.y + 1, 6, 7, 1.5, '#ffe58a'); ctx.fillStyle = '#3a3a3a'; ctx.beginPath(); ctx.moveTo(b.x - 5.5, b.y); ctx.lineTo(b.x, b.y - 4); ctx.lineTo(b.x + 5.5, b.y); ctx.fill(); };
+  const leaf = (x, y, a, s, c) => { ctx.save(); ctx.translate(x, y); ctx.rotate(a); ctx.beginPath(); ctx.ellipse(0, -s * .5, s * .45, s * .8, 0, 0, 7); ctx.fillStyle = c; ctx.fill(); ctx.strokeStyle = '#2e5d22'; ctx.lineWidth = .8; ctx.stroke(); ctx.restore(); };
+  const vine = (pts, flowers) => { ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.strokeStyle = '#3f7a2c'; ctx.lineWidth = 1.6; ctx.stroke();
+    pts.forEach((p, i) => { leaf(p.x, p.y, (i % 2 ? .9 : -.9), 5.5, i % 3 ? '#5aa83f' : '#4f9a3c'); if (flowers && i % 3 === 1) { circle(p.x + 2, p.y - 2, 2.4, flowers[i % flowers.length]); circle(p.x + 2, p.y - 2, .9, '#fff3a0'); } }); };
+  const climb = (x, top, wob = 3) => Array.from({ length: 9 }, (_, i) => { const c = lift(x, Y + .17, 3 + (top - 3) * i / 8); return { x: c.x + Math.sin(i * 1.7) * wob, y: c.y }; });
+  softShadow(x0 - .25, Y - .25, x1 + .25, Y + .35, .22);
+  if (st === 1) {   // простые ворота: два столба и перекладины
+    for (const x of [x0 + .1, x1 - .1]) post(x, .26, H, wood);
+    beam(arc(H - 5, 0), 6, '#c99a62', '#f0cf96'); beam(arc(H - 16, 0), 4, '#a87648', '#d9ad74');
+  }
+  if (st === 2) {   // деревянная дуга и вывеска-подсолнух прямо под ней
+    for (const x of [x0 + .1, x1 - .1]) post(x, .28, H, wood);
+    beam(arc(H - 4, 0), 6, '#a87648', '#d9ad74'); beam(arc(H - 2, 9), 7, '#c99a62', '#f0cf96');
+    gface(fY(xm - .4, xm + .4, Y + .01, H + 7, H + 19), '#f0cf96', '#d9ad74', INK, 1.4);   // табличка стоит на дуге, а не свисает
+    const c = lift(xm, Y + .02, H + 13); emoji('🌻', c.x, c.y, 10);
+  }
+  if (st === 3) {   // бревенчатые ворота, увитые плющом, с двумя фонарями
+    for (const x of [x0 + .12, x1 - .12]) { post(x, .32, H, dark); post(x, .42, 3, dark, H); }
+    beam(arc(H - 4, 0), 7, '#8a5a36', '#b88454'); beam(arc(H - 1, 10), 8, '#8a5a36', '#b88454');
+    for (const x of [x0 + .55, x0 + .95, x1 - .95, x1 - .55]) { const q = arc(H - 4, 0); const z = H - 1 + Math.sin(((x - x0 - .05) / (x1 - x0 - .1)) * Math.PI) * 10; seg(lift(x, Y, H - 4), lift(x, Y, z), INK, 3.4); seg(lift(x, Y, H - 4), lift(x, Y, z), '#a87648', 1.8); }   // стойки между брусьями
+    vine(climb(x0 + .12, H - 4), null); vine(climb(x1 - .12, H - 4), null);
+    vine(arc(H + 1, 10, x0 + .1, xm - .1, 6).map(P), null);
+    lantern(x0 + .45, H - 5, 10); lantern(x1 - .45, H - 5, 10);
+  }
+  if (st >= 4) {   // каменные столбы; деревянная (или белая) арка стоит на капителях, держится на кронштейнах
+    const col = st >= 5 ? white : wood, c1 = st >= 5 ? '#fbf8f1' : '#a87648', c2 = st >= 5 ? '#ffffff' : '#d9ad74';
+    for (const x of [x0 + .12, x1 - .12]) {
+      const sc = st >= 5 ? brick : stone, ln = st >= 5 ? 'rgba(255,235,220,.45)' : 'rgba(90,85,75,.45)';
+      post(x, .46, H - 18, sc);
+      for (let z = st >= 5 ? 5 : 7; z < H - 22; z += st >= 5 ? 5 : 9) { const a = lift(x - .23, Y + .23, z), b = lift(x + .23, Y + .23, z); seg(a, b, ln, 1); const a2 = lift(x + .23, Y - .23, z + 2.5), b2 = lift(x + .23, Y + .23, z + 2.5); seg(a2, b2, ln, 1); }
+      post(x, .56, 4, st >= 5 ? white : stone, H - 18);   // капитель
+      post(x, .3, 14, col, H - 14);     // деревянная стойка на камне
+    }
+    beam(arc(H - 2, 0), 8, c1, c2);   // перемычка
+    beam(arc(H + 1, 11), 8, c1, c2);  // дуга
+    for (const x of [x0 + .5, xm, x1 - .5]) { const z = H + 1 + Math.sin(((x - x0 - .05) / (x1 - x0 - .1)) * Math.PI) * 11; seg(lift(x, Y, H - 2), lift(x, Y, z), INK, 3.4); seg(lift(x, Y, H - 2), lift(x, Y, z), c1, 1.8); }
+    for (const [x, s] of [[x0 + .12, 1], [x1 - .12, -1]]) { const a = lift(x + s * .02, Y, H - 12), b = lift(x + s * .42, Y, H - 2); seg(a, b, INK, 4.4); seg(a, b, c1, 2.6); }   // кронштейны
+    if (st === 4) { vine(climb(x0 + .12, H - 18, 4), ['#ff8fb1', '#ffd84d']); vine(arc(H + 2, 11, x0 + .1, x1 - .1, 9).map(P), ['#ff8fb1', '#ffffff', '#ffd84d']); }
+    else { vine(arc(H + 2, 11, x0 + .1, x1 - .1, 11).map(P), ['#ff6b9a', '#ffffff', '#ff8fb1']); for (const x of [x0 + .12, x1 - .12]) { const c = lift(x, Y, H + 3); circle(c.x, c.y - 2, 3.6, INK); circle(c.x, c.y - 2, 2.6, '#e0b23a'); } }
+    lantern(x0 + .55, H - 3, 9); lantern(x1 - .55, H - 3, 9);
+    if (st >= 5) for (const x of [x0 - .4, x1 + .05]) { toonBox(x, Y + .2, .35, .35, 9, ['#d9704a', '#b8553a'], ['#b8553a', '#944230'], ['#7a4a2a', '#5a3420'], 0, 1.1); const c = lift(x + .17, Y + .37, 12); for (const [dx, dy, r, cc] of [[-4, 0, 4, '#4f9a3c'], [3, -1, 4, '#5aa83f'], [-1, -4, 2.5, '#ff6b9a'], [3, -4, 2.3, '#ffffff'], [-4, -3, 2.2, '#ff8fb1']]) circle(c.x + dx, c.y + dy, r, cc); }
+  }
+
+}
 // Будущие зоны: в лесу вокруг каждой — просека с колышками и верёвкой, у края — табличка с замком
 const FUTURE = [
   { name: 'Склад', key: 'store', x0: 8, y0: -13, x1: 21, y1: -1, sign: [15, -1] },
@@ -881,6 +942,7 @@ const zoneIn = (x, y) => FUTURE.find(Z => x >= Z.x0 && x <= Z.x1 && y >= Z.y0 &&
 // дорога к складу: от главной дороги вдоль левого края фермы и за её верхним рядом деревьев
 const laneAt = (x, y) => S.up.store > 0 && ((x === -1 && y >= -1 && y < ROAD) || (y === -1 && x >= -1 && x <= 17));
 const zoneEdge = (x, y) => FUTURE.some(Z => !zoneOpen(Z) && x >= Z.x0 && x <= Z.x1 && y >= Z.y0 && y <= Z.y1 && (x === Z.x0 || x === Z.x1 || y === Z.y0 || y === Z.y1));
+decor.push({ kind: 'farmArch', x: 7, y: 13.02, z: 7.5 + 13 });   // ворота фермы
 decor.push({ kind: 'storeBarn', x: 12, y: -5, z: 12 - 2.4 - 1.2 });   // раньше грузовика на дорожке перед ним (ящики у стены не перекрывают машину)   // амбар склада
 for (const Z of FUTURE) decor.push({ kind: 'zoneSign', Z, x: Z.sign[0], y: Z.sign[1], z: Z.sign[0] + Z.sign[1] + 1.2 });   // таблички будущих зон
 function drawZoneRopes() {   // верёвка на колышках по краю каждой зоны
@@ -1041,7 +1103,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-18.152';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-18.153';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1151,6 +1213,7 @@ function showLevelUp(L0, L) {
   const xL = k => peopleFor(demandAt(k));
   const rows = open.map(t => `🔓 ${t}`);
   if (xL(L) > xL(L0)) rows.push(`🧍 Покупателей в день: ${xL(L0)} → <b>${xL(L)}</b>`);
+  if (archStage(L) > archStage(L0)) rows.push('🏡 Ворота фермы стали богаче — загляни на тропинку к дому');
   if (basketMax(L) > basketMax(L0)) rows.push(`🧺 В корзинке до <b>${basketMax(L)}</b> разных товаров`);
   luDress('🎉', '⭐', 'Новый уровень фермы!', 'Ура!', '#f0b429'); $('luN').textContent = L; $('luNews').innerHTML = rows.join('<br>');
   $('lvlUp').classList.add('show');
@@ -4320,6 +4383,7 @@ const NOOP = (() => {
 })();
 const SPRITE_ANIM = new Set(['house', 'bakery', 'dairy', 'mill']);   // поверх картинки — только дым и крылья мельницы
 const SPRITE_KEY = {
+  farmArch: () => archStage() + '',
   house: () => '', stall: d => ((isRest() || isFair()) && !S.night) + '' + isFair() + (d.b ? 'b' + S.up.stall2 + upLocked('stall2') : shopN()) + (d.b ? S.shop.b : S.shop.a).map(id => id ? id + (S.inv[id] > 0) : '-').join(), season: () => S.up.seasonstand + '', bakery: () => bakeLoaded().length + ',' + S.started, dairy: () => (prodQ('dairy') > 0) + ',' + S.started + ',' + S.up.dhouse,
   doghouse: () => '', billboard: () => '', mill: () => (S.prod.mill.q > 0) + ',' + S.started,
   tree: () => season().id, flowers: () => '', well: () => '', swing: () => S.up.cozy + '', fence: () => hens() + ',' + cows(), coop: () => S.coop.eggs + ',' + (S.coop.gold || 0) + ',' + hens(), barn: () => cows(),
@@ -4405,7 +4469,7 @@ function draw(t) {
 
   const list = [];
   // вырубленный лес — чистая трава, без пеньков
-  const DRAW = { storeBarn: drawStoreBarn, zoneSign: drawZoneSign, bridgeDeck: drawBridgeDeck, bridge: drawBridgeFront, tree: d => (d.lot == null || !lotCleared(d.lot)) && drawTree(d), mill: drawMill, dairy: drawDairy, house: drawHouse, bakery: drawBakery, mailbox: drawMailbox, trophies: drawTrophies, flowers: drawFlowers, doghouse: drawDoghouse, well: drawWell, swing: drawSwing, stall: drawStall, season: drawSeasonStand, coop: drawCoop, barn: drawBarn, trough: drawTrough, fence: drawFence, billboard: drawBillboard, sack: drawSack, bench: drawBench, glass: drawGlass, ghroof: drawGhRoof };
+  const DRAW = { farmArch: drawFarmArch, storeBarn: drawStoreBarn, zoneSign: drawZoneSign, bridgeDeck: drawBridgeDeck, bridge: drawBridgeFront, tree: d => (d.lot == null || !lotCleared(d.lot)) && drawTree(d), mill: drawMill, dairy: drawDairy, house: drawHouse, bakery: drawBakery, mailbox: drawMailbox, trophies: drawTrophies, flowers: drawFlowers, doghouse: drawDoghouse, well: drawWell, swing: drawSwing, stall: drawStall, season: drawSeasonStand, coop: drawCoop, barn: drawBarn, trough: drawTrough, fence: drawFence, billboard: drawBillboard, sack: drawSack, bench: drawBench, glass: drawGlass, ghroof: drawGhRoof };
   const settled = zoomSettled(t);
   for (const d of decor) {   // постройка рисуется в своих координатах, сдвинутая на смещение группы (LAYOUT)
     if (settled && bakedTrees && bakedTrees.has(d)) continue;   // уже в картинке фона
@@ -6792,7 +6856,7 @@ function openSunday() {
     <button class="wide alt" style="width:100%;margin-top:10px" onclick="closeNight()">🌾 Заняться фермой</button>`;
   $('sheet').dataset.view = 'sunday'; $('sheet').innerHTML = h; $('overlay').classList.add('show');
 }
-const PICNIC = at('pond', 8, 10);
+const PICNIC = { x: 17, y: 9 };   // пикник — на лужайке у качелей, между тропинкой и теплицами
 // на пикнике у каждого своё занятие: сидит или лежит на своём коврике, двое болтают у пруда
 const PIC_SPOTS = [{ dx: -1, dy: 0, pose: 'sit' }, { dx: 1, dy: 1, pose: 'lie' }, { dx: 4, dy: 0, pose: 'talk', face: 1 }, { dx: 5, dy: 0, pose: 'talk', face: -1 }, { dx: -1, dy: 1, pose: 'sit' }, { dx: -2, dy: 0, pose: 'lie' }];
 const picPose = h => { if (S.picnic !== S.day || S.night || h.path.length || h.moving) return null; const q = PIC_SPOTS[h.id % 6];
