@@ -371,6 +371,25 @@
   #sheet.drag { transition: none !important; }
   #sheet { position: relative; z-index: 1; }
   .sh-head.titled { min-height: 26px; padding-top: 6px; } .sh-head.titled .sh-grab { visibility: hidden; margin-bottom: 0; }
+  .fres2 { padding: 12px; border-radius: 16px; background: linear-gradient(#4f9a52, #2f7a3a); color: #fff8e6; box-shadow: inset 0 -4px 0 rgba(0,0,0,.2); }
+  .fres2.gold { background: linear-gradient(#e9b23a, #c47f1c); } .fres2.silver { background: linear-gradient(#8fa3b8, #5f7690); } .fres2.bronze { background: linear-gradient(#c9874f, #9a5a2e); }
+  .fr-top { display: flex; align-items: center; gap: 12px; } .fr-medal { font-size: 64px; line-height: 1; filter: drop-shadow(0 3px 2px rgba(0,0,0,.3)); }
+  .fr-head { display: flex; flex-direction: column; gap: 3px; } .fr-head small { font-size: 12px; opacity: .9; } .fr-head b { font-size: 20px; line-height: 1.1; }
+  .fr-money { font-size: 30px; font-weight: 900; line-height: 1.1; text-shadow: 0 2px 0 rgba(0,0,0,.2); }
+  .fr-chip { align-self: flex-start; background: rgba(0,0,0,.18); border-radius: 999px; padding: 2px 10px; font-weight: 800; font-size: 12.5px; } .fr-chip.grow { background: rgba(255,255,255,.28); }
+  .fr-stats { display: flex; gap: 14px; margin-top: 8px; font-size: 14px; } .fr-stats b { font-size: 16px; }
+  .fr-best { display: flex; align-items: center; gap: 10px; margin-top: 10px; background: #fffaf0; color: #4a2e18; border-radius: 14px; padding: 8px 12px; box-shadow: 0 3px 0 rgba(0,0,0,.2); }
+  .fr-best .rc-e { font-size: 42px; } .fr-best small { display: block; font-size: 12px; color: #7a6650; } .fr-best b { display: block; font-size: 17px; } .fr-best span { font-size: 13px; color: #6a5440; }
+  .fr-h { margin: 14px 0 6px; font-size: 16px; color: #4a2e18; }
+  .fr-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .fr-t { display: flex; flex-direction: column; align-items: center; padding: 6px 2px; border-radius: 14px; border: 2px solid #ead9b5; background: #fff; box-shadow: 0 2px 0 #d9c49c; color: #4a2e18; }
+  .fr-t .rc-e { font-size: 28px; } .fr-t b { font-size: 13px; } .fr-t small { font-size: 11.5px; color: #7a6650; }
+  .fr-rank { display: flex; flex-direction: column; gap: 6px; } .fr-row { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #4a2e18; background: #fffaf0; border-radius: 12px; padding: 6px 8px; border: 2px solid transparent; }
+  .fr-row.me { border-color: #6cbf4f; background: #effae6; font-weight: 800; } .fr-n { width: 22px; text-align: center; font-weight: 900; } .fr-nm { width: 34%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fr-bar { flex: 1; height: 10px; border-radius: 6px; background: #ecdcb8; overflow: hidden; } .fr-bar i { display: block; height: 100%; background: linear-gradient(#ffd34d, #f0a429); } .fr-row.me .fr-bar i { background: linear-gradient(#8fe07a, #4caf50); }
+  .fr-left { margin-top: 8px; font-size: 13px; color: #7a6650; } .fr-empty { font-size: 14px; color: #7a6650; }
+  .fr-contest { display: flex; align-items: center; gap: 10px; margin-top: 10px; background: rgba(0,0,0,.16); border-radius: 14px; padding: 6px 12px; } .fr-cupe { font-size: 36px; line-height: 1; } .fr-contest small { display: block; font-size: 12px; opacity: .9; } .fr-contest b { font-size: 15px; }
+  .fr-cup { margin-top: 12px; background: #f6ecd6; border-radius: 14px; padding: 10px 12px; font-size: 14px; font-weight: 700; color: #4a2e18; }
   .tyard { padding: 12px; border-radius: 16px; background: linear-gradient(#c4473b, #8e2f26); color: #fff6ea; box-shadow: inset 0 -4px 0 rgba(0,0,0,.2); }
   .ty-top { display: flex; align-items: center; gap: 10px; } .ty-img { width: 46%; max-width: 190px; filter: drop-shadow(0 4px 2px rgba(0,0,0,.3)); }
   .ty-cust { flex: 1; display: flex; flex-direction: column; gap: 6px; } .ty-cust b { font-size: 17px; line-height: 1.15; } .ty-cust small { font-size: 12px; opacity: .85; }
@@ -1015,7 +1034,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-18.148';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-18.149';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1426,6 +1445,8 @@ function endDay() {
     const left = Object.entries(S.fair.stock).filter(([, n]) => n > 0);
     left.forEach(([c, n]) => S.inv[c] = (S.inv[c] || 0) + n); S.fair.stock = {}; S.fair.crates = [];
     fairRes = { ...(S.fair.log?.d === S.day ? S.fair.log : fairLogNew()), left };
+    S.fair.hist ??= []; fairRes.prev = S.fair.hist[S.fair.hist.length - 1] || null;   // для сравнения с прошлой ярмаркой
+    S.fair.hist.push({ d: S.day, money: fairRes.money || 0 }); if (S.fair.hist.length > 20) S.fair.hist.shift();
   }
   const waiting = visitors.filter(v => v.state !== 'leaving');
   S.stats.missed += waiting.length + (S.toSpawn - S.spawned);
@@ -1831,7 +1852,7 @@ function sell(v) {
   if (full) { xp = Math.round(xp * 1.25); if (v.items.length > 1) goalEv('basket', null, 1); }   // вся корзинка нашлась — бонус опыта
   S.coins += money; S.stats.earned += money; S.stats.served++; S.life.earned += money; S.life.served++;
   if (tip) for (const o of [S.stats, S.life]) o.sold[v.items[0].id] += tip;
-  if (fairOn()) { const L = fairLog(); L.money += money; L.served++; }
+  if (fairOn()) { const L = fairLog(); L.money += money; L.served++; L.xp = (L.xp || 0) + xp; }
   gainXp(xp);
   addFloat(v.x, v.y, `+${money}💰 +${xp}⭐`);
   if (!full) toast(`🙂 Нашлось не всё — покупатель взял, что было`);
@@ -4794,14 +4815,28 @@ function drawFairGround() {
 function fairLogNew() { return { d: S.day, money: 0, served: 0, sold: {}, rv: [0, 0, 0], out: [] }; }
 function fairLog() { if (S.fair.log?.d !== S.day) S.fair.log = fairLogNew(); return S.fair.log; }
 function openFairResult(r) {
-  const sold = Object.entries(r.sold).sort((a, b) => b[1].m - a[1].m), all = [{ name: 'Твоя ферма', m: r.money, me: true }, ...RIVALS_DEF.map((x, i) => ({ name: x.name, m: r.rv[i] || 0 }))].sort((a, b) => b.m - a.m);
-  let h = `<h2>🎪 Итоги ярмарки</h2><div class="summary" style="font-size:16px">Заработано на ярмарке: <b>${r.money}💰</b> · покупателей: <b>${r.served}</b></div>`;
-  h += `<h3 style="margin:10px 0 4px">Что продали</h3>` + (sold.length ? sold.map(([g, q]) => `<div class="fres"><span>${GOODS[g].e} ${GOODS[g].name}</span><span>${q.n} шт</span><b>${q.m}💰</b></div>`).join('') : '<div style="color:#7a6650">Ничего — в следующий раз собери ящики заранее</div>');
-  if (r.left.length) h += `<div class="fres" style="color:#7a6650"><span>↩️ Вернулось на склад</span><span style="flex:2;text-align:right">${r.left.map(([c, n]) => n + ' ' + GOODS[c].e).join('  ')}</span></div>`;
-  h += `<h3 style="margin:12px 0 4px">Кто сколько наторговал</h3>` + all.map((x, k) => `<div class="fres"${x.me ? ' style="font-weight:800;color:#2f6b2a"' : ''}><span>${['🥇', '🥈', '🥉', '4.'][k]} ${x.name}</span><b>${x.m}💰</b></div>`).join('');
-  if (r.out.length) h += `<div style="font-size:13px;color:#7a6650;margin-top:6px">У соседей кончилось: ${r.out.map(o => `${GOODS[o.g].e} у «${RIVALS_DEF[o.i].name}»`).join(', ')}</div>`;
+  const sold = Object.entries(r.sold).sort((a, b) => b[1].m - a[1].m);
+  const all = [{ name: 'Твоя ферма', m: r.money, me: true }, ...RIVALS_DEF.map((x, i) => ({ name: x.name, m: r.rv[i] || 0 }))].sort((a, b) => b.m - a.m);
+  const place = all.findIndex(x => x.me) + 1, top = Math.max(1, all[0].m);
+  const PL = { 1: ['🥇', '1-е место по продажам!', 'gold'], 2: ['🥈', '2-е место по продажам', 'silver'], 3: ['🥉', '3-е место по продажам', 'bronze'], 4: ['🎪', 'Хорошая торговля!', 'plain'] }[place];
+  const prev = r.prev, diff = prev ? r.money - prev.money : null;
+  let h = `<h2>🎪 Итоги ярмарки</h2><div class="fpinfo">Как прошла торговля: место среди лотков по выручке, лучший товар и что продали.</div>`;
+  h += `<div class="fres2 ${PL[2]}"><div class="fr-top"><div class="fr-medal">${PL[0]}</div><div class="fr-head"><b>${PL[1]}</b>
+    <div class="fr-money">${r.money}💰</div>${diff == null || diff === 0 ? '' : `<span class="fr-chip${diff > 0 ? ' grow' : ''}">${diff > 0 ? `▲ на ${diff}💰 больше` : `▼ на ${-diff}💰 меньше`}, чем на прошлой</span>`}</div></div>
+    <div class="fr-stats"><span>🙂 покупателей <b>${r.served}</b></span><span>⭐ опыта <b>+${r.xp || 0}</b></span></div>`;
+  const tr = S.trophies.find(t => t.d === r.d), ck = tr ? tr.k : contestOf(r.d);
+  if (tr || S.contestDay === r.d) h += `<div class="fr-contest"><span class="fr-cupe">${tr ? MEDAL[tr.p].e : '🎗️'}</span><div><small>Конкурс «${SPECIAL[ck].name}»</small><b>${tr ? `${tr.p}-е место — кубок на доске почёта 🏆` : 'Без кубка — в следующий раз повезёт'}</b></div></div>`;
+  if (sold.length) {
+    const [g, q] = sold[0];
+    h += `<div class="fr-best"><span class="rc-e">${GOODS[g].e}</span><div><small>Лучший товар дня</small><b>${GOODS[g].name}</b><span>продано ${q.n} шт на ${q.m}💰</span></div></div>`;
+  }
+  h += `</div>`;
+  h += `<h3 class="fr-h">Что продали</h3>` + (sold.length ? `<div class="fr-grid">${sold.map(([g, q]) => `<div class="fr-t"><span class="rc-e">${GOODS[g].e}</span><b>${q.n} шт</b><small>${q.m}💰</small></div>`).join('')}</div>` : '<div class="fr-empty">Ничего не продали — в следующий раз собери ящики заранее 📦</div>');
+  if (r.left.length) h += `<div class="fr-left">↩️ Вернулось на склад: ${r.left.map(([c, n]) => `${GOODS[c].e} ${n}`).join('  ')}</div>`;
+  h += `<h3 class="fr-h">Лотки на ярмарке</h3><div class="fr-rank">${all.map((x, k) => `<div class="fr-row${x.me ? ' me' : ''}"><span class="fr-n">${['🥇', '🥈', '🥉', '4'][k]}</span><span class="fr-nm">${x.me ? '🌾 Твоя ферма' : x.name}</span><div class="fr-bar"><i style="width:${Math.max(4, Math.round(x.m / top * 100))}%"></i></div><b>${x.m}💰</b></div>`).join('')}</div>`;
+  if (r.out.length) h += `<div class="fr-left">У соседей кончилось: ${r.out.map(o => `${GOODS[o.g].e} у «${RIVALS_DEF[o.i].name}»`).join(', ')}</div>`;
   h += `<button class="wide" style="width:100%;margin-top:14px" onclick="openCalendar()">🌙 Дальше</button>`;
-  $('sheet').dataset.view = 'fairres'; $('sheet').innerHTML = h; $('overlay').classList.add('show');
+  $('sheet').dataset.view = 'fairres'; $('sheet').innerHTML = h; $('overlay').classList.add('show'); decorateSheet(); $('sheet').scrollTop = 0;
 }
 function rivalSale(i, g) {   // покупатель ушёл к соседу: идёт к его ларьку, стоит у прилавка и уходит
   const x = rivals()[i], B = FAIR_STALLS.find(t => t.r === i);
