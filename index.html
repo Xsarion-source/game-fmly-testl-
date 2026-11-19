@@ -1124,7 +1124,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-18.156';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-18.157';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -7338,7 +7338,11 @@ function morning() {   // итог дня — в историю (последн�
 let resetArmed = false;
 function resetGame(btn) {
   if (!resetArmed) { resetArmed = true; btn.textContent = 'Точно стереть прогресс? Нажми ещё раз'; setTimeout(() => { resetArmed = false; if (btn.isConnected) btn.textContent = 'Начать заново'; }, 3000); return; }
-  resetArmed = false; S = newState(); S.prod = {}; initProd(); S.life.flour = S.life.cheese = 0; applyLots(); P.x = S.player.x; P.y = S.player.y; visitors = []; helpers = []; hensState = []; cowsState = []; setTasks([]); startDay();
+  resetArmed = false;   // новая ферма в этой же ячейке: пишем чистое состояние и перезапускаем игру — все проверки старых сохранений пройдут заново
+  const o = newState(); o.farmId = S.farmId; o.savedAt = Date.now();
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(o)); } catch {}
+  noSave = true; CLOUD.dirty = true; wnSet({ slot: SLOT, msg: '🔄 Новая ферма — всё сначала', state: o });
+  location.reload();
 }
 
 let toastT;
