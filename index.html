@@ -606,12 +606,12 @@ const UPGRADES = {
   bakery: { name: 'Пекарня',           ico: '🥖', desc: l => l === 0 ? 'Пристройка к дому. Печёт из 🍚 муки и продуктов фермы: 🍞 хлеб, 🥧 пирог, 🍕 пиццу и 🎂 торт' : 'Печёт вдвое быстрее', cost: l => [6000, 9000][l], max: 2, need: () => S.up.mill >= 1, needText: 'Откроется после новой постройки в лесу 🪓' },
   cozy:   { name: 'Уют',               ico: '🌷', desc: l => `${COZY[l]}. Покупателям нравится — платят на 2% больше (+${l * 2}% → +${(l + 1) * 2}%)`, cost: l => [600, 1200, 2000, 3200, 5000][l],
             get max() { return Math.max(S.up.cozy || 0, S.up.house ? 5 : 4); } },   // фонарики висят на веранде — последний уровень после «Дома фермера»
-  ads:    { name: 'Реклама',           ico: '📣', desc: l => `+1 покупатель в день (больше людей приводит уровень фермы ⭐)`,           cost: l => 30 + l*35,           max: 10 },
+  ads:    { name: 'Реклама',           ico: '📣', desc: l => `Больше покупок в лавке: +½ покупателя в день (больше людей приводит уровень фермы ⭐)`, cost: l => [80, 160, 280, 450, 650, 900, 1200, 1600, 2100, 2700][l], max: 10 },
   fert:   { name: 'Удобрения',         ico: '🧪', desc: l => `Рост быстрее (+${l*20}% → +${(l+1)*20}%)`, cost: l => 50 + l*60, max: 5 },
   slots:  { name: 'Место на прилавке',  ico: '🧺', desc: l => `Ещё одно место для товара на прилавке: ${3 + l} → ${4 + l}`, cost: l => [150, 450, 1000][l], max: 3 },
   stall2: { name: 'Вторая лавка',      ico: '🏪', desc: l => 'Ещё одна лавка слева от первой: 6 мест под товар и своя очередь. Торгуют фермер и помощники со станцией «Лавка»', cost: l => [3000][l], max: 1, need: () => S.up.slots >= 3, needText: 'Откроется, когда на прилавке будет 6 мест 🧺' },
   seasonstand: { name: 'Сезонная пристройка', ico: '🍦', desc: l => 'Маленькая пристройка к лавке: ещё 2 места — только для сезонных товаров', cost: l => [3000][l], max: 1, need: () => false, needText: 'Откроется, когда появятся сезонные товары' },
-  sign:   { name: 'Красивая вывеска',  ico: '🪧', desc: l => `Цены на лотке выше (+${l*5}% → +${(l+1)*5}%)`, cost: l => 60 + l*70, max: 6 },
+  sign:   { name: 'Красивая вывеска',  ico: '🪧', desc: l => `Цены на лотке выше (+${l*3}% → +${(l+1)*3}%)`, cost: l => [150, 300, 550, 900, 1400, 2000][l], max: 6 },
   helper: { name: 'Помощник',         ico: '👷', desc: l => `Работает на одной или нескольких станциях: поле, сад, курятник, коровник, лавка (помощников: ${l} → ${l+1})`, cost: l => [120, 280, 520, 800, 1150, 1600, 2100, 2700, 3400, 4200][l], max: 10 },
   fairbake:  { name: 'Хлебный лоток',     ico: '🥐', desc: l => `Свой лоток для выпечки на ярмарке: ещё ${BAKE_CRATES} ящика — только под ${Object.keys(BAKE).map(r => GOODS[r].e).join('')}`, cost: l => [2500][l], max: 1, need: () => S.up.bakery >= 1, needText: 'Откроется, когда пристроишь пекарню 🥖' },
   fairstall: { name: 'Место на ярмарке', ico: '🎪', desc: l => `Ещё один лоток рядом с шатром фермы: +${CRATES_PER} ящика товара на ярмарку (сейчас ${fairCrates()})`, cost: l => [600, 1500][l], max: 2 },
@@ -1014,7 +1014,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-18.146';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-18.147';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1121,7 +1121,7 @@ function showLevelUp(L0, L) {
   if ($('lvlUp').classList.contains('show')) L0 = Math.min(L0, luFrom);   // два уровня подряд — в одном окне
   luFrom = L0;
   const open = []; for (let k = L0 + 1; k <= L; k++) { const n = lvlNews(k); if (n) open.push(...n.split(', ')); }
-  const xL = k => Math.min(30, 8 + Math.min(14, k) + (S.up.ads || 0) + prestigeGuests());
+  const xL = k => peopleFor(demandAt(k));
   const rows = open.map(t => `🔓 ${t}`);
   if (xL(L) > xL(L0)) rows.push(`🧍 Покупателей в день: ${xL(L0)} → <b>${xL(L)}</b>`);
   if (basketMax(L) > basketMax(L0)) rows.push(`🧺 В корзинке до <b>${basketMax(L)}</b> разных товаров`);
@@ -1272,7 +1272,11 @@ function drawDecor(id) {
 }
 const DECOR_OBJ = Object.fromEntries(Object.keys(DECOR_SPOT).map(id => [id, { id }]));
 // покупателей в день растёт с уровнем, но не бесконечно; зато корзинка у каждого больше
-const visitorsBase = () => Math.min(30, 8 + Math.min(14, farmLevel()) + (S.up.ads || 0) + prestigeGuests());
+// Спрос — сколько «покупок» в день; людей меньше, зато каждый берёт больше (на дороге спокойнее, выручка та же)
+const demandAt = L => Math.min(30, 8 + Math.min(14, L) + (S.up.ads || 0) * .5 + prestigeGuests());
+const peopleFor = D => Math.round(Math.min(17, 4 + D * .42));
+const visitorsBase = () => peopleFor(demandAt(farmLevel()));
+const basketMul = () => { const D = demandAt(farmLevel()); return D / Math.min(17, 4 + D * .42); };   // во сколько раз больше штук берёт каждый
 const basketMax = (L = farmLevel()) => L < 3 ? 1 : L < 6 ? 2 : L < 10 ? 3 : L < 15 ? 4 : 5;   // сколько разных товаров берёт один покупатель
 const visitorsPerDay = (d = S.day) => cal(d).dow === 6 ? 0 : Math.round(visitorsBase() * (isFair(d) ? 2.4 : 1) * (weather(d) === 'heat' ? 1.2 : 1));   // на ярмарке народу много — часть идёт к соседям   // суббота — ярмарка, воскресенье — выходной   // день 1 → 11 покупателей (~1 каждые 14 сек)
 const growMult = () => 1 + S.up.fert * 0.2;
@@ -1370,7 +1374,7 @@ const MEADOW = {   // пастбище: g — трава, c — с клевер�
   autumn: { g: ['#b4c35f', '#acbb59'], c: ['#a2bd57', '#9ab551'] },
 };
 function applySeasonBg() { const c = look().bg; document.body.style.background = c; $('app').style.background = c; }
-const priceMult = () => 1 + S.up.sign * 0.05 + (S.up.cozy || 0) * 0.02 + prestige();
+const priceMult = () => 1 + S.up.sign * 0.03 + (S.up.cozy || 0) * 0.02 + prestige();
 const homeMult = () => 1 + (S.up.house || 0) * 0.2 + (picnicOn() ? 0.15 : 0);   // дом: помощники сыты и работают быстрее
 const patience = (n = 1) => 50 + S.up.bench * 8 + (n - 1) * 6;   // терпение тикает только в очереди; большая корзинка — ждут чуть дольше
 const sellPrice = c => Math.round(GOODS[c].price * priceMult() * seasonPrice(c) * wxPrice(c));
@@ -1738,12 +1742,13 @@ function spawnVisitor() {
     shop = sh.k;
     const bm = basketMax(), k = Math.min(sh.g.length, bm > 1 && Math.random() < .4 ? bm - 1 : bm);
     items = sh.g.sort(() => Math.random() - .5).slice(0, k).map(id => { const p = GOODS[id].price;
-      return { id, n: id === 'goldegg' ? 1 : 1 + Math.floor(Math.random() * (p < 15 ? 3 : p < 40 ? 2 : 1)) }; });
+      const n0 = 1 + Math.floor(Math.random() * (p < 15 ? 3 : p < 40 ? 2 : 1)), m = n0 * basketMul();
+      return { id, n: id === 'goldegg' ? 1 : Math.max(1, Math.floor(m) + (Math.random() < m % 1 ? 1 : 0)) }; });
   }
   const shirt = pick(SHIRTS), pat = patience(items.length);
   visitors.push({
     shop, items,
-    x: isFair() && Math.random() < .5 ? -2 : W + 1, y: ROAD + .5, state: 'coming', pat, max: pat, wps: [],
+    x: Math.random() < (isFair() ? .5 : .75) ? -2 : W + 1, y: ROAD + .5, state: 'coming', pat, max: pat, wps: [],   // большинство приходит слева — оттуда до лавки ближе
     phase: Math.random() * 6, moving: true, flip: true, mood: null, moodT: 0,
     look: { shirt, shirtDark: darken(shirt, .8), pants: pick(['#3b4a6b','#5a4632','#2f2f3a','#6b6b6b']), skin: pick(SKINS), hair: pick(HAIRS), hat: Math.random() < .3 ? 'cap' : null, capColor: pick(SHIRTS) },
   });
@@ -1776,6 +1781,11 @@ function retarget() {
 }
 function leave(v, mood) {
   v.state = 'leaving'; v.mood = mood; v.moodT = 1.6;
+  const free = mood && mood !== 'angry' && !fairOn() && v.y < ROAD + 1.7 && Math.random() < .35 ? BENCHES.map((b, i) => i).filter(i => i < S.up.bench && !visitors.some(o => o.bench === i)) : [];
+  if (free.length) {   // отдохнуть на скамейке у лавки и потом уйти
+    const i = pick(free), b = BENCHES[i]; v.bench = i; v.sit = 10 + Math.random() * 10;
+    v.wps = [{ x: b.x + .5, y: b.y + .75 }, { x: b.x + .5, y: b.y + .55 }]; retarget(); return;
+  }
   v.wps = v.y > ROAD + 1.7 ? [{ x: v.x, y: 26.05 }, { x: 10.3, y: 26.05 }, { x: 10.3, y: ROAD + 1.2 }, { x: -2, y: ROAD + 1.2 }]   // с ярмарки — обходя шатёр
     : [{ x: v.x, y: ROAD + 1.2 }, { x: -2, y: ROAD + 1.2 }];
   retarget();
@@ -2920,6 +2930,11 @@ function updateVisitors(dt) {
       v.moving = true; v.phase += dt * 11;
     } else {
       v.moving = false;
+      if (v.bench != null) {   // сидит на скамейке
+        v.sitting = true; v.flip = false;
+        if ((v.sit -= dt) <= 0 || S.night) { v.bench = null; v.sitting = false; v.wps = [{ x: v.x, y: ROAD + 1.2 }, { x: -2, y: ROAD + 1.2 }]; }
+        continue;
+      }
       if (v.state === 'coming') {
         if (v.slot >= MAX_QUEUE) { S.stats.missed++; leave(v, 'angry'); toast('😤 Очередь полная, покупатель ушёл'); }   // дошёл — а мест нет
         else { v.state = 'waiting'; v.flip = !fairOn(); }   // лицом к лавке (на ярмарке — к шатру)
@@ -4369,7 +4384,7 @@ function draw(t) {
     if (h.broke) icons.push('💰');
     rr(c.x - icons.length * 6.5 - 3, c.y - 69, icons.length * 13 + 6, 18, 9, 'rgba(255,253,246,.95)');
     icons.forEach((e, k) => emoji(e, c.x + (k - (icons.length - 1) / 2) * 13, c.y - 59.5, 11)); } });
-  for (const v of visitors) list.push({ z: v.x + v.y, f: () => drawPersonC(v, v.look) });
+  for (const v of visitors) list.push({ z: v.x + v.y + (v.sitting ? .3 : 0), f: () => v.sitting ? drawSitting(v, v.look) : drawPersonC(v, v.look) });
   if (clerkOn()) list.push({ z: clerk.x + clerk.y, f: () => drawPersonC(clerk, CLERK_LOOK) });
   archSlices(list);
   for (const id of S.decor || []) if (DECOR_SPOT[id]) { const q = DECOR_SPOT[id]; list.push({ z: id === 'flags' ? 8.5 + 10.5 : q.x + q.y + 1, f: () => drawSprite(DECOR_OBJ[id], () => drawDecor(id), id + S.night, t) }); }
