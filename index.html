@@ -159,7 +159,9 @@
   .hm-t { position: relative; min-height: 0; height: 58px; padding: 2px 1px 3px; border-radius: 12px; } .hm-e { font-size: 24px; line-height: 1.1; } .hm-t small { font-size: 10px; line-height: 1.05; }
   .hm-t .hm-e img.ic { width: 26px; height: 26px; }
   .hm-ok { position: absolute; top: -6px; right: -5px; width: 18px; height: 18px; border-radius: 9px; line-height: 18px !important; font-size: 11px !important; background: #4caf50; color: #fff; font-style: normal; font-weight: 900; font-size: 13px; line-height: 22px; text-align: center; }
-  .hm-busy { position: absolute; top: 3px; left: 4px; display: flex; } .pf-t .hm-busy img { width: 16px; height: 16px; border-radius: 50%; background: #f3ead6; box-shadow: 0 0 0 1.5px #fff; margin-right: -5px; }   /* кто ещё здесь работает */
+  .hm-n { display: inline-block; min-width: 17px; height: 17px; padding: 0 3px; box-sizing: border-box; border-radius: 9px; color: #fff; font: 900 11px/17px system-ui, sans-serif; text-align: center; font-style: normal; box-shadow: 0 0 0 1.5px #fff, 0 1px 2px rgba(0,0,0,.3); text-shadow: 0 1px 1px rgba(0,0,0,.35); } .hm-n.more { background: #a8957a; }
+  .hm-z b.hm-n { font-size: 11px; line-height: 17px; }
+  .hm-busy { position: absolute; top: 3px; left: 4px; display: flex; gap: 2px; } .pf-t .hm-busy img { width: 16px; height: 16px; border-radius: 50%; background: #f3ead6; box-shadow: 0 0 0 1.5px #fff; margin-right: -5px; }   /* кто ещё здесь работает */
   .hm-sub { margin: 7px 0 4px; font-size: 13px; font-weight: 800; color: #5a4632; } .hm-sub small { font-weight: 600; color: #8a7660; }
   .hm-zones { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
   .hm-z { display: flex; flex-direction: column; gap: 2px; align-items: center; justify-content: center; height: 62px; border-radius: 14px; border: 2.5px solid #ead9b5; background: #fff; box-shadow: 0 2px 0 #d9c49c; font: inherit; color: #4a2e18; }
@@ -1230,7 +1232,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-20.174';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-20.175';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3602,6 +3604,7 @@ function setHelper(i, field, val) {
   const h = helpers[i]; if (h) { h.target = null; h.path = []; h.think = 0; }
   save(); renderUI(); openHelpers();
 }
+const hmNum = j => `<b class="hm-n" style="background:${HELPER_LOOKS[j % HELPER_LOOKS.length].shirt}">${j + 1}</b>`;   // номер помощника кружком цвета его рубашки
 let helperSel = 0;   // какой помощник открыт в окне «Команда»
 function selHelper(i) { helperSel = i; openHelpers(); }
 function openHelpers() {
@@ -3615,7 +3618,7 @@ function openHelpers() {
   for (const [k, st] of Object.entries(STATIONS)) {
     if (stationOff(k) && !cfg.stations.includes(k)) continue;
     const on = cfg.stations.includes(k), own = S.helpers.map((c, j) => j !== i && c.stations.includes(k) ? j : -1).filter(j => j >= 0);
-    h += `<button class="pf-t hm-t${on ? ' on' : ''}" onclick="toggleStation(${i},'${k}')">${on ? '<i class="hm-ok">✓</i>' : ''}<span class="hm-e">${st.ico}</span><small>${st.name}</small>${own.length ? `<i class="hm-busy">${own.slice(0, 2).map(j => `<img src="${lookImg(HELPER_LOOKS[j % HELPER_LOOKS.length], 'head')}" alt="">`).join('')}</i>` : ''}</button>`;
+    h += `<button class="pf-t hm-t${on ? ' on' : ''}" onclick="toggleStation(${i},'${k}')">${on ? '<i class="hm-ok">✓</i>' : ''}<span class="hm-e">${st.ico}</span><small>${st.name}</small>${own.length ? `<i class="hm-busy">${own.slice(0, 3).map(j => hmNum(j)).join('')}${own.length > 3 ? `<b class="hm-n more">+${own.length - 3}</b>` : ''}</i>` : ''}</button>`;
   }
   h += `<button class="pf-t hm-t${cfg.stations.length ? '' : ' on'}" onclick="toggleStation(${i},'rest')"><span class="hm-e">😴</span><small>Отдых</small></button></div>`;
   const seedRow = (items) => `<div class="hm-seeds">${items.map(([on, e, t, js]) => `<button class="hm-sd${on ? ' on' : ''}" onclick="${js}"><span>${e}</span><small>${t}</small></button>`).join('')}</div>`;
@@ -3623,7 +3626,7 @@ function openHelpers() {
     h += `<div class="hm-sub">🚜 Участки поля <small>— по 6 грядок</small></div><div class="hm-zones">`;
     ZONES.forEach((z, k) => {
       const n = S.plots.filter((p, j) => zoneOf(j) === k).length, own = zoneOwner(k), mine = cfg.zones.includes(k);
-      h += `<button class="hm-z${mine ? ' on' : ''}${n ? '' : ' lock'}" ${n ? '' : 'disabled'} onclick="setZone(${i},${k})"><b>№${k + 1}</b>${!n ? '<small>🔒 закрыт</small>' : own >= 0 && own !== i ? `<span class="hm-zo"><img src="${lookImg(HELPER_LOOKS[own % HELPER_LOOKS.length], 'head')}" alt="">№${own + 1}</span>` : mine ? '<small>✓</small>' : '<small>свободен</small>'}</button>`;
+      h += `<button class="hm-z${mine ? ' on' : ''}${n ? '' : ' lock'}" ${n ? '' : 'disabled'} onclick="setZone(${i},${k})"><b>№${k + 1}</b>${!n ? '<small>🔒 закрыт</small>' : own >= 0 && own !== i ? `<span class="hm-zo">занят ${hmNum(own)}</span>` : mine ? '<small>✓</small>' : '<small>свободен</small>'}</button>`;
     });
     h += `</div>${cfg.zones.length ? '' : '<div class="hm-warn">Выбери участок — без него помощник не работает на поле</div>'}`;
     h += `<div class="hm-sub">🚜 После сбора сажать <small>— семена за твои монеты</small></div>` + seedRow([
