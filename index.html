@@ -1195,7 +1195,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-20.168';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-20.169';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -2375,7 +2375,7 @@ function prodHave(k, byHelper) {   // сколько сырья можно вз�
   return Math.max(0, have);
 }
 function loadProd(k, byHelper) {
-  if (PROD[k].multi) return dairyLoad();   // молоко поровну по котлам
+  if (PROD[k].multi) return byHelper ? dairyLoad() : 0;   // котлы заполняет помощник по нормам, игрок — в окне
   const P = PROD[k], st = S.prod[k];
   const n = Math.min(prodCap(k) - st.q, Math.floor(prodHave(k, byHelper) / P.n));
   if (n <= 0) return 0;
@@ -2453,8 +2453,20 @@ const dairyOk = r => r === 'cheese' || S.up.dhouse > 0;
 const dairyRate = (r, lvl = S.up.dairy || 1) => lvl * (r === 'butter' ? 1 + .5 * (S.up.churn || 0) : 1);
 const kCap = () => 4 + 2 * (S.up.dairyBin || 0);   // мест в очереди котла (кроме той порции, что уже в котле)
 let kSel = -1;   // открытый котёл (его очередь и рецепты видны)
-function dairyLoad() { return 0; }   // молоко само не льётся — порции ставит игрок
-function dairyLoadable() { return false; }
+// помощник в Молочном доме — как в пекарне: варит то, чего на складе меньше нормы (порции — в котёл с самой короткой очередью)
+const dairyRecipes = () => Object.keys(DAIRY).filter(r => recipeShown(r) && dairyOk(r) && (!DAIRY[r].in || canMake(r, true)));
+const dairyFreeK = () => S.prod.dairy.k.slice(0, kettles()).filter(o => o.q.length < kCap()).sort((a, b) => a.q.length + !!a.cur - b.q.length - !!b.cur)[0] || null;
+const dairyWant = () => dairyFreeK() ? holdPick(dairyRecipes(), r => dHave(r) >= 1) : null;
+function dairyLoad() {   // только помощник; игрок ставит порции сам в окне дома
+  let n = 0, r, o;
+  while (n < 40 && (r = dairyWant()) && (o = dairyFreeK())) {
+    for (const [g, k] of Object.entries(dIn(r))) S.inv[g] -= k;
+    o.q.push(r); if (!o.cur) o.cur = { r: o.q.shift(), t: 0 }; n++;
+  }
+  if (n) addFloat(PROD.dairy.spot.x + .5, PROD.dairy.spot.y + .5, `+${n} в котлы`);
+  return n;
+}
+function dairyLoadable() { return !!dairyWant(); }
 function dairyCollect() {
   const st = S.prod.dairy, got = {};   // что не влезло на склад — остаётся на полке
   for (const [g, k] of Object.entries(st.out)) {
@@ -2572,7 +2584,8 @@ function openDairy() {
     const kp = S.keep?.[g] || 0;
     h += `<div class="pkeep"><div><b>Оставлять для пекарни ${GOODS[g].e}</b><small>покупатели не возьмут последние ${kp} ${GOODS[g].e}</small></div><div class="stp"><button onclick="setKeep('${g}', -5)">−</button><b>${kp}</b><button onclick="setKeep('${g}', 5)">+</button></div></div>`;
   }
-  h += `<div class="phelp">${helper.length ? `👷 Помощник ${helper.join(', ')} забирает готовое` : `👷 Помощник не назначен — ${S.up.helper ? '<a href="#" onclick="event.preventDefault();openHelpers()">назначить в «Команде»</a>' : 'наймёшь — поставь его на станцию ' + P.ico}`}</div>`;
+  h += holdBlock(dairyRecipes(), helper, 'варит то, чего меньше нормы, и забирает готовое');
+  if (!helper.length) h += `<div class="phelp">${helper.length ? `👷 Помощник ${helper.join(', ')} забирает готовое` : `👷 Помощник не назначен — ${S.up.helper ? '<a href="#" onclick="event.preventDefault();openHelpers()">назначить в «Команде»</a>' : 'наймёшь — поставь его на станцию ' + P.ico}`}</div>`;
   h += upList(['dairy', 'dairyBin', 'dhouse', 'churn'],
     upRow('dairy', S.up.dhouse ? 'Котлы' : 'Сыроварня', `🧀 за ${fmtMs(DAIRY.cheese.time / dairyRate('cheese'))}`, `за ${fmtMs(DAIRY.cheese.time / dairyRate('cheese', S.up.dairy + 1))}`, '🔥')
     + upRow('dairyBin', 'Чаны', `очередь котла ${cap} мест`, `${4 + 2 * (S.up.dairyBin + 1)} мест`)
@@ -2703,6 +2716,7 @@ function collectBake() {
 function holdHave(g) {
   let n = S.inv[g] || 0;
   if (BAKE[g]) n += S.bake.q.filter(x => x === g).length + S.bake.ov.reduce((a, o) => a + (o && o.r === g ? o.n : 0), 0) + (S.bake.out[g] || 0);
+  if (DAIRY[g]) { const st = S.prod.dairy; n += (st.out[g] || 0) + st.k.reduce((a, o) => a + o.q.filter(x => x === g).length + (o.cur?.r === g ? 1 : 0), 0); }   // в котлах и на полке
   return n;
 }
 const holdGap = g => (S.hold[g] || 0) - holdHave(g);
@@ -3327,7 +3341,7 @@ const STATIONS = {
   coop:    { ico: '🐔', name: 'Курятник', idle: at('coop', 8, 8),   hint: 'Собирает яйца' },
   barn:    { ico: '🐄', name: 'Коровник', idle: at('barn', 14, 7),  hint: 'Собирает молоко' },
   mill:    { ico: '🌬️', name: 'Мельница', idle: at('mill', 19, 7),  hint: 'Мелет пшеницу в муку (оставляет 🌾 коровам)' },
-  dairy:   { get ico() { return PROD.dairy.ico; }, get name() { return PROD.dairy.name; }, idle: at('dairy', 16, 7), get hint() { return S.up.dhouse ? 'Делает молочное — что выберешь в окне дома' : 'Варит сыр из молока'; } },
+  dairy:   { get ico() { return PROD.dairy.ico; }, get name() { return PROD.dairy.name; }, idle: at('dairy', 16, 7), get hint() { return 'Варит то, чего на складе меньше нормы (нормы — в окне дома), и забирает готовое'; } },
   bakery:  { ico: '🏤', name: 'Пекарня',  idle: at('home', 4, 4),   hint: 'Печёт выбранный рецепт и забирает готовое' },
   stall:   { ico: '🏪', name: 'Лавка',    idle: at('stall', 3, 9),  hint: 'Стоит за прилавком и продаёт то, что выставлено. Двое помощников делят обе лавки' },
 };
