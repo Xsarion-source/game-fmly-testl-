@@ -517,7 +517,8 @@
   #inv .sep { flex: none; width: 2px; height: 30px; margin: 0 6px 4px; padding: 0; border-radius: 1px; background: rgba(122,74,42,.3); box-shadow: none; }
   #inv .r.z { opacity: .35; } #inv .r.on b { color: #2f7d2c; }
   #inv .r.pop { animation: shPop .45s ease-out; } @keyframes shPop { 0% { transform: none } 35% { transform: translateY(-5px) scale(1.2) } 100% { transform: none } }
-  #inv .more { position: sticky; right: -8px; margin-left: auto; flex: none; align-self: center; margin-top: -5px; width: 42px; height: 40px; display: flex; align-items: center; justify-content: center; background: #fffaf0; border-radius: 12px; border: 2px solid #c99a62; box-shadow: -12px 0 10px 4px #e8cc96; font-size: 30px; line-height: 1; }
+  #inv .more { position: sticky; right: -8px; margin-left: auto; flex: none; align-self: center; margin-top: -5px; width: 42px; height: 40px; display: flex; align-items: center; justify-content: center; background: #fffaf0; border-radius: 12px; border: 2px solid #c99a62; box-shadow: none; font-size: 30px; line-height: 1; }
+  #inv.hasmore .more { box-shadow: -12px 0 10px 4px #e8cc96; }   /* дымка у склада — только когда правее ещё есть товары */
   #inv .more img.ic { width: 34px; height: 34px; }
   #need { margin: 8px 10px 0; }
   #fairBtn, #goalBtn, #truckBtn { right: 8px; border-radius: 16px; width: 50px; height: 50px; background: linear-gradient(#fffaf0, #f6e2b0); border: 2px solid #c99a62; }
@@ -1192,7 +1193,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-20.163';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-20.164';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -6706,6 +6707,8 @@ function shelfGoods() {
   return out;
 }
 let shelfSig = '';
+function shelfFade() { const el = $('inv'); if (el) el.classList.toggle('hasmore', el.scrollLeft + el.clientWidth < el.scrollWidth - 4); }
+$('inv').addEventListener('scroll', shelfFade, { passive: true }); addEventListener('resize', shelfFade);
 function renderShelf() {
   const el = $('inv'); if (!el) return;
   const list = shelfGoods(), fav = (S.shelfFav || []).filter(g => GOODS[g] && !goodLock(g)).slice(0, 8), rest = list.filter(g => !fav.includes(g));   // свои 8 — первыми, остальное — лентой вбок
@@ -6713,6 +6716,7 @@ function renderShelf() {
   if (sig === shelfSig) return; shelfSig = sig;
   const tile = (g, f) => `<span class="r${f ? ' f' : ''}${S.inv[g] ? '' : ' z'}${onSale(g) ? ' on' : ''}" data-g="${g}"><i>${GOODS[g].e}</i><b>${fmtShelf(S.inv[g] || 0)}</b></span>`;
   el.innerHTML = fav.map(g => tile(g, 1)).join('') + (fav.length && rest.length ? '<span class="sep"></span>' : '') + rest.map(g => tile(g)).join('') + `<span class="more" onclick="event.stopPropagation(); openStore()">🏬</span>`;
+  shelfFade();
 }
 // окно склада: всё, что есть на ферме, по разделам; открытое, но закончившееся — «0»; ещё не открытое — под замком
 const STORE_GROUPS = [
