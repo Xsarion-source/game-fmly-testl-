@@ -146,6 +146,35 @@
   .stw-t .rc-e { font-size: 30px; line-height: 1.1; } .stw-t b { font-size: 15px; } .stw-t small { font-size: 11px; color: #7a6650; text-align: center; line-height: 1.15; }
   .stw-t.zero { background: #f6efe0; box-shadow: none; } .stw-t.zero .rc-e { opacity: .45; } .stw-t.zero b { color: #a8957a; }
   .ty-rew { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; padding: 8px 10px; border-radius: 12px; background: #fff6d8; border: 2px dashed #e9b23a; font-size: 13px; color: #5a4632; } .ty-rew b { font-size: 13px; color: #7a5a1a; }
+  .hm-tabs { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 4px 4px 8px; margin: 0 -4px; -webkit-overflow-scrolling: touch; }
+  .hm-tabs.r { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }   /* правее ещё помощники */
+  .hm-tabs.l { -webkit-mask-image: linear-gradient(to right, transparent, #000 28px); mask-image: linear-gradient(to right, transparent, #000 28px); }
+  .hm-tabs.l.r { -webkit-mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent); } .hm-tabs::-webkit-scrollbar { display: none; }
+  .hm-tab { flex: none; display: flex; flex-direction: column; align-items: center; gap: 0; width: 64px; padding: 4px 2px 5px; border-radius: 16px; border: 2.5px solid #ead9b5; background: #fff; box-shadow: 0 2px 0 #d9c49c; font: inherit; color: #4a2e18; }
+  .hm-tab img { width: 40px; height: 40px; } .hm-tab b { font-size: 13px; line-height: 1.1; } .hm-tab small { font-size: 12px; line-height: 1.2; min-height: 15px; white-space: nowrap; overflow: hidden; max-width: 58px; }
+  .hm-tab small img.ic { width: 13px; height: 13px; }
+  .hm-tab.on { border-color: #e9b23a; background: #fff6d8; box-shadow: 0 0 0 2px #f0b429; }
+  .hm-card { padding: 6px 12px 6px 6px; } .hm-big { width: 70px; height: 105px; flex: none; } .hm-name { display: block; font-size: 20px; font-weight: 900; color: #4a2e18; margin-bottom: 4px; }
+  .hm-t { position: relative; min-height: 72px; } .hm-e { font-size: 28px; line-height: 1.15; }
+  .hm-ok { position: absolute; top: -7px; right: -6px; width: 22px; height: 22px; border-radius: 11px; background: #4caf50; color: #fff; font-style: normal; font-weight: 900; font-size: 13px; line-height: 22px; text-align: center; }
+  .hm-busy { position: absolute; top: 3px; left: 4px; display: flex; } .pf-t .hm-busy img { width: 20px; height: 20px; border-radius: 50%; background: #f3ead6; box-shadow: 0 0 0 1.5px #fff; margin-right: -5px; }   /* кто ещё здесь работает */
+  .hm-sub { margin: 8px 0 6px; font-size: 13px; font-weight: 800; color: #5a4632; } .hm-sub small { font-weight: 600; color: #8a7660; }
+  .hm-zones { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .hm-z { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 58px; border-radius: 14px; border: 2.5px solid #ead9b5; background: #fff; box-shadow: 0 2px 0 #d9c49c; font: inherit; color: #4a2e18; }
+  .hm-z b { font-size: 17px; } .hm-z small { font-size: 11px; color: #8a7660; } .hm-z img { width: 24px; height: 24px; }
+  .hm-z.on { border-color: #e9b23a; background: #fff6d8; box-shadow: 0 0 0 2px #f0b429; } .hm-z.on small { color: #2f7d2c; font-weight: 900; font-size: 14px; }
+  .hm-z.lock { background: #efe7d6; border-style: dashed; box-shadow: none; opacity: .7; }
+  .hm-warn { margin-top: 6px; font-size: 12px; font-weight: 800; color: #c0392b; }
+  .hm-row { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 7px 2px 3px; margin-top: -7px; } .hm-row::-webkit-scrollbar { display: none; }
+  .hm-sd { flex: none; width: 60px; height: 66px; border-radius: 16px; background: #fff; border: 2.5px solid #ead9b5; box-shadow: 0 2px 0 #d9c49c; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 2px; font: inherit; color: #4a2e18; }
+  .hm-sd span { font-size: 26px; line-height: 1.1; } .hm-sd small { font-size: 11px; font-weight: 900; line-height: 1.1; text-align: center; }
+  .hm-sd.on { border-color: #f4a92b; background: #fff1d1; box-shadow: 0 0 0 2px #f0b429; }
+  .hm-sw { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border-radius: 16px; border: 2.5px solid #ead9b5; background: #fff; font: inherit; color: #4a2e18; text-align: left; }
+  .hm-sw span { flex: 1; display: flex; flex-direction: column; } .hm-sw b { font-size: 15px; } .hm-sw small { font-size: 12px; color: #7a6650; }
+  .hm-sw i { flex: none; position: relative; width: 46px; height: 28px; border-radius: 14px; background: #d9cdb4; transition: background .15s; }
+  .hm-sw i::after { content: ''; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 11px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: left .15s; }
+  .hm-sw.on i { background: #4caf50; } .hm-sw.on i::after { left: 21px; }
+  .hm-link { display: block; margin: 12px auto 0; padding: 4px 8px; border: none; background: none; font: inherit; font-size: 13px; font-weight: 800; color: #b0503a; text-decoration: underline; }
   .stw-t { position: relative; } .stw-t.fav { border-color: #e9b23a; background: #fff6d8; box-shadow: 0 2px 0 #e0b65a; } .stw-t .fv { position: absolute; top: 2px; right: 4px; font-style: normal; font-size: 13px; }
   .stw-favbar { display: flex; align-items: center; gap: 6px; margin: 4px 0 2px; padding: 6px 10px; border-radius: 12px; background: #fff6d8; border: 2px dashed #e9b23a; font-size: 13px; font-weight: 800; color: #7a5a1a; }
   .stw-favbar b { margin-left: auto; font-size: 15px; }
@@ -1198,7 +1227,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-20.170';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-20.171';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3566,56 +3595,49 @@ function setHelper(i, field, val) {
   const h = helpers[i]; if (h) { h.target = null; h.path = []; h.think = 0; }
   save(); renderUI(); openHelpers();
 }
+let helperSel = 0;   // какой помощник открыт в окне «Команда»
+function selHelper(i) { helperSel = i; openHelpers(); }
 function openHelpers() {
-  const chip = (on, label, js, dis) => `<button class="chip${on ? ' on' : ''}" ${dis ? 'disabled' : ''} onclick="${js}">${label}</button>`;
-  let h = `<h2>👥 Помощники</h2><div style="font-size:13px;color:#7a6650;margin-bottom:6px">Отметь станции — помощник ходит между ними. Лавка в приоритете. Тап по имени сворачивает карточку</div>`;
-  if (S.helpers.some(c => c.stations.includes('field'))) h += `<button class="chip" style="margin-bottom:4px" onclick="clearField()">🚜✖ Снять всех с поля</button>`;
-  S.helpers.forEach((cfg, i) => {
-    const L = HELPER_LOOKS[i % HELPER_LOOKS.length];
-    const icons = cfg.stations.length ? cfg.stations.map(k => k === 'field' ? '🚜' + (cfg.zones.length ? ' №' + cfg.zones.map(z => z + 1).join(', ') : '') : STATIONS[k].ico).join(' ') : '😴';
-    const hint = cfg.stations.length ? cfg.stations.map(k => STATIONS[k].hint.toLowerCase()).join('; ') : 'отдыхает у дома';
-    h += `<div class="hcard"><div style="font-weight:800;cursor:pointer;display:flex;align-items:center;gap:4px" onclick="foldHelper(${i})"><span class="dot" style="background:${L.shirt}"></span>Помощник ${i + 1}
-      <span style="font-weight:600;margin-left:4px">${icons}</span><span style="margin-left:auto;color:#7a6650">${cfg.fold ? '▸' : '▾'}</span></div>`;
-    if (cfg.fold) { h += `</div>`; return; }
-    h += `<div style="font-size:12px;color:#7a6650;margin:2px 0 6px">${hint}</div><div class="chips">`;
-    for (const [k, st] of Object.entries(STATIONS)) {
-      if (stationOff(k) && !cfg.stations.includes(k)) continue;   // работы в непостроенных зданиях не показываем (выбранную — оставляем, чтобы снять)
-      h += chip(cfg.stations.includes(k), `${cfg.stations.includes(k) ? '✓ ' : ''}${st.ico} ${st.name}`, `toggleStation(${i},'${k}')`);
-    }
-    h += chip(!cfg.stations.length, '😴 Отдых', `toggleStation(${i},'rest')`) + `</div>`;
-    if (cfg.stations.includes('field')) {   // одна строка: «только сбор» или что сажать после сбора
-      h += `<div style="font-size:12px;color:#7a6650;margin:8px 0 4px">🚜 Участки по 6 грядок, номера видны на поле. Можно несколько; цветная точка — участок уже у другого помощника:</div><div class="chips">`;
-      ZONES.forEach((z, k) => {
-        const n = S.plots.filter((p, j) => zoneOf(j) === k).length, own = zoneOwner(k);
-        const note = !n ? ' 🔒' : own >= 0 && own !== i ? ` <span class="dot" style="background:${HELPER_LOOKS[own % HELPER_LOOKS.length].shirt};margin:0 0 1px 2px"></span>` : '';
-        h += chip(cfg.zones.includes(k), `${cfg.zones.includes(k) ? '✓ ' : ''}№${k + 1}${note}`, `setZone(${i},${k})`);
-      });
-      h += `</div>`;
-      if (!cfg.zones.length) h += `<div style="font-size:12px;color:#c0392b;margin-top:4px">Выбери участок — без него помощник не работает на поле</div>`;
-      h += `<div style="font-size:12px;color:#7a6650;margin:8px 0 4px">🚜 На поле: собирать и сажать… (семена за твои монеты, 💰 над головой — не хватает)</div><div class="chips">`;
-      h += chip(!cfg.replant, '🧺 Только сбор', `setField(${i},null)`);
-      h += chip(cfg.replant && cfg.seed === 'same', '🔁 То же, что росло', `setField(${i},'same')`);
-      for (const id of S.unlocked) if (!GH_CROPS.includes(id)) h += chip(cfg.replant && cfg.seed === id, `${CROP[id].e} ${CROP[id].seed}💰`, `setField(${i},'${id}')`);
-      h += `</div>`;
-    }
-    if (cfg.stations.includes('gh')) {
-      h += `<div style="font-size:12px;color:#7a6650;margin:8px 0 4px">🏡 В теплице: собирать и сажать…</div><div class="chips">`;
-      h += chip(!cfg.ghReplant, '🧺 Только сбор', `setGh(${i},null)`);
-      h += chip(cfg.ghReplant && cfg.ghSeed === 'same', '🔁 То же', `setGh(${i},'same')`);
-      for (const id of GH_CROPS) if (S.unlocked.includes(id)) h += chip(cfg.ghReplant && cfg.ghSeed === id, `${CROP[id].e} ${CROP[id].seed}`, `setGh(${i},'${id}')`);
-      h += `</div>`;
-    }
-    if (cfg.stations.includes('coop') || cfg.stations.includes('barn'))
-      h += `<div class="chips" style="margin-top:8px">${chip(cfg.feed, `${cfg.feed ? '✓ ' : ''}🌙 Кормить ночью сам`, `setHelper(${i},'feed',${!cfg.feed})`)}</div>
-        <div style="font-size:12px;color:#7a6650;margin-top:3px">${cfg.feed ? 'Ночью сам кормит животных урожаем со склада' : 'Животных кормишь ты — помощник только собирает'}</div>`;
-    h += `</div>`;
-  });
-  h += `<button class="wide" style="width:100%;margin-top:10px" onclick="closeNight()">Готово</button>`;
-  const top = $('overlay').classList.contains('show') && $('sheet').dataset.view === 'helpers' ? $('sheet').scrollTop : 0;
-  $('sheet').innerHTML = h; $('sheet').dataset.view = 'helpers';
-  $('overlay').classList.add('show');
-  $('sheet').scrollTop = top;   // переключение настроек не прыгает наверх
+  if (helperSel >= S.helpers.length) helperSel = 0;
+  const i = helperSel, cfg = S.helpers[i], L = HELPER_LOOKS[i % HELPER_LOOKS.length];
+  const icons = c => c.stations.length ? c.stations.map(k => STATIONS[k].ico).join('') : '😴';
+  let h = `<h2>👥 Команда</h2><div class="fpinfo">Выбери помощника и отметь станции — он сам ходит между ними. Лавка всегда в приоритете. На поле каждый работает на своих участках — номера участков видны на грядках.</div>`;
+  h += `<div class="hm-tabs">${S.helpers.map((c, k) => `<button class="hm-tab${k === i ? ' on' : ''}" onclick="selHelper(${k})"><img src="${lookImg(HELPER_LOOKS[k % HELPER_LOOKS.length], 'head')}" alt=""><b>№${k + 1}</b><small>${icons(c)}</small></button>`).join('')}</div>`;
+  // станции — плитками
+  h += `<h3 class="stw-h">🏠 Где работает помощник ${i + 1}</h3><div class="pf-g">`;
+  for (const [k, st] of Object.entries(STATIONS)) {
+    if (stationOff(k) && !cfg.stations.includes(k)) continue;
+    const on = cfg.stations.includes(k), own = S.helpers.map((c, j) => j !== i && c.stations.includes(k) ? j : -1).filter(j => j >= 0);
+    h += `<button class="pf-t hm-t${on ? ' on' : ''}" onclick="toggleStation(${i},'${k}')">${on ? '<i class="hm-ok">✓</i>' : ''}<span class="hm-e">${st.ico}</span><small>${st.name}</small>${own.length ? `<i class="hm-busy">${own.slice(0, 2).map(j => `<img src="${lookImg(HELPER_LOOKS[j % HELPER_LOOKS.length], 'head')}" alt="">`).join('')}</i>` : ''}</button>`;
+  }
+  h += `<button class="pf-t hm-t${cfg.stations.length ? '' : ' on'}" onclick="toggleStation(${i},'rest')"><span class="hm-e">😴</span><small>Отдых</small></button></div>`;
+  const seedRow = (items) => `<div class="hm-row">${items.map(([on, e, t, js]) => `<button class="hm-sd${on ? ' on' : ''}" onclick="${js}"><span>${e}</span><small>${t}</small></button>`).join('')}</div>`;
+  if (cfg.stations.includes('field')) {
+    h += `<h3 class="stw-h">🚜 Поле</h3><div class="hm-sub">Участки — по 6 грядок</div><div class="hm-zones">`;
+    ZONES.forEach((z, k) => {
+      const n = S.plots.filter((p, j) => zoneOf(j) === k).length, own = zoneOwner(k), mine = cfg.zones.includes(k);
+      h += `<button class="hm-z${mine ? ' on' : ''}${n ? '' : ' lock'}" ${n ? '' : 'disabled'} onclick="setZone(${i},${k})"><b>№${k + 1}</b>${!n ? '<small>🔒</small>' : own >= 0 && own !== i ? `<img src="${lookImg(HELPER_LOOKS[own % HELPER_LOOKS.length], 'head')}" alt="">` : mine ? '<small>✓</small>' : '<small>свободен</small>'}</button>`;
+    });
+    h += `</div>${cfg.zones.length ? '' : '<div class="hm-warn">Выбери участок — без него помощник не работает на поле</div>'}`;
+    h += `<div class="hm-sub">После сбора сажать <small>— семена за твои монеты</small></div>` + seedRow([
+      [!cfg.replant, '🧺', 'только сбор', `setField(${i},null)`], [cfg.replant && cfg.seed === 'same', '🔁', 'то же', `setField(${i},'same')`],
+      ...S.unlocked.filter(id => !GH_CROPS.includes(id)).map(id => [cfg.replant && cfg.seed === id, CROP[id].e, CROP[id].seed + '💰', `setField(${i},'${id}')`])]);
+  }
+  if (cfg.stations.includes('gh')) {
+    h += `<h3 class="stw-h">🏡 Теплица</h3><div class="hm-sub">После сбора сажать</div>` + seedRow([
+      [!cfg.ghReplant, '🧺', 'только сбор', `setGh(${i},null)`], [cfg.ghReplant && cfg.ghSeed === 'same', '🔁', 'то же', `setGh(${i},'same')`],
+      ...GH_CROPS.filter(id => S.unlocked.includes(id)).map(id => [cfg.ghReplant && cfg.ghSeed === id, CROP[id].e, CROP[id].seed + '💰', `setGh(${i},'${id}')`])]);
+  }
+  if (cfg.stations.includes('coop') || cfg.stations.includes('barn'))
+    h += `<h3 class="stw-h">🐾 Животные</h3><button class="hm-sw${cfg.feed ? ' on' : ''}" onclick="setHelper(${i},'feed',${!cfg.feed})"><span><b>🌙 Кормить ночью</b><small>${cfg.feed ? 'сам кормит урожаем со склада' : 'кормишь ты — помощник только собирает'}</small></span><i></i></button>`;
+  if (S.helpers.some(c => c.stations.includes('field'))) h += `<button class="hm-link" onclick="clearField()">🚜 Снять всех помощников с поля</button>`;
+  h += `<button class="wide" style="width:100%;margin-top:12px" onclick="closeNight()">Готово</button>`;
+  const tx = $('sheet').dataset.view === 'helpers' ? document.querySelector('#sheet .hm-tabs')?.scrollLeft || 0 : 0;
+  $('sheet').dataset.view = 'helpers'; $('sheet').innerHTML = h; $('overlay').classList.add('show');
+  const T = document.querySelector('#sheet .hm-tabs'), on = T?.querySelector('.on');   // лента портретов не прыгает в начало; выбранный — всегда виден
+  if (T) { T.scrollLeft = tx; if (on && (on.offsetLeft < T.scrollLeft || on.offsetLeft + on.offsetWidth > T.scrollLeft + T.clientWidth)) T.scrollLeft = on.offsetLeft - (T.clientWidth - on.offsetWidth) / 2; hmFade(); T.addEventListener('scroll', hmFade, { passive: true }); }
 }
+function hmFade() { const T = document.querySelector('#sheet .hm-tabs'); if (!T) return; T.classList.toggle('l', T.scrollLeft > 4); T.classList.toggle('r', T.scrollLeft + T.clientWidth < T.scrollWidth - 4); }
 
 // ================== ЦИКЛ ==================
 let last = performance.now(), saveAcc = 0;
