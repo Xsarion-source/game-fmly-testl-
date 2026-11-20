@@ -148,6 +148,26 @@
   .stw-t { position: relative; } .stw-t.fav { border-color: #e9b23a; background: #fff6d8; box-shadow: 0 2px 0 #e0b65a; } .stw-t .fv { position: absolute; top: 2px; right: 4px; font-style: normal; font-size: 13px; }
   .stw-favbar { display: flex; align-items: center; gap: 6px; margin: 4px 0 2px; padding: 6px 10px; border-radius: 12px; background: #fff6d8; border: 2px dashed #e9b23a; font-size: 13px; font-weight: 800; color: #7a5a1a; }
   .stw-favbar b { margin-left: auto; font-size: 15px; }
+  .pf-card { display: flex; align-items: center; gap: 10px; padding: 8px 12px 8px 4px; margin-bottom: 10px; border-radius: 18px; background: linear-gradient(#cfe9ff, #e4f4cf 70%, #bfe39a); border: 2px solid #ead9b5; }
+  .pf-big { width: 100px; height: 150px; flex: none; display: block; }
+  .pf-me { display: flex; flex-direction: column; align-items: center; flex: none; } .pf-one { justify-content: center; padding: 6px; }
+  .pf-edit { margin-top: 2px; padding: 6px 10px; border-radius: 12px; border: 2px solid #c99a62; background: linear-gradient(#fffaf0, #f6e2b0); box-shadow: 0 2px 0 #b8834d; font: inherit; font-size: 12px; font-weight: 900; color: #4a2e18; white-space: nowrap; }
+  .pf-who { flex: 1; min-width: 0; } .pf-who small { font-size: 12px; font-weight: 800; color: #7a6650; }
+  .pf-in { display: block; width: 100%; box-sizing: border-box; margin: 2px 0 6px; padding: 6px 10px; border-radius: 12px; border: 2px solid #d9c49c; background: #fffaf0; font: inherit; font-size: 20px; font-weight: 900; color: #4a2e18; }
+  .pf-sub { font-size: 13px; color: #5a4632; }
+  .pf-two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+  .pf-g { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .pf-t { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px 2px 5px; border-radius: 14px; border: 2px solid #ead9b5; background: #fff; box-shadow: 0 2px 0 #d9c49c; font: inherit; color: #4a2e18; }
+  .pf-t img { width: 48px; height: 48px; } .pf-t small { font-size: 11px; font-weight: 800; line-height: 1.1; text-align: center; }
+  .pf-t.on { border-color: #e9b23a; background: #fff6d8; box-shadow: 0 0 0 2px #f0b429; }
+  .pf-t.lock { background: #efe7d6; border-style: dashed; box-shadow: none; color: #8a7a62; min-height: 72px; } .pf-t.lock b { font-size: 20px; }
+  .pf-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px dashed #ead9b5; } .pf-row > span { width: 88px; flex: none; font-size: 13px; font-weight: 800; color: #5a4632; }
+  .pf-sw { display: flex; flex-wrap: wrap; gap: 5px; } .pf-sw button { width: 26px; height: 26px; padding: 0; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 1.5px #c9b48c; }
+  .pf-sw button.on { box-shadow: 0 0 0 3px #f0b429; transform: scale(1.12); }
+  .pf-st { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .pf-s { display: flex; flex-direction: column; align-items: center; padding: 6px 2px; border-radius: 14px; background: #fff; border: 2px solid #ead9b5; color: #4a2e18; }
+  .pf-s span { font-size: 22px; line-height: 1.1; } .pf-s b { font-size: 16px; } .pf-s small { font-size: 11px; color: #7a6650; text-align: center; line-height: 1.1; }
+  #profileBtn { padding: 0; overflow: hidden; } #profileBtn img.ava { width: 100%; height: 100%; display: block; }
   .stw-t.lock { background: #efe7d6; border-style: dashed; box-shadow: none; } .stw-t.lock .rc-e { filter: grayscale(1) brightness(.6); opacity: .35; }
   #inv { display: flex; gap: 4px; flex-wrap: wrap; font-size: 13px; font-weight: 800; margin: 8px 64px 0 0; }
   #inv { pointer-events: auto; cursor: pointer; }
@@ -1117,7 +1137,7 @@ if (!S.shop) {   // прилавок со слотами: раньше прод�
   S.shop = { a: cand.slice(0, 3 + S.up.slots), season: [] };
 }
 S.shop.b ??= []; S.shop.season ??= [];
-S.picnic ??= 0; S.special ??= []; S.trophies ??= []; S.contestDay ??= 0; S.spOn ??= []; S.seenGoods ??= []; S.shelfFav ??= []; S.up.fairstall ??= 0; S.up.fairbake ??= 0; S.fair ??= { stock: {} }; S.fair.pm ??= {};
+S.picnic ??= 0; S.special ??= []; S.trophies ??= []; S.contestDay ??= 0; S.spOn ??= []; S.seenGoods ??= []; S.shelfFav ??= []; S.farmer ??= { name: '', girl: false, shirt: '#e8604c', pants: '#3f6fb5', hair: '#7a4a2a', skin: '#f2c49b', hat: 'straw', hatC: '#e8604c' }; S.up.fairstall ??= 0; S.up.fairbake ??= 0; S.fair ??= { stock: {} }; S.fair.pm ??= {};
 if (!S.fair.crates) { S.fair.crates = []; for (const [c, n0] of Object.entries(S.fair.stock || {})) for (let n = n0; n > 0; n -= CRATE) S.fair.crates.push({ id: c, n: Math.min(CRATE, n) }); }   // ящики — явным списком
 syncFair(); syncSpecial();   // особые находки и кубки конкурсов   // товары, снятые с продажи (копятся для заказов и производства)
 S.up.nests ??= 0; S.up.rooster ??= 0; S.up.yard ??= 0;
@@ -1170,7 +1190,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-20.160';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-20.161';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1258,7 +1278,7 @@ async function cloudInit() {
 
 const P = { x: S.player.x, y: S.player.y, phase: 0, moving: false, flip: false, work: 0 };
 if (blocked[Math.floor(P.y)]?.[Math.floor(P.x)]) { const h = at('home', 3, 4); P.x = h.x + .5; P.y = h.y + .5; }   // дом стал больше — фермер, стоявший на его месте, выходит к двери
-const PLAYER_LOOK = { shirt: '#e8604c', shirtDark: '#c44d3b', pants: '#3f6fb5', skin: '#f2c49b', hair: '#7a4a2a', hat: 'straw', overalls: true };
+let PLAYER_LOOK = { shirt: '#e8604c', shirtDark: '#c44d3b', pants: '#3f6fb5', skin: '#f2c49b', hair: '#7a4a2a', hat: 'straw', overalls: true };
 let visitors = [];
 let tasks = [], path = [];
 let floats = [];
@@ -6544,10 +6564,16 @@ function drawPerson(p, L, local) {
     circle(-3.8, -19.5, 1, '#f4d35e'); circle(3.8, -19.5, 1, '#f4d35e'); }
   R(5, -25 - sw * 1.5 + work, 4, 11, 2, L.shirt);
   C(7, -14 - sw * 1.5 + work, 2.3, L.skin, 1);
+  if (L.girl) {   // девочка: хвостик на затылке с бантиком (рисуется за головой)
+    O(() => { ctx.moveTo(-6, -34); ctx.quadraticCurveTo(-13, -31, -12.5, -24); ctx.quadraticCurveTo(-12.5, -19, -9.5, -17.5); ctx.quadraticCurveTo(-8.5, -22, -9, -25); ctx.quadraticCurveTo(-8, -29, -4.5, -30.5); ctx.closePath(); }, L.hair, 1.3);
+    O(() => { ctx.moveTo(-8.4, -32); ctx.lineTo(-12.6, -35); ctx.lineTo(-12.2, -29.6); ctx.closePath(); ctx.moveTo(-8.4, -32); ctx.lineTo(-4.6, -35.4); ctx.lineTo(-4.8, -29.8); ctx.closePath(); }, L.bow || '#ff7a9a', 1);   // бантик
+    C(-8.4, -32, 1.4, L.bow || '#ff7a9a', 1);
+  }
   C(0, -33, 7.5, L.skin, 1.4);   // лицо
   // волосы — одна шапочка с общим контуром: макушка и затылок, спереди чёлка (лицо смотрит вправо)
   O(() => { ctx.arc(0, -33, 8, Math.PI * .8, Math.PI * 1.92); ctx.quadraticCurveTo(3.5, -37.6, .2, -36.6); ctx.quadraticCurveTo(-4.4, -35.2, -5.4, -29.6); ctx.closePath(); }, L.hair, 1.3);
   circle(3.6, -33, 1.3, '#2a1d12'); circle(3.9, -33.4, .45, '#fff');
+  if (L.girl) { ctx.strokeStyle = '#2a1d12'; ctx.lineWidth = .8; ctx.beginPath(); ctx.moveTo(4.6, -34.3); ctx.lineTo(5.9, -35.2); ctx.moveTo(4.9, -33.6); ctx.lineTo(6.2, -34); ctx.stroke(); }   // ресницы
   circle(4.5, -30.5, 1.7, 'rgba(230,110,110,.4)');
   if (L.hat === 'straw') {
     O(() => ctx.ellipse(0, -39, 12.5, 3.5, 0, 0, 7), '#f0cf78');
@@ -6853,20 +6879,68 @@ function lvlCard() {   // уровень фермы: опыт, что даёт �
     ${next ? `🔓 На ${k - 1} уровне откроется: ${next}` : '🔓 Всё уже открыто'}
     <div style="font-size:12px;color:#7a6650;margin-top:6px">Опыт дают продажи: чем дороже товар, тем больше. Вся корзинка нашлась — опыта на четверть больше. Опыт никогда не отнимается.</div></div>`;
 }
+// ---------- 🧑‍🌾 Фермер: имя, внешность, статистика ----------
+const FARMER_OPT = {
+  shirt: ['#e8604c', '#f0b429', '#6cc08b', '#4fb6c4', '#5b8def', '#9b7be0', '#e07ab8', '#f4f1ea'],
+  pants: ['#3f6fb5', '#2f7d46', '#6b4a2e', '#b5462f', '#2f2f3a', '#9b7be0'],
+  hair: ['#7a4a2a', '#2b1d14', '#c9a15a', '#e0a050', '#b5462f', '#8a8a8a'],
+  skin: ['#f6d5b8', '#f2c49b', '#d9a37a', '#a8714a', '#7a4f33'],
+};
+const FARMER_HATS = [   // головные уборы; новые добавлять сюда (lock — чем открывается)
+  { id: 'straw', name: 'Соломенная' }, { id: 'cap', name: 'Кепка' }, { id: 'bandana', name: 'Бандана' }, { id: 'beanie', name: 'Шапка' }, { id: '', name: 'Без шляпы' },
+];
+function playerLook(F = S.farmer) {
+  return { shirt: F.shirt, shirtDark: darken(F.shirt, .8), pants: F.pants, skin: F.skin, hair: F.hair, hat: F.hat || null, capColor: F.hatC, overalls: true, girl: F.girl };
+}
+const lookCache = new Map();
+function lookImg(L, kind) {   // картинка фермера для окон: 'full' — во весь рост, 'head' — портрет
+  const key = JSON.stringify(L) + kind; if (lookCache.has(key)) return lookCache.get(key);
+  const [w, h, sc, ox, oy] = kind === 'full' ? [100, 150, 2.6, 50, 140] : [48, 48, 1.45, 24, 81];
+  const cv = document.createElement('canvas'), k = 2; cv.width = w * k; cv.height = h * k;
+  const c = cv.getContext('2d'); c.setTransform(k * sc, 0, 0, k * sc, ox * k, oy * k);
+  const main = ctx; ctx = c;
+  try { drawPerson({ x: 0, y: 0, moving: false, phase: 0, flip: false }, L, true); } finally { ctx = main; }
+  const url = cv.toDataURL(); if (lookCache.size > 60) lookCache.clear(); lookCache.set(key, url); return url;
+}
+function applyFarmer() {
+  PLAYER_LOOK = playerLook();
+  const b = $('profileBtn'); if (b) b.innerHTML = `<img class="ava" src="${lookImg(PLAYER_LOOK, 'head')}" alt="">`;
+}
+const farmerName = () => (S.farmer.name || '').trim() || (S.farmer.girl ? 'Фермерша' : 'Фермер');
+function setFarmer(k, v) { S.farmer[k] = v; save(); applyFarmer(); openLook(); }
+function setFarmerName(v) { v = String(v).replace(/\s+/g, ' ').trim().slice(0, 16); if (v === (S.farmer.name || '')) return; S.farmer.name = v; save(); openProfile(); }
+function openLook() {   // отдельное окно: внешность фермера
+  const F = S.farmer, look = playerLook();
+  const sw = (k, cols) => `<div class="pf-sw">${cols.map(c => `<button class="${F[k] === c ? 'on' : ''}" style="background:${c}" onclick="setFarmer('${k}','${c}')"></button>`).join('')}</div>`;
+  let h = `<h2>✏️ Внешность</h2>
+    <div class="pf-card pf-one"><img class="pf-big" src="${lookImg(look, 'full')}" alt=""></div>
+    <div class="pf-two">${[false, true].map(g => `<button class="pf-t${F.girl === g ? ' on' : ''}" onclick="setFarmer('girl',${g})"><img src="${lookImg({ ...look, girl: g }, 'head')}" alt=""><small>${g ? 'Девочка' : 'Мальчик'}</small></button>`).join('')}</div>
+    <div class="pf-row"><span>Рубашка</span>${sw('shirt', FARMER_OPT.shirt)}</div>
+    <div class="pf-row"><span>Комбинезон</span>${sw('pants', FARMER_OPT.pants)}</div>
+    <div class="pf-row"><span>Волосы</span>${sw('hair', FARMER_OPT.hair)}</div>
+    <div class="pf-row"><span>Кожа</span>${sw('skin', FARMER_OPT.skin)}</div>
+    <h3 class="stw-h">🎩 Головной убор</h3>
+    <div class="pf-g">${FARMER_HATS.map(x => `<button class="pf-t${(F.hat || '') === x.id ? ' on' : ''}" onclick="setFarmer('hat','${x.id}')"><img src="${lookImg({ ...look, hat: x.id || null }, 'head')}" alt=""><small>${x.name}</small></button>`).join('')}
+      <div class="pf-t lock"><b>🔒</b><small>скоро — за кубки</small></div><div class="pf-t lock"><b>🔒</b><small>скоро — за уровни</small></div></div>
+    ${['cap', 'bandana', 'beanie'].includes(F.hat) ? `<div class="pf-row"><span>Цвет шляпы</span>${sw('hatC', FARMER_OPT.shirt)}</div>` : ''}
+    <button class="wide" style="width:100%;margin-top:14px" onclick="openProfile()">✔ Готово</button>`;
+  $('sheet').dataset.view = 'look'; $('sheet').innerHTML = h; $('overlay').classList.add('show');
+}
 function openProfile() {
-  const L = S.life, stat = (k, v) => `<div class="stat"><span>${k}</span><b>${v}</b></div>`;
-  const plotsUsed = S.plots.length;
-  $('sheet').dataset.view = ''; $('sheet').innerHTML = `<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
-      <div style="font-size:44px;width:68px;height:68px;border-radius:50%;background:#f0e5cb;display:flex;align-items:center;justify-content:center">🧑‍🌾</div>
-      <div><h2 style="margin:0">Фермер</h2><div style="color:#7a6650">${esc(slotNames()[SLOT - 1])} · ${dayName()}</div></div></div>
+  const L = S.life, F = S.farmer, look = playerLook();
+  const st = (e, v, t) => `<div class="pf-s"><span>${e}</span><b>${fmtN(v)}</b><small>${t}</small></div>`;
+  const sw = (k, cols) => `<div class="pf-sw">${cols.map(c => `<button class="${F[k] === c ? 'on' : ''}" style="background:${c}" onclick="setFarmer('${k}','${c}')"></button>`).join('')}</div>`;
+  let h = `<h2>🧑‍🌾 Фермер</h2>
+    <div class="pf-card"><div class="pf-me"><img class="pf-big" src="${lookImg(look, 'full')}" alt=""><button class="pf-edit" onclick="openLook()">✏️ Изменить внешность</button></div>
+      <div class="pf-who"><small>Имя</small>
+        <input class="pf-in" maxlength="16" value="${esc(F.name || '')}" placeholder="${F.girl ? 'Фермерша' : 'Фермер'}" onchange="setFarmerName(this.value)" onkeydown="if(event.key==='Enter')this.blur()">
+        <div class="pf-sub">${esc(slotNames()[SLOT - 1])} · ${dayName()}</div></div></div>
     ${lvlCard()}
-    <h3 style="margin:14px 0 4px">За всё время</h3>
-    ${stat('💰 Монет сейчас', S.coins)}${stat('💵 Заработано всего', L.earned)}${stat('🧍 Покупателей обслужено', L.served)}
-    ${stat('🧺 Собрано урожая', L.harvested)}${stat('🥚 Собрано яиц', L.eggs)}${stat('🥛 Надоено молока', L.milk)}${stat('🍚 Смолото муки', L.flour || 0)}${stat('🧀 Сварено сыра', L.cheese || 0)}${stat('🥖 Испечено', L.baked || 0)}${stat('📬 Заказов выполнено', L.orders || 0)}${stat('🌱 Грядок', plotsUsed)}${stat('🏡 Грядок в теплице', S.gh.length)}
-    ${stat('🌳 Деревьев', S.trees.filter(t => t.kind).length)}${stat('🐔 Кур', hens())}${stat('🐄 Коров', cows())}${stat('👷 Помощников', S.up.helper)}
-    ${stat('🌾 Культур открыто', `${S.unlocked.length} из ${CROPS.length}`)}
-    <button class="wide" style="width:100%;margin-top:12px" onclick="closeNight()">Закрыть</button>`;
-  $('overlay').classList.add('show');
+    <h3 class="stw-h">📊 За всё время</h3>
+    <div class="pf-st">${st('💵', L.earned, 'заработано')}${st('🧍', L.served, 'покупателей')}${st('🧺', L.harvested, 'урожая')}${st('🥚', L.eggs, 'яиц')}${st('🥛', L.milk, 'молока')}${st('🍚', L.flour || 0, 'муки')}${st('🧀', L.cheese || 0, 'сыра')}${st('🥖', L.baked || 0, 'выпечки')}${st('📬', L.orders || 0, 'заказов')}</div>
+    <h3 class="stw-h">🏡 Ферма сейчас</h3>
+    <div class="pf-st">${st('🌱', S.plots.length, 'грядок')}${st('🌳', S.trees.filter(t => t.kind).length, 'деревьев')}${st('🐔', hens(), 'кур')}${st('🐄', cows(), 'коров')}${st('👷', S.up.helper, 'помощников')}${st('🌾', S.unlocked.length, 'культур из ' + CROPS.length)}</div>`;
+  $('sheet').dataset.view = 'profile'; $('sheet').innerHTML = h; $('overlay').classList.add('show');
 }
 // Общий график: выручка, траты и прибыль по дням или нарастающим итогом (SVG)
 let econCum = false;
@@ -7764,7 +7838,7 @@ $('plantAll').onclick = () => trayOpen ? closeTray() : openTray();
 }
 $('nightBtn').onclick = () => openNight(false);
 $('dayBtn').onclick = () => morning();
-$('profileBtn').onclick = openProfile;
+$('profileBtn').onclick = openProfile; applyFarmer();
 $('coins').onclick = openEconomy;
 $('menuBtn').onclick = openMenu;
 
