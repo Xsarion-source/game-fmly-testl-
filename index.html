@@ -162,14 +162,15 @@
   .hm-busy { position: absolute; top: 3px; left: 4px; display: flex; } .pf-t .hm-busy img { width: 16px; height: 16px; border-radius: 50%; background: #f3ead6; box-shadow: 0 0 0 1.5px #fff; margin-right: -5px; }   /* кто ещё здесь работает */
   .hm-sub { margin: 7px 0 4px; font-size: 13px; font-weight: 800; color: #5a4632; } .hm-sub small { font-weight: 600; color: #8a7660; }
   .hm-zones { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-  .hm-z { display: flex; flex-direction: row; gap: 4px; align-items: center; justify-content: center; height: 36px; border-radius: 14px; border: 2.5px solid #ead9b5; background: #fff; box-shadow: 0 2px 0 #d9c49c; font: inherit; color: #4a2e18; }
-  .hm-z b { font-size: 15px; } .hm-z small { font-size: 11px; color: #8a7660; } .hm-z img { width: 20px; height: 20px; }
-  .hm-z.on { border-color: #e9b23a; background: #fff6d8; box-shadow: 0 0 0 2px #f0b429; } .hm-z.on small { color: #2f7d2c; font-weight: 900; font-size: 14px; }
+  .hm-z { display: flex; flex-direction: column; gap: 2px; align-items: center; justify-content: center; height: 62px; border-radius: 14px; border: 2.5px solid #ead9b5; background: #fff; box-shadow: 0 2px 0 #d9c49c; font: inherit; color: #4a2e18; }
+  .hm-z b { font-size: 20px; line-height: 1.1; } .hm-zo { display: flex; align-items: center; gap: 2px; font-size: 12px; font-weight: 800; color: #8a7660; } .hm-z small { font-size: 11px; color: #8a7660; } .hm-z img { width: 22px; height: 22px; }
+  .hm-z.on { border-color: #e9b23a; background: #fff6d8; box-shadow: 0 0 0 2px #f0b429; } .hm-z.on small { color: #2f7d2c; font-weight: 900; font-size: 18px; line-height: 1; }
   .hm-z.lock { background: #efe7d6; border-style: dashed; box-shadow: none; opacity: .7; }
   .hm-warn { margin-top: 6px; font-size: 12px; font-weight: 800; color: #c0392b; }
   .hm-row { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 7px 2px 3px; margin-top: -7px; } .hm-row::-webkit-scrollbar { display: none; }
-  .hm-sd { flex: none; width: 52px; height: 50px; border-radius: 16px; background: #fff; border: 2.5px solid #ead9b5; box-shadow: 0 2px 0 #d9c49c; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 2px; font: inherit; color: #4a2e18; }
-  .hm-sd span { font-size: 22px; line-height: 1.1; } .hm-sd small { font-size: 11px; font-weight: 900; line-height: 1.1; text-align: center; }
+  .hm-seeds { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }   /* семена — крупной сеткой, всё видно сразу */
+  .hm-sd { width: auto; height: 64px; border-radius: 16px; background: #fff; border: 2.5px solid #ead9b5; box-shadow: 0 2px 0 #d9c49c; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 2px; font: inherit; color: #4a2e18; }
+  .hm-sd span { font-size: 27px; line-height: 1.1; } .hm-sd small { font-size: 12px; font-weight: 900; line-height: 1.1; text-align: center; }
   .hm-sd.on { border-color: #f4a92b; background: #fff1d1; box-shadow: 0 0 0 2px #f0b429; }
   .hm-sw { display: flex; align-items: center; gap: 10px; width: 100%; margin-top: 10px; padding: 7px 12px; border-radius: 16px; border: 2.5px solid #ead9b5; background: #fff; font: inherit; color: #4a2e18; text-align: left; }
   .hm-sw span { flex: 1; display: flex; flex-direction: column; } .hm-sw b { font-size: 15px; } .hm-sw small { font-size: 12px; color: #7a6650; }
@@ -1229,7 +1230,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-20.173';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-20.174';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3617,21 +3618,21 @@ function openHelpers() {
     h += `<button class="pf-t hm-t${on ? ' on' : ''}" onclick="toggleStation(${i},'${k}')">${on ? '<i class="hm-ok">✓</i>' : ''}<span class="hm-e">${st.ico}</span><small>${st.name}</small>${own.length ? `<i class="hm-busy">${own.slice(0, 2).map(j => `<img src="${lookImg(HELPER_LOOKS[j % HELPER_LOOKS.length], 'head')}" alt="">`).join('')}</i>` : ''}</button>`;
   }
   h += `<button class="pf-t hm-t${cfg.stations.length ? '' : ' on'}" onclick="toggleStation(${i},'rest')"><span class="hm-e">😴</span><small>Отдых</small></button></div>`;
-  const seedRow = (items) => `<div class="hm-row">${items.map(([on, e, t, js]) => `<button class="hm-sd${on ? ' on' : ''}" onclick="${js}"><span>${e}</span><small>${t}</small></button>`).join('')}</div>`;
+  const seedRow = (items) => `<div class="hm-seeds">${items.map(([on, e, t, js]) => `<button class="hm-sd${on ? ' on' : ''}" onclick="${js}"><span>${e}</span><small>${t}</small></button>`).join('')}</div>`;
   if (cfg.stations.includes('field')) {
     h += `<div class="hm-sub">🚜 Участки поля <small>— по 6 грядок</small></div><div class="hm-zones">`;
     ZONES.forEach((z, k) => {
       const n = S.plots.filter((p, j) => zoneOf(j) === k).length, own = zoneOwner(k), mine = cfg.zones.includes(k);
-      h += `<button class="hm-z${mine ? ' on' : ''}${n ? '' : ' lock'}" ${n ? '' : 'disabled'} onclick="setZone(${i},${k})"><b>№${k + 1}</b>${!n ? '<small>🔒</small>' : own >= 0 && own !== i ? `<img src="${lookImg(HELPER_LOOKS[own % HELPER_LOOKS.length], 'head')}" alt="">` : mine ? '<small>✓</small>' : '<small>свободен</small>'}</button>`;
+      h += `<button class="hm-z${mine ? ' on' : ''}${n ? '' : ' lock'}" ${n ? '' : 'disabled'} onclick="setZone(${i},${k})"><b>№${k + 1}</b>${!n ? '<small>🔒 закрыт</small>' : own >= 0 && own !== i ? `<span class="hm-zo"><img src="${lookImg(HELPER_LOOKS[own % HELPER_LOOKS.length], 'head')}" alt="">№${own + 1}</span>` : mine ? '<small>✓</small>' : '<small>свободен</small>'}</button>`;
     });
     h += `</div>${cfg.zones.length ? '' : '<div class="hm-warn">Выбери участок — без него помощник не работает на поле</div>'}`;
     h += `<div class="hm-sub">🚜 После сбора сажать <small>— семена за твои монеты</small></div>` + seedRow([
-      [!cfg.replant, '🧺', 'сбор', `setField(${i},null)`], [cfg.replant && cfg.seed === 'same', '🔁', 'то же', `setField(${i},'same')`],
+      [!cfg.replant, '🧺', 'только сбор', `setField(${i},null)`], [cfg.replant && cfg.seed === 'same', '🔁', 'то же', `setField(${i},'same')`],
       ...S.unlocked.filter(id => !GH_CROPS.includes(id)).map(id => [cfg.replant && cfg.seed === id, CROP[id].e, CROP[id].seed + '💰', `setField(${i},'${id}')`])]);
   }
   if (cfg.stations.includes('gh')) {
     h += `<div class="hm-sub">🏡 В теплице после сбора сажать</div>` + seedRow([
-      [!cfg.ghReplant, '🧺', 'сбор', `setGh(${i},null)`], [cfg.ghReplant && cfg.ghSeed === 'same', '🔁', 'то же', `setGh(${i},'same')`],
+      [!cfg.ghReplant, '🧺', 'только сбор', `setGh(${i},null)`], [cfg.ghReplant && cfg.ghSeed === 'same', '🔁', 'то же', `setGh(${i},'same')`],
       ...GH_CROPS.filter(id => S.unlocked.includes(id)).map(id => [cfg.ghReplant && cfg.ghSeed === id, CROP[id].e, CROP[id].seed + '💰', `setGh(${i},'${id}')`])]);
   }
   if (cfg.stations.includes('coop') || cfg.stations.includes('barn'))
