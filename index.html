@@ -1194,7 +1194,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-20.166';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-20.167';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3698,7 +3698,7 @@ function clampCam() {
   cam.x = hw * 2 >= maxX - minX ? (minX + maxX) / 2 : Math.max(minX + hw, Math.min(maxX - hw, cam.x));
   cam.y = hh * 2 >= maxY - minY ? (minY + maxY) / 2 : Math.max(minY + hh, Math.min(maxY - hh, cam.y));
 }
-let camTarget = null, camFree = false;   // camFree — игрок сам сдвинул карту: не возвращаем камеру к фермеру до новой команды
+let camTarget = null, camFree = false;   // camFree — игрок коснулся экрана: камера не ведёт фермера до новой задачи
 function focusOn(x, y) { const p = iso(x, y); camTarget = { x: p.x, y: p.y - 20 }; }
 function updateCam(dt) {
   if (camTarget) {   // плавный перелёт к новому улучшению
@@ -3725,7 +3725,7 @@ function setZoom(z) { zoom = Math.max(0.45, Math.min(1.6, z)); userZoom = true; 
 cv.addEventListener('pointerdown', e => {
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   cv.setPointerCapture(e.pointerId);
-  camTarget = null;
+  camTarget = null; camFree = true;   // коснулся экрана — камера больше не ведёт фермера (до новой задачи)
   if (pointers.size === 2) { pinch = { d: pdist(), z: zoom }; if (down) down.moved = true; return; }
   down = { x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y, moved: false };
 });
