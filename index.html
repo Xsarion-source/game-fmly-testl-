@@ -512,14 +512,14 @@
     background: linear-gradient(#f6e2b0, #e2c48c); border-radius: 0 0 14px 14px; box-shadow: inset 0 4px 5px rgba(120,80,40,.35), 0 3px 0 #b8834d; }
   #inv { display: flex; flex-wrap: nowrap; gap: 0; align-items: center; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -webkit-overflow-scrolling: touch; height: 100%; box-sizing: border-box; margin: 0 52px 0 0; padding: 5px 0 0 8px; }   /* лента товаров кончается у кнопки склада */
   #inv::-webkit-scrollbar { display: none; }
-  #inv .r { flex: none; display: flex; flex-direction: column; align-items: center; min-width: 36px; background: none; box-shadow: none; padding: 0; border-radius: 0; }
-  #inv .r i { font-style: normal; font-size: 22px; line-height: 1.05; } #inv .r b { font-size: 11px; font-weight: 900; line-height: 1; color: #4a2e18; }
-  #inv .r.f { background: rgba(255,250,235,.85); border-radius: 10px; margin: 0 1px; box-shadow: inset 0 -2px 0 rgba(184,131,77,.35); min-width: 38px; padding: 1px 0 2px; }
-  #inv .sep { flex: none; width: 2px; height: 30px; margin: 0 6px 4px; padding: 0; border-radius: 1px; background: rgba(122,74,42,.3); box-shadow: none; }
+  #inv .r { flex: none; display: flex; flex-direction: column; align-items: center; width: var(--cw, 36px); min-width: 0; box-sizing: border-box; background: none; box-shadow: none; padding: 0; border-radius: 0; }
+  #inv .r i { font-style: normal; font-size: min(22px, calc(var(--cw, 36px) * .6)); line-height: 1.05; } #inv .r b { font-size: min(11px, calc(var(--cw, 36px) * .34)); font-weight: 900; line-height: 1; color: #4a2e18; }
+  #inv .r.f { background: rgba(255,250,235,.85); border-radius: 10px; margin: 0 1px; width: calc(var(--cw, 36px) - 2px); box-shadow: inset 0 -2px 0 rgba(184,131,77,.35); padding: 1px 0 2px; }
+  #inv .sep { flex: none; width: 2px; height: 30px; margin: 0 4px 4px; padding: 0; border-radius: 1px; background: rgba(122,74,42,.3); box-shadow: none; }
   #inv .r.z { opacity: .35; } #inv .r.on b { color: #2f7d2c; }
   #inv .r.pop { animation: shPop .45s ease-out; } @keyframes shPop { 0% { transform: none } 35% { transform: translateY(-5px) scale(1.2) } 100% { transform: none } }
   #shelf .more { position: absolute; right: 5px; top: 5px; width: 42px; height: 40px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; background: #fffaf0; border-radius: 12px; border: 2px solid #c99a62; font-size: 30px; line-height: 1; cursor: pointer; }   /* склад стоит на месте: справа и снизу по 5 px */
-  #shelf.hasmore .more { box-shadow: -12px 0 10px 4px #e8cc96; }   /* дымка у склада — только когда правее ещё есть товары */
+  #shelf .more { box-shadow: -12px 0 10px 4px rgba(232,204,150,var(--fade, 0)); transition: box-shadow .2s; }   /* дымка у склада: плавно гаснет, когда до конца ленты остаётся меньше ~50 px */
   #shelf .more img.ic { width: 34px; height: 34px; }
   #need { margin: 8px 10px 0; }
   #fairBtn, #goalBtn, #truckBtn { right: 8px; border-radius: 16px; width: 50px; height: 50px; background: linear-gradient(#fffaf0, #f6e2b0); border: 2px solid #c99a62; }
@@ -1194,7 +1194,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-20.165';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-20.166';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -6708,7 +6708,8 @@ function shelfGoods() {
   return out;
 }
 let shelfSig = '';
-function shelfFade() { const el = $('inv'); if (el) $('shelf').classList.toggle('hasmore', el.scrollLeft + el.clientWidth < el.scrollWidth - 4); }
+function shelfSize() { const el = $('inv'); if (!el || !el.clientWidth) return; const v = Math.max(26, Math.min(44, Math.floor((el.clientWidth - 8 - 10 - 14) / 8))) + 'px'; if (el.style.getPropertyValue('--cw') !== v) el.style.setProperty('--cw', v); }   // 8 избранных + черта + место под дымку — целиком до склада
+function shelfFade() { const el = $('inv'); if (!el) return; shelfSize(); const left = el.scrollWidth - el.clientWidth - el.scrollLeft; $('shelf').style.setProperty('--fade', Math.max(0, Math.min(1, left / 50)).toFixed(2)); }
 $('inv').addEventListener('scroll', shelfFade, { passive: true }); addEventListener('resize', shelfFade);
 function renderShelf() {
   const el = $('inv'); if (!el) return;
