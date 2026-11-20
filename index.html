@@ -508,8 +508,9 @@
   #sunbox svg { left: 50%; margin-left: -66px; width: 132px; height: 50px; }
   #coins.pill { background: #fffaf0; border-radius: 12px; height: 40px; display: flex; align-items: center; padding: 0 10px; font-size: 16px; font-weight: 900; box-shadow: inset 0 2px 0 rgba(0,0,0,.06); }
   #menuBtn { border-radius: 12px; width: 40px; height: 40px; }
-  #inv { position: relative; z-index: 1; display: flex; flex-wrap: nowrap; gap: 0; align-items: center; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -webkit-overflow-scrolling: touch; height: 50px; margin: 0 10px; padding: 5px 8px 0;
+  #shelf { position: relative; z-index: 1; height: 50px; margin: 0 10px; pointer-events: auto; overflow: hidden;
     background: linear-gradient(#f6e2b0, #e2c48c); border-radius: 0 0 14px 14px; box-shadow: inset 0 4px 5px rgba(120,80,40,.35), 0 3px 0 #b8834d; }
+  #inv { display: flex; flex-wrap: nowrap; gap: 0; align-items: center; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -webkit-overflow-scrolling: touch; height: 100%; box-sizing: border-box; margin: 0 52px 0 0; padding: 5px 0 0 8px; }   /* лента товаров кончается у кнопки склада */
   #inv::-webkit-scrollbar { display: none; }
   #inv .r { flex: none; display: flex; flex-direction: column; align-items: center; min-width: 36px; background: none; box-shadow: none; padding: 0; border-radius: 0; }
   #inv .r i { font-style: normal; font-size: 22px; line-height: 1.05; } #inv .r b { font-size: 11px; font-weight: 900; line-height: 1; color: #4a2e18; }
@@ -517,9 +518,9 @@
   #inv .sep { flex: none; width: 2px; height: 30px; margin: 0 6px 4px; padding: 0; border-radius: 1px; background: rgba(122,74,42,.3); box-shadow: none; }
   #inv .r.z { opacity: .35; } #inv .r.on b { color: #2f7d2c; }
   #inv .r.pop { animation: shPop .45s ease-out; } @keyframes shPop { 0% { transform: none } 35% { transform: translateY(-5px) scale(1.2) } 100% { transform: none } }
-  #inv .more { position: sticky; right: -8px; margin-left: auto; flex: none; align-self: center; margin-top: -5px; width: 42px; height: 40px; display: flex; align-items: center; justify-content: center; background: #fffaf0; border-radius: 12px; border: 2px solid #c99a62; box-shadow: none; font-size: 30px; line-height: 1; }
-  #inv.hasmore .more { box-shadow: -12px 0 10px 4px #e8cc96; }   /* дымка у склада — только когда правее ещё есть товары */
-  #inv .more img.ic { width: 34px; height: 34px; }
+  #shelf .more { position: absolute; right: 5px; top: 5px; width: 42px; height: 40px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; background: #fffaf0; border-radius: 12px; border: 2px solid #c99a62; font-size: 30px; line-height: 1; cursor: pointer; }   /* склад стоит на месте: справа и снизу по 5 px */
+  #shelf.hasmore .more { box-shadow: -12px 0 10px 4px #e8cc96; }   /* дымка у склада — только когда правее ещё есть товары */
+  #shelf .more img.ic { width: 34px; height: 34px; }
   #need { margin: 8px 10px 0; }
   #fairBtn, #goalBtn, #truckBtn { right: 8px; border-radius: 16px; width: 50px; height: 50px; background: linear-gradient(#fffaf0, #f6e2b0); border: 2px solid #c99a62; }
   #fairBtn { top: calc(132px + env(safe-area-inset-top)); } #goalBtn { top: calc(132px + env(safe-area-inset-top)); } #goalBtn.low { top: calc(198px + env(safe-area-inset-top)); }
@@ -542,7 +543,7 @@
         </div>
         <div class="hr"><span class="pill" id="coins">💰 0</span><button class="round" id="menuBtn" title="Меню">☰</button></div>
       </div>
-      <div id="inv"></div>
+      <div id="shelf"><div id="inv"></div><span class="more" onclick="event.stopPropagation(); openStore()">🏬</span></div>
       <div id="need" onclick="openStall()"></div>
       <button id="fairBtn" onclick="openFairPack()"></button>
       <button id="goalBtn" onclick="openGoals()"></button>
@@ -1193,7 +1194,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-20.164';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-20.165';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -6707,7 +6708,7 @@ function shelfGoods() {
   return out;
 }
 let shelfSig = '';
-function shelfFade() { const el = $('inv'); if (el) el.classList.toggle('hasmore', el.scrollLeft + el.clientWidth < el.scrollWidth - 4); }
+function shelfFade() { const el = $('inv'); if (el) $('shelf').classList.toggle('hasmore', el.scrollLeft + el.clientWidth < el.scrollWidth - 4); }
 $('inv').addEventListener('scroll', shelfFade, { passive: true }); addEventListener('resize', shelfFade);
 function renderShelf() {
   const el = $('inv'); if (!el) return;
@@ -6715,7 +6716,7 @@ function renderShelf() {
   const sig = [...fav, '|', ...rest].map(g => g + ':' + (S.inv[g] || 0) + (onSale(g) ? '+' : '')).join();
   if (sig === shelfSig) return; shelfSig = sig;
   const tile = (g, f) => `<span class="r${f ? ' f' : ''}${S.inv[g] ? '' : ' z'}${onSale(g) ? ' on' : ''}" data-g="${g}"><i>${GOODS[g].e}</i><b>${fmtShelf(S.inv[g] || 0)}</b></span>`;
-  el.innerHTML = fav.map(g => tile(g, 1)).join('') + (fav.length && rest.length ? '<span class="sep"></span>' : '') + rest.map(g => tile(g)).join('') + `<span class="more" onclick="event.stopPropagation(); openStore()">🏬</span>`;
+  el.innerHTML = fav.map(g => tile(g, 1)).join('') + (fav.length && rest.length ? '<span class="sep"></span>' : '') + rest.map(g => tile(g)).join('') ;
   shelfFade();
 }
 // окно склада: всё, что есть на ферме, по разделам; открытое, но закончившееся — «0»; ещё не открытое — под замком
