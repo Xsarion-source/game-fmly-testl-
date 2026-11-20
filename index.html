@@ -136,6 +136,19 @@
   .cheats button { padding: 9px 6px; font-size: 14px; }
   .cheats button.on { background: #3e9b3a; color: #fff; }
 
+  #storeBtn { position: relative; margin-top: 8px; width: 52px; height: 52px; padding: 0; border-radius: 50%; pointer-events: auto; background: radial-gradient(circle at 50% 40%, #fffbe8, #f6e2b0); border: 2px solid #c99a62; box-shadow: 0 3px 0 rgba(0,0,0,.2); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  #storeBtn .sb-ico { font-size: 26px; line-height: 1; } #storeBtn small { position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 800; color: var(--ink); background: rgba(255,248,231,.95); border-radius: 8px; padding: 0 5px; }
+  #storeBtn.pop { animation: sbPop .35s ease-out; } @keyframes sbPop { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+  #storeFly { position: absolute; left: 58px; top: 10px; white-space: nowrap; font-style: normal; font-weight: 900; font-size: 15px; color: #3e7d32; background: rgba(255,248,231,.96); border-radius: 999px; padding: 2px 8px; box-shadow: 0 2px 0 rgba(0,0,0,.15); opacity: 0; transition: opacity .25s; pointer-events: none; }
+  #storeFly.on { opacity: 1; }
+  .stw-h { margin: 12px 0 6px; font-size: 16px; color: #4a2e18; } .stw-g { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .stw-t { display: flex; flex-direction: column; align-items: center; padding: 6px 2px 4px; border-radius: 14px; border: 2px solid #ead9b5; background: #fff; box-shadow: 0 2px 0 #d9c49c; color: #4a2e18; }
+  .stw-t .rc-e { font-size: 30px; line-height: 1.1; } .stw-t b { font-size: 15px; } .stw-t small { font-size: 11px; color: #7a6650; text-align: center; line-height: 1.15; }
+  .stw-t.zero { background: #f6efe0; box-shadow: none; } .stw-t.zero .rc-e { opacity: .45; } .stw-t.zero b { color: #a8957a; }
+  .stw-t { position: relative; } .stw-t.fav { border-color: #e9b23a; background: #fff6d8; box-shadow: 0 2px 0 #e0b65a; } .stw-t .fv { position: absolute; top: 2px; right: 4px; font-style: normal; font-size: 13px; }
+  .stw-favbar { display: flex; align-items: center; gap: 6px; margin: 4px 0 2px; padding: 6px 10px; border-radius: 12px; background: #fff6d8; border: 2px dashed #e9b23a; font-size: 13px; font-weight: 800; color: #7a5a1a; }
+  .stw-favbar b { margin-left: auto; font-size: 15px; }
+  .stw-t.lock { background: #efe7d6; border-style: dashed; box-shadow: none; } .stw-t.lock .rc-e { filter: grayscale(1) brightness(.6); opacity: .35; }
   #inv { display: flex; gap: 4px; flex-wrap: wrap; font-size: 13px; font-weight: 800; margin: 8px 64px 0 0; }
   #inv { pointer-events: auto; cursor: pointer; }
   #lvlbox { position: relative; pointer-events: auto; }
@@ -158,10 +171,10 @@
   .seed.dis { opacity: .45; }
   .seed .ghb { position: absolute; top: -4px; right: -4px; font-size: 13px; background: #fff; border-radius: 50%; width: 19px; height: 19px; display: flex; align-items: center; justify-content: center; }
   #seeds { display: none !important; }   /* семена — в полоске над «Засеять» */
-  #plantAll { position: relative; }
+  #plantAll, #bakeBtn { position: relative; }
   #plantAll .pr { position: absolute; top: -6px; right: -8px; background: #fff; border: 2px solid #e9c46a; border-radius: 10px; font-size: 10.5px; font-weight: 900; padding: 1px 5px; line-height: 1.2; color: #4a2e18; }
-  #plantAll .chev { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); font-size: 9px; line-height: 1.3; color: #7a4a2a; background: #ffe08a; border-radius: 8px; padding: 0 6px; font-weight: 900; }
-  #plantAll.open { background: #ffe08a; box-shadow: 0 0 0 3px #e0a52a; }
+  #plantAll .chev, #bakeBtn .chev { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); font-size: 9px; line-height: 1.3; color: #7a4a2a; background: #ffe08a; border-radius: 8px; padding: 0 6px; font-weight: 900; }
+  #bakeBtn.open, #plantAll.open { background: #ffe08a; box-shadow: 0 0 0 3px #e0a52a; }
   #seedTray { display: none; pointer-events: auto; align-self: stretch; max-width: 560px; width: 100%; margin: 0 auto; box-sizing: border-box; background: rgba(255,248,231,.97); border-radius: 22px; padding: 8px 10px 10px;
               box-shadow: 0 6px 18px rgba(0,0,0,.25), 0 3px 0 rgba(0,0,0,.15); border: 2.5px solid #e9c46a; animation: up .2s; touch-action: pan-x; position: relative; z-index: 5; }
   #seedTray.show { display: block; }
@@ -286,6 +299,7 @@
   .ov-x.kx { left: auto; right: 8px; top: 6px; width: 24px; height: 24px; border-radius: 12px; background: rgba(0,0,0,.35); color: #fff; font-size: 13px; line-height: 24px; text-align: center; opacity: 1; }
   #prodPop { position: absolute; right: 10px; bottom: calc(100% + 6px); display: none; gap: 8px; padding: 8px; border-radius: 18px; background: rgba(255,248,231,.97); box-shadow: 0 6px 18px rgba(0,0,0,.25); }
   #prodPop.show { display: flex; }
+  #prodPop::after { content: ''; position: absolute; bottom: -7px; left: var(--ax, 50%); margin-left: -8px; width: 16px; height: 16px; background: rgba(255,248,231,.97); transform: rotate(45deg); border-radius: 3px; box-shadow: 3px 3px 4px rgba(0,0,0,.12); }
   #prodPop button { position: relative; width: 74px; padding: 6px 2px 5px; border-radius: 14px; border: 2px solid #ecdcb8; background: #fff; display: flex; flex-direction: column; align-items: center; gap: 1px; font: inherit; color: #4a2e18; }
   #prodPop .pe { font-size: 30px; line-height: 1.1; } #prodPop small { font-size: 11px; font-weight: 800; line-height: 1.1; text-align: center; }
   #prodPop .pb { position: absolute; top: -6px; right: -6px; min-width: 20px; height: 20px; border-radius: 10px; background: #f4a92b; color: #fff; font-style: normal; font-weight: 900; font-size: 12px; line-height: 20px; text-align: center; } #prodPop .pb.ok { background: #4caf50; }
@@ -460,6 +474,35 @@
   #toast.show { opacity: 1; pointer-events: auto; cursor: pointer; }
   @keyframes up { from { transform: translateY(100%) } to { transform: none } }
   @keyframes ribUp { from { transform: translate(-50%, min(82vh, 760px)) } to { transform: translateX(-50%) } }   /* лента заголовка едет вместе с окном и всё время по центру */
+
+  /* ===== Главный экран v2: деревянная доска сверху, полка ресурсов, док снизу ===== */
+  #hud { padding: calc(6px + env(safe-area-inset-top)) 8px 0; }
+  #hud .hudrow { position: relative; z-index: 2; height: 64px; padding: 0 8px; border-radius: 18px; background: linear-gradient(#d9a868, #b8834d);
+    box-shadow: inset 0 2px 0 rgba(255,255,255,.35), 0 4px 0 #7a4a2a, 0 6px 10px rgba(0,0,0,.25); pointer-events: auto; }
+  #hud .round { background: #fffaf0; box-shadow: 0 2px 0 rgba(0,0,0,.2); }
+  #profileBtn { border: 3px solid #ffd34d; width: 46px; height: 46px; }
+  #lvlbar { bottom: -6px; left: 4px; right: 4px; height: 6px; }
+  #sunbox { height: 50px; border-radius: 12px; flex: 1; max-width: 170px; box-shadow: inset 0 2px 0 rgba(0,0,0,.08); }
+  #sunbox svg { left: 50%; margin-left: -66px; width: 132px; height: 50px; }
+  #coins.pill { background: #fffaf0; border-radius: 12px; height: 40px; display: flex; align-items: center; padding: 0 10px; font-size: 16px; font-weight: 900; box-shadow: inset 0 2px 0 rgba(0,0,0,.06); }
+  #menuBtn { border-radius: 12px; width: 40px; height: 40px; }
+  #inv { position: relative; z-index: 1; display: flex; flex-wrap: nowrap; gap: 0; align-items: center; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -webkit-overflow-scrolling: touch; height: 50px; margin: 0 10px; padding: 5px 8px 0;
+    background: linear-gradient(#f6e2b0, #e2c48c); border-radius: 0 0 14px 14px; box-shadow: inset 0 4px 5px rgba(120,80,40,.35), 0 3px 0 #b8834d; }
+  #inv::-webkit-scrollbar { display: none; }
+  #inv .r { flex: none; display: flex; flex-direction: column; align-items: center; min-width: 36px; background: none; box-shadow: none; padding: 0; border-radius: 0; }
+  #inv .r i { font-style: normal; font-size: 22px; line-height: 1.05; } #inv .r b { font-size: 11px; font-weight: 900; line-height: 1; color: #4a2e18; }
+  #inv .r.f { background: rgba(255,250,235,.85); border-radius: 10px; margin: 0 1px; box-shadow: inset 0 -2px 0 rgba(184,131,77,.35); min-width: 38px; padding: 1px 0 2px; }
+  #inv .sep { flex: none; width: 2px; height: 30px; margin: 0 6px 4px; padding: 0; border-radius: 1px; background: rgba(122,74,42,.3); box-shadow: none; }
+  #inv .r.z { opacity: .35; } #inv .r.on b { color: #2f7d2c; }
+  #inv .r.pop { animation: shPop .45s ease-out; } @keyframes shPop { 0% { transform: none } 35% { transform: translateY(-5px) scale(1.2) } 100% { transform: none } }
+  #inv .more { position: sticky; right: -8px; margin-left: auto; flex: none; align-self: center; margin-top: -5px; width: 42px; height: 40px; display: flex; align-items: center; justify-content: center; background: #fffaf0; border-radius: 12px; border: 2px solid #c99a62; box-shadow: -12px 0 10px 4px #e8cc96; font-size: 30px; line-height: 1; }
+  #inv .more img.ic { width: 34px; height: 34px; }
+  #need { margin: 8px 10px 0; }
+  #fairBtn, #goalBtn, #truckBtn { right: 8px; border-radius: 16px; width: 50px; height: 50px; background: linear-gradient(#fffaf0, #f6e2b0); border: 2px solid #c99a62; }
+  #fairBtn { top: calc(132px + env(safe-area-inset-top)); } #goalBtn { top: calc(132px + env(safe-area-inset-top)); } #goalBtn.low { top: calc(198px + env(safe-area-inset-top)); }
+  #fairBtn .glow { border-radius: 16px; }
+  #actions .arow { padding: 8px 6px; border-radius: 22px; background: linear-gradient(#d9a868, #b8834d); box-shadow: inset 0 2px 0 rgba(255,255,255,.35), 0 4px 0 #7a4a2a, 0 6px 12px rgba(0,0,0,.25); }
+  .act { border-radius: 16px; background: linear-gradient(#fffaf0, #f6e2b0); box-shadow: 0 3px 0 rgba(0,0,0,.25); }
 </style>
 </head>
 <body>
@@ -470,13 +513,13 @@
       <div class="hudrow">
         <div id="lvlbox"><button class="round" id="profileBtn" title="Фермер и уровень фермы">🧑‍🌾</button><span id="lvlnum">1</span><div id="lvlbar"><i></i></div></div>
         <div id="sunbox" title="Время суток">
-          <svg viewBox="0 0 132 52" width="132" height="52"><path d="M14 40 A52 26 0 0 1 118 40" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="2" stroke-dasharray="3 4"/>
-            <line x1="6" y1="40" x2="126" y2="40" stroke="rgba(60,40,20,.35)" stroke-width="1.5"/></svg>
+          <svg viewBox="0 0 132 50" width="132" height="50"><path d="M14 34 A52 24 0 0 1 118 34" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="2" stroke-dasharray="3 4"/>
+            <line x1="6" y1="34" x2="126" y2="34" stroke="rgba(60,40,20,.35)" stroke-width="1.5"/></svg>
           <span id="sunIcon">☀️</span><span id="phase">Рассвет</span>
         </div>
         <div class="hr"><span class="pill" id="coins">💰 0</span><button class="round" id="menuBtn" title="Меню">☰</button></div>
       </div>
-      <div id="inv" onclick="openStall()"></div>
+      <div id="inv"></div>
       <div id="need" onclick="openStall()"></div>
       <button id="fairBtn" onclick="openFairPack()"></button>
       <button id="goalBtn" onclick="openGoals()"></button>
@@ -493,7 +536,7 @@
         <button class="act" id="plantAll"><span>🌱</span>Засеять</button>
         <button class="act" id="nightBtn" style="display:none"><span>⬆️</span>Улучшить</button>
         <button class="act" id="stallBtn" onclick="openStall()"><span>🏪</span>Лавка</button>
-        <button class="act" id="bakeBtn" style="display:none" onclick="toggleProdPop()"><span>🏭</span>Цеха</button>
+        <button class="act" id="bakeBtn" style="display:none" onclick="toggleProdPop()"><span class="chev">▲</span><span>🏭</span>Цеха</button>
         <button class="act" id="helperBtn" style="display:none"><span>👥</span>Команда</button>
       </div>
     </div>
@@ -1074,7 +1117,7 @@ if (!S.shop) {   // прилавок со слотами: раньше прод�
   S.shop = { a: cand.slice(0, 3 + S.up.slots), season: [] };
 }
 S.shop.b ??= []; S.shop.season ??= [];
-S.picnic ??= 0; S.special ??= []; S.trophies ??= []; S.contestDay ??= 0; S.spOn ??= []; S.seenGoods ??= []; S.up.fairstall ??= 0; S.up.fairbake ??= 0; S.fair ??= { stock: {} }; S.fair.pm ??= {};
+S.picnic ??= 0; S.special ??= []; S.trophies ??= []; S.contestDay ??= 0; S.spOn ??= []; S.seenGoods ??= []; S.shelfFav ??= []; S.up.fairstall ??= 0; S.up.fairbake ??= 0; S.fair ??= { stock: {} }; S.fair.pm ??= {};
 if (!S.fair.crates) { S.fair.crates = []; for (const [c, n0] of Object.entries(S.fair.stock || {})) for (let n = n0; n > 0; n -= CRATE) S.fair.crates.push({ id: c, n: Math.min(CRATE, n) }); }   // ящики — явным списком
 syncFair(); syncSpecial();   // особые находки и кубки конкурсов   // товары, снятые с продажи (копятся для заказов и производства)
 S.up.nests ??= 0; S.up.rooster ??= 0; S.up.yard ??= 0;
@@ -1127,7 +1170,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-18.159';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-20.160';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1707,7 +1750,7 @@ const storeMaxed = () => S.store.lvl >= STORE.cap.length - 1;
 function gain(id, n, force) {
   n = Math.max(0, n || 0);
   const k = force ? n : storeFit(id, n);
-  if (k > 0) S.inv[id] = (S.inv[id] || 0) + k;
+  if (k > 0) { S.inv[id] = (S.inv[id] || 0) + k; if (!force) storeFlyIn(id, k); }
   if (k < n) storeFullNote(id);
   return k;
 }
@@ -1912,7 +1955,7 @@ function renderTruckBtn() {
   const b = $('truckBtn'); if (!b) return;
   if (!truckOn() || !S.truck.c) { b.style.display = 'none'; return; }
   const d = S.truck.c.due - S.day, above = 1 + ($('fairBtn').style.display !== 'none' ? 1 : 0);
-  b.style.display = 'flex'; b.style.top = `calc(${60 + 68 * above}px + env(safe-area-inset-top))`;
+  b.style.display = 'flex'; b.style.top = `calc(${132 + 66 * above}px + env(safe-area-inset-top))`;
   b.innerHTML = `<img src="${TRUCK_SRC.front_loaded}" alt=""><small>${d <= 0 ? 'сегодня' : d === 1 ? 'завтра' : d + ' дн.'}</small>`;
   b.classList.toggle('hot', d <= 1 && !truckDone());
 }
@@ -2428,10 +2471,14 @@ const PROD_NAV = [
 const prodList = () => PROD_NAV.filter(n => n.on());
 let prodPopOn = false;
 function toggleProdPop(on = !prodPopOn) {
-  prodPopOn = on; const el = $('prodPop');
+  prodPopOn = on; const el = $('prodPop'), btn = $('bakeBtn');
+  btn.classList.toggle('open', on); const ch = btn.querySelector('.chev'); if (ch) ch.textContent = on ? '▼' : '▲';
   if (!on) { el.classList.remove('show'); return; }
   el.innerHTML = prodList().map(n => `<button onclick="toggleProdPop(false); goProd('${n.k}')"><span class="pe">${n.ico()}</span><small>${n.name()}</small>${n.ready() ? '<i class="pb ok">✔</i>' : n.idle() ? '<i class="pb">!</i>' : ''}</button>`).join('');
   el.classList.add('show');
+  const b = btn.getBoundingClientRect(), a = $('actions').getBoundingClientRect(), w = el.offsetWidth, mid = b.left + b.width / 2 - a.left;   // окошко — над кнопкой «Цеха»
+  const left = Math.max(6, Math.min(a.width - w - 6, mid - w / 2));
+  el.style.right = 'auto'; el.style.left = left + 'px'; el.style.setProperty('--ax', (mid - left) + 'px');
 }
 function goProd(k) { const n = PROD_NAV.find(x => x.k === k); if (n && n.on()) n.open(); }
 function prodTabs(cur) {   // вкладки вверху окна цеха
@@ -4257,6 +4304,25 @@ const ICON_DRAW = {
     K.P([[4, 30], [32, 44], [32, 54], [4, 40]], '#6b3e1f', 2.5); K.P([[32, 44], [60, 30], [60, 40], [32, 54]], '#55301a', 2.5);
     K.P([[32, 16], [60, 30], [32, 44], [4, 30]], K.G(0, 16, 0, 44, '#a8703f', '#7f4d29'), 2.5);
     for (const t of [.25, .5, .75]) K.L(6 + 28 * t, 30 - 14 * t, 30 + 28 * t, 42 - 14 * t, '#c58f5a', 3.2); },
+  '🏬': K => { const c = K.c;
+    K.E(32, 57, 27, 4, 'rgba(90,58,36,.18)', 0, 0);
+    const body = [[12, 31], [32, 15], [52, 31], [52, 56], [12, 56]];
+    K.P(body, K.G(0, 15, 0, 56, '#e8584c', '#b9352d'), 0);
+    c.save(); K.P(body, null, 0); c.clip();
+    for (let y = 36; y < 56; y += 6) K.L(12, y, 52, y, 'rgba(120,20,15,.25)', 1.5);   // доски обшивки
+    K.H(18, 36, 3, 9, .25); c.restore();
+    K.P(body, null, 3);
+    K.P([[5, 33], [32, 9], [59, 33], [55, 36], [32, 16], [9, 36]], K.G(0, 9, 0, 36, '#7a5240', '#4e3328'), 3);   // крыша
+    K.C(32, 25, 4, '#ffe9a8', 2.4);
+    const door = [[21, 56], [21, 38], [43, 38], [43, 56]];
+    K.P(door, '#f7ead0', 0);
+    c.save(); K.P(door, null, 0); c.clip(); K.L(21, 38, 43, 56, '#c9473d', 3.2); K.L(43, 38, 21, 56, '#c9473d', 3.2); K.L(32, 38, 32, 56, IK, 2); c.restore();
+    K.P(door, null, 2.6);
+    K.E(9, 51, 6, 7, K.G(0, 44, 0, 58, '#f4e6c6', '#d6be8c'), 0, 2.4); K.L(6, 45, 12, 45, IK, 2);   // мешок
+    K.R(45, 46, 15, 12, 2, K.G(0, 46, 0, 58, '#f0c48a', '#c98f52'), 0);
+    c.save(); c.beginPath(); c.roundRect(45, 46, 15, 12, 2); c.clip(); K.L(45, 52, 60, 52, 'rgba(110,60,20,.55)', 1.6); c.restore();
+    K.R(45, 46, 15, 12, 2, null, 2.4);   // ящик
+  },
   '📦': K => { K.P([[32, 8], [58, 20], [32, 32], [6, 20]], '#f0c98e'); K.P([[6, 20], [32, 32], [32, 60], [6, 46]], '#d9a066'); K.P([[32, 32], [58, 20], [58, 46], [32, 60]], '#b8834d');
     K.P([[19, 14], [45, 26], [45, 32], [19, 20]], 'rgba(255,240,210,.7)', 1.5); },
   '❓': K => K.T('?', 32, 34, 54, '#e0473e', 7),
@@ -6561,7 +6627,63 @@ function drawFloats() {
     ctx.globalAlpha = 1;
   }
 }
+const fmtN = n => String(Math.floor(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u202f');   // 12 345 — узкий пробел
+const fmtCoins = n => n < 1e4 ? String(n) : n < 1e5 ? fmtN(n) : n < 1e6 ? (Math.floor(n / 100) / 10).toFixed(1).replace('.', ',').replace(',0', '') + 'K' : (Math.floor(n / 1e4) / 100).toFixed(2).replace('.', ',') + 'M';
+const fmtShelf = n => n > 999 ? '999+' : String(n);
 const addFloat = (x, y, text) => floats.push({ x, y, text, t: 0 });
+// кнопка склада: что пришло — коротко всплывает рядом («+3 🥚»), кнопка подпрыгивает
+function storeFlyIn(id, n) {   // пришёл товар — его плитка на полке коротко подпрыгивает
+  if (!n || S.night) return;
+  setTimeout(() => { const e = document.querySelector(`#inv .r[data-g="${id}"]`); if (!e) return; e.classList.remove('pop'); void e.offsetWidth; e.classList.add('pop'); }, 60);
+}
+// полка ресурсов под верхней доской: всё открытое в постоянном порядке, ноль — бледно; что на прилавке — зелёным
+function shelfGoods() {
+  const out = [];
+  for (const [, ids] of STORE_GROUPS) for (const g of ids()) if (GOODS[g] && !goodLock(g) && !GOODS[g].sp && (!seasonal(g) || GOODS[g].season === season().id) && !['chick', 'goldegg'].includes(g) || (S.inv[g] > 0 && GOODS[g])) out.includes(g) || out.push(g);
+  return out;
+}
+let shelfSig = '';
+function renderShelf() {
+  const el = $('inv'); if (!el) return;
+  const list = shelfGoods(), fav = (S.shelfFav || []).filter(g => GOODS[g] && !goodLock(g)).slice(0, 8), rest = list.filter(g => !fav.includes(g));   // свои 8 — первыми, остальное — лентой вбок
+  const sig = [...fav, '|', ...rest].map(g => g + ':' + (S.inv[g] || 0) + (onSale(g) ? '+' : '')).join();
+  if (sig === shelfSig) return; shelfSig = sig;
+  const tile = (g, f) => `<span class="r${f ? ' f' : ''}${S.inv[g] ? '' : ' z'}${onSale(g) ? ' on' : ''}" data-g="${g}"><i>${GOODS[g].e}</i><b>${fmtShelf(S.inv[g] || 0)}</b></span>`;
+  el.innerHTML = fav.map(g => tile(g, 1)).join('') + (fav.length && rest.length ? '<span class="sep"></span>' : '') + rest.map(g => tile(g)).join('') + `<span class="more" onclick="event.stopPropagation(); openStore()">🏬</span>`;
+}
+// окно склада: всё, что есть на ферме, по разделам; открытое, но закончившееся — «0»; ещё не открытое — под замком
+const STORE_GROUPS = [
+  ['🌾 Урожай', () => [...CROPS.map(c => c.id), 'apple']],
+  ['🐔 Животные', () => ['egg', 'goldegg', 'chick', 'milk']],
+  ['🏭 Цеха', () => ['flour', 'cheese', 'sour', 'butter', ...Object.keys(BAKE).filter(r => !seasonal(r))]],
+  ['🌸 Сезонное', () => Object.keys(GOODS).filter(seasonal)],
+  ['🌟 Находки', () => Object.keys(GOODS).filter(g => GOODS[g].sp)],
+];
+const goodLock = g => { const c = CROP[g]; if (c) return S.unlocked.includes(g) ? '' : `⭐${c.lvl}`;
+  const req = { apple: 'orchard', egg: 'coop', goldegg: 'coop', chick: 'rooster', milk: 'barn', flour: 'mill', cheese: 'dairy', sour: 'dhouse', butter: 'dhouse' }[g] || (BAKE[g] ? 'bakery' : DAIRY[g] ? 'dhouse' : null);
+  if (seasonal(g) && !S.up.seasonstand) return '🍦';
+  return req && !S.up[req] ? `⭐${UP_LVL[req] || ''}` : ''; };
+const SHELF_FAV = 8;
+function toggleFav(g) {
+  const F = S.shelfFav ??= [], i = F.indexOf(g);
+  if (i >= 0) F.splice(i, 1); else if (F.length >= SHELF_FAV) { toast(`На полке первыми — до ${SHELF_FAV} товаров. Сними звёздочку с другого`); return; } else F.push(g);
+  shelfSig = ''; save(); renderShelf(); openStore();
+}
+function openStore() {
+  const F = (S.shelfFav ??= []);
+  let h = `<h2>🏬 Склад</h2><div class="fpinfo">Всё, что есть на ферме. Серым — закончилось, под замком — ещё не открыто.<br><br>Нажми на товар — он встанет на полку первым и будет выделен. Так можно закрепить до ${SHELF_FAV} товаров. Нажми ещё раз — снимется.</div>`;
+  h += `<div class="stw-favbar">⭐ Мои на полке: ${F.length ? F.filter(g => GOODS[g]).map(g => GOODS[g].e).join(' ') : 'нажми на товар'}<b>${F.length}/${SHELF_FAV}</b></div>`;
+  for (const [title, ids] of STORE_GROUPS) {
+    const list = ids().filter(g => GOODS[g]); if (!list.length) continue;
+    if (title.includes('Находки') && !list.some(g => S.inv[g] > 0)) continue;
+    h += `<h3 class="stw-h">${title}</h3><div class="stw-g">`;
+    for (const g of list) { const n = S.inv[g] || 0, lk = goodLock(g);
+      h += lk ? `<div class="stw-t lock"><span class="rc-e">${GOODS[g].e}</span><b>🔒</b><small>${lk === '🍦' ? 'сезонная пристройка' : 'с ' + lk}</small></div>`
+        : `<div class="stw-t${n ? '' : ' zero'}${F.includes(g) ? ' fav' : ''}" onclick="toggleFav('${g}')">${F.includes(g) ? '<i class="fv">⭐</i>' : ''}<span class="rc-e">${GOODS[g].e}</span><b>${fmtN(n)}</b><small>${GOODS[g].name}</small></div>`; }
+    h += `</div>`;
+  }
+  $('sheet').dataset.view = 'store'; const top = $('sheet').scrollTop; $('sheet').innerHTML = h; $('overlay').classList.add('show'); decorateSheet(); $('sheet').scrollTop = top;
+}
 
 // погода на карте — поверх мира, в экранных координатах: наклонный дождь, снег, волнистые полоски ветра, тёплый свет жары
 const wxR = (i, k) => { const v = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return v - Math.floor(v); };
@@ -6666,7 +6788,7 @@ function renderHud() {
   if (lk !== hudLvl) { hudLvl = lk; $('lvlnum').textContent = L; const a = LVL_XP(L), b = LVL_XP(L + 1); $('lvlbar').firstChild.style.width = Math.min(100, (S.xp - a) / (b - a) * 100) + '%'; }
   const nd = shortage();
   if (nd !== hudNeed) { hudNeed = nd; $('need').textContent = nd ? '🛒 Не хватает: ' + nd : ''; $('need').classList.toggle('show', !!nd); }
-  if (S.coins !== hudCoins) { hudCoins = S.coins; $('coins').textContent = `💰 ${S.coins}`; }
+  if (S.coins !== hudCoins) { hudCoins = S.coins; $('coins').textContent = `💰 ${fmtCoins(S.coins)}`; $('coins').title = fmtN(S.coins) + ' 💰'; }
   // солнце идёт по дуге: восход слева, полдень наверху, закат справа
   const frac = S.night ? 1 : S.started ? Math.min(1, S.t / DAY_LEN) : 0;
   const step = Math.round(frac * 60);   // обновляем плавно, но без мельтешения
@@ -6680,11 +6802,11 @@ function renderHud() {
   box.style.background = sky;
   box.classList.toggle('dark', S.night);
   $('phase').textContent = `${season().e} День ${cal().sday} · ${WD[cal().dow]}${weather() !== 'sun' ? ' · ' + wxOf().e : ''}` + (timeScale > 1 ? ` ⏩${timeScale}` : ''); box.title = `${dayName()} · ${WEEKDAYS[cal().dow]} · ${label}` + (timeScale > 1 ? ` ⏩${timeScale}` : '');
-  if (S.night) { icon.textContent = '🌙'; icon.style.left = '66px'; icon.style.top = '18px'; return; }
+  if (S.night) { icon.textContent = '🌙'; icon.style.left = '50%'; icon.style.top = '16px'; return; }
   const a = Math.PI * (1 - frac);
   icon.textContent = '☀️';
-  icon.style.left = (66 + 52 * Math.cos(a)) + 'px';
-  icon.style.top = (40 - 26 * Math.sin(a)) + 'px';
+  icon.style.left = `calc(50% + ${(52 * Math.cos(a)).toFixed(1)}px)`;   // дуга по центру окошка, как в svg
+  icon.style.top = (34 - 24 * Math.sin(a)) + 'px';
 }
 
 function renderUI() {
@@ -6706,8 +6828,7 @@ function renderUI() {
   setTimeout(() => { const n = [...document.querySelectorAll('.arow .act')].filter(b => b.style.display !== 'none').length; const r = document.querySelector('.arow'); r.style.setProperty('--n', Math.max(5, n)); r.style.gap = n > 5 ? '6px' : ''; });
   $('bakeBtn').style.display = prodList().length ? '' : 'none';
   $('restBtn').style.display = isRest() && !S.night ? '' : 'none';   // воскресенье: пикник / отдых / итоги недели — и после пикника можно уйти спать
-  const items = Object.keys(GOODS).filter(id => S.inv[id]).map(id => `<span class="${GOODS[id].sp ? 'sp' : onSale(id) ? '' : 'off'}">${GOODS[id].sp ? '🌟' : ''}${GOODS[id].e} ${S.inv[id]}</span>`);
-  $('inv').innerHTML = items.length ? items.join('') : '<span style="opacity:.75">Склад пуст</span>';
+  renderShelf();
   $('fairBtn').style.display = fairUnlocked() || isFair() ? '' : 'none';   // до ярмарки ещё дорасти — кнопка не висит над головой
   renderGoalBtn(); renderTruckBtn();
   { const d = (S.night && fairCal(S.day) ? nextFairDay(S.day + 1) : nextFairDay()) - S.day, used = cratesUsed(), fb = $('fairBtn');   // кнопка ярмарки: когда и сколько ящиков собрано
@@ -7457,6 +7578,7 @@ function refreshSheet() {
   else if (v.startsWith('prod:')) openProd(v.slice(5));
   else if (v === 'bakery') openBakery();
   else if (v === 'truck') openTruck();
+  else if (v === 'store') openStore();
   else return;
   decorateSheet();   // заголовок уезжает в ленту сразу, а не после — иначе прокрутка «прыгает» на его высоту
   $('sheet').scrollTop = top;
@@ -7510,7 +7632,15 @@ function toast(msg) {
   toastT = setTimeout(() => t.classList.remove('show'), Math.min(7000, Math.max(2500, 1200 + String(msg).length * 60)));
 }
 new MutationObserver(() => { if ($('toast').classList.contains('show')) placeToast(); }).observe($('overlay'), { attributes: true, attributeFilter: ['class'] });   // меню открылось/закрылось — подсказка переезжает
-new MutationObserver(() => { decorateSheet(); if ($('toast').classList.contains('show')) requestAnimationFrame(placeToast); }).observe($('sheet'), { childList: true });
+let sheetPos = { v: '', top: 0 };   // окно перерисовалось (цифры, таймеры, покупка) — остаёмся на том же месте; новое окно — сверху
+$('sheet').addEventListener('scroll', () => { sheetPos = { v: $('sheet').dataset.view || '', top: $('sheet').scrollTop }; }, { passive: true });
+new MutationObserver(() => { if (!$('overlay').classList.contains('show')) sheetPos = { v: '', top: 0 }; }).observe($('overlay'), { attributes: true, attributeFilter: ['class'] });
+new MutationObserver(() => {
+  decorateSheet(); const sh = $('sheet'), v = sh.dataset.view || '';
+  if (v && v === sheetPos.v) { if (sh.scrollTop !== sheetPos.top) sh.scrollTop = sheetPos.top; }
+  else sheetPos = { v, top: sh.scrollTop };
+  if ($('toast').classList.contains('show')) requestAnimationFrame(placeToast);
+}).observe($('sheet'), { childList: true });
 // Шапка любого окна: ручка, заголовок из первого <h2>; пояснение (.fpinfo/.intro сразу под заголовком) — в кнопку ⓘ
 let sheetInfo = '';
 function decorateSheet() {
