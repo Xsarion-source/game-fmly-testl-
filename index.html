@@ -150,18 +150,25 @@
   .hm-tabs.r { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }   /* правее ещё помощники */
   .hm-tabs.l { -webkit-mask-image: linear-gradient(to right, transparent, #000 28px); mask-image: linear-gradient(to right, transparent, #000 28px); }
   .hm-tabs.l.r { -webkit-mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent); } .hm-tabs::-webkit-scrollbar { display: none; }
-  .hm-tab { flex: none; display: flex; flex-direction: column; align-items: center; gap: 0; width: 58px; padding: 3px 2px 4px; border-radius: 16px; border: 2.5px solid #ead9b5; background: #fff; box-shadow: 0 2px 0 #d9c49c; font: inherit; color: #4a2e18; }
-  .hm-tab img { width: 34px; height: 34px; } .hm-tab b { font-size: 13px; line-height: 1.1; } .hm-tab small { font-size: 12px; line-height: 1.2; min-height: 15px; white-space: nowrap; overflow: hidden; max-width: 58px; }
-  .hm-tab small img.ic { width: 13px; height: 13px; }
-  .hm-tab.on { border-color: #e9b23a; background: #fff6d8; box-shadow: 0 0 0 2px #f0b429; }
+  .hm-tab { flex: none; position: relative; width: 56px; padding: 3px 0 4px; border: none; border-radius: 14px; background: none; display: flex; flex-direction: column; align-items: center; font: inherit; color: #4a2e18; }
+  .hm-tab img { width: 40px; height: 60px; margin-top: -2px; }
+  .hm-bub { position: relative; display: flex; align-items: center; height: 22px; padding: 0 4px; box-sizing: border-box; background: #fff; border: 1.5px solid #ead9b5; border-radius: 10px; }
+  .hm-bub::after { content: ''; position: absolute; bottom: -5px; left: 50%; margin-left: -4px; border: 4px solid transparent; border-top-color: #ead9b5; border-bottom: 0; }
+  .hm-bub img.ic { width: 17px; height: 17px; margin: 0; } .hm-bub i { font-style: normal; font: 900 10px system-ui, sans-serif; color: #7a6650; margin-left: 1px; }
+  .hm-nm { margin-top: -10px; max-width: 54px; overflow: hidden; text-overflow: ellipsis; padding: 0 5px; border-radius: 9px; color: #fff; font: 900 11px/18px system-ui, sans-serif; white-space: nowrap; box-shadow: 0 0 0 2px #fff; text-shadow: 0 1px 1px rgba(0,0,0,.35); }
+  .hm-tab.on { background: #fff6d8; box-shadow: 0 0 0 2.5px #f0b429; }
   .hm-card { padding: 6px 12px 6px 6px; } .hm-big { width: 70px; height: 105px; flex: none; } .hm-name { display: block; font-size: 20px; font-weight: 900; color: #4a2e18; margin-bottom: 4px; }
-  .hm-g { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+  .hm-g { display: grid; grid-template-columns: repeat(5, 1fr); gap: 9px 5px; margin-top: 10px; }
   .hm-t { position: relative; min-height: 0; height: 58px; padding: 2px 1px 3px; border-radius: 12px; } .hm-e { font-size: 24px; line-height: 1.1; } .hm-t small { font-size: 10px; line-height: 1.05; }
   .hm-t .hm-e img.ic { width: 26px; height: 26px; }
   .hm-ok { position: absolute; top: -6px; right: -5px; width: 18px; height: 18px; border-radius: 9px; line-height: 18px !important; font-size: 11px !important; background: #4caf50; color: #fff; font-style: normal; font-weight: 900; font-size: 13px; line-height: 22px; text-align: center; }
+  .hm-wage { margin: 10px 0 0; text-align: center; font-size: 13px; color: #7a6650; }
+  .hm-name { display: inline; width: auto; margin: 0; border: none; background: none; padding: 0; font-size: inherit !important; box-shadow: none; font: inherit; color: #4a2e18; font-weight: 900; text-decoration: underline dotted #c9a66a; }
+  .hm-name-in { width: 120px; padding: 2px 8px; border-radius: 10px; border: 2px solid #e9b23a; background: #fffaf0; font: inherit; font-weight: 900; color: #4a2e18; }
   .hm-n { display: inline-block; min-width: 17px; height: 17px; padding: 0 3px; box-sizing: border-box; border-radius: 9px; color: #fff; font: 900 11px/17px system-ui, sans-serif; text-align: center; font-style: normal; box-shadow: 0 0 0 1.5px #fff, 0 1px 2px rgba(0,0,0,.3); text-shadow: 0 1px 1px rgba(0,0,0,.35); } .hm-n.more { background: #a8957a; }
   .hm-z b.hm-n { font-size: 11px; line-height: 17px; }
-  .hm-busy { position: absolute; top: 3px; left: 4px; display: flex; gap: 2px; } .pf-t .hm-busy img { width: 16px; height: 16px; border-radius: 50%; background: #f3ead6; box-shadow: 0 0 0 1.5px #fff; margin-right: -5px; }   /* кто ещё здесь работает */
+  .hm-busy { position: absolute; top: -8px; left: 3px; display: flex; gap: 1px; z-index: 1; }   /* над краем плитки — значок станции не закрывают */
+  .hm-busy .hm-n { min-width: 16px; height: 16px; font-size: 10px; line-height: 16px; padding: 0 2px; } .pf-t .hm-busy img { width: 16px; height: 16px; border-radius: 50%; background: #f3ead6; box-shadow: 0 0 0 1.5px #fff; margin-right: -5px; }   /* кто ещё здесь работает */
   .hm-sub { margin: 7px 0 4px; font-size: 13px; font-weight: 800; color: #5a4632; } .hm-sub small { font-weight: 600; color: #8a7660; }
   .hm-zones { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
   .hm-z { display: flex; flex-direction: column; gap: 2px; align-items: center; justify-content: center; height: 62px; border-radius: 14px; border: 2.5px solid #ead9b5; background: #fff; box-shadow: 0 2px 0 #d9c49c; font: inherit; color: #4a2e18; }
@@ -1232,7 +1239,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-20.176';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-20.177';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1717,7 +1724,22 @@ const homeMult = () => 1 + (S.up.house || 0) * 0.2 + (picnicOn() ? 0.15 : 0);   
 const patience = (n = 1) => 50 + S.up.bench * 8 + (n - 1) * 6;   // терпение тикает только в очереди; большая корзинка — ждут чуть дольше
 const sellPrice = c => Math.round(GOODS[c].price * priceMult() * seasonPrice(c) * wxPrice(c));
 // Экономика: за день (S.stats) и за всё время (S.life) — выручка по товарам и траты по статьям
-const SPEND = { seeds: '🌱 Семена', up: '⬆️ Улучшения', crops: '🔓 Новые культуры', trees: '🌳 Саженцы' };
+const SPEND = { seeds: '🌱 Семена', up: '⬆️ Улучшения', crops: '🔓 Новые культуры', trees: '🌳 Саженцы', wage: '👷 Зарплата' };
+// 👷 Зарплата: вечером каждому, кто работал (на «Отдыхе» и в воскресенье — бесплатно): 4% средней выручки за неделю, не меньше 15.
+// Денег не хватило — долгов нет: неоплаченный завтра работает на четверть медленнее (💰 над головой)
+const WAGE = { share: .04, min: 15, slow: .75 };
+const wageAvg = () => { const h = (S.hist || []).slice(-7).map(x => x.e || 0).filter(e => e > 0); const all = [...h, S.stats.earned || 0].filter(e => e > 0); return all.length ? all.reduce((a, b) => a + b, 0) / all.length : 0; };
+const wageEach = () => Math.max(WAGE.min, Math.round(wageAvg() * WAGE.share));
+const wageWorkers = () => S.helpers.map((c, i) => c.stations.length ? i : -1).filter(i => i >= 0);
+const unpaid = i => (S.wageCut || []).includes(i) && S.wageCutDay === S.day;
+function payWages() {   // вечером, после закрытия дня
+  if (isRest() || !S.helpers.length) return null;
+  const each = wageEach(), who = wageWorkers(); if (!who.length) return null;
+  const paid = [], cut = [];
+  for (const i of who) { if (S.coins >= each) { spend(each, 'wage'); paid.push(i); } else cut.push(i); }
+  S.wageCut = cut; S.wageCutDay = S.day + 1;
+  return { each, paid: paid.length, sum: paid.length * each, cut: cut.length };
+}
 function spend(n, cat) {
   S.coins -= n;
   for (const o of [S.stats, S.life]) { o.spent ??= {}; o.spent[cat] = (o.spent[cat] || 0) + n; }
@@ -1770,6 +1792,7 @@ function endDay() {
   S.stats.missed += waiting.length + (S.toSpawn - S.spawned);
   waiting.forEach(v => leave(v, null));
   S.night = true;
+  const wage = payWages(); if (wage) setTimeout(() => toast(wage.cut ? `👷 Зарплата: −${wage.sum}💰 · ${wage.cut} ${wage.cut === 1 ? 'помощнику' : 'помощникам'} не хватило — завтра работают медленнее` : `👷 Зарплата помощникам: −${wage.sum}💰 (${wage.paid} × ${wage.each})`), 1200);
   goalEv('day', null, S.stats.earned || 0); if (fairRes) goalEv('fair', null, fairRes.money || 0);
   if (S.up.hay && cows() && cowFoodStock() >= feedPerCow()) setTimeout(() => { if (S.night && cowsFedTomorrow() < cows()) { feedCows('hay'); refreshSheet(); } }, 900);   // сеновал кормит сам
   save(); renderUI();
@@ -2588,7 +2611,7 @@ function openDairy() {
   const k = 'dairy', P = PROD[k], st = S.prod[k], K = kettles(); prodOpen = k;
   if (kSel >= K) kSel = -1;
   const hot = S.started && !S.night && sumO(st.out) < 20;
-  const helper = S.helpers.map((c, i) => c.stations.includes(k) ? i + 1 : 0).filter(Boolean);
+  const helper = S.helpers.map((c, i) => c.stations.includes(k) ? hName(i) : '').filter(Boolean);
   const milk = S.inv.milk || 0, cap = kCap();
   let h = `<h2>${P.ico} ${P.name}</h2><div class="fpinfo">У каждого котла своя очередь. Тапни на котёл — откроется его очередь, потом тапни рецепт: порция встанет в очередь этого котла, молоко сразу уходит со склада. Тап по порции убирает её — молоко вернётся. Ставить порции можно и ночью, а котлы работают только днём. ✕ на котле отменяет порцию в нём — молоко вернётся. Готовое лежит здесь, пока его не заберут.</div>${prodTabs('dairy')}
     <div class="oven dh${S.up.dhouse ? '' : ' cz'}${hot ? ' hot' : ''}"><div class="ov-row">`;
@@ -2622,7 +2645,7 @@ function openDairy() {
     h += `<div class="pkeep"><div><b>Оставлять для пекарни ${GOODS[g].e}</b><small>покупатели не возьмут последние ${kp} ${GOODS[g].e}</small></div><div class="stp"><button onclick="setKeep('${g}', -5)">−</button><b>${kp}</b><button onclick="setKeep('${g}', 5)">+</button></div></div>`;
   }
   h += holdBlock(dairyRecipes(), helper, 'варит то, чего меньше нормы, и забирает готовое');
-  if (!helper.length) h += `<div class="phelp">${helper.length ? `👷 Помощник ${helper.join(', ')} забирает готовое` : `👷 Помощник не назначен — ${S.up.helper ? '<a href="#" onclick="event.preventDefault();openHelpers()">назначить в «Команде»</a>' : 'наймёшь — поставь его на станцию ' + P.ico}`}</div>`;
+  if (!helper.length) h += `<div class="phelp">${helper.length ? `👷 ${helper.join(', ')} ${helper.length > 1 ? 'забирают' : 'забирает'} готовое` : `👷 Помощник не назначен — ${S.up.helper ? '<a href="#" onclick="event.preventDefault();openHelpers()">назначить в «Команде»</a>' : 'наймёшь — поставь его на станцию ' + P.ico}`}</div>`;
   h += upList(['dairy', 'dairyBin', 'dhouse', 'churn'],
     upRow('dairy', S.up.dhouse ? 'Котлы' : 'Сыроварня', `🧀 за ${fmtMs(DAIRY.cheese.time / dairyRate('cheese'))}`, `за ${fmtMs(DAIRY.cheese.time / dairyRate('cheese', S.up.dairy + 1))}`, '🔥')
     + upRow('dairyBin', 'Чаны', `очередь котла ${cap} мест`, `${4 + 2 * (S.up.dairyBin + 1)} мест`)
@@ -2657,7 +2680,7 @@ function openProd(k) {
   const P = PROD[k], st = S.prod[k], inE = GOODS[P.in].e, outE = GOODS[P.out].e;
   prodOpen = k;
   const loadN = Math.min(prodCap(k) - st.q, Math.floor((S.inv[P.in] || 0) / P.n));
-  const helper = S.helpers.map((c, i) => c.stations.includes(k) ? i + 1 : 0).filter(Boolean);
+  const helper = S.helpers.map((c, i) => c.stations.includes(k) ? hName(i) : '').filter(Boolean);
   let h = `<h2>${P.ico} ${P.name}</h2><div class="fpinfo">${P.n} ${inE} со склада превращаются в 1 ${outE}. Засыпай сырьё ночью — днём цех работает, пока не кончится очередь. Готовое лежит в цеху, пока его не заберут (ты или помощник).</div>${prodTabs(k)}
     <div class="chain">
       <div class="ch"><span class="ce">${inE}</span><b>${S.inv[P.in] || 0}</b><small>на складе</small></div><i class="arr">›</i>
@@ -2669,7 +2692,7 @@ function openProd(k) {
     const kp = S.keep?.[P.out] || 0;
     h += `<div class="pkeep"><div><b>Оставлять для пекарни</b><small>покупатели не возьмут последние ${kp} ${outE}</small></div><div class="stp"><button onclick="setKeep('${P.out}', -5)">−</button><b>${kp}</b><button onclick="setKeep('${P.out}', 5)">+</button></div></div>`;
   }
-  h += `<div class="phelp">${helper.length ? `👷 Загружает и забирает помощник ${helper.join(', ')}` : '👷 Помощник не назначен — <a href="#" onclick="event.preventDefault();openHelpers()">назначить в «Команде»</a>'}</div>`;
+  h += `<div class="phelp">${helper.length ? `👷 Загружает и забирает: ${helper.join(', ')}` : '👷 Помощник не назначен — <a href="#" onclick="event.preventDefault();openHelpers()">назначить в «Команде»</a>'}</div>`;
   const ldN = S.night ? loadN : 0;
   h += `<button class="wide" style="width:100%;margin-top:8px" ${ldN > 0 || st.out ? '' : 'disabled'} onclick="${S.night ? `prodAct('${k}'); refreshSheet()` : `closeNight(); setTasks([{ ...PROD['${k}'].spot, fn: () => prodAct('${k}') }])`}">${ldN > 0 ? `Засыпать ${ldN * P.n} ${inE}` : ''}${ldN > 0 && st.out ? ' · ' : ''}${st.out ? `${ldN > 0 ? 'забрать' : 'Забрать'} ${st.out} ${outE}` : ''}${!(ldN > 0) && !st.out ? (!S.night ? `🌙 Засыпать ${inE} — ночью` : st.q >= prodCap(k) ? 'Очередь полная' : `Нужно хотя бы ${P.n} ${inE}`) : ''}</button>${!S.night && st.out ? `<div style="font-size:12px;color:#7a6650;margin-top:4px">🌙 Засыпать ${inE} — ночью</div>` : ''}`;
   // улучшения цеха: «сейчас → будет»
@@ -2767,7 +2790,7 @@ const bakeWant = () => holdPick(Object.keys(BAKE), r => canMake(r) && bakeHave(r
 function setHold(g, d) { S.hold[g] = Math.max(0, Math.min(99, (S.hold[g] || 0) + d)); save(); refreshSheet(); }
 function holdBlock(list, helper, place) {   // список рецептов со счётчиком «держать на складе»
   if (!helper.length) return '';
-  return `<div class="hold"><div class="hold-t">👷 Помощник ${helper.join(', ')} держит на складе <small>${place}</small></div>${list.map(g => `<div class="hold-r"><span class="he">${GOODS[g].e}</span><b>${GOODS[g].name}<small>на складе ${S.inv[g] || 0}${holdHave(g) > (S.inv[g] || 0) ? ` · в работе ${holdHave(g) - (S.inv[g] || 0)}` : ''}</small></b><div class="stp"><button onclick="setHold('${g}', -1)">−</button><b>${S.hold[g] || 0}</b><button onclick="setHold('${g}', 1)">+</button></div></div>`).join('')}</div>`;
+  return `<div class="hold"><div class="hold-t">👷 ${helper.join(', ')} ${helper.length > 1 ? 'держат' : 'держит'} на складе <small>${place}</small></div>${list.map(g => `<div class="hold-r"><span class="he">${GOODS[g].e}</span><b>${GOODS[g].name}<small>на складе ${S.inv[g] || 0}${holdHave(g) > (S.inv[g] || 0) ? ` · в работе ${holdHave(g) - (S.inv[g] || 0)}` : ''}</small></b><div class="stp"><button onclick="setHold('${g}', -1)">−</button><b>${S.hold[g] || 0}</b><button onclick="setHold('${g}', 1)">+</button></div></div>`).join('')}</div>`;
 }
 function bakeAct(byHelper) {   // забрать готовое и поставить в печь выбранный рецепт
   if (!S.up.bakery) return false;
@@ -2852,7 +2875,7 @@ function openBakery() {
   const st = S.bake, q = st.q, ov = bakeState(), sp = S.up.bakery || 1, busy = st.ov.filter(Boolean).length;
   const cnt = o => Object.entries(o).filter(([, k]) => k).map(([g, k]) => `${k} ${GOODS[g].e}`).join('  ');
   const sel = BAKE[st.sel] ? st.sel : 'bread', perDay = r => Math.floor(OVENS * DAY_LEN / (BAKE[r].time / sp) * trayN());
-  const helper = S.helpers.map((c, i) => c.stations.includes('bakery') ? i + 1 : 0).filter(Boolean);
+  const helper = S.helpers.map((c, i) => c.stations.includes('bakery') ? hName(i) : '').filter(Boolean);
   let h = `<h2>🏤 Пекарня</h2><div class="fpinfo">Добавь рецепт — продукты сразу уходят со склада в очередь, а печь берёт из очереди в свободное отделение. Печь работает только днём. Нажми на штуку в печи или в очереди, чтобы убрать её — продукты вернутся на склад. Готовое лежит в пекарне (до 20 штук), пока его не заберут.</div>${prodTabs('bakery')}
     <div class="oven${ov.hot ? ' hot' : ''}"><div class="ov-row">`;
   st.ov.forEach((o, i) => {
@@ -3364,17 +3387,28 @@ function updateVisitors(dt) {
 
 // ---------- Помощники ----------
 const HELPER_LOOKS = [
-  { shirt: '#4caf6a', shirtDark: '#3a8a52', pants: '#6b4a2e', skin: '#d9a37a', hair: '#2b1d14', hat: 'cap', capColor: '#2f7d46' },
-  { shirt: '#f0b429', shirtDark: '#c99418', pants: '#3b4a6b', skin: '#f6d5b8', hair: '#c9a15a', hat: 'cap', capColor: '#e0554a' },
-  { shirt: '#9b7be0', shirtDark: '#7c60bd', pants: '#2f2f3a', skin: '#a8714a', hair: '#111111', hat: 'beanie', capColor: '#e0554a' },
-  { shirt: '#e0554a', shirtDark: '#b8433a', pants: '#3b4a6b', skin: '#f2c49b', hair: '#6b3e1f', hat: 'bandana', capColor: '#3b6fc4' },
-  { shirt: '#4fb6c4', shirtDark: '#3a909c', pants: '#5a4632', skin: '#7a4f33', hair: '#2b1d14', hat: 'cap', capColor: '#f0b429' },
-  { shirt: '#f4f1ea', shirtDark: '#d8d2c4', pants: '#2f7d46', skin: '#d9a37a', hair: '#b5462f', hat: 'cap', capColor: '#9b7be0' },
-  { shirt: '#5b8def', shirtDark: '#4570c4', pants: '#5a4632', skin: '#f2c49b', hair: '#2b1d14', hat: 'beanie', capColor: '#f0b429' },
-  { shirt: '#e07ab8', shirtDark: '#bb5f96', pants: '#2f2f3a', skin: '#a8714a', hair: '#111111', hat: 'cap', capColor: '#4fb6c4' },
-  { shirt: '#ef8d3a', shirtDark: '#c9722b', pants: '#3b4a6b', skin: '#f6d5b8', hair: '#b5462f', hat: 'bandana', capColor: '#3e9b3a' },
-  { shirt: '#8a6a4a', shirtDark: '#6e5339', pants: '#2f7d46', skin: '#7a4f33', hair: '#2b1d14', hat: 'beanie', capColor: '#5b8def' },
+  { shirt: '#4caf6a', shirtDark: '#3a8a52', pants: '#6b4a2e', skin: '#d9a37a', hair: '#2b1d14', hat: 'cap', capColor: '#3a8a52' },
+  { shirt: '#f0b429', shirtDark: '#c99418', pants: '#3b4a6b', skin: '#f6d5b8', hair: '#c9a15a', hat: 'cap', capColor: '#d99e1c' },
+  { shirt: '#9b7be0', shirtDark: '#7c60bd', pants: '#2f2f3a', skin: '#a8714a', hair: '#111111', hat: 'cap', capColor: '#8466cc' },
+  { shirt: '#e0554a', shirtDark: '#b8433a', pants: '#3b4a6b', skin: '#f2c49b', hair: '#6b3e1f', hat: 'bandana', capColor: '#c4473d' },
+  { shirt: '#4fb6c4', shirtDark: '#3a909c', pants: '#5a4632', skin: '#7a4f33', hair: '#2b1d14', hat: 'cap', capColor: '#3c9aa7' },
+  { shirt: '#9cc03a', shirtDark: '#7d9a2e', pants: '#2f7d46', skin: '#d9a37a', hair: '#b5462f', hat: 'cap', capColor: '#86a830' },
+  { shirt: '#5b8def', shirtDark: '#4570c4', pants: '#5a4632', skin: '#f2c49b', hair: '#2b1d14', hat: 'bandana', capColor: '#4a78d6' },
+  { shirt: '#e07ab8', shirtDark: '#bb5f96', pants: '#2f2f3a', skin: '#a8714a', hair: '#111111', hat: 'cap', capColor: '#c9659f' },
+  { shirt: '#ef8d3a', shirtDark: '#c9722b', pants: '#3b4a6b', skin: '#f6d5b8', hair: '#b5462f', hat: 'bandana', capColor: '#d87a2f' },
+  { shirt: '#8a6a4a', shirtDark: '#6e5339', pants: '#2f7d46', skin: '#7a4f33', hair: '#2b1d14', hat: 'cap', capColor: '#76593d' },
 ];
+const HELPER_NAMES = ['Ваня', 'Настя', 'Гриша', 'Оля', 'Коля', 'Даша', 'Аня', 'Таня', 'Сережа', 'Лиза'];
+const hName = i => (S.helpers[i]?.name || '').trim() || HELPER_NAMES[i % HELPER_NAMES.length];
+const hInit = i => { const n = hName(i), same = S.helpers.some((c, j) => j !== i && hName(j)[0]?.toUpperCase() === n[0]?.toUpperCase()); return same ? n.slice(0, 2) : n[0]; };   // первая буква; если у кого-то такая же — две
+// зимой все в вязаных шапках и шарфах (цвета своей одежды); в остальное время — кепка или бандана
+const HL_WINTER = new Map();
+const hLook = i => { const L = HELPER_LOOKS[i % HELPER_LOOKS.length]; if (season().id !== 'winter') return L;
+  if (!HL_WINTER.has(L)) HL_WINTER.set(L, { ...L, hat: 'beanie', scarf: L.capColor }); return HL_WINTER.get(L); };
+function renameHelper(i, v) { v = String(v).replace(/\s+/g, ' ').trim().slice(0, 12); S.helpers[i].name = v; save(); openHelpers(); }
+function editHelperName(i) { const el = document.querySelector('#sheet .hm-name'); if (!el) return;
+  el.outerHTML = `<input class="hm-name-in" maxlength="12" value="${esc(hName(i))}" onblur="renameHelper(${i}, this.value)" onkeydown="if(event.key==='Enter')this.blur()">`;
+  const inp = document.querySelector('#sheet .hm-name-in'); inp.focus(); inp.select(); }
 const HOME = at('home', 3, 4);   // у двери дома
 const STATIONS = {
   field:   { ico: '🚜', name: 'Поле',     idle: at('path', 5, 3),   hint: 'Собирает созревшее на грядках' },
@@ -3397,7 +3431,7 @@ function syncHelpers() {
   }
   while (helpers.length < S.up.helper) {
     const i = helpers.length;
-    helpers.push({ id: i, x: HOME.x + .5 + i * .3, y: HOME.y + .5, path: [], target: null, phase: 0, moving: false, flip: false, work: 0, think: 0, sellT: 0, look: HELPER_LOOKS[i % HELPER_LOOKS.length] });
+    helpers.push({ id: i, x: HOME.x + .5 + i * .3, y: HOME.y + .5, path: [], target: null, phase: 0, moving: false, flip: false, work: 0, think: 0, sellT: 0, get look() { return hLook(this.id); } });
   }
 }
 // свободный участок: сначала тот, где больше открытых грядок
@@ -3510,14 +3544,14 @@ function updateHelper(h, dt) {
   if (h.work > 0) { h.work -= dt; h.moving = false; return; }
   if (h.path.length) {
     const [tx, ty] = h.path[0];
-    if (stepToward(h, tx + .5, ty + .5, 2.4 * PEOPLE_SLOW * homeMult(), dt)) h.path.shift();
+    if (stepToward(h, tx + .5, ty + .5, 2.4 * PEOPLE_SLOW * homeMult() * (unpaid(h.id) ? WAGE.slow : 1), dt)) h.path.shift();
     h.moving = true; h.phase += dt * 12; return;
   }
   h.moving = false;
   const cfg = S.helpers[h.id] || { stations: [] };
   if (h.target) {                          // дошёл до места работы
     const job = h.target; h.target = null;
-    if (job.act()) h.work = 0.45 / PEOPLE_SLOW / homeMult();
+    if (job.act()) h.work = 0.45 / PEOPLE_SLOW / homeMult() / (unpaid(h.id) ? WAGE.slow : 1);
     if (job.ord != null) { h.cur = job.ord + 1; h.lastPlot = true; h.bedRun = (h.bedRun || 0) + 1; } else { h.lastPlot = false; h.bedRun = 0; (h.seen ||= {})[job.k] = (h.tick = (h.tick || 0) + 1); } h.lastK = job.k;
     h.think = 0.5;   // пауза полсекунды перед следующим делом
     return;
@@ -3552,7 +3586,7 @@ function updateHelper(h, dt) {
   const claimed = new Set(helpers.filter(o => o.target).map(o => o.target.x + ',' + o.target.y));
   if (tasks[0]) claimed.add(tasks[0].x + ',' + tasks[0].y);
   const jobs = helperJobs(cfg);
-  h.broke = !!jobs.broke;
+  h.broke = !!jobs.broke || unpaid(h.id);
   // грядки — по кругу от той, где был в последний раз (иначе быстрые 🌻 рядом не дают дойти до дальних);
   // остальные станции — ближайшие; после грядки сначала заглядывает на другие станции
   const free = jobs.filter(j => !claimed.has(j.x + ',' + j.y)), cur = h.cur || 0;
@@ -3604,17 +3638,18 @@ function setHelper(i, field, val) {
   const h = helpers[i]; if (h) { h.target = null; h.path = []; h.think = 0; }
   save(); renderUI(); openHelpers();
 }
-const hmNum = j => `<b class="hm-n" style="background:${HELPER_LOOKS[j % HELPER_LOOKS.length].shirt}">${j + 1}</b>`;   // номер помощника кружком цвета его рубашки
+const hmCol = j => HELPER_LOOKS[j % HELPER_LOOKS.length].shirtDark;   // цвет помощника — его одежда
+const hmNum = j => `<b class="hm-n" style="background:${hmCol(j)}">${hInit(j)}</b>`;   // первая буква имени кружком цвета одежды
 let helperSel = 0;   // какой помощник открыт в окне «Команда»
 function selHelper(i) { helperSel = i; openHelpers(); }
 function openHelpers() {
   if (helperSel >= S.helpers.length) helperSel = 0;
   const i = helperSel, cfg = S.helpers[i], L = HELPER_LOOKS[i % HELPER_LOOKS.length];
   const icons = c => c.stations.length ? c.stations.map(k => STATIONS[k].ico).join('') : '😴';
-  let h = `<h2>👥 Команда</h2><div class="fpinfo">Выбери помощника и отметь станции — он сам ходит между ними. Лавка всегда в приоритете. На поле каждый работает на своих участках — номера участков видны на грядках.</div>`;
-  h += `<div class="hm-tabs">${S.helpers.map((c, k) => `<button class="hm-tab${k === i ? ' on' : ''}" onclick="selHelper(${k})"><img src="${lookImg(HELPER_LOOKS[k % HELPER_LOOKS.length], 'head')}" alt=""><b>№${k + 1}</b><small>${icons(c)}</small></button>`).join('')}</div>`;
+  let h = `<h2>👥 Команда</h2><div class="fpinfo">Выбери помощника и отметь станции — он сам ходит между ними. Лавка всегда в приоритете. На поле каждый работает на своих участках — номера участков видны на грядках.<br><br>👷 Зарплата — вечером, каждому работающему: ${wageEach()}💰 в день (4% средней выручки за неделю). «Отдых» и воскресенье — бесплатно. Не хватило денег — завтра этот помощник работает на четверть медленнее.</div>`;
+  h += `<div class="hm-tabs">${S.helpers.map((c, k) => `<button class="hm-tab${k === i ? ' on' : ''}" onclick="selHelper(${k})"><span class="hm-bub">${c.stations.length ? STATIONS[c.stations[0]].ico : '😴'}${c.stations.length > 1 ? `<i>+${c.stations.length - 1}</i>` : ''}</span><img src="${lookImg(hLook(k), 'full')}" alt=""><b class="hm-nm" style="background:${hmCol(k)}">${hName(k)}</b></button>`).join('')}</div>`;
   // станции — плитками
-  h += `<div class="hm-sub">🏠 Где работает помощник ${i + 1}</div><div class="hm-g">`;
+  h += `<div class="hm-sub">🏠 Где работает <button class="hm-name" onclick="editHelperName(${i})">${esc(hName(i))} ✏️</button></div><div class="hm-g">`;
   for (const [k, st] of Object.entries(STATIONS)) {
     if (stationOff(k) && !cfg.stations.includes(k)) continue;
     const on = cfg.stations.includes(k), own = S.helpers.map((c, j) => j !== i && c.stations.includes(k) ? j : -1).filter(j => j >= 0);
@@ -3626,7 +3661,7 @@ function openHelpers() {
     h += `<div class="hm-sub">🚜 Участки поля <small>— по 6 грядок</small></div><div class="hm-zones">`;
     ZONES.forEach((z, k) => {
       const n = S.plots.filter((p, j) => zoneOf(j) === k).length, own = zoneOwner(k), mine = cfg.zones.includes(k);
-      h += `<button class="hm-z${mine ? ' on' : ''}${n ? '' : ' lock'}" ${n ? '' : 'disabled'} onclick="setZone(${i},${k})"><b>№${k + 1}</b>${!n ? '<small>🔒 закрыт</small>' : own >= 0 && own !== i ? `<span class="hm-zo">занят ${hmNum(own)}</span>` : mine ? '<small>✓</small>' : '<small>свободен</small>'}</button>`;
+      h += `<button class="hm-z${mine ? ' on' : ''}${n ? '' : ' lock'}" ${n ? '' : 'disabled'} onclick="setZone(${i},${k})"><b>№${k + 1}</b>${!n ? '<small>🔒 закрыт</small>' : own >= 0 && own !== i ? `<span class="hm-zo">${hmNum(own)} ${hName(own)}</span>` : mine ? '<small>✓</small>' : '<small>свободен</small>'}</button>`;
     });
     h += `</div>${cfg.zones.length ? '' : '<div class="hm-warn">Выбери участок — без него помощник не работает на поле</div>'}`;
     h += `<div class="hm-sub">🚜 После сбора сажать <small>— семена за твои монеты</small></div>` + seedRow([
@@ -3640,6 +3675,7 @@ function openHelpers() {
   }
   if (cfg.stations.includes('coop') || cfg.stations.includes('barn'))
     h += `<button class="hm-sw${cfg.feed ? ' on' : ''}" onclick="setHelper(${i},'feed',${!cfg.feed})"><span><b>🌙 Кормить животных ночью</b><small>${cfg.feed ? 'сам кормит урожаем со склада' : 'кормишь ты — помощник только собирает'}</small></span><i></i></button>`;
+  { const wn = wageWorkers().length; h += `<div class="hm-wage">👷 Зарплата: ${wn ? `${wn} × ${wageEach()} = <b>${wn * wageEach()}💰</b> в день` : 'все отдыхают — сегодня 0💰'}</div>`; }   // внизу, чтобы не сдвигать настройки
   if (S.helpers.some(c => c.stations.includes('field'))) h += `<button class="hm-link" onclick="clearField()">🚜 Снять всех помощников с поля</button>`;
   const tx = $('sheet').dataset.view === 'helpers' ? document.querySelector('#sheet .hm-tabs')?.scrollLeft || 0 : 0;
   $('sheet').dataset.view = 'helpers'; $('sheet').innerHTML = h; $('overlay').classList.add('show');
@@ -6692,6 +6728,13 @@ function drawPerson(p, L, local) {
   ctx.fillStyle = 'rgba(255,255,255,.22)'; ctx.beginPath(); ctx.roundRect(-5.5, -26, 4, 10, 2); ctx.fill();   // блик на рубашке
   if (L.overalls) { R(-6, -19, 12, 8, 1.5, L.pants); ctx.fillStyle = L.pants; ctx.fillRect(-5, -27, 2.5, 8); ctx.fillRect(2.5, -27, 2.5, 8);
     circle(-3.8, -19.5, 1, '#f4d35e'); circle(3.8, -19.5, 1, '#f4d35e'); }
+  if (L.scarf) {   // шарф: светлый вязаный, в полоску цвета шапки — петля на шее и конец на груди (полоски — внутри контура)
+    const sc = [[-7.2, -29, 14.4, 4.6, 2.2], [-5.8, -25.6, 4, 9, 1.5]];
+    for (const [x, y, w, hh, r] of sc) { ctx.beginPath(); ctx.roundRect(x, y, w, hh, r); ctx.fillStyle = '#fff4dc'; ctx.fill(); }
+    ctx.save(); ctx.beginPath(); for (const [x, y, w, hh, r] of sc) ctx.roundRect(x, y, w, hh, r); ctx.clip(); ctx.fillStyle = L.scarf;
+    for (let x = -6; x < 8; x += 3.2) ctx.fillRect(x, -29, 1.5, 4.6); for (let y = -24; y < -16; y += 2.8) ctx.fillRect(-6, y, 5, 1.3); ctx.restore();
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.1; for (const [x, y, w, hh, r] of sc) { ctx.beginPath(); ctx.roundRect(x, y, w, hh, r); ctx.stroke(); }
+  }
   R(5, -25 - sw * 1.5 + work, 4, 11, 2, L.shirt);
   C(7, -14 - sw * 1.5 + work, 2.3, L.skin, 1);
   if (L.girl) {   // девочка: хвостик на затылке с бантиком (рисуется за головой)
