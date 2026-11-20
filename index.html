@@ -1192,7 +1192,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-20.162';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-20.163';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3194,7 +3194,7 @@ function gridPath(sx, sy, tx, ty) {
   return out.reverse();
 }
 let autoHarvest = false;   // «Собрать» в работе: после маршрута фермер проверяет, не созрело ли что-то ещё
-function setTasks(list, keepAuto) { if (!keepAuto) autoHarvest = false; tasks = list; path = []; nextTask(); }
+function setTasks(list, keepAuto) { if (!keepAuto) { autoHarvest = false; camFree = false; } tasks = list; path = []; nextTask(); }
 function nextTask() {
   while (tasks.length) {
     const t = tasks[0];
@@ -3696,7 +3696,7 @@ function clampCam() {
   cam.x = hw * 2 >= maxX - minX ? (minX + maxX) / 2 : Math.max(minX + hw, Math.min(maxX - hw, cam.x));
   cam.y = hh * 2 >= maxY - minY ? (minY + maxY) / 2 : Math.max(minY + hh, Math.min(maxY - hh, cam.y));
 }
-let camTarget = null;
+let camTarget = null, camFree = false;   // camFree — игрок сам сдвинул карту: не возвращаем камеру к фермеру до новой команды
 function focusOn(x, y) { const p = iso(x, y); camTarget = { x: p.x, y: p.y - 20 }; }
 function updateCam(dt) {
   if (camTarget) {   // плавный перелёт к новому улучшению
@@ -3705,8 +3705,9 @@ function updateCam(dt) {
     if (Math.hypot(camTarget.x - cam.x, camTarget.y - cam.y) < 2) camTarget = null;
     clampCam(); return;
   }
-  if (!P.moving) return;   // камера подтягивается, только когда фермер идёт к краю экрана
+  if (!P.moving || camFree) return;   // камера подтягивается, только когда фермер идёт к краю экрана (и карту не двигали рукой)
   const p = iso(P.x, P.y), mx = cw * 0.3 / zoom, my = ch * 0.28 / zoom;
+  if (Math.abs(p.x - cam.x) > cw * .55 / zoom || Math.abs(p.y - 20 - cam.y) > ch * .55 / zoom) return;   // фермер за краем экрана — не тащим камеру к нему, ждём, пока сам войдёт в кадр
   const k = Math.min(1, dt * 5);
   if (p.x < cam.x - mx) cam.x += (p.x + mx - cam.x) * k;
   if (p.x > cam.x + mx) cam.x += (p.x - mx - cam.x) * k;
@@ -3733,7 +3734,7 @@ cv.addEventListener('pointermove', e => {
   if (!down || pinch) return;
   const dx = e.clientX - down.x, dy = e.clientY - down.y;
   if (!down.moved && Math.hypot(dx, dy) > 8) down.moved = true;
-  if (down.moved) { cam.x = down.cx - dx / zoom; cam.y = down.cy - dy / zoom; clampCam(); }
+  if (down.moved) { camFree = true; cam.x = down.cx - dx / zoom; cam.y = down.cy - dy / zoom; clampCam(); }
 });
 cv.addEventListener('pointerup', e => {
   pointers.delete(e.pointerId);
