@@ -146,35 +146,37 @@
   .stw-t .rc-e { font-size: 30px; line-height: 1.1; } .stw-t b { font-size: 15px; } .stw-t small { font-size: 11px; color: #7a6650; text-align: center; line-height: 1.15; }
   .stw-t.zero { background: #f6efe0; box-shadow: none; } .stw-t.zero .rc-e { opacity: .45; } .stw-t.zero b { color: #a8957a; }
   .ty-rew { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; padding: 8px 10px; border-radius: 12px; background: #fff6d8; border: 2px dashed #e9b23a; font-size: 13px; color: #5a4632; } .ty-rew b { font-size: 13px; color: #7a5a1a; }
-  .hm-tabs { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 4px 4px 8px; margin: 0 -4px; -webkit-overflow-scrolling: touch; }
+  .hm-tabs { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px 4px 4px; margin: 0 -4px; -webkit-overflow-scrolling: touch; }
   .hm-tabs.r { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }   /* правее ещё помощники */
   .hm-tabs.l { -webkit-mask-image: linear-gradient(to right, transparent, #000 28px); mask-image: linear-gradient(to right, transparent, #000 28px); }
   .hm-tabs.l.r { -webkit-mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent); } .hm-tabs::-webkit-scrollbar { display: none; }
-  .hm-tab { flex: none; display: flex; flex-direction: column; align-items: center; gap: 0; width: 64px; padding: 4px 2px 5px; border-radius: 16px; border: 2.5px solid #ead9b5; background: #fff; box-shadow: 0 2px 0 #d9c49c; font: inherit; color: #4a2e18; }
-  .hm-tab img { width: 40px; height: 40px; } .hm-tab b { font-size: 13px; line-height: 1.1; } .hm-tab small { font-size: 12px; line-height: 1.2; min-height: 15px; white-space: nowrap; overflow: hidden; max-width: 58px; }
+  .hm-tab { flex: none; display: flex; flex-direction: column; align-items: center; gap: 0; width: 58px; padding: 3px 2px 4px; border-radius: 16px; border: 2.5px solid #ead9b5; background: #fff; box-shadow: 0 2px 0 #d9c49c; font: inherit; color: #4a2e18; }
+  .hm-tab img { width: 34px; height: 34px; } .hm-tab b { font-size: 13px; line-height: 1.1; } .hm-tab small { font-size: 12px; line-height: 1.2; min-height: 15px; white-space: nowrap; overflow: hidden; max-width: 58px; }
   .hm-tab small img.ic { width: 13px; height: 13px; }
   .hm-tab.on { border-color: #e9b23a; background: #fff6d8; box-shadow: 0 0 0 2px #f0b429; }
   .hm-card { padding: 6px 12px 6px 6px; } .hm-big { width: 70px; height: 105px; flex: none; } .hm-name { display: block; font-size: 20px; font-weight: 900; color: #4a2e18; margin-bottom: 4px; }
-  .hm-t { position: relative; min-height: 72px; } .hm-e { font-size: 28px; line-height: 1.15; }
-  .hm-ok { position: absolute; top: -7px; right: -6px; width: 22px; height: 22px; border-radius: 11px; background: #4caf50; color: #fff; font-style: normal; font-weight: 900; font-size: 13px; line-height: 22px; text-align: center; }
-  .hm-busy { position: absolute; top: 3px; left: 4px; display: flex; } .pf-t .hm-busy img { width: 20px; height: 20px; border-radius: 50%; background: #f3ead6; box-shadow: 0 0 0 1.5px #fff; margin-right: -5px; }   /* кто ещё здесь работает */
-  .hm-sub { margin: 8px 0 6px; font-size: 13px; font-weight: 800; color: #5a4632; } .hm-sub small { font-weight: 600; color: #8a7660; }
+  .hm-g { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+  .hm-t { position: relative; min-height: 0; height: 58px; padding: 2px 1px 3px; border-radius: 12px; } .hm-e { font-size: 24px; line-height: 1.1; } .hm-t small { font-size: 10px; line-height: 1.05; }
+  .hm-t .hm-e img.ic { width: 26px; height: 26px; }
+  .hm-ok { position: absolute; top: -6px; right: -5px; width: 18px; height: 18px; border-radius: 9px; line-height: 18px !important; font-size: 11px !important; background: #4caf50; color: #fff; font-style: normal; font-weight: 900; font-size: 13px; line-height: 22px; text-align: center; }
+  .hm-busy { position: absolute; top: 3px; left: 4px; display: flex; } .pf-t .hm-busy img { width: 16px; height: 16px; border-radius: 50%; background: #f3ead6; box-shadow: 0 0 0 1.5px #fff; margin-right: -5px; }   /* кто ещё здесь работает */
+  .hm-sub { margin: 7px 0 4px; font-size: 13px; font-weight: 800; color: #5a4632; } .hm-sub small { font-weight: 600; color: #8a7660; }
   .hm-zones { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-  .hm-z { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 58px; border-radius: 14px; border: 2.5px solid #ead9b5; background: #fff; box-shadow: 0 2px 0 #d9c49c; font: inherit; color: #4a2e18; }
-  .hm-z b { font-size: 17px; } .hm-z small { font-size: 11px; color: #8a7660; } .hm-z img { width: 24px; height: 24px; }
+  .hm-z { display: flex; flex-direction: row; gap: 4px; align-items: center; justify-content: center; height: 36px; border-radius: 14px; border: 2.5px solid #ead9b5; background: #fff; box-shadow: 0 2px 0 #d9c49c; font: inherit; color: #4a2e18; }
+  .hm-z b { font-size: 15px; } .hm-z small { font-size: 11px; color: #8a7660; } .hm-z img { width: 20px; height: 20px; }
   .hm-z.on { border-color: #e9b23a; background: #fff6d8; box-shadow: 0 0 0 2px #f0b429; } .hm-z.on small { color: #2f7d2c; font-weight: 900; font-size: 14px; }
   .hm-z.lock { background: #efe7d6; border-style: dashed; box-shadow: none; opacity: .7; }
   .hm-warn { margin-top: 6px; font-size: 12px; font-weight: 800; color: #c0392b; }
   .hm-row { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 7px 2px 3px; margin-top: -7px; } .hm-row::-webkit-scrollbar { display: none; }
-  .hm-sd { flex: none; width: 60px; height: 66px; border-radius: 16px; background: #fff; border: 2.5px solid #ead9b5; box-shadow: 0 2px 0 #d9c49c; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 2px; font: inherit; color: #4a2e18; }
-  .hm-sd span { font-size: 26px; line-height: 1.1; } .hm-sd small { font-size: 11px; font-weight: 900; line-height: 1.1; text-align: center; }
+  .hm-sd { flex: none; width: 52px; height: 50px; border-radius: 16px; background: #fff; border: 2.5px solid #ead9b5; box-shadow: 0 2px 0 #d9c49c; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 2px; font: inherit; color: #4a2e18; }
+  .hm-sd span { font-size: 22px; line-height: 1.1; } .hm-sd small { font-size: 11px; font-weight: 900; line-height: 1.1; text-align: center; }
   .hm-sd.on { border-color: #f4a92b; background: #fff1d1; box-shadow: 0 0 0 2px #f0b429; }
-  .hm-sw { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border-radius: 16px; border: 2.5px solid #ead9b5; background: #fff; font: inherit; color: #4a2e18; text-align: left; }
+  .hm-sw { display: flex; align-items: center; gap: 10px; width: 100%; margin-top: 10px; padding: 7px 12px; border-radius: 16px; border: 2.5px solid #ead9b5; background: #fff; font: inherit; color: #4a2e18; text-align: left; }
   .hm-sw span { flex: 1; display: flex; flex-direction: column; } .hm-sw b { font-size: 15px; } .hm-sw small { font-size: 12px; color: #7a6650; }
   .hm-sw i { flex: none; position: relative; width: 46px; height: 28px; border-radius: 14px; background: #d9cdb4; transition: background .15s; }
   .hm-sw i::after { content: ''; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 11px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: left .15s; }
   .hm-sw.on i { background: #4caf50; } .hm-sw.on i::after { left: 21px; }
-  .hm-link { display: block; margin: 12px auto 0; padding: 4px 8px; border: none; background: none; font: inherit; font-size: 13px; font-weight: 800; color: #b0503a; text-decoration: underline; }
+  .hm-link { display: block; margin: 8px auto 0; padding: 4px 8px; border: none; background: none; font: inherit; font-size: 13px; font-weight: 800; color: #b0503a; text-decoration: underline; }
   .stw-t { position: relative; } .stw-t.fav { border-color: #e9b23a; background: #fff6d8; box-shadow: 0 2px 0 #e0b65a; } .stw-t .fv { position: absolute; top: 2px; right: 4px; font-style: normal; font-size: 13px; }
   .stw-favbar { display: flex; align-items: center; gap: 6px; margin: 4px 0 2px; padding: 6px 10px; border-radius: 12px; background: #fff6d8; border: 2px dashed #e9b23a; font-size: 13px; font-weight: 800; color: #7a5a1a; }
   .stw-favbar b { margin-left: auto; font-size: 15px; }
@@ -1227,7 +1229,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-20.171';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-20.173';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -2488,7 +2490,7 @@ let kSel = -1;   // открытый котёл (его очередь и рец
 // помощник в Молочном доме — как в пекарне: варит то, чего на складе меньше нормы (порции — в котёл с самой короткой очередью)
 const dairyRecipes = () => Object.keys(DAIRY).filter(r => recipeShown(r) && dairyOk(r) && (!DAIRY[r].in || canMake(r, true)));
 const dairyFreeK = () => S.prod.dairy.k.slice(0, kettles()).filter(o => o.q.length < kCap()).sort((a, b) => a.q.length + !!a.cur - b.q.length - !!b.cur)[0] || null;
-const dairyWant = () => dairyFreeK() ? holdPick(dairyRecipes(), r => dHave(r) >= 1) : null;
+const dairyWant = () => dairyFreeK() ? holdPick(dairyRecipes(), r => dHave(r) >= 1, kettles() * (kCap() + 1)) : null;
 function dairyLoad() {   // только помощник; игрок ставит порции сам в окне дома
   let n = 0, r, o;
   while (n < 40 && (r = dairyWant()) && (o = dairyFreeK())) {
@@ -2627,7 +2629,7 @@ function openDairy() {
 }
 setInterval(() => {   // окно молочного дома открыто — полоски живые, при переменах перерисовываем
   const sh = $('sheet'); if (sh.dataset.view !== 'prod:dairy' || !$('overlay').classList.contains('show')) return;
-  if (sh.dataset.sig !== dairySig()) { const top = sh.scrollTop; openDairy(); sh.scrollTop = top; return; }
+  if (sh.dataset.sig !== dairySig()) { if (sheetBusy()) return; const top = sh.scrollTop; openDairy(); sh.scrollTop = top; return; }
   S.prod.dairy.k.forEach((o, i) => { const b = $('dkBar' + i), t = $('dkT' + i); if (!b || !o.cur) return; b.style.width = Math.min(100, 100 * o.cur.t / DAIRY[o.cur.r].time) + '%'; t.textContent = 'ещё ' + fmtSec(kLeft(o)); });
 }, 500);
 
@@ -2686,7 +2688,7 @@ setInterval(() => {
   const v = $('sheet').dataset.view || ''; if (!v.startsWith('prod:') || !$('overlay').classList.contains('show')) return;
   const k = v.slice(5), P = PROD[k], st = S.prod[k]; if (!P || !$('pdBar')) return;
   $('pdBar').style.width = (st.q ? Math.min(100, st.t / P.time * 100) : 0) + '%';
-  if ($('pdQ').textContent !== String(st.q) || $('pdOut').textContent !== String(st.out)) { refreshSheet(); return; }
+  if ($('pdQ').textContent !== String(st.q) || $('pdOut').textContent !== String(st.out)) { if (!sheetBusy()) refreshSheet(); return; }
   $('pdEta').textContent = st.q ? `очередь — ещё ${fmtMs(((st.q - 1) * P.time + P.time - st.t) / S.up[k])}` : 'очередь пуста';
 }, 500);
 
@@ -2752,10 +2754,13 @@ function holdHave(g) {
   return n;
 }
 const holdGap = g => (S.hold[g] || 0) - holdHave(g);
-function holdPick(list, can) {   // самый «недостающий» по доле от нормы
-  return list.filter(g => holdGap(g) > 0 && can(g)).sort((a, b) => holdGap(b) / S.hold[b] - holdGap(a) / S.hold[a])[0] || null;
+function holdPick(list, can, cap = 99) {   // по очереди: из того, что ниже нормы, — то, чего меньше всего в работе (при равенстве — чего больше не хватает)
+  const work = g => holdHave(g) - (S.inv[g] || 0);
+  let c = list.filter(g => holdGap(g) > 0 && can(g));
+  if (c.length > 1) { const fair = c.filter(g => work(g) < cap / 2); if (fair.length) c = fair; }   // пока не хватает и другого — одному товару не больше половины очереди
+  return c.sort((a, b) => work(a) - work(b) || holdGap(b) / S.hold[b] - holdGap(a) / S.hold[a])[0] || null;
 }
-const bakeWant = () => holdPick(Object.keys(BAKE), r => canMake(r) && bakeHave(r) > 0 && bakeRoom(r, 1) > 0);
+const bakeWant = () => holdPick(Object.keys(BAKE), r => canMake(r) && bakeHave(r) > 0 && bakeRoom(r, 1) > 0, BAKE_CAP + OVENS * trayN());
 function setHold(g, d) { S.hold[g] = Math.max(0, Math.min(99, (S.hold[g] || 0) + d)); save(); refreshSheet(); }
 function holdBlock(list, helper, place) {   // список рецептов со счётчиком «держать на складе»
   if (!helper.length) return '';
@@ -2831,7 +2836,7 @@ function bakeSig() { const st = S.bake; return [JSON.stringify(S.hold), st.q.joi
 function bakeLive() {   // окно открыто — двигаем полоски, перерисовываем при переменах
   const sh = $('sheet');
   if (sh.dataset.view !== 'bakery' || !$('overlay').classList.contains('show')) return;
-  if (sh.dataset.sig !== bakeSig()) { const top = sh.scrollTop; openBakery(); sh.scrollTop = top; return; }
+  if (sh.dataset.sig !== bakeSig()) { if (sheetBusy()) return; const top = sh.scrollTop; openBakery(); sh.scrollTop = top; return; }
   S.bake.ov.forEach((o, i) => {
     const bar = $('ovBar' + i), tt = $('ovT' + i);
     if (!o || !bar) return;
@@ -3166,6 +3171,7 @@ function drawUpBadges(t) {
 // тап по самому зданию — то же, что по значку над ним: у здания с несколькими улучшениями — их список
 function openUpPlace(key) {
   const pk = Object.keys(PROD).find(k => k === key || PROD_BIN[k] === key || (k === 'mill' && key === 'stones') || (k === 'dairy' && (key === 'dhouse' || key === 'churn'))); if (pk && S.up[pk]) { openProd(pk); return; }   // построенный цех — его окно
+  if ((key === 'bakery' || key === 'trays') && S.up.bakery) { openBakery(); return; }   // построенная пекарня — её окно (улучшения в нём же)
   const g = BADGE_GROUPS.find(g => g.keys.includes(key));
   g ? openUpGroup(g) : openUpgrade(key);
 }
@@ -3604,7 +3610,7 @@ function openHelpers() {
   let h = `<h2>👥 Команда</h2><div class="fpinfo">Выбери помощника и отметь станции — он сам ходит между ними. Лавка всегда в приоритете. На поле каждый работает на своих участках — номера участков видны на грядках.</div>`;
   h += `<div class="hm-tabs">${S.helpers.map((c, k) => `<button class="hm-tab${k === i ? ' on' : ''}" onclick="selHelper(${k})"><img src="${lookImg(HELPER_LOOKS[k % HELPER_LOOKS.length], 'head')}" alt=""><b>№${k + 1}</b><small>${icons(c)}</small></button>`).join('')}</div>`;
   // станции — плитками
-  h += `<h3 class="stw-h">🏠 Где работает помощник ${i + 1}</h3><div class="pf-g">`;
+  h += `<div class="hm-sub">🏠 Где работает помощник ${i + 1}</div><div class="hm-g">`;
   for (const [k, st] of Object.entries(STATIONS)) {
     if (stationOff(k) && !cfg.stations.includes(k)) continue;
     const on = cfg.stations.includes(k), own = S.helpers.map((c, j) => j !== i && c.stations.includes(k) ? j : -1).filter(j => j >= 0);
@@ -3613,25 +3619,24 @@ function openHelpers() {
   h += `<button class="pf-t hm-t${cfg.stations.length ? '' : ' on'}" onclick="toggleStation(${i},'rest')"><span class="hm-e">😴</span><small>Отдых</small></button></div>`;
   const seedRow = (items) => `<div class="hm-row">${items.map(([on, e, t, js]) => `<button class="hm-sd${on ? ' on' : ''}" onclick="${js}"><span>${e}</span><small>${t}</small></button>`).join('')}</div>`;
   if (cfg.stations.includes('field')) {
-    h += `<h3 class="stw-h">🚜 Поле</h3><div class="hm-sub">Участки — по 6 грядок</div><div class="hm-zones">`;
+    h += `<div class="hm-sub">🚜 Участки поля <small>— по 6 грядок</small></div><div class="hm-zones">`;
     ZONES.forEach((z, k) => {
       const n = S.plots.filter((p, j) => zoneOf(j) === k).length, own = zoneOwner(k), mine = cfg.zones.includes(k);
       h += `<button class="hm-z${mine ? ' on' : ''}${n ? '' : ' lock'}" ${n ? '' : 'disabled'} onclick="setZone(${i},${k})"><b>№${k + 1}</b>${!n ? '<small>🔒</small>' : own >= 0 && own !== i ? `<img src="${lookImg(HELPER_LOOKS[own % HELPER_LOOKS.length], 'head')}" alt="">` : mine ? '<small>✓</small>' : '<small>свободен</small>'}</button>`;
     });
     h += `</div>${cfg.zones.length ? '' : '<div class="hm-warn">Выбери участок — без него помощник не работает на поле</div>'}`;
-    h += `<div class="hm-sub">После сбора сажать <small>— семена за твои монеты</small></div>` + seedRow([
-      [!cfg.replant, '🧺', 'только сбор', `setField(${i},null)`], [cfg.replant && cfg.seed === 'same', '🔁', 'то же', `setField(${i},'same')`],
+    h += `<div class="hm-sub">🚜 После сбора сажать <small>— семена за твои монеты</small></div>` + seedRow([
+      [!cfg.replant, '🧺', 'сбор', `setField(${i},null)`], [cfg.replant && cfg.seed === 'same', '🔁', 'то же', `setField(${i},'same')`],
       ...S.unlocked.filter(id => !GH_CROPS.includes(id)).map(id => [cfg.replant && cfg.seed === id, CROP[id].e, CROP[id].seed + '💰', `setField(${i},'${id}')`])]);
   }
   if (cfg.stations.includes('gh')) {
-    h += `<h3 class="stw-h">🏡 Теплица</h3><div class="hm-sub">После сбора сажать</div>` + seedRow([
-      [!cfg.ghReplant, '🧺', 'только сбор', `setGh(${i},null)`], [cfg.ghReplant && cfg.ghSeed === 'same', '🔁', 'то же', `setGh(${i},'same')`],
+    h += `<div class="hm-sub">🏡 В теплице после сбора сажать</div>` + seedRow([
+      [!cfg.ghReplant, '🧺', 'сбор', `setGh(${i},null)`], [cfg.ghReplant && cfg.ghSeed === 'same', '🔁', 'то же', `setGh(${i},'same')`],
       ...GH_CROPS.filter(id => S.unlocked.includes(id)).map(id => [cfg.ghReplant && cfg.ghSeed === id, CROP[id].e, CROP[id].seed + '💰', `setGh(${i},'${id}')`])]);
   }
   if (cfg.stations.includes('coop') || cfg.stations.includes('barn'))
-    h += `<h3 class="stw-h">🐾 Животные</h3><button class="hm-sw${cfg.feed ? ' on' : ''}" onclick="setHelper(${i},'feed',${!cfg.feed})"><span><b>🌙 Кормить ночью</b><small>${cfg.feed ? 'сам кормит урожаем со склада' : 'кормишь ты — помощник только собирает'}</small></span><i></i></button>`;
+    h += `<button class="hm-sw${cfg.feed ? ' on' : ''}" onclick="setHelper(${i},'feed',${!cfg.feed})"><span><b>🌙 Кормить животных ночью</b><small>${cfg.feed ? 'сам кормит урожаем со склада' : 'кормишь ты — помощник только собирает'}</small></span><i></i></button>`;
   if (S.helpers.some(c => c.stations.includes('field'))) h += `<button class="hm-link" onclick="clearField()">🚜 Снять всех помощников с поля</button>`;
-  h += `<button class="wide" style="width:100%;margin-top:12px" onclick="closeNight()">Готово</button>`;
   const tx = $('sheet').dataset.view === 'helpers' ? document.querySelector('#sheet .hm-tabs')?.scrollLeft || 0 : 0;
   $('sheet').dataset.view = 'helpers'; $('sheet').innerHTML = h; $('overlay').classList.add('show');
   const T = document.querySelector('#sheet .hm-tabs'), on = T?.querySelector('.on');   // лента портретов не прыгает в начало; выбранный — всегда виден
@@ -6786,7 +6791,7 @@ function storeFlyIn(id, n) {   // пришёл товар — его плитк�
 // полка ресурсов под верхней доской: всё открытое в постоянном порядке, ноль — бледно; что на прилавке — зелёным
 function shelfGoods() {
   const out = [];
-  for (const [, ids] of STORE_GROUPS) for (const g of ids()) if (GOODS[g] && !goodLock(g) && !GOODS[g].sp && (!seasonal(g) || GOODS[g].season === season().id) && !['chick', 'goldegg'].includes(g) || (S.inv[g] > 0 && GOODS[g])) out.includes(g) || out.push(g);
+  for (const [, ids] of STORE_GROUPS) for (const g of ids()) if (GOODS[g] && !goodLock(g) && !GOODS[g].sp && (!seasonal(g) || GOODS[g].season === season().id) && !['chick', 'goldegg'].includes(g) || (S.inv[g] > 0 && GOODS[g] && !GOODS[g].sp)) out.includes(g) || out.push(g);   // уникальные находки — только в окне склада
   return out;
 }
 let shelfSig = '';
@@ -6795,7 +6800,7 @@ function shelfFade() { const el = $('inv'); if (!el) return; shelfSize(); const 
 $('inv').addEventListener('scroll', shelfFade, { passive: true }); addEventListener('resize', shelfFade);
 function renderShelf() {
   const el = $('inv'); if (!el) return;
-  const list = shelfGoods(), fav = (S.shelfFav || []).filter(g => GOODS[g] && !goodLock(g)).slice(0, 8), rest = list.filter(g => !fav.includes(g));   // свои 8 — первыми, остальное — лентой вбок
+  const list = shelfGoods(), fav = (S.shelfFav || []).filter(g => GOODS[g] && !GOODS[g].sp && !goodLock(g)).slice(0, 8), rest = list.filter(g => !fav.includes(g));   // свои 8 — первыми, остальное — лентой вбок
   const sig = [...fav, '|', ...rest].map(g => g + ':' + (S.inv[g] || 0) + (onSale(g) ? '+' : '')).join();
   if (sig === shelfSig) return; shelfSig = sig;
   const tile = (g, f) => `<span class="r${f ? ' f' : ''}${S.inv[g] ? '' : ' z'}${onSale(g) ? ' on' : ''}" data-g="${g}"><i>${GOODS[g].e}</i><b>${fmtShelf(S.inv[g] || 0)}</b></span>`;
@@ -6830,7 +6835,7 @@ function openStore() {
     h += `<h3 class="stw-h">${title}</h3><div class="stw-g">`;
     for (const g of list) { const n = S.inv[g] || 0, lk = goodLock(g);
       h += lk ? `<div class="stw-t lock"><span class="rc-e">${GOODS[g].e}</span><b>🔒</b><small>${lk === '🍦' ? 'сезонная пристройка' : 'с ' + lk}</small></div>`
-        : `<div class="stw-t${n ? '' : ' zero'}${F.includes(g) ? ' fav' : ''}" onclick="toggleFav('${g}')">${F.includes(g) ? '<i class="fv">⭐</i>' : ''}<span class="rc-e">${GOODS[g].e}</span><b>${fmtN(n)}</b><small>${GOODS[g].name}</small></div>`; }
+        : `<div class="stw-t${n ? '' : ' zero'}${F.includes(g) ? ' fav' : ''}"${GOODS[g].sp ? '' : ` onclick="toggleFav('${g}')"`}>${F.includes(g) ? '<i class="fv">⭐</i>' : ''}<span class="rc-e">${GOODS[g].e}</span><b>${fmtN(n)}</b><small>${GOODS[g].name}</small></div>`; }
     h += `</div>`;
   }
   $('sheet').dataset.view = 'store'; const top = $('sheet').scrollTop; $('sheet').innerHTML = h; $('overlay').classList.add('show'); decorateSheet(); $('sheet').scrollTop = top;
@@ -7379,7 +7384,7 @@ function feedTiles(only) {
   const helperFeeds = st => S.helpers.some(c => c.feed && c.stations.includes(st));
   if (hens() && only !== 'cow') tile('🐔', 'кур', fedTomorrow(), hens(), feedStock() >= FEED_PER_HEN, 'feedHens()', helperFeeds('coop') ? '👷' : '');
   if (cows() && only !== 'hen') tile('🐄', 'коров', cowsFedTomorrow(), cows(), cowFoodStock() >= feedPerCow(), 'feedCows()', [S.up.hay ? '🟨' : '', helperFeeds('barn') ? '👷' : ''].join(''));
-  if (!only) for (const k in PROD) if (S.up[k]) {   // цеха: засыпать на завтра
+  if (!only) for (const k in PROD) if (S.up[k] && !PROD[k].multi) {   // цеха: засыпать на завтра (котлы Молочного дома ночью не заряжают)
     const P = PROD[k], st = S.prod[k], full = !P.multi && prodFull(k), can = P.multi || (!full && prodHave(k) >= prodNeed(k)), helped = S.helpers.some(c => c.stations.includes(k));
     T.push(`<button class="feedt ${full ? 'ok' : can ? 'go' : 'no'}" onclick="${P.multi ? 'openDairy()' : `prodAct('${k}'); refreshSheet()`}"><span class="fe">${P.ico}</span><b>${P.multi ? 'Котлы' : full ? 'Засыпано' : can ? 'Засыпать' : `Нет ${GOODS[P.in].e}`}</b><small>${full ? '✔ ' : ''}${P.multi ? `в очереди ${prodQ(k)}` : `${prodQ(k)}/${prodCap(k)} ${GOODS[P.out].e}`}</small>${helped ? '<i class="fa">👷</i>' : ''}</button>`);
   }
@@ -7444,7 +7449,7 @@ function openSunday() {
   const r = weekReport(), done = S.picnic === S.day;
   let h = `<h2>🧺 Воскресенье — выходной</h2><div style="font-size:13px;color:#7a6650;margin:-2px 0 8px">Лавка сегодня закрыта. Грядки растут, куры несутся — можно спокойно поработать или отдохнуть.</div>`;
   if (r.n) h += `<div class="summary">📬 <b>Итоги недели</b><br>Заработано: <b>${r.earned}💰</b>${r.spent ? ` · потрачено ${r.spent}💰` : ''}<br>Покупателей: <b>${r.served}</b>${r.missed ? ` · ушли ни с чем ${r.missed}` : ''}${r.best ? `<br>Лучший день: <b>${WEEKDAYS[cal(r.best.d).dow].toLowerCase()}</b> — ${r.best.e}💰` : ''}${r.top ? `<br>Больше всего принесли: ${GOODS[r.top[0]] ? `${GOODS[r.top[0]].e} <b>${GOODS[r.top[0]].name.toLowerCase()}</b>` : r.top[0] === 'order' ? '📬 <b>заказы по почте</b>' : '<b>' + r.top[0] + '</b>'} — ${r.top[1]}💰` : ''}</div>`;
-  h += `<div class="up" data-why="🧺 Пикник уже был — помощники отдохнули"><div class="ico">🧺</div><div class="txt"><b>Пикник у пруда</b><small>${done ? 'Отдохнули! Всю неделю помощники работают на 15% быстрее' : 'Вся команда отдыхает — всю неделю помощники работают на 15% быстрее'}</small></div><button ${done ? 'disabled' : ''} onclick="picnic()">${done ? '✔' : 'Пойти'}</button></div>
+  h += `<div class="up" data-why="🧺 Пикник уже был — помощники отдохнули"><div class="ico">🧺</div><div class="txt"><b>Пикник на лужайке</b><small>${done ? 'Отдохнули! Всю неделю помощники работают на 15% быстрее' : 'Вся команда отдыхает — всю неделю помощники работают на 15% быстрее'}</small></div><button ${done ? 'disabled' : ''} onclick="picnic()">${done ? '✔' : 'Пойти'}</button></div>
     <div class="up" data-why=""><div class="ico">😴</div><div class="txt"><b>Отдохнуть до понедельника</b><small>День пройдёт сразу: всё вырастет, яйца и молоко соберутся как обычно</small></div><button onclick="restDay()">Спать</button></div>
     <button class="wide alt" style="width:100%;margin-top:10px" onclick="closeNight()">🌾 Заняться фермой</button>`;
   $('sheet').dataset.view = 'sunday'; $('sheet').innerHTML = h; $('overlay').classList.add('show');
@@ -7701,7 +7706,7 @@ function openFairPack(sel) {
     h += `<div class="cpanel"><div class="cptitle">📦 ${isBakeCrate(crateSel) ? 'Хлебный ящик' : `Ящик ${crateSel + 1}`}: <b>${GOODS[c.id].e} ${GOODS[c.id].name}</b> — осталось ${c.n}</div>${priceBlock(c.id)}</div>`;
   }
   if (!lock) {
-    const i = crateSel, c = S.fair.crates[i], ids = Object.keys(GOODS).filter(id => !GOODS[id].sp && !seasonal(id) && (!isBakeCrate(i) || BAKE[id]) && ((S.inv[id] || 0) > 0 || c?.id === id));
+    const i = crateSel, c = S.fair.crates[i], ids = Object.keys(GOODS).filter(id => !GOODS[id].sp && !seasonal(id) && (isBakeCrate(i) ? !!BAKE[id] : !BAKE[id]) && ((S.inv[id] || 0) > 0 || c?.id === id));   // выпечка — только в хлебные ящики
     h += `<div class="cpanel"><div class="cptitle">📦 ${isBakeCrate(i) ? `Хлебный ящик ${i - BAKE_CRATE0 + 1}` : `Ящик ${i + 1}`}: ${c ? `<b>${GOODS[c.id].name}</b>` : 'выбери товар'}</div>`;
     h += ids.length ? `<div class="gchips">` + ids.map(id => `<button class="gchip${c?.id === id ? ' on' : ''}" onclick="fillCrate(${i},'${id}')"><span>${GOODS[id].e}</span><small id="gc_${id}">${S.inv[id] || 0}</small></button>`).join('') + `</div>`
       : `<div class="summary">${isBakeCrate(i) ? 'Выпечки на складе нет — испеки её в пекарне 🏤' : 'На складе пусто — сначала собери урожай.'}</div>`;
@@ -7726,7 +7731,7 @@ function priceBlock(id) {   // своя цена и что у соседей
 }
 function setPm(id, v) { S.fair.pm[id] = v; save(); openFairPack(crateSel ?? undefined); }
 function fillCrate(i, id) {
-  if (isBakeCrate(i) && !BAKE[id]) return;
+  if (isBakeCrate(i) ? !BAKE[id] : BAKE[id]) return;
   const old = S.fair.crates[i]; if (old) { S.inv[old.id] = (S.inv[old.id] || 0) + old.n; }
   const n = Math.min(CRATE, S.inv[id] || 0); S.inv[id] -= n;
   while (S.fair.crates.length <= i) S.fair.crates.push(null);
@@ -7831,12 +7836,41 @@ function toast(msg) {
   toastT = setTimeout(() => t.classList.remove('show'), Math.min(7000, Math.max(2500, 1200 + String(msg).length * 60)));
 }
 new MutationObserver(() => { if ($('toast').classList.contains('show')) placeToast(); }).observe($('overlay'), { attributes: true, attributeFilter: ['class'] });   // меню открылось/закрылось — подсказка переезжает
+let sheetTouch = false, sheetScrollT = 0;   // палец на окне или окно ещё едет по инерции — само не перерисовываем (иначе прокрутка обрывается и «дёргается»)
+$('sheet').addEventListener('touchstart', () => { sheetTouch = true; }, { passive: true });
+for (const ev of ['touchend', 'touchcancel']) $('sheet').addEventListener(ev, () => { sheetTouch = false; sheetScrollT = performance.now(); }, { passive: true });
+$('sheet').addEventListener('scroll', () => { sheetScrollT = performance.now(); }, { passive: true });
+const sheetBusy = () => sheetTouch || performance.now() - sheetScrollT < 900;
 let sheetPos = { v: '', top: 0 };   // окно перерисовалось (цифры, таймеры, покупка) — остаёмся на том же месте; новое окно — сверху
 $('sheet').addEventListener('scroll', () => { sheetPos = { v: $('sheet').dataset.view || '', top: $('sheet').scrollTop }; }, { passive: true });
 new MutationObserver(() => { if (!$('overlay').classList.contains('show')) sheetPos = { v: '', top: 0 }; }).observe($('overlay'), { attributes: true, attributeFilter: ['class'] });
+// якорь: при перерисовке того же окна то, на что смотришь (или кнопка, которую нажал), остаётся на том же месте экрана,
+// даже если выше что-то выросло или исчезло (появилось «Готово», удлинилась очередь)
+const ANCHOR_SEL = '.hold-r, .hold, .bshelf, .rc, .pkeep, .up, .ty-t, .tyard, .hm-t, .hm-z, .hm-sd, .goal, .crate, .stw-t, .pf-t, .feedt, button, h3';
+let sheetTap = null, sheetAnchor = null;
+$('sheet').addEventListener('pointerdown', e => { sheetTap = { el: e.target.closest(ANCHOR_SEL), t: performance.now() }; }, true);
+const anchorKey = el => { const c = el.classList[0] ? '.' + el.classList[0] : el.tagName.toLowerCase(), all = [...$('sheet').querySelectorAll(c)]; return { c, i: all.indexOf(el) }; };
+function sheetAnchorTake() {
+  const sh = $('sheet'), v = sh.dataset.view || ''; sheetAnchor = null;
+  if (!v || v !== sheetPos.v || !$('overlay').classList.contains('show') || !sh.firstElementChild?.classList.contains('sh-head')) return;   // окно ещё не дорисовано — мерить нечего
+  const box = sh.getBoundingClientRect(), y0 = box.top + (parseFloat(getComputedStyle(sh).getPropertyValue('--shh')) || 0);
+  let el = sheetTap && performance.now() - sheetTap.t < 3000 && sheetTap.el?.isConnected ? sheetTap.el : null;
+  if (el) { const r = el.getBoundingClientRect(); if (r.bottom < y0 || r.top > box.bottom) el = null; }
+  if (!el) { const mid = (y0 + box.bottom) / 2; let best = 1e9;   // то, что посередине экрана
+    for (const e of sh.querySelectorAll(ANCHOR_SEL)) { const t = e.getBoundingClientRect().top; if (t >= y0 && t <= box.bottom && Math.abs(t - mid) < best) { best = Math.abs(t - mid); el = e; } } }
+  if (el) sheetAnchor = { ...anchorKey(el), top: el.getBoundingClientRect().top - box.top };   // от верха окна — выезд окна (анимация) не мешает
+}
+{ const sh = $('sheet'), d = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
+  Object.defineProperty(sh, 'innerHTML', { get() { return d.get.call(this); }, set(v) { sheetAnchorTake(); d.set.call(this, v); } }); }
 new MutationObserver(() => {
   decorateSheet(); const sh = $('sheet'), v = sh.dataset.view || '';
-  if (v && v === sheetPos.v) { if (sh.scrollTop !== sheetPos.top) sh.scrollTop = sheetPos.top; }
+  if (v && v === sheetPos.v) {
+    if (sh.scrollTop !== sheetPos.top) sh.scrollTop = sheetPos.top;
+    const A = sheetAnchor; sheetAnchor = null;
+    const el = A && [...sh.querySelectorAll(A.c)][A.i];
+    if (el) { const dy = el.getBoundingClientRect().top - sh.getBoundingClientRect().top - A.top; if (Math.abs(dy) >= 1) sh.scrollTop += dy; }
+    sheetPos.top = sh.scrollTop;
+  }
   else sheetPos = { v, top: sh.scrollTop };
   if ($('toast').classList.contains('show')) requestAnimationFrame(placeToast);
 }).observe($('sheet'), { childList: true });
