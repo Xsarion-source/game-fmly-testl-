@@ -1239,7 +1239,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-20.177';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-21.178';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1747,7 +1747,7 @@ function spend(n, cat) {
 const spentSum = o => Object.values(o.spent || {}).reduce((a, b) => a + b, 0);
 
 function startDay() {
-  ensureGoals();
+  ensureGoals(); if (typeof applyFarmer === 'function') applyFarmer();   // сезон сменился — фермер переодевается
   S.fairDay = fairCal(S.day) && fairUnlocked() ? S.day : 0;
   S.night = false; S.t = 0; S.spawned = 0; S.closing = false;
   S.toSpawn = visitorsPerDay();
@@ -2148,7 +2148,7 @@ function spawnVisitor() {
     shop, items,
     x: Math.random() < (isFair() ? .5 : .75) ? -2 : W + 1, y: ROAD + .5, state: 'coming', pat, max: pat, wps: [],   // большинство приходит слева — оттуда до лавки ближе
     phase: Math.random() * 6, moving: true, flip: true, mood: null, moodT: 0,
-    look: { shirt, shirtDark: darken(shirt, .8), pants: pick(['#3b4a6b','#5a4632','#2f2f3a','#6b6b6b']), skin: pick(SKINS), hair: pick(HAIRS), hat: Math.random() < .3 ? 'cap' : null, capColor: pick(SHIRTS) },
+    look: winterize({ shirt, shirtDark: darken(shirt, .8), pants: pick(['#3b4a6b','#5a4632','#2f2f3a','#6b6b6b']), skin: pick(SKINS), hair: pick(HAIRS), hat: Math.random() < .3 ? 'cap' : null, capColor: pick(SHIRTS) }),
   });
   S.spawned++;
   retarget();
@@ -5296,7 +5296,7 @@ function spawnFamily() {
     laneRoute(cur, [ent2, LANE_A]).forEach(q => wps.push({ x: q.x + ox, y: q.y + oy * .5 }));
     wps.push({ x: ent2 + ox, y: 23.3 }, { x: ent2 + ox, y: ry + oy * .4 }, { x: ex, y: ry + oy * .4 });
     fairFolk.push({ fam: 1, x: sx + (fromLeft ? -i * .6 : i * .6), y: ry + oy * .4, wps, kid, phase: i * 1.7, moving: true, flip: false, wait: 0,
-      look: { shirt, shirtDark: darken(shirt, .8), pants: pick(['#3b4a6b', '#5a4632', '#2f2f3a', '#6b6b6b']), skin: pick(SKINS), hair: pick(HAIRS), hat: Math.random() < .3 ? 'cap' : null, capColor: pick(SHIRTS) } });
+      look: winterize({ shirt, shirtDark: darken(shirt, .8), pants: pick(['#3b4a6b', '#5a4632', '#2f2f3a', '#6b6b6b']), skin: pick(SKINS), hair: pick(HAIRS), hat: Math.random() < .3 ? 'cap' : null, capColor: pick(SHIRTS) }) });
   }
 }
 function moveFolk(dt, list = fairFolk) {
@@ -5458,7 +5458,7 @@ function rivalSale(i, g) {   // покупатель ушёл к соседу: �
   if (fairFolk.filter(f => !f.fam).length >= 4) { save(); return; }   // к соседям идут не больше четырёх человек сразу — остальные продажи «за кадром»
   fairFolk.push({ x: fromLeft ? -2 : W + 2, y: ry, kid: false, phase: Math.random() * 6, moving: true, flip: false, wait: 0,
     wps: [{ x: ent, y: ry }, { x: ent, y: 23.3 }, { x: ent, y: LANE_A }, ...(lane === LANE_B ? [{ x: cross, y: LANE_A }, { x: cross, y: LANE_B }] : []), { x: cx, y: lane }, { x: cx, y: fy, wait: 2.5 }, { x: cx, y: lane }, ...(lane === LANE_B ? [{ x: cross, y: LANE_B }, { x: cross, y: LANE_A }] : []), { x: ent, y: LANE_A }, { x: ent, y: 23.3 }, { x: ent, y: ry }, { x: fromLeft ? W + 3 : -3, y: ry }],
-    look: { shirt, shirtDark: darken(shirt, .8), pants: pick(['#3b4a6b', '#5a4632', '#2f2f3a', '#6b6b6b']), skin: pick(SKINS), hair: pick(HAIRS), hat: Math.random() < .3 ? 'cap' : null, capColor: pick(SHIRTS) } });
+    look: winterize({ shirt, shirtDark: darken(shirt, .8), pants: pick(['#3b4a6b', '#5a4632', '#2f2f3a', '#6b6b6b']), skin: pick(SKINS), hair: pick(HAIRS), hat: Math.random() < .3 ? 'cap' : null, capColor: pick(SHIRTS) }) });
   save();
 }
 // ---------- Земля: кочки травы, цветы, камешки, колеи и кромка тропинок ----------
@@ -7066,7 +7066,11 @@ const FARMER_OPT = {
 const FARMER_HATS = [   // головные уборы; новые добавлять сюда (lock — чем открывается)
   { id: 'straw', name: 'Соломенная' }, { id: 'cap', name: 'Кепка' }, { id: 'bandana', name: 'Бандана' }, { id: 'beanie', name: 'Шапка' }, { id: '', name: 'Без шляпы' },
 ];
-function playerLook(F = S.farmer) {
+// зима: вязаная шапка с помпоном и полосатый шарф — у фермера, помощников и покупателей
+const winterize = (L, col) => season().id === 'winter' ? { ...L, hat: 'beanie', capColor: col || L.capColor || L.shirtDark, scarf: col || L.capColor || L.shirtDark } : L;
+function playerLook(F = S.farmer, winter = true) {
+  const W = winter && season().id === 'winter', hc = ['cap', 'bandana', 'beanie'].includes(F.hat) ? F.hatC : darken(F.shirt, .8);
+  if (W) return { shirt: F.shirt, shirtDark: darken(F.shirt, .8), pants: F.pants, skin: F.skin, hair: F.hair, hat: 'beanie', capColor: hc, scarf: hc, overalls: true, girl: F.girl };
   return { shirt: F.shirt, shirtDark: darken(F.shirt, .8), pants: F.pants, skin: F.skin, hair: F.hair, hat: F.hat || null, capColor: F.hatC, overalls: true, girl: F.girl };
 }
 const lookCache = new Map();
@@ -7087,7 +7091,7 @@ const farmerName = () => (S.farmer.name || '').trim() || (S.farmer.girl ? 'Фе�
 function setFarmer(k, v) { S.farmer[k] = v; save(); applyFarmer(); openLook(); }
 function setFarmerName(v) { v = String(v).replace(/\s+/g, ' ').trim().slice(0, 16); if (v === (S.farmer.name || '')) return; S.farmer.name = v; save(); openProfile(); }
 function openLook() {   // отдельное окно: внешность фермера
-  const F = S.farmer, look = playerLook();
+  const F = S.farmer, look = playerLook(F, false);   // в редакторе — своя шляпа, без зимней одежды
   const sw = (k, cols) => `<div class="pf-sw">${cols.map(c => `<button class="${F[k] === c ? 'on' : ''}" style="background:${c}" onclick="setFarmer('${k}','${c}')"></button>`).join('')}</div>`;
   let h = `<h2>✏️ Внешность</h2>
     <div class="pf-card pf-one"><img class="pf-big" src="${lookImg(look, 'full')}" alt=""></div>
