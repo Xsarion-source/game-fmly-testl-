@@ -1298,7 +1298,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-21.187';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-21.188';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -4610,6 +4610,17 @@ const ICON_DRAW = {
     K.R(27, 8, 10, 6, 2, '#9aa6b2', 2.4);
     K.D(c => { c.moveTo(32, 38.5); c.quadraticCurveTo(38, 45, 32, 47); c.quadraticCurveTo(26, 45, 32, 38.5); c.closePath(); }, '#ffffff', 2);
   },
+  '🎄': K => { const c = K.c;   // ёлка: три яруса, звезда, шарики и гирлянда — внутри контура
+    K.E(32, 59, 18, 3, 'rgba(90,58,36,.18)', 0, 0);
+    K.R(28, 50, 8, 9, 1.5, K.G(0, 50, 0, 59, '#a8703c', '#7a4a2a'), 2.4);   // ствол
+    const T = [[[32, 30], [52, 52], [12, 52]], [[32, 19], [48, 39], [16, 39]], [[32, 8], [43, 27], [21, 27]]];
+    for (const tri of T) { const p = c => { c.moveTo(tri[0][0], tri[0][1]); c.quadraticCurveTo(tri[1][0] - 3, tri[1][1] - 9, tri[1][0], tri[1][1]); c.quadraticCurveTo(32, tri[1][1] + 4, tri[2][0], tri[2][1]); c.quadraticCurveTo(tri[2][0] + 3, tri[2][1] - 9, tri[0][0], tri[0][1]); c.closePath(); };
+      K.D(p, K.G(0, tri[0][1], 0, tri[1][1], '#5fc06a', '#2f8a3e'), 0);
+      c.save(); K.D(p, null, 0); c.clip(); K.L(tri[2][0] + 2, tri[2][1] - 3, tri[1][0] - 2, tri[1][1] - 7, '#ffd84d', 1.6); K.H(tri[0][0] - 4, tri[0][1] + 9, 2.5, 5, .35); c.restore();   // гирлянда и блик
+      K.D(p, null, 2.6); }
+    for (const [x, y, col] of [[22, 47, '#e0473e'], [41, 45, '#4f8fe0'], [27, 34, '#ffd84d'], [38, 31, '#e0473e'], [32, 22, '#4f8fe0']]) { K.C(x, y, 2.6, col, 1.4); K.H(x - .8, y - .9, .8, .6, .8); }   // шарики
+    K.star(32, 8, 6.5, 2.8, 5, '#ffd84d', 2);   // звезда
+  },
   '🏤': K => { const c = K.c;   // пекарня: домик с полосатым козырьком, витрина с хлебом, вывеска-крендель
     K.E(32, 60, 27, 3.5, 'rgba(90,58,36,.16)', 0, 0);
     K.R(12, 12, 8, 14, 1.5, K.G(0, 12, 0, 26, '#d9765a', '#a8503a'), 2.4); K.R(10.5, 10, 11, 4, 1.5, '#7a7068', 2.2);   // труба печи
@@ -7692,9 +7703,10 @@ function dayEvents(d) {   // значки событий на день: новы
   const ev = [];
   if (S.order && S.order.due === d) ev.push(['📬', `Срок заказа: ${S.order.from}`]);
   if (cal(d).sday === 1) ev.push([SEASONS[cal(d).si].e, `Начало сезона: ${SEASONS[cal(d).si].name.toLowerCase()}`]);
-  if (isFair(d)) ev.push(['🎪', `Ярмарка: покупателей больше · 🏆 конкурс ${SPECIAL[contestOf(d)].what} ${SPECIAL[contestOf(d)].e} · ${themeText(d)} дороже на ${Math.round(THEME_BONUS * 100)}%`]);
+  if (isFair(d) && isFinale(d)) ev.push(['🎄', 'Зимняя ярмарка — праздник года: покупателей втрое больше, конкурса нет']);
+  else if (isFair(d)) ev.push(['🎪', `Ярмарка: покупателей больше · 🏆 конкурс ${SPECIAL[contestOf(d)].what} ${SPECIAL[contestOf(d)].e} · ${themeText(d)} дороже на ${Math.round(THEME_BONUS * 100)}%`]);
   if (truckOn() && d === (S.truck.c && S.truck.c.due >= S.day ? S.truck.c.due : truckDue(d))) ev.push(['🚚', 'Приезжает грузовик за заказом — погрузи товар заранее']);
-  if (isRest(d)) ev.push(['🧺', 'Выходной: лавка закрыта']);
+  if (isRest(d)) ev.push(['💤', 'Выходной: лавка закрыта']);
   if (d > 1 && cal(d).si === 0 && cal(d).sday === 1) ev.push(['🎂', `Ферме ${cal(d).year - 1} ${cal(d).year - 1 === 1 ? 'год' : cal(d).year - 1 < 5 ? 'года' : 'лет'}!`]);
   return ev;
 }
@@ -7742,7 +7754,7 @@ function calInfo() {
   h += (today && !S.night ? wxl : '') + evs;
   if (today && S.night) {   // завтра
     const n = S.day + 1;
-    h += `<div class="dsnext"><div class="dsh">Завтра</div><div class="dsev" style="margin-top:0">${wxOf(n).e} <b>${wxOf(n).name}</b> — ${wxOf(n).text}</div><div class="dsev">${isRest(n) ? '🧺 Воскресенье — лавка закрыта' : `🙂 ~${visitorsPerDay(n)} покупателей`}${isFair(n) ? ` · 🎪 ярмарка · 📦 ${cratesUsed()}/${allCrates()} — <a href="#" onclick="event.preventDefault();openFairPack()">собрать</a>` : ''}</div>${isFair(n) ? `<div class="dsev">${contestReminder()}</div>` : ''}${feedTiles()}</div>`;
+    h += `<div class="dsnext"><div class="dsh">Завтра</div><div class="dsev" style="margin-top:0">${wxOf(n).e} <b>${wxOf(n).name}</b> — ${wxOf(n).text}</div><div class="dsev">${isRest(n) ? '💤 Воскресенье — лавка закрыта' : `🙂 ~${visitorsPerDay(n)} покупателей`}${isFair(n) ? ` · 🎪 ярмарка · 📦 ${cratesUsed()}/${allCrates()} — <a href="#" onclick="event.preventDefault();openFairPack()">собрать</a>` : ''}</div>${isFair(n) ? `<div class="dsev">${contestReminder()}</div>` : ''}${feedTiles()}</div>`;
     if (EMBED && CLOUD.state !== 'ok' && CLOUD.state !== 'wait' && S.day >= 2 && (S.codeDay || 0) < S.day)   // облака нет — Safari может стереть ферму
       h += `<div class="summary" style="background:#fff1d6;border:1.5px solid #f0c24a;margin-top:8px">⚠️ Ферма хранится только в этом браузере — Safari может её стереть. <a href="#" onclick="event.preventDefault();exportCode()" style="color:#b0503a;font-weight:800">Сохрани код фермы</a> или играй в <a href="${APP_URL}" target="_blank" rel="noopener" style="color:#2f6b2a;font-weight:800">приложении</a>, где ферма сохраняется сама.</div>`;
   }
