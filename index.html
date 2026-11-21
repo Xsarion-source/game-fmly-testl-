@@ -1298,7 +1298,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-21.186';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-21.187';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3489,6 +3489,7 @@ const STATIONS = {
 };
 const REST = { ico: '😴', idle: at('home', 3, 4) };
 let helpers = [];
+const indoors = h => S.night && !h.moving && !h.path.length && !h.target && h.work <= 0 && Math.floor(h.x) === REST.idle.x && Math.floor(h.y) === REST.idle.y;   // ночью дошёл до двери — ушёл в дом (не рисуем)
 // работа недоступна, пока нет здания (сада, кур, коров, теплицы…)
 const stationOff = k => (k === 'orchard' && !S.up.orchard) || (k === 'coop' && !hens()) || (k === 'barn' && !cows()) || (k === 'gh' && !S.up.greenhouse) || (k === 'mill' && !S.up.mill) || (k === 'dairy' && !S.up.dairy) || (k === 'bakery' && !S.up.bakery);
 function syncHelpers() {
@@ -3673,8 +3674,8 @@ function updateHelper(h, dt) {
     // грядки, теплица и сад растут долго — ждём у производства (молочка, пекарня, мельница, курятник, коровник), а к грядкам идём, когда созрело
     const PRODK = ['dairy', 'bakery', 'mill', 'coop', 'barn'], pr = cfg.stations.filter(k => PRODK.includes(k));
     const st = cfg.stations.includes('stall') ? ['stall'] : pr.length ? pr : cfg.stations.slice(0, 1), n = st.length;
-    const k = n ? st[n > 1 ? Math.floor(performance.now() / 7000 + h.id * .37) % n : 0] : null;
-    const spot = k ? workSpot(k, cfg, h) : REST.idle;
+    const k = n ? st[n > 1 && !S.night ? Math.floor(performance.now() / 7000 + h.id * .37) % n : 0] : null;   // ночью не бродит — спит у первого места
+    const spot = S.night ? REST.idle : k ? workSpot(k, cfg, h) : REST.idle;   // ночью: доделали ночные дела (кормление, засыпка мельницы) — и в дом
     if ((hx !== spot.x || hy !== spot.y) && (walkable(spot.x, spot.y) || spot.y >= H)) h.path = findPath(hx, hy, spot.x, spot.y) || [];   // место на ярмарке — за краем сетки фермы
   }
 }
@@ -5074,7 +5075,7 @@ function draw(t) {
   S.plots.forEach((p, i) => { if (p.crop) { const s = PLOT_SLOTS[i]; list.push({ z: s.x + s.y + 1, f: () => drawCrop(i, t) }); } });
   S.gh.forEach((p, i) => { if (p.crop) { const s = GH_SLOTS[i]; list.push({ z: s.x + s.y + 1, f: () => drawCrop(i, t, true) }); } });
   list.push({ z: tz(P, P.x + P.y + 0.01), f: () => S.picnic === S.day && !S.night && !path.length && !P.moving && Math.floor(P.x) === PICNIC.x && Math.floor(P.y) === PICNIC.y ? drawSitting(P, PLAYER_LOOK) : drawPersonC(P, PLAYER_LOOK) });   // на пикнике фермер сидит на пледе
-  for (const h of helpers) list.push({ z: tz(h, h.x + h.y), f: () => { const pose = picPose(h); if (pose) { drawHelperPose(h, pose, t); return; } drawPersonC(h, h.look); const c = iso(h.x, h.y); const cfg = S.helpers[h.id] || { stations: [] }, st = cfg.stations;
+  for (const h of helpers) if (!indoors(h)) list.push({ z: tz(h, h.x + h.y), f: () => { const pose = picPose(h); if (pose) { drawHelperPose(h, pose, t); return; } drawPersonC(h, h.look); const c = iso(h.x, h.y); const cfg = S.helpers[h.id] || { stations: [] }, st = cfg.stations;
     const fieldIco = !cfg.replant ? '🧺' : cfg.seed === 'same' ? '🔁' : CROP[cfg.seed]?.e || '🧺';   // только сбор — корзинка, посев — значок культуры
     const icons = isRest() && !S.night ? [S.picnic === S.day ? '🧺' : REST.ico] : st.length ? st.map(k => k === 'field' ? (!cfg.zones.length ? '❓' : fieldIco) : k === 'gh' && cfg.ghReplant && cfg.ghSeed !== 'same' ? CROP[cfg.ghSeed].e : STATIONS[k].ico) : [REST.ico];
     if (h.broke) icons.push('💰');
