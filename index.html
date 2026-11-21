@@ -1298,7 +1298,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-21.185';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-21.186';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -2820,6 +2820,12 @@ function loadBake(r, want = Infinity) {
   addFloat(BAKE_SPOT.x + .5, BAKE_SPOT.y + .5, `в печь ${n} ${GOODS[r].e}`);
   return n;
 }
+function standProd() {   // фермер на клетке сбора мельницы, Молочного дома или пекарни — забирает готовое
+  const x = Math.floor(P.x), y = Math.floor(P.y);
+  for (const k in PROD) if (S.up[k] && PROD[k].spot.x === x && PROD[k].spot.y === y && prodOut(k) > 0) return collectProd(k);
+  if (S.up.bakery && BAKE_SPOT.x === x && BAKE_SPOT.y === y && bakeOut() > 0) return collectBake();
+  return false;
+}
 function collectBake() {
   const out = S.bake.out;
   if (!bakeOut()) return false;
@@ -3394,6 +3400,7 @@ function updatePlayer(dt) {
       if (coopReady() && Math.floor(P.x) === COOP_SPOT.x) collectEggs(); else collectMilk();
       P.work = 0.2 / PEOPLE_SLOW;
     }
+    else if ((P.prodT = (P.prodT || 0) - dt) <= 0 && standProd()) { P.prodT = 1; P.work = 0.2 / PEOPLE_SLOW; save(); renderUI(); refreshSheet(); }   // стоишь у цеха — забираешь готовое (и ночью)
     else if (!S.night && [sellSpot(), COUNTER2].some(c => Math.floor(P.x) === c.x && Math.floor(P.y) === c.y) && (P.sellT = (P.sellT || 0) - dt) <= 0) {
       P.sellT = 0.5;   // стоишь за прилавком — торгуешь с его очередью, на кого хватает товара
       const two = !fairOn() && Math.floor(P.x) === COUNTER2.x && Math.floor(P.y) === COUNTER2.y;
