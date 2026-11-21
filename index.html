@@ -204,6 +204,25 @@
   .hy-two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .hy-ch { height: 46px; border-radius: 14px; background: #fff; border: 2.5px solid #ead9b5; font: inherit; font-size: 14px; font-weight: 800; color: #4a2e18; } .hy-ch.on { border-color: #e9b23a; background: #fff6d8; box-shadow: 0 0 0 2px #f0b429; }
   .hy-out { display: block; width: 100%; margin-top: 12px; height: 44px; border-radius: 14px; border: 2px solid #e8b4a8; background: #fff3ef; font: inherit; font-size: 14px; font-weight: 800; color: #b0503a; }
+  .hy-row { width: 100%; text-align: left; font: inherit; color: #4a2e18; }
+  .hy-arr { flex: none; font-size: 28px; font-weight: 900; color: #c9a66a; padding: 0 4px; }
+  .hy-jobs .hy-job { pointer-events: none; }
+  .hy-back { display: flex; align-items: center; height: 42px; padding: 0 16px; margin-bottom: 8px; border-radius: 14px; border: 2.5px solid #ead9b5; background: #fff; box-shadow: 0 2px 0 #d9c49c; font-size: 16px !important; color: #4a2e18 !important; }
+  .hy-meimg { width: 46px; height: 69px; flex: none; }
+  .hy-me { display: flex; align-items: center; gap: 10px; margin: 0 2px 8px; } .hy-me .hm-name { font-size: 22px !important; } .hy-me small { display: block; color: #8a7660; font-size: 13px; }
+  .hy-sec { margin-top: 10px; padding: 8px 10px 10px; background: #fff; border-radius: 16px; border: 2.5px solid #f0d58a; } .hy-st { margin: 0 2px 6px; font-size: 14px; font-weight: 900; color: #5a4632; }
+  .hy-who2 { display: flex; align-items: center; justify-content: center; gap: 8px; height: 52px; border-radius: 14px; border: 2px solid #ead9b5; background: #fffaf0; font: inherit; color: #4a2e18; } .hy-who2 img { width: 38px; height: 38px; } .hy-who2 b { font-size: 15px; }
+  .hy-who2.on { border-color: #e9b23a; background: #fff1c9; box-shadow: 0 0 0 2px #f0b429; }
+  .hz-g, .hz-r { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .hz-t { height: 58px; padding: 2px 1px; border-radius: 13px; border: 2px solid #ead9b5; background: #fffaf0; display: flex; flex-direction: column; align-items: center; justify-content: center; font: inherit; color: #4a2e18; }
+  .hz-e { font-size: 24px; line-height: 1.1; } .hz-e img.ic { width: 26px; height: 26px; } .hz-t small { font-size: 10.5px; font-weight: 800; line-height: 1.05; text-align: center; }
+  .hz-t.on, .hz-zz.on, .hz-b.on { border-color: #e9b23a; background: #fff1c9; box-shadow: 0 0 0 2px #f0b429; }
+  .hz-s { margin: 10px 2px 5px; font-size: 13px; font-weight: 900; color: #5a4632; }
+  .hz-z { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .hz-zz { height: 44px; border-radius: 13px; border: 2px solid #ead9b5; background: #fffaf0; display: flex; flex-direction: column; align-items: center; justify-content: center; font: inherit; color: #4a2e18; } .hz-zz b { font-size: 18px; line-height: 1; } .hz-zz small { font-size: 10px; color: #8a7660; }
+  .hz-zz.lock { opacity: .45; border-style: dashed; }
+  .hz-two { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .hz-b { height: 40px; border-radius: 13px; border: 2px solid #ead9b5; background: #fffaf0; font: inherit; font-size: 14px; font-weight: 800; color: #4a2e18; }
   .hm-n { display: inline-block; min-width: 17px; height: 17px; padding: 0 3px; box-sizing: border-box; border-radius: 9px; color: #fff; font: 900 11px/17px system-ui, sans-serif; text-align: center; font-style: normal; box-shadow: 0 0 0 1.5px #fff, 0 1px 2px rgba(0,0,0,.3); text-shadow: 0 1px 1px rgba(0,0,0,.35); } .hm-n.more { background: #a8957a; }
   .hm-z b.hm-n { font-size: 11px; line-height: 17px; }
   .hm-busy { position: absolute; top: -8px; left: 3px; display: flex; gap: 1px; z-index: 1; }   /* над краем плитки — значок станции не закрывают */
@@ -1278,7 +1297,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-21.182';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-21.183';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3542,7 +3561,7 @@ function helperJobs(cfg) {
     if (!p.crop && cfg.replant && !empty) jobs.broke = true;   // пустая грядка, но семена не по карману
     if (ready || empty) jobs.push({ x: PLOT_SLOTS[i].x, y: PLOT_SLOTS[i].y, ord: snakeOrd(PLOT_SLOTS[i]), act: () => helperPlot(i, cfg) });
   });
-  if (has('gh')) S.gh.forEach((p, i) => {
+  if (has('gh')) S.gh.forEach((p, i) => { if (!(cfg.ghZones ?? [0, 1]).includes(i < 6 ? 0 : 1)) return;   // только свои теплицы
     const ready = p.crop && p.prog >= 1 && fits(p.crop, GH_YIELD), empty = !p.crop && cfg.ghReplant && ghHelperSeed(cfg, p);
     if (!p.crop && cfg.ghReplant && !empty) jobs.broke = true;
     if (ready || empty) jobs.push({ x: GH_SLOTS[i].x, y: GH_SLOTS[i].y, ord: 1000 + snakeOrd(GH_SLOTS[i]), act: () => helperGh(i, cfg) });
@@ -3687,53 +3706,45 @@ function setHelper(i, field, val) {
 }
 const hmCol = j => HELPER_LOOKS[j % HELPER_LOOKS.length].shirtDark;   // цвет помощника — его одежда
 const hmNum = j => `<b class="hm-n" style="background:${hmCol(j)}">${hInit(j)}</b>`;   // первая буква имени кружком цвета одежды
-// 👥 Команда: список «человек → где работает»; «+» — выбор мест; значок места — кто там работает и настройки
-let helperSel = 0, hmSt = null, hmView = 'list', hmBack = 'list';   // hmBack — куда ведёт «Назад» с экрана места
-const hmPlaces = () => Object.keys(STATIONS).filter(k => !stationOff(k) || S.helpers.some(c => c.stations.includes(k)));
-function hmGo(v, a, b) { if (v === 'place') hmBack = hmView === 'pick' ? 'pick' : 'list'; hmView = v; if (v === 'pick') helperSel = a; if (v === 'place') { hmSt = a; if (b != null) helperSel = b; } openHelpers(); }
+// 👥 Команда: два экрана. Список «человек → его работы»; нажал на человека — «Где работает Настя»: места + настройки прямо под ними
+let helperSel = 0, hmSt = null, hmView = 'list';
+function hmGo(v, i) { hmView = v; if (i != null) helperSel = i; openHelpers(); if (v === 'pick') $('sheet').scrollTop = 0; }
 function selHelper(i) { helperSel = i; openHelpers(); }
-const HM_SET = ['field', 'gh', 'coop', 'barn'];   // места, где у помощника есть свои настройки
-function hmPick(i, k) {   // на экране «Где работает»: включил место с настройками — сразу открываем его настройки
-  const was = S.helpers[i].stations.includes(k);
-  if (!was && HM_SET.includes(k)) { hmBack = 'pick'; hmView = 'place'; hmSt = k; helperSel = i; }
-  toggleStation(i, k);
-}
-function hmFree(i) { const k = hmSt; if (S.helpers[i].stations.includes(k)) { helperSel = -1; toggleStation(i, k); } }
+const hmPlaces = () => Object.keys(STATIONS).filter(k => !stationOff(k) || S.helpers.some(c => c.stations.includes(k)));
+function setGhZone(i, z) { const c = S.helpers[i]; const Z = c.ghZones ?? [0, 1]; c.ghZones = Z.includes(z) ? Z.filter(x => x !== z) : [...Z, z]; if (!c.ghZones.length) c.ghZones = [z === 0 ? 1 : 0]; setHelper(i, 'ghZones', c.ghZones); }
 function openHelpers() {
   const P = hmPlaces(), stN = k => STATIONS[k].name, stI = k => STATIONS[k].ico;
-  const man = (i, cls = '') => `<span class="hy-man${cls}"><img src="${lookImg(hLook(i), 'full')}" alt=""><b>${esc(hName(i))}</b></span>`;
-  let h = `<h2>👥 Команда</h2><div class="fpinfo">Каждый помощник ходит по своим местам и работает там сам. Нажми «+», чтобы дать помощнику работу, а на значок места — чтобы настроить её или убрать.<br><br>👷 Зарплата — вечером, каждому работающему: ${wageEach()}💰 в день. Отдыхающим и в воскресенье — бесплатно.</div>`;
-  if (hmView === 'pick') {   // куда поставить помощника
+  const man = i => `<span class="hy-man"><img src="${lookImg(hLook(i), 'full')}" alt=""><b>${esc(hName(i))}</b></span>`;
+  const tile = (on, ico, name, js, cls = '') => `<button class="hz-t${on ? ' on' : ''}${cls}" onclick="${js}"><span class="hz-e">${ico}</span><small>${name}</small></button>`;
+  let h = `<h2>👥 Команда</h2><div class="fpinfo">Нажми на помощника, чтобы выбрать, где он работает. Он сам ходит между своими местами. Лавка всегда в приоритете.<br><br>👷 Зарплата — вечером, каждому работающему: ${wageEach()}💰 в день. Отдыхающим и в воскресенье — бесплатно.</div>`;
+  if (hmView === 'pick' && S.helpers[helperSel]) {   // один помощник: где работает и как
     const i = helperSel, c = S.helpers[i];
-    h += `<button class="hy-back" onclick="hmGo('list')">‹ Назад</button><div class="hy-h">Где работает <button class="hm-name" data-i="${i}" onclick="editHelperName(${i})">${esc(hName(i))} ✏️</button></div><div class="hy-pl">${P.map(k => `<span class="hy-pw"><button class="hy-pt${c.stations.includes(k) ? ' on' : ''}" onclick="hmPick(${i},'${k}')"><span class="hy-e">${stI(k)}</span><span>${stN(k)}</span></button>${c.stations.includes(k) && HM_SET.includes(k) ? `<button class="hy-gear" onclick="hmGo('place','${k}',${i})">⚙</button>` : ''}</span>`).join('')}</div>
-      <button class="wide" style="width:100%;margin-top:14px" onclick="hmGo('list')">Готово</button>`;
-  } else if (hmView === 'place') {   // одно место: кто работает, кто свободен
-    const K = P.includes(hmSt) ? hmSt : P[0], here = S.helpers.map((c, j) => c.stations.includes(K) ? j : -1).filter(j => j >= 0), free = S.helpers.map((c, j) => c.stations.includes(K) ? -1 : j).filter(j => j >= 0);
-    if (!here.includes(helperSel)) helperSel = here[0] ?? -1;
-    h += `<button class="hy-back" onclick="hmGo(hmBack, helperSel)">‹ Назад</button><div class="hy-tabs">${P.map(k => `<button class="hy-tb${k === K ? ' on' : ''}" onclick="hmGo('place','${k}')">${stI(k)}</button>`).join('')}</div>`;
-    h += `<div class="hy-h">${stI(K)} ${stN(K)}</div><div class="hy-box">${here.length ? here.map(j => `<button class="hy-p${j === helperSel ? ' on' : ''}" onclick="selHelper(${j})">${man(j)}</button>`).join('') : '<span class="hy-empty">Здесь никто не работает</span>'}</div>`;
-    const i = helperSel, c = S.helpers[i];
-    if (i >= 0 && c) {
-      const seedRow = items => `<div class="hm-seeds">${items.map(([on, e, t, js]) => `<button class="hm-sd${on ? ' on' : ''}" onclick="${js}"><span>${e}</span><small>${t}</small></button>`).join('')}</div>`;
-      let st = '';
-      if (K === 'field') {
-        st += `<div class="hy-s">Участки</div><div class="hm-zones">` + ZONES.map((z, k) => { const n = S.plots.filter((p, j) => zoneOf(j) === k).length, own = zoneOwner(k), mine = c.zones.includes(k);
-          return `<button class="hm-z${mine ? ' on' : ''}${n ? '' : ' lock'}" ${n ? '' : 'disabled'} onclick="setZone(${i},${k})"><b>№${k + 1}</b><small>${!n ? '🔒' : mine ? '✓' : own >= 0 ? esc(hName(own)) : ''}</small></button>`; }).join('') + `</div>`;
-        st += `<div class="hy-s">Что сажать</div>` + seedRow([[!c.replant, '🧺', 'ничего', `setField(${i},null)`], [c.replant && c.seed === 'same', '🔁', 'то же', `setField(${i},'same')`],
-          ...S.unlocked.filter(id => !GH_CROPS.includes(id)).map(id => [c.replant && c.seed === id, CROP[id].e, CROP[id].seed + '💰', `setField(${i},'${id}')`])]);
-      }
-      if (K === 'gh') st += `<div class="hy-s">Что сажать</div>` + seedRow([[!c.ghReplant, '🧺', 'ничего', `setGh(${i},null)`], [c.ghReplant && c.ghSeed === 'same', '🔁', 'то же', `setGh(${i},'same')`],
-          ...GH_CROPS.filter(id => S.unlocked.includes(id)).map(id => [c.ghReplant && c.ghSeed === id, CROP[id].e, CROP[id].seed + '💰', `setGh(${i},'${id}')`])]);
-      if (K === 'coop' || K === 'barn') st += `<div class="hy-s">Кормить ночью</div><div class="hy-two"><button class="hy-ch${c.feed ? ' on' : ''}" onclick="setHelper(${i},'feed',true)">🌙 Кормит сам</button><button class="hy-ch${c.feed ? '' : ' on'}" onclick="setHelper(${i},'feed',false)">🧑‍🌾 Кормлю я</button></div>`;
-      h += `<div class="hy-card">${st}<button class="hy-out" onclick="hmFree(${i})">Убрать отсюда</button></div>`;
+    h += `<button class="hy-back" onclick="hmGo('list')">‹ Все помощники</button>`;
+    h += `<div class="hy-me"><img class="hy-meimg" src="${lookImg(hLook(i), 'full')}" alt=""><div><button class="hm-name" data-i="${i}" onclick="editHelperName(${i})">${esc(hName(i))} ✏️</button><small>${c.stations.length ? 'отмечай, где работать' : 'сейчас отдыхает'}</small></div></div>`;
+    h += `<div class="hz-g">${P.map(k => tile(c.stations.includes(k), stI(k), stN(k), `toggleStation(${i},'${k}')`)).join('')}</div>`;
+    const sec = (ico, title, body) => `<div class="hy-sec"><div class="hy-st">${ico} ${title}</div>${body}</div>`;
+    if (c.stations.includes('field')) {
+      h += sec(stI('field'), 'Поле — участки', `<div class="hz-z">${ZONES.map((z, k) => { const n = S.plots.filter((p, j) => zoneOf(j) === k).length, own = zoneOwner(k), mine = c.zones.includes(k);
+        return `<button class="hz-zz${mine ? ' on' : ''}${n ? '' : ' lock'}" ${n ? '' : 'disabled'} onclick="setZone(${i},${k})"><b>${k + 1}</b>${!n ? '<small>🔒</small>' : own >= 0 && own !== i ? `<small>${esc(hName(own))}</small>` : ''}</button>`; }).join('')}</div>${c.zones.length ? '' : '<div class="hm-warn">Выбери участок</div>'}`)
+        + sec(stI('field'), 'Поле — что сажать', `<div class="hz-r">${[[!c.replant, '🧺', 'ничего', `setField(${i},null)`], [c.replant && c.seed === 'same', '🔁', 'то же', `setField(${i},'same')`],
+          ...S.unlocked.filter(id => !GH_CROPS.includes(id)).map(id => [c.replant && c.seed === id, CROP[id].e, CROP[id].seed + '💰', `setField(${i},'${id}')`])].map(([on, e, t, js]) => tile(on, e, t, js)).join('')}</div>`);
     }
-    if (free.length) h += `<div class="hy-s" style="margin-top:12px">Позвать сюда</div><div class="hy-box hy-free">${free.map(j => `<button class="hy-p" onclick="toggleStation(${j},'${K}'); selHelper(${j})">${man(j, S.helpers[j].stations.length ? ' busy' : '')}</button>`).join('')}</div>`;
+    if (c.stations.includes('gh')) {
+      const Z = c.ghZones ?? [0, 1];
+      if (S.up.greenhouse >= 3) h += sec(stI('gh'), 'Какие теплицы', `<div class="hz-two">${[0, 1].map(z => `<button class="hz-b${Z.includes(z) ? ' on' : ''}" onclick="setGhZone(${i},${z})">Теплица ${z + 1}</button>`).join('')}</div>`);
+      h += sec(stI('gh'), 'Теплица — что сажать', `<div class="hz-r">${[[!c.ghReplant, '🧺', 'ничего', `setGh(${i},null)`], [c.ghReplant && c.ghSeed === 'same', '🔁', 'то же', `setGh(${i},'same')`],
+        ...GH_CROPS.filter(id => S.unlocked.includes(id)).map(id => [c.ghReplant && c.ghSeed === id, CROP[id].e, CROP[id].seed + '💰', `setGh(${i},'${id}')`])].map(([on, e, t, js]) => tile(on, e, t, js)).join('')}</div>`);
+    }
+    if (c.stations.includes('coop') || c.stations.includes('barn'))
+      h += sec(c.stations.includes('coop') ? stI('coop') : stI('barn'), 'Кто кормит животных ночью', `<div class="hz-two"><button class="hy-who2${c.feed ? ' on' : ''}" onclick="setHelper(${i},'feed',true)"><img src="${lookImg(hLook(i), 'head')}" alt=""><b>${esc(hName(i))}</b></button><button class="hy-who2${c.feed ? '' : ' on'}" onclick="setHelper(${i},'feed',false)"><img src="${lookImg(PLAYER_LOOK, 'head')}" alt=""><b>Я сам</b></button></div>`);
+    h += `<button class="wide" style="width:100%;margin-top:14px" onclick="hmGo('list')">Готово</button>`;
   } else {   // список
-    h += S.helpers.map((c, i) => `<div class="hy-row"><button class="hy-who" onclick="hmGo('pick',${i})">${man(i)}</button><div class="hy-jobs">${c.stations.map(k => `<button class="hy-job" onclick="hmGo('place','${k}',${i})">${stI(k)}</button>`).join('')}${c.stations.length ? '' : '<span class="hy-zz">отдыхает</span>'}<button class="hy-add" onclick="hmGo('pick',${i})">+</button></div></div>`).join('');
+    hmView = 'list';
+    h += S.helpers.map((c, i) => `<button class="hy-row" onclick="hmGo('pick',${i})">${man(i)}<span class="hy-jobs">${c.stations.map(k => `<span class="hy-job">${stI(k)}</span>`).join('')}${c.stations.length ? '' : '<span class="hy-zz">отдыхает</span>'}</span><span class="hy-arr">›</span></button>`).join('');
     const wn = wageWorkers().length; h += `<div class="hm-wage">👷 Зарплата: ${wn ? `<b>${wn * wageEach()}💰</b> в день` : '0💰 — все отдыхают'}</div>`;
     if (wn) h += `<button class="hy-out" onclick="restAll(this)">😴 Снять всех с работы</button>`;
   }
-  $('sheet').dataset.view = 'helpers:' + hmView; $('sheet').innerHTML = h; $('overlay').classList.add('show');
+  $('sheet').dataset.view = 'helpers:' + hmView + (hmView === 'pick' ? helperSel : ''); $('sheet').innerHTML = h; $('overlay').classList.add('show');
 }
 function hmFade() { const T = document.querySelector('#sheet .hm-tabs'); if (!T) return; T.classList.toggle('l', T.scrollLeft > 4); T.classList.toggle('r', T.scrollLeft + T.clientWidth < T.scrollWidth - 4); }
 
