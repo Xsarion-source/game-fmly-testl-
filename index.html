@@ -1298,7 +1298,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-21.184';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-21.185';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3663,7 +3663,9 @@ function updateHelper(h, dt) {
   }
   if (!found) {   // работы нет — ждёт на своей станции
     // одно место — стоит прямо у точки сбора; несколько — переходит между точками своих мест (лавка — всегда за прилавком)
-    const st = cfg.stations.includes('stall') ? ['stall'] : cfg.stations, n = st.length;
+    // грядки, теплица и сад растут долго — ждём у производства (молочка, пекарня, мельница, курятник, коровник), а к грядкам идём, когда созрело
+    const PRODK = ['dairy', 'bakery', 'mill', 'coop', 'barn'], pr = cfg.stations.filter(k => PRODK.includes(k));
+    const st = cfg.stations.includes('stall') ? ['stall'] : pr.length ? pr : cfg.stations.slice(0, 1), n = st.length;
     const k = n ? st[n > 1 ? Math.floor(performance.now() / 7000 + h.id * .37) % n : 0] : null;
     const spot = k ? workSpot(k, cfg, h) : REST.idle;
     if ((hx !== spot.x || hy !== spot.y) && (walkable(spot.x, spot.y) || spot.y >= H)) h.path = findPath(hx, hy, spot.x, spot.y) || [];   // место на ярмарке — за краем сетки фермы
