@@ -1278,7 +1278,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-21.181';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-21.182';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3663,6 +3663,14 @@ function setZone(i, z) {   // участок — только у одного п
   S.helpers.forEach((c, k) => { if (k !== i && c.zones.includes(z)) { c.zones = c.zones.filter(q => q !== z); const h = helpers[k]; if (h) { h.target = null; h.path = []; } } });
   setHelper(i, 'zones', [...mine, z].sort());
 }
+let restArmed = 0;
+function restAll(btn) {   // снять всех со всех мест (второе нажатие — подтверждение)
+  if (Date.now() - restArmed > 3000) { restArmed = Date.now(); btn.textContent = 'Точно всех на отдых? Нажми ещё раз'; return; }
+  restArmed = 0; S.helpers.forEach(c => { c.stations = []; c.zones = []; });
+  helpers.forEach(h => { h.target = null; h.path = []; h.think = 0; });
+  toast('😴 Все помощники отдыхают — зарплата не идёт');
+  save(); renderUI(); openHelpers();
+}
 function clearField() {   // снять всех помощников с поля
   S.helpers.forEach(c => { c.stations = c.stations.filter(k => k !== 'field'); c.zones = []; });
   helpers.forEach(h => { h.target = null; h.path = []; h.think = 0; });
@@ -3723,6 +3731,7 @@ function openHelpers() {
   } else {   // список
     h += S.helpers.map((c, i) => `<div class="hy-row"><button class="hy-who" onclick="hmGo('pick',${i})">${man(i)}</button><div class="hy-jobs">${c.stations.map(k => `<button class="hy-job" onclick="hmGo('place','${k}',${i})">${stI(k)}</button>`).join('')}${c.stations.length ? '' : '<span class="hy-zz">отдыхает</span>'}<button class="hy-add" onclick="hmGo('pick',${i})">+</button></div></div>`).join('');
     const wn = wageWorkers().length; h += `<div class="hm-wage">👷 Зарплата: ${wn ? `<b>${wn * wageEach()}💰</b> в день` : '0💰 — все отдыхают'}</div>`;
+    if (wn) h += `<button class="hy-out" onclick="restAll(this)">😴 Снять всех с работы</button>`;
   }
   $('sheet').dataset.view = 'helpers:' + hmView; $('sheet').innerHTML = h; $('overlay').classList.add('show');
 }
