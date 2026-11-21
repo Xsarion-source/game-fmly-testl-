@@ -223,6 +223,7 @@
   .hz-zz.lock { opacity: .45; border-style: dashed; }
   .hz-two { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .hz-b { height: 40px; border-radius: 13px; border: 2px solid #ead9b5; background: #fffaf0; font: inherit; font-size: 14px; font-weight: 800; color: #4a2e18; }
+  .hz-t { position: relative; } .hz-free { position: absolute; top: -6px; right: -5px; width: 20px; height: 20px; border-radius: 10px; background: #f4a92b; color: #fff; font: 900 13px/20px system-ui, sans-serif; font-style: normal; text-align: center; box-shadow: 0 0 0 2px #fff; }   /* на месте никто не работает */
   .hm-n { display: inline-block; min-width: 17px; height: 17px; padding: 0 3px; box-sizing: border-box; border-radius: 9px; color: #fff; font: 900 11px/17px system-ui, sans-serif; text-align: center; font-style: normal; box-shadow: 0 0 0 1.5px #fff, 0 1px 2px rgba(0,0,0,.3); text-shadow: 0 1px 1px rgba(0,0,0,.35); } .hm-n.more { background: #a8957a; }
   .hm-z b.hm-n { font-size: 11px; line-height: 17px; }
   .hm-busy { position: absolute; top: -8px; left: 3px; display: flex; gap: 1px; z-index: 1; }   /* над краем плитки — значок станции не закрывают */
@@ -998,7 +999,7 @@ const GH2_LVL = 18;
 const ghOn = (x, y) => S.up.greenhouse > 0 && (ghAt(x, y) < 6 || S.up.greenhouse >= 3);   // грядка теплицы уже построена (вторая теплица — с 3-го уровня)
 GH_SLOTS.forEach(q => ground[q.y][q.x] = 'h');
 const ghAt = (x, y) => GH_SLOTS.findIndex(q => q.x === x && q.y === y);
-const GH_IDLE = at('gh', 13, 7);
+const GH_IDLE = at('gh', 13, 7), GH2_IDLE = at('gh2', 13, 7);   // у входа в каждую теплицу
 for (const [a, b, back] of [[[13,8],[14,8],1],[[14,8],[15,8],1],[[15,8],[16,8],1],[[13,8],[13,9],1],[[13,9],[13,10],1],
                             [[13,10],[14,10],0],[[14,10],[15,10],0],[[15,10],[16,10],0],[[16,8],[16,9],0],[[16,9],[16,10],0]])
   deco('gh', { kind: 'glass', a, b, back, z: back ? 20.5 : (a[0] + b[0]) / 2 + (a[1] + b[1]) / 2 + 0.4 });   // задние стенки — раньше всех грядок теплицы
@@ -1297,7 +1298,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-21.183';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-21.184';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3661,13 +3662,21 @@ function updateHelper(h, dt) {
     if (pth) { h.path = pth; h.target = j; found = true; break; }
   }
   if (!found) {   // работы нет — ждёт на своей станции
-    const first = cfg.stations.includes('stall') ? 'stall' : cfg.stations[0];
-    const base = first ? STATIONS[first].idle : REST.idle;
-    const spot = first === 'stall' ? (fairOn() ? FAIR_HELP : shopSpot(h.shopK || 0)) : first === 'field' && cfg.zones.length ? zoneIdle(cfg.zones[0]) : first === 'gh' ? GH_IDLE : { x: base.x + (h.id % 2), y: base.y };
+    // одно место — стоит прямо у точки сбора; несколько — переходит между точками своих мест (лавка — всегда за прилавком)
+    const st = cfg.stations.includes('stall') ? ['stall'] : cfg.stations, n = st.length;
+    const k = n ? st[n > 1 ? Math.floor(performance.now() / 7000 + h.id * .37) % n : 0] : null;
+    const spot = k ? workSpot(k, cfg, h) : REST.idle;
     if ((hx !== spot.x || hy !== spot.y) && (walkable(spot.x, spot.y) || spot.y >= H)) h.path = findPath(hx, hy, spot.x, spot.y) || [];   // место на ярмарке — за краем сетки фермы
   }
 }
 
+function workSpot(k, cfg, h) {   // где помощник ждёт работу на месте k
+  if (k === 'stall') return fairOn() ? FAIR_HELP : shopSpot(h.shopK || 0);
+  if (k === 'field') return cfg.zones.length ? zoneIdle(cfg.zones[0]) : STATIONS.field.idle;
+  if (k === 'gh') return (cfg.ghZones ?? [0, 1]).includes(0) || S.up.greenhouse < 3 ? GH_IDLE : GH2_IDLE;
+  const p = { coop: COOP_SPOT, barn: BARN_SPOT, bakery: BAKE_SPOT, mill: PROD.mill.spot, dairy: PROD.dairy.spot }[k];
+  return p && walkable(p.x, p.y) ? p : STATIONS[k].idle;
+}
 // ---------- Панель помощников ----------
 function toggleStation(i, k) {
   const c = S.helpers[i];
@@ -3715,13 +3724,14 @@ function setGhZone(i, z) { const c = S.helpers[i]; const Z = c.ghZones ?? [0, 1]
 function openHelpers() {
   const P = hmPlaces(), stN = k => STATIONS[k].name, stI = k => STATIONS[k].ico;
   const man = i => `<span class="hy-man"><img src="${lookImg(hLook(i), 'full')}" alt=""><b>${esc(hName(i))}</b></span>`;
-  const tile = (on, ico, name, js, cls = '') => `<button class="hz-t${on ? ' on' : ''}${cls}" onclick="${js}"><span class="hz-e">${ico}</span><small>${name}</small></button>`;
+  const tile = (on, ico, name, js, cls = '') => `<button class="hz-t${on ? ' on' : ''}${cls}" onclick="${js}">${cls === ' free' ? '<i class="hz-free">!</i>' : ''}<span class="hz-e">${ico}</span><small>${name}</small></button>`;
   let h = `<h2>👥 Команда</h2><div class="fpinfo">Нажми на помощника, чтобы выбрать, где он работает. Он сам ходит между своими местами. Лавка всегда в приоритете.<br><br>👷 Зарплата — вечером, каждому работающему: ${wageEach()}💰 в день. Отдыхающим и в воскресенье — бесплатно.</div>`;
   if (hmView === 'pick' && S.helpers[helperSel]) {   // один помощник: где работает и как
     const i = helperSel, c = S.helpers[i];
     h += `<button class="hy-back" onclick="hmGo('list')">‹ Все помощники</button>`;
     h += `<div class="hy-me"><img class="hy-meimg" src="${lookImg(hLook(i), 'full')}" alt=""><div><button class="hm-name" data-i="${i}" onclick="editHelperName(${i})">${esc(hName(i))} ✏️</button><small>${c.stations.length ? 'отмечай, где работать' : 'сейчас отдыхает'}</small></div></div>`;
-    h += `<div class="hz-g">${P.map(k => tile(c.stations.includes(k), stI(k), stN(k), `toggleStation(${i},'${k}')`)).join('')}</div>`;
+    const nobody = k => !S.helpers.some(x => x.stations.includes(k));   // здесь пока никто не работает — оранжевый «!»
+    h += `<div class="hz-g">${P.map(k => tile(c.stations.includes(k), stI(k), stN(k), `toggleStation(${i},'${k}')`, nobody(k) ? ' free' : '')).join('')}</div>`;
     const sec = (ico, title, body) => `<div class="hy-sec"><div class="hy-st">${ico} ${title}</div>${body}</div>`;
     if (c.stations.includes('field')) {
       h += sec(stI('field'), 'Поле — участки', `<div class="hz-z">${ZONES.map((z, k) => { const n = S.plots.filter((p, j) => zoneOf(j) === k).length, own = zoneOwner(k), mine = c.zones.includes(k);
