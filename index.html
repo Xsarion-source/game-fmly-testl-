@@ -1286,7 +1286,7 @@ function applyLots() {
   blocked[SEASON_SPOT.y][SEASON_SPOT.x] = !!S.up.seasonstand;   // сезонная пристройка
   { const sp = PROD.dairy.spot; blocked[sp.y - 1][sp.x] = !!S.up.dairy; }   // клетка у правой стены, под свесом крыши: к двери подходят чуть правее
   for (const [l, x, y] of COZY_CELLS) blocked[y][x] = (S.up.cozy || 0) >= l;   // будка, колодец, качели
-  for (const id of S.decor || []) for (const [x, y] of DECOR_CELLS[id] || [[DECOR_SPOT[id].x, DECOR_SPOT[id].y]]) blocked[y][x] = true;   // украшения из тетради
+  for (const id of S.decor || []) if (DECOR_SPOT[id] && !DECOR_HIDE.has(id)) for (const [x, y] of DECOR_CELLS[id] || [[DECOR_SPOT[id].x, DECOR_SPOT[id].y]]) blocked[y][x] = true;   // украшения из тетради
 }
 const tuft = Array.from({ length: H }, () => Array.from({ length: W }, () => rnd()));
 
@@ -1402,7 +1402,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-23.194';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-23.195';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1565,7 +1565,7 @@ function yearEv(k, n = 1) {
     g.done = true; S.decor ??= [];
     const d = YEAR_DECOR.find(x => !S.decor.includes(x.id));
     if (d) { S.decor.push(d.id); S.yr.prizes.push(d.id); applyLots(); } else { S.coins += 3000; }   // украшения кончились — денежная награда
-    setTimeout(() => toast(`🎄 Цель года выполнена: ${YEAR_GOALS[g.k].text(g)}${d ? ` · награда: ${d.name}` : ' · награда: 3000💰'}`), 300);
+    setTimeout(() => toast(`🎄 Цель года выполнена: ${YEAR_GOALS[g.k].text(g)}${d ? (DECOR_HIDE.has(d.id) ? ' · награда появится на ферме позже' : ` · награда: ${d.name}`) : ' · награда: 3000💰'}`), 300);
   }
 }
 // виды целей: что считаем, как пишем, можно ли сейчас (по тому, что открыто на ферме)
@@ -1679,8 +1679,9 @@ function renderGoalBtn() {
   b.classList.toggle('low', getComputedStyle($('fairBtn')).display !== 'none');
 }
 // украшения фермы — призы тетради: стоят на свободных клетках у тропинки, дома и поля
-const DECOR_SPOT = { fountain: { x: 9, y: 6 }, gazebo: { x: 12, y: 6 }, carousel: { x: 15, y: 6 }, flags: { x: 7, y: 10 }, pots: { x: 5, y: 5 }, lamp: { x: 6, y: 7 }, scare: { x: 15, y: 4 }, bed: { x: 4, y: 6 }, bird: { x: 5, y: 9 }, pin: { x: 10, y: 10 } };
-const DECOR_CELLS = { flags: [[6, 10], [8, 10]], fountain: [[9, 6], [10, 6], [9, 7], [10, 7]], gazebo: [[12, 6], [13, 6], [12, 7], [13, 7]], carousel: [[15, 6], [16, 6], [15, 7], [16, 7]] };   // какие клетки занимает (по умолчанию — своя)
+const DECOR_SPOT = { fountain: { x: 16, y: 6 }, gazebo: { x: 16, y: 1 }, flags: { x: 7, y: 10 }, pots: { x: 5, y: 5 }, lamp: { x: 6, y: 7 }, scare: { x: 16, y: 4 }, bed: { x: 4, y: 6 }, bird: { x: 5, y: 9 }, pin: { x: 10, y: 10 } };
+const DECOR_HIDE = new Set(['fountain', 'gazebo']);   // пока спрятаны (не нравятся) — в сохранениях остаются, но на ферме не стоят
+const DECOR_CELLS = { flags: [[6, 10], [8, 10]], fountain: [[16, 6], [17, 6], [16, 7], [17, 7]], gazebo: [[16, 1], [17, 1], [16, 2], [17, 2]] };   // карусель убрана — не подходит ферме (в старых сохранениях остаётся в списке, но не ставится)   // какие клетки занимает (по умолчанию — своя)
 // ⛲ фонтан 2×2: круглая каменная чаша, вода, чаша поменьше на столбике, струйки
 function drawFountain(x0, y0) {
   const cx = x0 + 1, cy = y0 + 1, P = (r, a, z) => lift(cx + Math.cos(a) * r, cy + Math.sin(a) * r, z), N = 28;
@@ -5268,6 +5269,67 @@ const ICON_DRAW = {
     c.strokeStyle = 'rgba(255,175,190,.75)'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(11, 12.6); c.bezierCurveTo(19, 13.6, 26, 15.6, 32, 21.5); c.moveTo(53, 12.6); c.bezierCurveTo(45, 13.6, 38, 16.6, 32.5, 22.3); c.moveTo(19, 14.2); c.bezierCurveTo(24, 8.6, 40, 8.6, 45, 14.2); c.stroke();   // отогнутые края светлее
     K.H(21, 26, 1.6, 5, .35); K.H(40, 27, 1.2, 4, .2); c.restore();
     K.D(bud, null, 2.8); },
+  // рецепты из фруктов сада: вишнёвый пирог, персиковая тарталетка, вишнёвый йогурт, персиковый мусс
+  '🫓': K => { const c = K.c, cx = 32, cy = 30, rx = 28, ry = 15, h = 9;
+    K.E(cx, cy + h + 6, rx, ry - 4, 'rgba(90,58,36,.15)', 0, 0);
+    const dish = cc => { cc.ellipse(cx, cy + 2, rx, ry, 0, 0, Math.PI); cc.lineTo(cx - rx + 3, cy + h + 2); cc.ellipse(cx, cy + h + 2, rx - 3, ry - 3, 0, Math.PI, 0, true); cc.closePath(); };
+    K.D(dish, K.G(cx - rx, 0, cx + rx, 0, 'rgba(225,240,250,.9)', 'rgba(170,200,220,.9)'), 1.8);   // стеклянная форма
+    const top = cc => cc.ellipse(cx, cy, rx - 1, ry - 1, 0, 0, 7);
+    K.D(top, K.G(0, cy - ry, 0, cy + ry, '#c81e3a', '#7e0a22'), 0);
+    c.save(); K.D(top, null, 0); c.clip();
+    for (const [x, y] of [[18, 26], [27, 22], [40, 23], [46, 30], [22, 34], [33, 31], [41, 37], [29, 39], [15, 31], [36, 19], [25, 29], [38, 27], [31, 25], [44, 24], [20, 20], [35, 35], [12, 26], [49, 33]]) { K.C(x, y, 3.6, K.G(x - 3, y - 3, x + 3, y + 3, '#e8344e', '#900c28'), 1); K.H(x - 1.2, y - 1.2, .9, .7, .8); }
+    // решётка: широкие полосы теста под углом, переплетены
+    const strip = (x0, y0, x1, y1) => { c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.lineWidth = 4.8; c.strokeStyle = IK; c.stroke(); c.lineWidth = 3.1; c.strokeStyle = '#f6d08e'; c.stroke(); };
+    const A = [-18, -6, 6, 18].map(k => [cx + k - 8, cy - ry - 2, cx + k + 8, cy + ry + 2]), B = [-7, 0, 7].map(k => [cx - rx - 2, cy + k - 4, cx + rx + 2, cy + k + 4]);
+    A.forEach(l => strip(...l)); B.forEach(l => strip(...l));
+    // переплетение: каждая вторая косая полоса снова сверху поперечных
+    for (const [i, l] of A.entries()) for (const [j, m] of B.entries()) if ((i + j) % 2) {   // на пересечениях — косая сверху
+      const d = (l[2] - l[0]) / (l[3] - l[1]), yy = (m[1] + m[3]) / 2 + (((l[0] + (((m[1] + m[3]) / 2) - l[1]) * d) - cx) * (m[3] - m[1]) / (m[2] - m[0])), xx = l[0] + (yy - l[1]) * d;
+      c.save(); c.beginPath(); c.arc(xx, yy, 3.6, 0, 7); c.clip(); strip(...l); c.restore(); }
+    c.restore();
+    // волнистый бортик из теста
+    c.save(); K.D(top, null, 0); c.lineWidth = 4.6; c.strokeStyle = IK; c.stroke(); c.lineWidth = 3; c.strokeStyle = '#eab66a'; c.stroke(); c.restore();
+    c.save(); c.strokeStyle = 'rgba(140,85,30,.55)'; c.lineWidth = .9; for (let k = 0; k < 30; k++) { const a = k / 30 * 6.283, x = cx + Math.cos(a) * (rx - 1), y = cy + Math.sin(a) * (ry - 1); c.beginPath(); c.moveTo(x - Math.cos(a) * 1.2, y - Math.sin(a) * .8); c.lineTo(x + Math.cos(a) * 1.2, y + Math.sin(a) * .8); c.stroke(); } c.restore(); },
+  '🧇': K => { const c = K.c, cx = 32, top = 34, rx = 25, ry = 9, bot = 52, bx = 18;
+    K.E(cx, bot + 2, 19, 3.5, 'rgba(90,58,36,.15)', 0, 0);
+    const zig = (cc, r1, r2) => { for (let k = 0; k <= 40; k++) { const a = k / 40 * 6.283, r = k % 2 ? r2 : r1; const x = cx + Math.cos(a) * rx * r, y = top + Math.sin(a) * ry * r; k ? cc.lineTo(x, y) : cc.moveTo(x, y); } cc.closePath(); };
+    const cup = cc => { cc.moveTo(cx - rx, top); cc.ellipse(cx, top, rx, ry, 0, Math.PI, 0, true); cc.lineTo(cx + bx, bot); cc.quadraticCurveTo(cx, bot + 4, cx - bx, bot); cc.closePath(); };
+    K.D(cup, K.G(cx - rx, 0, cx + rx, 0, '#f6cf8a', '#c88a44'), 0);
+    c.save(); K.D(cup, null, 0); c.clip(); c.strokeStyle = 'rgba(140,85,30,.55)'; c.lineWidth = 1.5;   // рифлёные стенки
+    for (let k = 1; k < 14; k++) { const t = k / 14, xt = cx - rx + t * 2 * rx, xb = cx - bx + t * 2 * bx; c.beginPath(); c.moveTo(xt, top + Math.sin(t * Math.PI) * ry); c.lineTo(xb, bot + Math.sin(t * Math.PI) * 3); c.stroke(); }
+    K.H(cx - 16, 43, 1.8, 4, .45); c.restore(); K.D(cup, null, 2.6);
+    K.D(cc => zig(cc, 1.1, .96), K.G(0, top - ry, 0, top + ry, '#f8d896', '#e0a85c'), 2.2);   // край — зубчиками
+    K.E(cx, top, rx - 4, ry - 3, K.G(0, top - ry, 0, top + ry, '#fff2c8', '#f0d28a'), 0, 0);   // крем
+    for (const [x, y, r] of [[22, 30, 6.5], [42, 30, 6.5], [32, 26, 7], [27, 34, 6.5], [37, 34, 6.5]]) {   // половинки персика горкой — внутри корзиночки
+      K.E(x, y, r, r * .78, K.G(x - r, y - r, x + r, y + r, '#ffc060', '#e8483a'), 0, 1.6); K.H(x - r * .4, y - r * .35, r * .28, r * .18, .8);
+      c.beginPath(); c.arc(x + r * .2, y + r * .1, r * .55, -1.2, .6); c.strokeStyle = 'rgba(160,40,30,.35)'; c.lineWidth = 1; c.stroke(); }
+    K.E(cx + 3, 19, 3.4, 1.7, '#5fae4e', -.5, 1); K.E(cx + 8, 20, 3, 1.5, '#4f9a3c', .4, 1); },
+  '🍧': K => { const c = K.c;   // прямая стеклянная банка, белый йогурт с вишнёвыми прослойками, сверху вишня с хвостиком
+    K.E(32, 60.5, 16, 2.8, 'rgba(90,58,36,.15)', 0, 0);
+    const jar = cc => { cc.moveTo(19, 10); cc.lineTo(45, 10); cc.lineTo(45, 14); cc.quadraticCurveTo(48, 15, 48, 19); cc.lineTo(48, 55); cc.quadraticCurveTo(48, 59, 44, 59); cc.lineTo(20, 59); cc.quadraticCurveTo(16, 59, 16, 55); cc.lineTo(16, 19); cc.quadraticCurveTo(16, 15, 19, 14); cc.closePath(); };
+    K.D(jar, K.G(16, 0, 48, 0, '#ffffff', '#ece8ec'), 0);
+    c.beginPath(); c.moveTo(32, 13.5); c.quadraticCurveTo(34, 5, 41, 2); c.strokeStyle = IK; c.lineWidth = 2.8; c.stroke(); c.strokeStyle = '#7a9a3a'; c.lineWidth = 1.4; c.stroke();   // хвостик — под контурами банки
+    c.save(); K.D(jar, null, 0); c.clip();
+    c.fillStyle = 'rgba(232,244,252,.95)'; c.fillRect(0, 0, 64, 20);   // пустое стекло сверху
+    c.beginPath(); c.moveTo(32, 13.5); c.quadraticCurveTo(34, 5, 41, 2); c.strokeStyle = IK; c.lineWidth = 2.8; c.stroke(); c.strokeStyle = '#7a9a3a'; c.lineWidth = 1.4; c.stroke();
+    K.C(31, 19, 6.2, K.G(25, 13, 37, 25, '#e8344e', '#7e0a22'), 1.4); K.H(28.5, 16.5, 1.6, 1.2, .9);   // вишня, наполовину в йогурте
+    c.fillStyle = '#ffffff'; c.beginPath(); c.moveTo(0, 21); c.quadraticCurveTo(20, 20, 32, 22); c.quadraticCurveTo(44, 24, 64, 21); c.lineTo(64, 64); c.lineTo(0, 64); c.fill();   // йогурт
+    const swirl = (y, amp, col) => { c.fillStyle = col; c.beginPath(); c.moveTo(14, y); c.bezierCurveTo(22, y - amp, 28, y + amp, 34, y - 1); c.bezierCurveTo(40, y - amp, 44, y + amp * .6, 50, y - 2); c.lineTo(50, y + 3); c.bezierCurveTo(42, y + amp + 3, 36, y + 1, 30, y + 4); c.bezierCurveTo(24, y + 6, 20, y + 2, 14, y + 4); c.closePath(); c.fill(); };
+    swirl(32, 3, '#c81e3a'); K.E(31, 47, 6, 2.6, '#b81834', -.1, 0); K.E(19, 46, 2.4, 2, '#a01430', 0, 0);   // вишнёвые прослойки
+    c.fillStyle = 'rgba(255,255,255,.7)'; c.fillRect(19, 22, 2.4, 30); c.fillStyle = 'rgba(160,170,190,.18)'; c.fillRect(43, 20, 5, 40); c.restore();
+    K.D(jar, null, 2.6);
+    K.R(18, 8.5, 28, 4, 1.8, 'rgba(235,245,252,.95)', 2); },   // горлышко — поверх хвостика,
+  '🍮': K => { const c = K.c;
+    K.E(32, 60, 16, 3, 'rgba(90,58,36,.15)', 0, 0);
+    const gl = cc => { cc.moveTo(17, 26); cc.lineTo(47, 26); cc.bezierCurveTo(50, 37, 49, 49, 44, 55); cc.quadraticCurveTo(43, 57, 40, 57); cc.lineTo(24, 57); cc.quadraticCurveTo(21, 57, 20, 55); cc.bezierCurveTo(15, 49, 14, 37, 17, 26); cc.closePath(); };   // круглый стакан с плоским дном
+    K.D(gl, K.G(10, 0, 54, 0, '#ffd4a0', '#f0a050'), 0);
+    c.save(); K.D(gl, null, 0); c.clip(); c.fillStyle = 'rgba(255,255,255,.55)'; c.fillRect(0, 54, 64, 6);   // толстое стеклянное дно
+    c.fillStyle = 'rgba(255,255,255,.5)'; c.fillRect(19, 30, 2.6, 18); c.restore(); K.D(gl, null, 2.6);
+    const cream = cc => { cc.moveTo(16, 27); cc.bezierCurveTo(14, 21, 19, 18, 23, 19.5); cc.bezierCurveTo(25, 13, 34, 12, 37, 16); cc.bezierCurveTo(43, 15, 49, 19, 47.5, 23.5); cc.bezierCurveTo(50, 24.5, 49.5, 27, 48, 27); cc.closePath(); };
+    K.D(cream, K.G(0, 7, 0, 23, '#ffffff', '#eee8de'), 2.2);   // шапка сливок
+    for (const [x, y, a] of [[28, 17, .3], [35, 15, -.2], [33, 20.5, .5]]) { c.save(); c.translate(x, y); c.rotate(a); K.R(-3, -3, 6, 6, 1.4, K.G(-3, -3, 3, 3, '#ffc850', '#f08a30'), 1.2); c.restore(); }   // кубики персика
+    K.D(cc => { cc.moveTo(39, 16); cc.quadraticCurveTo(43, 7, 50, 8); cc.quadraticCurveTo(47, 15, 39, 16); cc.closePath(); }, K.G(40, 12, 51, 4, '#3f8a32', '#7cc257'), 1.3);   // листик мяты
+    K.D(cc => { cc.moveTo(38, 16); cc.quadraticCurveTo(37, 8, 42, 5); cc.quadraticCurveTo(42, 12, 38, 16); cc.closePath(); }, '#5fae4e', 1.2); },
   '🏤': K => { const c = K.c;   // пекарня: домик с полосатым козырьком, витрина с хлебом, вывеска-крендель
     K.E(32, 60, 27, 3.5, 'rgba(90,58,36,.16)', 0, 0);
     K.R(12, 12, 8, 14, 1.5, K.G(0, 12, 0, 26, '#d9765a', '#a8503a'), 2.4); K.R(10.5, 10, 11, 4, 1.5, '#7a7068', 2.2);   // труба печи
@@ -5763,7 +5825,7 @@ function draw(t) {
   for (const v of visitors) list.push({ z: tz(v, v.x + v.y + (v.sitting ? .3 : 0)), f: () => v.sitting ? drawSitting(v, v.look) : drawPersonC(v, v.look) });
   if (clerkOn()) list.push({ z: clerk.x + clerk.y, f: () => drawPersonC(clerk, CLERK_LOOK) });
   archSlices(list);
-  for (const id of S.decor || []) if (DECOR_SPOT[id]) { const q = DECOR_SPOT[id]; list.push({ z: id === 'flags' ? 8.5 + 10.5 : q.x + q.y + 1, f: () => drawSprite(DECOR_OBJ[id], () => drawDecor(id), id + S.night, t) }); }
+  for (const id of S.decor || []) if (DECOR_SPOT[id] && !DECOR_HIDE.has(id)) { const q = DECOR_SPOT[id]; list.push({ z: id === 'flags' ? 8.5 + 10.5 : q.x + q.y + 1, f: () => drawSprite(DECOR_OBJ[id], () => drawDecor(id), id + S.night, t) }); }
   list.push({ z: CIRCUS.x + CIRCUS.y + .9, f: () => drawSprite(CIRCUS, drawCircus, (isFair() && !S.night) + season().id, t) });   // шатёр цирка у ярмарки
   if (fairOn()) fairDrawList(list, t);
   if (truckCar) list.push({ z: truckCar.x + truckCar.y, f: drawTruckCar });
@@ -9052,6 +9114,9 @@ if (S.toSpawn === 0 && !S.night) startDay(); else renderUI();
 if (!S.night) S.toSpawn = Math.max(S.toSpawn, visitorsPerDay());   // старые сохранения получают новый поток покупателей сразу
 // ✨ Что нового: после обновления вместо итогов ночи — список новинок, которых игрок ещё не видел
 const WHATSNEW = [   // новое — сверху; v — версия, с которой это появилось
+  { v: '2026-11-23.195', t: 'Новые картинки и порядок у поля', items: [
+    ['🧑‍🌾', 'Украшения не закрывают грядки', 'Пугало отошло от поля. Фонтан и беседку пока убрали — вернутся в новом виде'],
+    ['🫓', 'Иконки рецептов из фруктов', 'Вишнёвый пирог, персиковая тарталетка, вишнёвый йогурт и персиковый мусс теперь нарисованы'] ] },
   { v: '2026-11-23.194', t: 'Поправки', items: [
     ['🫜', 'Свёкла открывается за 800', 'Цена открытия теперь растёт вместе с уровнем, как у других культур'] ] },
   { v: '2026-11-23.193', t: 'Удобнее сажать', items: [
