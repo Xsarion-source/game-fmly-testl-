@@ -740,21 +740,21 @@ const GOODS = {
   goldegg: { e: '🟡', name: 'Золотое яйцо', price: 150 },
   milk:  { e: '🥛', name: 'Молоко', price: 22 },
   flour: { e: '🍚', name: 'Мука',   price: 30 },
-  sugar: { e: '🧂', name: 'Сахар',  price: 55 },
-  juiceApple: { e: '🧃🍎', name: 'Яблочный сок', price: 80 }, juiceCherry: { e: '🧃🍒', name: 'Вишнёвый сок', price: 110 }, juiceStraw: { e: '🧃🍓', name: 'Клубничный сок', price: 165 },
+  sugar: { e: '🧂', name: 'Сахар',  price: 60 },
+  juiceApple: { e: '🧃🍎', name: 'Яблочный сок', price: 80 }, juiceCherry: { e: '🧃🍒', name: 'Вишнёвый сок', price: 110 }, juiceStraw: { e: '🧃🍓', name: 'Клубничный сок', price: 175 },
   juicePear: { e: '🧃🍐', name: 'Грушевый сок', price: 105 }, juicePeach: { e: '🧃🍑', name: 'Персиковый сок', price: 170 },
-  jamApple: { e: '🍯🍎', name: 'Яблочное варенье', price: 80 }, jamCherry: { e: '🍯🍒', name: 'Вишнёвое варенье', price: 105 }, jamStraw: { e: '🍯🍓', name: 'Клубничное варенье', price: 150 },
-  jamPear: { e: '🍯🍐', name: 'Грушевое варенье', price: 100 }, jamPeach: { e: '🍯🍑', name: 'Персиковое варенье', price: 145 },
+  jamApple: { e: '🍯🍎', name: 'Яблочное варенье', price: 95 }, jamCherry: { e: '🍯🍒', name: 'Вишнёвое варенье', price: 120 }, jamStraw: { e: '🍯🍓', name: 'Клубничное варенье', price: 170 },
+  jamPear: { e: '🍯🍐', name: 'Грушевое варенье', price: 115 }, jamPeach: { e: '🍯🍑', name: 'Персиковое варенье', price: 165 },
   cheese:{ e: '🧀', name: 'Сыр',    price: 85 },
   sour:  { e: '🫙', name: 'Сметана', price: 60 },
   butter:{ e: '🧈', name: 'Масло',  price: 100 },
   bread: { e: '🍞', name: 'Хлеб',    price: 100 },
   pie:   { e: '🥧', name: 'Яблочный пирог', price: 170 },
   pizza: { e: '🍕', name: 'Пицца',   price: 270 },
-  cake:  { e: '🎂', name: 'Клубничный торт', price: 440 },
+  cake:  { e: '🎂', name: 'Клубничный торт', price: 460 },
   croissant: { e: '🥐', name: 'Круассан', price: 190 },
   cherrypie: { e: '🫓', name: 'Вишнёвый пирог', price: 190 }, peachtart: { e: '🧇', name: 'Персиковая тарталетка', price: 280 },
-  cherryyog: { e: '🍧', name: 'Вишнёвый йогурт', price: 110 }, peachmousse: { e: '🍮', name: 'Персиковый мусс', price: 175 },
+  cherryyog: { e: '🍧', name: 'Вишнёвый йогурт', price: 120 }, peachmousse: { e: '🍮', name: 'Персиковый мусс', price: 175 },
   // особые находки: лежат в S.special (у каждой свой размер), на складе — только их число; продаются, лишь если выставить вручную
   // сезонные: продаются только в сезонной пристройке и только в свой сезон
   blini:        { e: '🥞', name: 'Блины',               price: 160, season: 'spring' },
@@ -1366,7 +1366,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-23.190';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-23.191';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
