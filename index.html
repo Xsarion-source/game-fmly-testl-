@@ -301,6 +301,9 @@
   #seedTray.show { display: block; }
   #seedTray .grab { width: 40px; height: 5px; border-radius: 3px; background: #d9c49c; margin: 0 auto 8px; }
   #seedTray .th { display: flex; gap: 8px; margin: 0 2px 8px; }
+  #seedTray .tt { flex: 1; display: flex; align-items: baseline; justify-content: center; gap: 6px; padding: 7px 6px; border-radius: 12px; border: 1.5px solid #ecdcb8; background: #f3e8cf; color: #6b5440; font: 900 15px system-ui, sans-serif; }
+  #seedTray .tt small { font-size: 12px; font-weight: 800; opacity: .8; }
+  #seedTray .tt.on { background: #fff; color: #4a2e18; border-color: #f0c24a; box-shadow: 0 2px 0 #dba93c; }
   #seedTray .cnt { display: inline-flex; align-items: center; gap: 4px; background: #efe3c8; border-radius: 999px; padding: 3px 10px; font-size: 15px; font-weight: 900; color: #4a2e18; }
   #seedTray .row { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 7px 2px 3px; margin-top: -7px; }
   #seedTray .row::-webkit-scrollbar { display: none; }
@@ -356,6 +359,11 @@
            background: var(--panel); border-radius: 18px 18px 0 0;
            padding: 14px 14px calc(14px + env(safe-area-inset-bottom)); animation: up .3s; }
   #sheet h2 { margin: 0 0 6px; font-size: 20px; }
+  .wn-rel { margin-bottom: 12px; }
+  .wn-t { font: 900 15px system-ui, sans-serif; color: #b0503a; margin: 4px 2px 6px; }
+  .wn-i { display: flex; align-items: center; gap: 12px; padding: 9px 12px; margin-bottom: 6px; border-radius: 14px; background: #fff; border: 1.5px solid #ecdcb8; }
+  .wn-e { flex: none; font-size: 34px; line-height: 1; }
+  .wn-i b { display: block; font-size: 15px; color: var(--ink); } .wn-i small { display: block; font-size: 12.5px; color: #7a6650; line-height: 1.35; }
   .summary { background: #f0e5cb; border-radius: 10px; padding: 8px 10px; font-size: 14px; margin-bottom: 10px; line-height: 1.5; }
   .tabs { position: sticky; top: -14px; z-index: 2; display: flex; gap: 6px; margin: 12px -14px 4px; padding: 8px 14px; background: var(--panel); }
   .tabs button { flex: 1; padding: 9px 4px; border-radius: 12px; border: 1.5px solid #ecdcb8; background: #f3e8cf; color: #6b5440; font-weight: 800; font-size: 14px; box-shadow: none; position: relative; }
@@ -1394,7 +1402,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-23.192';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-23.193';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -8116,6 +8124,7 @@ function openMenu() {
       <button onclick="toggleFps()">🎞 Кадров в секунду <small style="color:#7a6650">— ${FPS30 ? '30 (меньше греется)' : '60'}</small></button>
       <button onclick="openSaves()">💾 Сохранения <small style="color:#7a6650">— ${esc(slotNames()[SLOT - 1])}</small></button>
       <button onclick="openEconomy()">💰 Экономика</button>
+      <button onclick="openWhatsNew()">✨ Что нового <small style="color:#7a6650">— версия ${BUILD.slice(-3)}</small></button>
       <button onclick="openHelp()">📖 Как играть</button>
       <button onclick="openCheats()">🛠 Чит-меню <small style="color:#7a6650">— для тестов</small></button>
       <button style="color:#b0503a" onclick="resetGame(this)">🔄 Начать заново</button>
@@ -8369,18 +8378,18 @@ function shopRows() {
     const tab = FARM_UPS.includes(key) ? 'farm' : 'build';
     const l = S.up[key], maxed = l >= u.max, cost = u.cost(l), lock = upLocked(key);
     if (lock) { const known = lvlLocked(key) && !(u.need && !u.need());
-      rows[tab].push({ rank: 2, i, h: `<div class="up" data-why="🔒 ${needTxt(key)}"><div class="ico"${known ? ' style="opacity:.55"' : ''}>${known ? u.ico : '❓'}</div><div class="txt"><b>${known ? u.name : '???'}</b><small>${needTxt(key)}</small></div><button disabled>${known ? '⭐' + upLvl(key) : '???'}</button></div>` }); return; }
+      rows[tab].push({ rank: 2, i, lv: UP_LVL[key] || 1, cost, h: `<div class="up" data-why="🔒 ${needTxt(key)}"><div class="ico"${known ? ' style="opacity:.55"' : ''}>${known ? u.ico : '❓'}</div><div class="txt"><b>${known ? u.name : '???'}</b><small>${needTxt(key)}</small></div><button disabled>${known ? '⭐' + upLvl(key) : '???'}</button></div>` }); return; }
     rows[tab].push({ rank: maxed ? 3 : S.coins >= cost ? 0 : 1, cost, i, h: `<div class="up" data-why="${maxed ? (key === 'cozy' && l < 5 ? 'Фонарики вешать некуда — сначала построй веранду: «Дом фермера»' : key === 'coop' && l < 8 ? 'Вольер полон — расширь его' : key === 'barn' && l < 7 ? 'Пастбище полное — расширь его' : u.max === 1 ? 'Это у вас уже есть' : 'Улучшено на максимум') : 'Недостаточно средств'}"><div class="ico">${u.ico}</div><div class="txt"><b>${u.name} <small>ур. ${l}/${u.max}</small></b><small>${maxed ? 'Максимум' : u.desc(l)}</small></div>
       <button ${maxed || S.coins < cost ? 'disabled' : ''} onclick="buyUpgrade('${key}')">${maxed ? '✔' : cost + '💰'}</button></div>` });
   });
   CROPS.forEach((c, i) => {
     if (S.unlocked.includes(c.id)) return;
     const why = cropWhy(c), early = !!why;
-    rows.crops.push({ rank: early ? 2 : S.coins >= c.unlockCost ? 0 : 1, cost: c.unlockCost, i, h: `<div class="up" data-why="${early ? why : 'Недостаточно средств'}"><div class="ico"${early ? ' style="opacity:.55"' : ''}>${c.e}</div><div class="txt"><b>${c.name}</b>
+    rows.crops.push({ rank: early ? 2 : S.coins >= c.unlockCost ? 0 : 1, cost: c.unlockCost, lv: c.lvl, i, h: `<div class="up" data-why="${early ? why : 'Недостаточно средств'}"><div class="ico"${early ? ' style="opacity:.55"' : ''}>${c.e}</div><div class="txt"><b>${c.name}</b>
       <small>${early ? why : `Семена ${c.seed}💰 · продаётся за ${c.price}💰 · ${GH_CROPS.includes(c.id) ? `🏡 только в теплице: растёт ${fmtMs(c.grow * GH_SLOW)}, гроздь ×${GH_YIELD}` : `растёт ${fmtMs(c.grow)}`}`}</small></div>
       <button ${early || S.coins < c.unlockCost ? 'disabled' : ''} onclick="unlockCrop('${c.id}')">${c.unlockCost}💰</button></div>` });
   });
-  for (const k in rows) rows[k].sort((a, b) => a.rank - b.rank || (a.rank < 2 ? a.cost - b.cost : 0) || a.i - b.i);
+  for (const k in rows) rows[k].sort((a, b) => a.rank - b.rank || (a.rank === 2 ? a.lv - b.lv : 0) || (a.rank < 3 ? a.cost - b.cost : 0) || a.i - b.i);   // закрытое — по уровню, с которого откроется
   return rows;
 }
 function shopTabs() {
@@ -8912,32 +8921,40 @@ function renderSeedBtn() {
   b.innerHTML = `<span class="chev">${trayOpen ? '▼' : '▲'}</span><span>${c.e}</span>Засеять<span class="pr">${S.truck.seeds > 0 && c.seed ? `🎁${S.truck.seeds}` : c.seed + '💰'}</span>`;
   if (trayOpen) renderTray();
 }
-let trayRowKey = '';
+let trayRowKey = '', trayTab = null;   // вкладка лотка: 'field' — поле и теплица, 'fl' — сад
+function setTrayTab(t) { trayTab = t; trayRowKey = ''; const first = t === 'fl' ? FLOWERS.find(f => flSeason(f.id)) : null; if (t === 'fl' ? (!CROP[S.sel].fl || !flSeason(S.sel)) && first : CROP[S.sel].fl) S.sel = t === 'fl' ? first.id : (S.unlocked.includes('wheat') ? 'wheat' : 'sunflower'); renderUI(); }
 function renderTray() {
   const T = $('seedTray'), c = CROP[S.sel], gh = GH_CROPS.includes(S.sel), fl = !!c.fl;
   const n = fl ? (flSeason(S.sel) ? emptyFl() : 0) : gh ? emptyGh() : emptyBeds(), can = c.seed ? Math.min(n, Math.floor(S.coins / c.seed)) : n;
   if (!T.firstChild) { T.innerHTML = `<div class="grab"></div><div class="th"></div><div class="row"></div><button class="all" onclick="sowAll()"></button>`; trayRowKey = ''; }
-  const ids = [...CROPS.map(c => c.id).filter(id => S.unlocked.includes(id)), ...(S.up.grove ? FLOWERS.map(f => f.id) : [])];
+  const tab = S.up.grove ? (trayTab || (fl ? 'fl' : 'field')) : 'field';   // в саду — только цветы своего сезона
+  const ids = tab === 'fl' ? [...FLOWERS.filter(f => flSeason(f.id)), ...FLOWERS.filter(f => !flSeason(f.id))].map(f => f.id) /* сначала то, что сейчас сажают */ : CROPS.map(c => c.id).filter(id => S.unlocked.includes(id));
   const key = ids.map(id => id + (S.sel === id ? '*' : '') + (S.coins < CROP[id].seed || (CROP[id].fl && !flSeason(id)) ? '-' : '')).join();
   if (key !== trayRowKey) {   // семена — только когда поменялись выбор, доступность или список (иначе прокрутка прыгала бы)
     trayRowKey = key; const row = T.querySelector('.row'), x = row.scrollLeft;
     row.innerHTML = ids.map(id => { const k = CROP[id]; return `<button class="sd${S.sel === id ? ' sel' : ''}${S.coins < k.seed || (k.fl && !flSeason(id)) ? ' dis' : ''}" onclick="pickSeed('${id}')"><span class="e">${k.e}</span><span class="c">${k.seed}💰</span>${GH_CROPS.includes(id) ? '<span class="gh">🏡</span>' : ''}</button>`; }).join('');
     row.scrollLeft = x;
   }
-  const th = `<span class="cnt">🟫 ${emptyBeds()}</span>${S.gh.length ? `<span class="cnt">🏡 ${emptyGh()}</span>` : ''}${S.fl.length ? `<span class="cnt">🌸 ${emptyFl()}</span>` : ''}`;
+  const th = S.up.grove ? `<button class="tt${tab === 'field' ? ' on' : ''}" onclick="setTrayTab('field')">🌾 Поле <small>🟫 ${emptyBeds()}${S.gh.length ? ` · 🏡 ${emptyGh()}` : ''}</small></button><button class="tt${tab === 'fl' ? ' on' : ''}" onclick="setTrayTab('fl')">🌸 Сад <small>свободно ${emptyFl()}</small></button>`
+    : `<span class="cnt">🟫 ${emptyBeds()}</span>${S.gh.length ? `<span class="cnt">🏡 ${emptyGh()}</span>` : ''}`;
   const all = `🧺 Засеять всё <span class="sub">${c.e} × ${fl ? '🌸' : gh ? '🏡' : '🟫'} ${can}${can < n ? `/${n}` : ''} = ${can * c.seed}💰</span>`;
   const H = T.querySelector('.th'), A = T.querySelector('.all');
   if (H.dataset.k !== th) { H.dataset.k = th; H.innerHTML = th; }
   if (A.dataset.k !== all) { A.dataset.k = all; A.innerHTML = all; }
   A.disabled = !can;
 }
-function openTray() { toggleProdPop(false); trayOpen = true; $('seedTray').style.transform = ''; $('seedTray').classList.add('show'); renderSeedBtn(); const row = $('seedTray').querySelector('.row'), r = row.querySelector('.sd.sel'); if (r) row.scrollLeft = r.offsetLeft - row.clientWidth / 2 + r.offsetWidth / 2; }
+function openTray() { toggleProdPop(false); trayOpen = true; trayTab = S.up.grove && (groveIn(Math.floor(P.x), Math.floor(P.y)) || CROP[S.sel]?.fl) ? 'fl' : 'field'; trayRowKey = ''; $('seedTray').style.transform = ''; $('seedTray').classList.add('show'); renderSeedBtn(); const row = $('seedTray').querySelector('.row'), r = row.querySelector('.sd.sel'); if (r) row.scrollLeft = r.offsetLeft - row.clientWidth / 2 + r.offsetWidth / 2; }
 function closeTray() {
   if (!trayOpen) return; trayOpen = false; renderSeedBtn();
   const T = $('seedTray'); T.style.transition = 'transform .18s ease-in, opacity .18s'; T.style.transform = 'translateY(110%)'; T.style.opacity = '0';
   setTimeout(() => { if (!trayOpen) T.classList.remove('show'); T.style.transition = T.style.transform = T.style.opacity = ''; }, 180);
 }
-function pickSeed(id) { S.sel = id; renderUI(); }   // цена и теплица видны на плитке — подсказка не нужна
+const SEASON_WHEN = { spring: 'весной', summer: 'летом', autumn: 'осенью', winter: 'зимой' };
+function pickSeed(id) {
+  const c = CROP[id];
+  if (c.fl && !flSeason(id)) { toast(`${c.e} ${c.name} сейчас не сажают — не сезон. Сажают ${c.seasons.map(x => SEASON_WHEN[x]).join(', ').replace(/, ([^,]*)$/, ' и $1')}`); return; }
+  S.sel = id; renderUI();
+}   // цена и теплица видны на плитке — подсказка не нужна
 function sowAll() {   // засеять все пустые грядки выбранным (🍅 и 🍓 — в теплицу); true — фермер пошёл
   const c = CROP[S.sel], can = c.seed ? Math.floor(S.coins / c.seed) + (S.truck.seeds || 0) : Infinity;
   const list = [];
@@ -9033,7 +9050,36 @@ if (tablet) { centerCam(); clampCam(); }   // на планшете — вся �
 else { const a = iso(5, 15), b = iso(11, 6); cam.x = (a.x + b.x) / 2; cam.y = (a.y + b.y) / 2 - 10; clampCam(); }   // на телефоне — поле и лавка в кадре
 if (S.toSpawn === 0 && !S.night) startDay(); else renderUI();
 if (!S.night) S.toSpawn = Math.max(S.toSpawn, visitorsPerDay());   // старые сохранения получают новый поток покупателей сразу
-if (S.night) openCalendar();
+// ✨ Что нового: после обновления вместо итогов ночи — список новинок, которых игрок ещё не видел
+const WHATSNEW = [   // новое — сверху; v — версия, с которой это появилось
+  { v: '2026-11-23.193', t: 'Удобнее сажать', items: [
+    ['🌾', 'Вкладки в «Засеять»', 'Поле и Сад — отдельно. Цветы не своего сезона приглушены: тапни — подскажет, когда их сажают'],
+    ['⬆️', 'Порядок в улучшениях', 'Закрытое идёт по уровню, с которого откроется'] ] },
+  { v: '2026-11-23.192', t: 'Букетная мастерская', items: [
+    ['💐🌹', 'Букетная мастерская', 'Светлый домик в саду. Шесть букетов — от тюльпанов до корзинки цветов'],
+    ['🎁🌹', 'Подарочные букеты', 'Улучшение «Подарочная упаковка»: лента, открытка и папоротник — на 40% дороже'],
+    ['🌿', 'Папоротник', 'Новая зелень для цветочных грядок, растёт круглый год'],
+    ['💮', 'Свежие цветы', 'Цветы своего сезона и букеты только из них — на 20% дороже'],
+    ['📬', 'Заказы по сезону', 'Почта, грузовик и цели просят цветы и фрукты только в их сезон'] ] },
+  { v: '2026-11-23.191', t: 'Цены', items: [
+    ['🍯🍓', 'Варенье дороже', 'Варить варенье теперь так же выгодно, как давить сок'],
+    ['🎂', 'Подорожали', 'Сахар, вишнёвый йогурт, клубничный сок и клубничный торт'] ] },
+  { v: '2026-11-23.190', t: 'Сад и цветы', items: [
+    ['🌸', 'Новая зона: сад', 'Слева от фермы: вишня, груша и персик, 24 цветочные грядки'],
+    ['🌹', 'Цветы', 'Тюльпаны, гладиолусы, георгины и розы — у каждого свой сезон'],
+    ['🧃🍎', 'Соки и варенье', 'Домик в саду: пресс давит 5 соков, котёл варит 5 видов варенья с сахаром'],
+    ['🍒', 'Новые рецепты', 'Вишнёвый пирог, персиковая тарталетка, вишнёвый йогурт, персиковый мусс'] ] },
+];
+function openWhatsNew(since) {
+  const list = WHATSNEW.filter(r => !since || r.v > since);
+  let h = `<h2>✨ Что нового</h2>`;
+  for (const r of list) h += `<div class="wn-rel"><div class="wn-t">${r.t}</div>${r.items.map(([e, b, t]) => `<div class="wn-i"><span class="wn-e">${e}</span><div><b>${b}</b><small>${t}</small></div></div>`).join('')}</div>`;
+  h += `<button class="wide" style="width:100%;margin-top:10px" onclick="closeNight()">🌙 К ферме</button>`;
+  $('sheet').dataset.view = 'whatsnew'; $('sheet').innerHTML = h; $('overlay').classList.add('show');
+}
+{ const seen = S.seenBuild; S.seenBuild = BUILD;
+  if (seen !== BUILD && S.started && WHATSNEW.some(r => !seen || r.v > seen)) setTimeout(() => openWhatsNew(seen), 50);   // обновилась игра — показываем новинки
+  else if (S.night) openCalendar(); }
 // Приложение на экране «Домой» держит старую версию в памяти — проверяем сайт и обновляемся сами (ферма сохраняется до перезагрузки)
 let updBusy = false;
 async function checkUpdate() {
