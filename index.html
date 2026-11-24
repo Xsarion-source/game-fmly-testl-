@@ -1142,14 +1142,14 @@ for (let y = 0; y < ROAD; y++) decor.push({ kind: 'border', a: [0, y], b: [0, y 
 for (let x = 0; x < W; x++) decor.push({ kind: 'border', a: [x, 0], b: [x + 1, 0], io: [[x, 0], [x, -1]], z: x + .1 });
 let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 const treeSpots = [[17, 11], [14, 8 + 2]];   // пара деревьев посреди фермы — для тени и воздуха
-for (let x = 0; x < W; x++) if (![14, 15, 16, 27, 28, 29].includes(x)) treeSpots.push([x, 0]);   // в верхнем ряду — просветы к табличкам будущих зон
+// в верхнем ряду деревьев нет — там изгородь (лес начинается сразу за ней)
 // по западному краю деревьев нет — там изгородь; на y = 9 — калитка в сад
 ground[9][0] = 'p';
 const FOREST_X = 23;   // лес справа: в нём участки под мельницу и сыроварню
 // вокруг вырубок — поляна в клетку, иначе деревья заслоняют здания
 const lotFront = (x, y) => LOTS.some(L => x >= L.x0 - 1 && x <= L.x1 + 1 && y >= L.y0 - 1 && y <= L.y1 + 1 && !(x >= L.x0 && x <= L.x1 && y >= L.y0 && y <= L.y1));   // поляна вокруг вырубки
 const pastureGap = (x, y) => (x === FOREST_X && y >= 3 && y <= 8) || (x === FOREST_X + 1 && (y === 4 || y === 7));   // лес у пастбища реже — коров не заслоняет
-for (let x = FOREST_X; x < W; x++) for (let y = 1; y < ROAD; y++) if (!lotFront(x, y) && !(x < FOREST_X + 2 && y > 9 && y < 14) && !pastureGap(x, y)) treeSpots.push([x, y]);
+for (let x = FOREST_X; x < W - 1; x++) for (let y = 1; y < ROAD; y++) if (!lotFront(x, y) && !(x < FOREST_X + 2 && y > 9 && y < 14) && !pastureGap(x, y)) treeSpots.push([x, y]);
 for (const [x, y] of treeSpots) {
   if (ground[y][x] !== 'g' || blocked[y][x]) continue;
   const lot = lotAt(x, y);
@@ -1414,7 +1414,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-24.196';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-24.197';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -6928,6 +6928,7 @@ const HOUSE = { x0: 1, x1: 4, y0: 1, y1: 4 };
 function drawHouse(d, t) {
   const L = S.up.house || 0, hw = L >= 2 ? 78 : 44, R = 40, o = .24, { x0, x1: X, y0, y1: Y } = HOUSE, ym = (y0 + Y) / 2, e = hw - 3;
   softShadow(x0 - .3, y0 - .2, X + .4, Y + .7);
+  gface([lift(x0 - o, ym, hw + R), lift(X + o, ym, hw + R), lift(X + o, y0 - o, e), lift(x0 - o, y0 - o, e)], '#b84a3e', '#8e3228', INK, 1.6);   // задний скат — виден за коньком
   if (L >= 1) {   // настил веранды вдоль всего фасада
     toonBox(x0 - .15, Y, X - x0 + .3, .62, 3, ['#c99a62', '#a87a48'], ['#a87a48', '#8f6538'], ['#e2b679', '#c99a5e'], 0, 1.2);
     for (const y of [Y + .15, Y + .3, Y + .45]) seg(lift(x0 - .15, y, 3), lift(X + .15, y, 3), 'rgba(120,80,40,.35)', 1);
@@ -6942,7 +6943,8 @@ function drawHouse(d, t) {
   // фронтон справа — треугольник стены под скатами, с круглым чердачным окошком
   gface([lift(X, y0, hw), lift(X, Y, hw), lift(X, ym, hw + R - 3)], '#e6cc9c', '#d0b07c');
   for (let z = hw + 8; z < hw + R - 8; z += 8) { const k = 1 - (z - hw) / (R - 3); seg(lift(X, ym - 1.5 * k, z), lift(X, ym + 1.5 * k, z), 'rgba(120,85,45,.25)', 1.1); }
-  { const c = lift(X, ym, hw + 15); circle(c.x, c.y, 6.5, '#7a4a2a'); circle(c.x, c.y, 5, S.night ? '#ffd27a' : '#bfe3f6'); seg({ x: c.x - 5, y: c.y }, { x: c.x + 5, y: c.y }, '#7a4a2a', 1.2); }
+  { const ring = (ry, rz) => Array.from({ length: 24 }, (_, k) => { const a = k / 24 * 6.283; return lift(X, ym + Math.cos(a) * ry, hw + 15 + Math.sin(a) * rz); });   // круглое окошко — в плоскости фронтона
+    poly(ring(.21, 6.5), '#7a4a2a', INK, 1); poly(ring(.16, 5), S.night ? '#ffd27a' : '#bfe3f6', null); seg(lift(X, ym - .16, hw + 15), lift(X, ym + .16, hw + 15), '#7a4a2a', 1.2); seg(lift(X, ym, hw + 10), lift(X, ym, hw + 20), '#7a4a2a', 1.2); }
   if (L >= 2) { gface(fY(x0, X, Y, 40, 44), '#c99a62', '#a87a48', INK, 1); gface(fX(X, y0, Y, 40, 44), '#b0844f', '#8f6538', INK, 1); }   // межэтажный пояс
   // дверь со ступенькой, окна с ставнями
   if (!L) toonBox(2.15, Y, .8, .2, 2, ['#c7c0b4', '#9d968a'], ['#aaa397', '#857e72'], ['#dcd6cc', '#c3bcb0'], 0, 1);
@@ -7182,14 +7184,17 @@ function drawMailbox() {
   const cap = []; for (let k = 0; k <= N; k++) { const p = arc(k); cap.push(lift(X, p.y, p.z)); }
   gface([lift(X, Y, H), lift(X, y0, H), ...cap], '#6f99e4', '#4a74c8', INK, 1.3);   // торец-дверца
   const top = []; for (let k = 0; k <= N; k++) { const p = arc(k); top.push(lift(x0, p.y, p.z)); }
-  shape([...top, ...cap.slice().reverse()]); ctx.strokeStyle = INK; ctx.lineWidth = 1.3; ctx.stroke();
+  { const P = [...top, ...cap].sort((a, b) => a.x - b.x || a.y - b.y), cr = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x), lo = [], up = [];   // контур крышки — выпуклая оболочка: без «вмятины» на стыке
+    for (const p of P) { while (lo.length > 1 && cr(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); }
+    for (const p of P.slice().reverse()) { while (up.length > 1 && cr(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop(); up.push(p); }
+    shape([...lo.slice(0, -1), ...up.slice(0, -1)]); ctx.strokeStyle = INK; ctx.lineWidth = 1.3; ctx.stroke(); }
   const h1 = lift(X, (y0 + Y) / 2, 22); circle(h1.x, h1.y, 1.6, '#f4d35e');
   if (S.order) {   // флажок поднят
-    toonPost(X + .04, y0 + .1, 19, 36, .025, ['#e0e0e0', '#a0a0a0']);
-    const f = lift(X + .04, y0 + .1, 36);
+    toonPost(x0 + .1, Y + .04, 19, 36, .025, ['#e0e0e0', '#a0a0a0']);   // флажок — на боковой стенке
+    const f = lift(x0 + .1, Y + .04, 36);
     gface([f, { x: f.x + 11, y: f.y + 3 }, { x: f.x + 1, y: f.y + 9 }], '#ff5a52', '#d0302b', INK, 1.1);
   } else {
-    const a = lift(X + .04, y0 + .1, 21), b = lift(X + .04, Y - .05, 21);
+    const a = lift(x0 + .06, Y + .03, 21), b = lift(X - .08, Y + .03, 21);   // опущенный флажок лежит вдоль боковой стенки
     seg(a, b, INK, 4.5); seg(a, b, '#e0393e', 3);
   }
 }
@@ -9235,6 +9240,9 @@ if (S.toSpawn === 0 && !S.night) startDay(); else renderUI();
 if (!S.night) S.toSpawn = Math.max(S.toSpawn, visitorsPerDay());   // старые сохранения получают новый поток покупателей сразу
 // ✨ Что нового: после обновления вместо итогов ночи — список новинок, которых игрок ещё не видел
 const WHATSNEW = [   // новое — сверху; v — версия, с которой это появилось
+  { v: '2026-11-24.197', t: 'Поправки', items: [
+    ['🪵', 'Изгородь не задевает деревья', 'Деревья вдоль северной и восточной изгороди отошли — она видна целиком'],
+    ['🏠', 'Дом и почтовый ящик', 'У дома виден задний скат крыши, круглое окошко на фронтоне ровное; флажок у ящика — сбоку'] ] },
   { v: '2026-11-24.196', t: 'Пасека и новые деревья', items: [
     ['🐝', 'Пасека', 'Ульи на западном краю сада — до 8 штук. Пчёлы сами носят мёд днём, цветущие грядки ускоряют. Ночью, зимой и в дождь — в улье'],
     ['🍯', 'Мёд и соты', 'Мёд забирай у ульев; иногда вместо банки — дорогие соты'],
