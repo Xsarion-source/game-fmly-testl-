@@ -1438,7 +1438,7 @@ S.life.milk ??= 0; S.hist ??= [];
 S.xp ??= Math.round((S.life.earned || 0) * 0.8);   // уровень фермы для старых сохранений — по всему, что заработано S.life.flour ??= 0; S.life.cheese ??= 0;
 S.up.clear ??= 0; S.up.mill ??= 0; S.up.dairy ??= 0;
 S.up.house ??= 0; S.up.bakery ??= 0; S.up.cozy ??= 0;
-if (!S.tut) { S.tut = S.day <= 1 && !S.life?.harvested ? { step: 0 } : { done: 1 }; if (!S.tut.done) S.sel = 'sunflower'; }   // обучение — только для новой фермы
+if (!S.tut) { S.tut = S.day <= 1 && !S.life?.harvested ? { step: 0, newbie: 1 } : { done: 1 }; if (!S.tut.done) S.sel = 'sunflower'; }   // обучение — только для новой фермы
 S.mig ??= {}; if (!S.mig.rlv) { S.mig.rlv = 1; if (S.up.bakery) S.up.bakery = 5; if (S.up.dhouse) S.up.dhouse = 3; if (S.up.press) S.up.press = 3; if (S.up.floral) S.up.floral = 3; }   // рецепты по уровню здания: старым фермам — всё, что уже пекли и варили
 S.stallOff ??= []; S.up.slots ??= 0; S.up.seasonstand ??= 0; S.up.stall2 ??= 0;
 if (!S.shop) {   // прилавок со слотами: раньше продавалось всё, что не снято, — кладём это на места (самое ходовое первым)
@@ -1508,7 +1508,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-24.202';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-24.203';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -2440,7 +2440,7 @@ function spawnVisitor() {
   retarget();
 }
 // Очередь стоит сбоку от лавки и уходит к дороге — прилавок с товаром остаётся на виду
-const QUEUE_SLOTS = [[5.5, 10.5], [6.5, 11.5], [7.5, 11.5], [8.5, 11.5], [9.5, 11.5]].map(([x, y]) => at('stall', x, y));
+const QUEUE_SLOTS = [[4, 11.35], [5.1, 11.6], [6.1, 11.6], [7.1, 11.6], [8.1, 11.6]].map(([x, y]) => at('stall', x, y));   // первый — прямо перед прилавком, остальные вдоль дороги
 function retargetShops() {   // товар переехал в другую лавку — ждущие его покупатели переходят туда
   if (fairOn()) return;
   let moved = false;
@@ -3074,6 +3074,10 @@ const TUT = [   // шаг: текст подсказки, куда показа�
 ];
 const LETTERS = {
   hello: () => ({ text: [grannyHi(), 'Ферма теперь твоя — я перебралась в город к внукам, а хозяйство оставляю тебе. Не бойся, начнём с малого, я подскажу.', 'Посади подсолнухи: семена бесплатные, растут быстро. Нажми «Засеять» внизу и выбери 🌻.'], task: 0 }),
+  calendar: () => ({ text: [grannyHi(), 'Расскажу, как на ферме идёт время. В неделе 7 дней. По воскресеньям выходной: лавка закрыта, покупателей нет, но грядки растут и куры несутся — хороший день, чтобы спокойно посадить и подготовиться к неделе.', 'Сезон длится 3 недели, в году 4 сезона: весна, лето, осень и зима. У каждого сезона свои культуры и цены, а зимой поля под снегом.', 'Календарь с прогнозом погоды открывается, если нажать на солнце вверху экрана.'] }),
+  sunday: () => ({ text: [grannyHi(), 'Напоминаю: завтра воскресенье — выходной. Покупателей не будет, лавка отдыхает. Посади что-нибудь с вечера — к понедельнику вырастет.'] }),
+  weather: () => ({ text: [grannyHi(), `Сегодня ${wxOf().e} ${wxOf().name.toLowerCase()}! Погода каждый день своя, и она помогает: 🌧️ в дождь поле растёт быстрее, 💨 в ветер мельница мелет быстрее, 🔆 в жару приходит больше покупателей, а ❄️ в снегопад дороже молочное и выпечка.`, 'Прогноз на неделю — в календаре: нажми на солнце вверху.'] }),
+  fair: () => ({ text: [grannyHi(), 'В эту субботу — ярмарка! Она бывает в субботу 1-й и 2-й недели каждого сезона. Лавка в этот день закрыта: торгуют на ярмарке за дорогой.', 'До субботы есть три дня — вырасти побольше урожая и собери ящики на ярмарку, кнопка 🎪 справа. Покупателей там много, и берут они больше, чем в лавке.'] }),
   autumn: () => ({ text: [grannyHi(), 'Пришла осень — самое время думать о зиме. Через три недели поля укроет снег, и до весны на них ничего не вырастет.', 'Запаси побольше 🌾 пшеницы и 🌻 подсолнухов — это корм курам и коровам на всю зиму. А лишний урожай не спеши продавать: зимой он стоит на 40% дороже.', 'Сколько корма запасено, видно на складе — в строке «Зимний запас».'] }),
   autumnLate: () => ({ text: [grannyHi(), 'До зимы осталась неделя! Загляни на склад: хватит ли корма животным до весны? Если нет — засей поля пшеницей и подсолнухами, пока не поздно.'] }),
   winter: () => ({ text: [grannyHi(), 'Вот и зима. Поля отдыхают, но работы хватает: в теплице растёт урожай, мельница мелет муку из запасов, а пекарня и сыроварня делают товар подороже.', 'Корм для кур и коров теперь только со склада. Если не хватит — соседка тётя Шура продаст, но втридорога. Кнопка — на складе.'] }),
@@ -3088,9 +3092,17 @@ const LETTERS = {
   done: () => ({ text: [grannyHi(), 'Вот ты и настоящий фермер! Дальше — сама жизнь: сажай, продавай, улучшай ферму. Цели на сезон — в Тетради.', 'И запомни главное: ❄️ зимой поля под снегом. Всё, что вырастишь летом и осенью, — твой запас на зиму. Я буду писать.'] }),
 };
 // письмо приходит в почтовый ящик (над ним — конверт); каждое — один раз
-function sendLetter(id) { S.tut ??= { done: 1 }; S.tut.got ??= []; if (S.tut.got.includes(id)) return; S.tut.got.push(id); (S.tut.inbox ??= []).push(id); save(); setTimeout(() => toast('✉️ Письмо от бабушки Вари — в почтовом ящике'), 1800); }
+function sendLetter(id, auto) { S.tut ??= { done: 1 }; S.tut.got ??= []; if (S.tut.got.includes(id)) return; S.tut.got.push(id); (S.tut.inbox ??= []).push(id); save();
+  if (auto) setTimeout(() => { if (!$('overlay').classList.contains('show') && !$('lvlUp').classList.contains('show')) openLetter(id); else toast('✉️ Письмо от бабушки Вари — в почтовом ящике'); }, 2200);   // важное — сразу на экран
+  else setTimeout(() => toast('✉️ Письмо от бабушки Вари — в почтовом ящике'), 1800); }
 function letterMorning() {
   const c = cal(), si = c.si;
+  if (S.tut?.newbie) {   // новичку — как идёт время: календарь, выходной, погода, ярмарка
+    if (S.day >= 2) sendLetter('calendar', true);
+    if (c.dow === 5) sendLetter('sunday', true);
+    if (weather() !== 'sun' && S.day >= 3) sendLetter('weather');
+    if (fairUnlocked() && c.dow === 2 && fairCal(S.day + 3)) sendLetter('fair', true);   // в среду — за три дня до ярмарки, чтобы успеть собрать ящики
+  }
   if (c.sday === 1 && si === 2) sendLetter('autumn');
   if (c.sday === 15 && si === 2) sendLetter('autumnLate');
   if (c.sday === 1 && si === 3) sendLetter('winter');
@@ -4013,6 +4025,7 @@ function updatePlayer(dt) {
     P.moving = true; P.phase += dt * 13;
   } else {
     P.moving = false;
+    if (!fairOn() && Math.floor(P.x) === COUNTER.x && Math.floor(P.y) === COUNTER.y) P.x += (COUNTER.x + .03 - P.x) * Math.min(1, dt * 8);   // за прилавком — встаём по центру лавки
     if (tasks.length) {
       const t = tasks.shift(); if (t.fn) { t.fn(); P.work = 0.2 / PEOPLE_SLOW; } nextTask();
       if (!tasks.length && autoHarvest && !S.night && !harvestRoute(true)) autoHarvest = false;
@@ -4595,6 +4608,11 @@ cv.addEventListener('pointerup', e => {
 });
 cv.addEventListener('pointercancel', e => { pointers.delete(e.pointerId); pinch = null; down = null; });
 
+function tapStall() {
+  if (fairOn()) { goFair(); return; }
+  if (Math.floor(P.x) === COUNTER.x && Math.floor(P.y) === COUNTER.y && !path.length) { openStall(); return; }   // уже за прилавком — выбрать товары
+  setTasks([{ x: COUNTER.x, y: COUNTER.y }]); toast('🏪 Фермер продаёт выставленное. Тапни лавку ещё раз — выбрать товары');
+}
 function onTap(sx, sy) {
   const wx = (sx - cw / 2) / zoom + cam.x, wy = (sy - ch / 2) / zoom + cam.y;
   if (trayOpen) {   // открыта полоска семян: тап по грядке сажает, по любому другому месту — только закрывает её
@@ -4623,6 +4641,7 @@ function onTap(sx, sy) {
   if (hit('pond', 19, 12, 21, 13, 62)) { fairLockedToast() || openTrophies(); return; }   // доска почёта — по всей картинке
   if (S.up.dairy && hit('dairy', 17, 8, dhBig ? 19 : 18, dhBig ? 10 : 9, dhBig ? 70 : 60)) { openProd('dairy'); return; }   // по картинке здания, вместе с крышей
   if (S.up.mill && hit('mill', 17, 4, 19, 6, 150)) { openProd('mill'); return; }
+  if (!S.night && hit('stall', 3, 9, 5, 11, 70)) { tapStall(); return; }   // лавка — по всей картинке: прилавок, ящики, вывеска
   const fx = (wx / (TW / 2) + wy / (TH / 2)) / 2, fy = (wy / (TH / 2) - wx / (TW / 2)) / 2;
   const tx = Math.floor(fx), ty = Math.floor(fy);
   if (fairOn() && ((tx >= 17 && tx <= 19 + 2 * (S.up.fairstall || 0) && ty >= 22 && ty <= 25) || (S.up.fairbake && tx >= 14 && tx <= 16 && ty >= 22 && ty <= 25))) { goFair(); return; }   // лотки фермы
@@ -4669,11 +4688,7 @@ function onTap(sx, sy) {
   if (pk) { tapProd(pk); return; }
   if (tx >= FOREST_X && !walkable(tx, ty)) return;   // дальний лес
   const st = at('stall', 3, 10);
-  if (ty === st.y && (tx === st.x || tx === st.x + 1)) {
-    if (fairOn()) { goFair(); return; }
-    if (Math.floor(P.x) === COUNTER.x && Math.floor(P.y) === COUNTER.y && !path.length) { openStall(); return; }   // уже за прилавком — выбрать товары
-    setTasks([{ x: COUNTER.x, y: COUNTER.y }]); toast('🏪 Фермер продаёт выставленное. Тапни лавку ещё раз — выбрать товары'); return;
-  }
+  if (ty === st.y && (tx === st.x || tx === st.x + 1)) { tapStall(); return; }
   if (S.up.stall2 && ty === STALL2.y && (tx === STALL2.x || tx === STALL2.x + 1)) { if (fairOn()) { goFair(); return; } openStall(0, 1); return; }
   if (walkable(tx, ty)) setTasks([{ x: tx, y: ty }]);
 }
@@ -9488,6 +9503,9 @@ if (S.toSpawn === 0 && !S.night) startDay(); else renderUI();
 if (!S.night) S.toSpawn = Math.max(S.toSpawn, visitorsPerDay());   // старые сохранения получают новый поток покупателей сразу
 // ✨ Что нового: после обновления вместо итогов ночи — список новинок, которых игрок ещё не видел
 const WHATSNEW = [   // новое — сверху; v — версия, с которой это появилось
+  { v: '2026-11-24.203', t: 'Удобная лавка и календарь', items: [
+    ['🏪', 'Лавка', 'Покупатели встают в очередь прямо перед прилавком, фермер — за его серединой. А открыть лавку можно, нажав на любую её часть: прилавок, ящики или вывеску'],
+    ['📅', 'Бабушка расскажет про время', 'Новичкам — письма о том, как устроены неделя, выходные, сезоны, погода и ярмарка. Воскресенье больше не наступит внезапно'] ] },
   { v: '2026-11-24.202', t: 'Письма бабушки Вари', items: [
     ['✉️', 'Бабушка Варя пишет письма', 'Прежняя хозяйка фермы переехала в город и присылает письма с советами: к осени — как готовиться к зиме, зимой — чем заняться, а ещё когда строишь новые здания. Письма приходят в почтовый ящик 💌, прочитанные можно перечитать на почте'],
     ['🧭', 'Обучение для новой фермы', 'Новичков бабушка проведёт за руку: шесть простых шагов от первого подсолнуха до Тетради фермера'],
