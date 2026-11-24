@@ -223,6 +223,7 @@
   .hz-zz.lock { opacity: .45; border-style: dashed; }
   .hz-two { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .hz-b { height: 40px; border-radius: 13px; border: 2px solid #ead9b5; background: #fffaf0; font: inherit; font-size: 14px; font-weight: 800; color: #4a2e18; }
+  .hz-t.dim:not(.on) { opacity: .5; } .hy-note { margin-top: 6px; font-size: 12px; color: #8a6a48; }
   .hz-t { position: relative; } .hz-free { position: absolute; top: -6px; right: -5px; width: 20px; height: 20px; border-radius: 10px; background: #f4a92b; color: #fff; font: 900 13px/20px system-ui, sans-serif; font-style: normal; text-align: center; box-shadow: 0 0 0 2px #fff; }   /* на месте никто не работает */
   .hm-n { display: inline-block; min-width: 17px; height: 17px; padding: 0 3px; box-sizing: border-box; border-radius: 9px; color: #fff; font: 900 11px/17px system-ui, sans-serif; text-align: center; font-style: normal; box-shadow: 0 0 0 1.5px #fff, 0 1px 2px rgba(0,0,0,.3); text-shadow: 0 1px 1px rgba(0,0,0,.35); } .hm-n.more { background: #a8957a; }
   .hm-z b.hm-n { font-size: 11px; line-height: 17px; }
@@ -745,7 +746,7 @@ const FLOWERS = [
   { id: 'tulip', name: 'Тюльпаны', e: '💮', seed: 12, grow: 30, price: 35, fl: true, seasons: ['spring'] },
   { id: 'glad',  name: 'Гладиолусы', e: '🌺', seed: 8,  grow: 24, price: 26, fl: true, seasons: ['summer'] },
   { id: 'dahlia', name: 'Георгины', e: '🪻', seed: 15, grow: 36, price: 42, fl: true, seasons: ['autumn'] },
-  { id: 'fern',  name: 'Папоротник', e: '🌿', seed: 6, grow: 20, price: 12, fl: true, seasons: ['spring', 'summer', 'autumn', 'winter'] },   // зелень для подарочных букетов
+  { id: 'fern',  name: 'Папоротник', e: '🌿', seed: 6, grow: 20, price: 12, fl: true, seasons: ['spring', 'summer', 'autumn'] },   // зелень для подарочных букетов
   { id: 'rose',  name: 'Розы',     e: '🌹', seed: 30, grow: 54, price: 75, fl: true, seasons: ['spring', 'summer', 'autumn'] },
 ];
 const CROP = Object.fromEntries([...CROPS, ...FLOWERS].map(c => [c.id, c]));
@@ -1056,7 +1057,7 @@ const slotKind = i => i < 4 || i === 19 ? 'apple' : i >= 16 ? ['cherry', 'pear',
 const treeOpen = i => i < 4 ? i < (S.up.orchard || 0) * 2 : i === 19 ? (S.up.orchard || 0) >= 2 : i >= 16 ? (S.up.grove || 0) >= [1, 2, 3][i - 16] : i - 4 < 4 * (S.up.grove || 0);
 const flAt = (x, y) => FL_SLOTS.findIndex(q => q.x === x && q.y === y);
 const groveIn = (x, y) => x >= GROVE.x0 && x <= GROVE.x1 && y >= GROVE.y0 && y <= GROVE.y1;
-const grovePath = (x, y) => (y === 9 && x >= GROVE.x0 && x <= GROVE.x1 + 1) || (x === -3 && y >= GROVE.y0 && y <= ROAD) || (y === ROAD && x >= -3 && x <= -1);   // дорожка через зону и к дороге
+const grovePath = (x, y) => (y === 9 && x >= GROVE.x0 && x <= GROVE.x1 + 1) || (x === -3 && y >= GROVE.y0 && y <= ROAD) || (y === ROAD && x >= -3 && x <= -1) || (x === -2 && (y === 5 || y === 13));   // дорожка через зону и к дороге; клетка дорожки к дверям домиков
 const groveWalk = (x, y) => { try { return (S.up.grove || 0) > 0 && (groveIn(x, y) || grovePath(x, y)) && !(S.up.press && x >= -2 && x <= -1 && y >= 3 && y <= 4) && !(S.up.floral && x >= -2 && x <= -1 && y >= 11 && y <= 12) && !((x === -12 || x === -13) && y >= 10 && y <= 13 && (x === -12 ? 0 : 4) + y - 10 < [0, 2, 4, 6, 8][S.up.hive || 0]); } catch { return false; } };   // клетки домиков и ульев — заняты
 for (let y = 5; y <= 8; y++) for (let x = 1; x <= 3; x++) { const c = at('orchard', x, y); ground[c.y][c.x] = 'o'; }
 { const c = at('orchard', 2, 9); ground[c.y][c.x] = 'o'; }   // пятая яблоня
@@ -1154,9 +1155,31 @@ deco('dairy', { kind: 'dairy', z: 17 + 2 + 8 + 2 - 1.01 });
 decor.push({ kind: 'press', x: -2, y: 3, z: -2 + 3 + 2 + 2 - 1.01 }, { kind: 'floral', x: -2, y: 11, z: -2 + 11 + 2 + 2 - 1.01 });
 [[-12, 10], [-12, 11], [-12, 12], [-12, 13], [-13, 10], [-13, 11], [-13, 12], [-13, 13]].forEach(([x, y], i) => decor.push({ kind: 'hive', i, x, y, z: x + y + 1 }));   // ульи пасеки   // букетная мастерская   // домик соков и варенья в саду
 
-// низкая деревянная изгородь по границе фермы: запад, север и восток; где тропинка уходит наружу — проход
-for (let y = 0; y < ROAD; y++) decor.push({ kind: 'border', a: [0, y], b: [0, y + 1], io: [[0, y], [-1, y]], z: y + .1 }, { kind: 'border', a: [W, y], b: [W, y + 1], io: [[W - 1, y], [W, y]], z: W + y + .6 });
-for (let x = 0; x < W; x++) decor.push({ kind: 'border', a: [x, 0], b: [x + 1, 0], io: [[x, 0], [x, -1]], z: x + .1 });
+// низкая деревянная изгородь по границе владений: ферма и открытые зоны (сад, склад…); с юга — дорога; где тропинка уходит наружу — проход
+let borderKey = '';
+function ownedCell(x, y) {
+  if (x >= 0 && x < W && y >= 0 && y < ROAD) return true;
+  if (laneAt(x, y) || (S.up.store > 0 && x >= -3 && x < 0 && y >= -1 && y < 2)) return true;   // дорога грузовика к складу и угол у поворота — внутри изгороди (иначе колёса на заборе)
+  for (const Z of FUTURE) if (zoneOpen(Z)) {
+    if (x >= Z.x0 && x <= Z.x1 && y >= Z.y0 && y <= Z.y1) return true;
+    if (Z.x1 < 0 && x > Z.x1 && x < 0 && y >= Z.y0 && y <= Z.y1) return true;   // полоска между зоной и фермой — тоже наша
+    if (Z.y1 < 0 && y > Z.y1 && y < 0 && x >= Z.x0 && x <= Z.x1) return true;
+  }
+  return false;
+}
+function rebuildBorder() {   // перестраивается, когда открывается новая зона
+  const key = FUTURE.map(zoneOpen).join(); if (key === borderKey) return; borderKey = key;
+  for (let i = decor.length - 1; i >= 0; i--) if (decor[i].kind === 'border') decor.splice(i, 1);
+  const xs = [0, W - 1, ...FUTURE.filter(zoneOpen).flatMap(Z => [Z.x0, Z.x1])], ys = [0, ROAD - 1, ...FUTURE.filter(zoneOpen).flatMap(Z => [Z.y0, Z.y1])];
+  for (let y = Math.min(...ys); y <= Math.max(...ys); y++) for (let x = Math.min(...xs); x <= Math.max(...xs); x++) {
+    if (!ownedCell(x, y)) continue;
+    const io = (nx, ny) => [[x, y], [nx, ny]];
+    if (!ownedCell(x, y - 1)) decor.push({ kind: 'border', a: [x, y], b: [x + 1, y], io: io(x, y - 1), z: x + y + .1 });
+    if (!ownedCell(x - 1, y)) decor.push({ kind: 'border', a: [x, y], b: [x, y + 1], io: io(x - 1, y), z: x + y + .1 });
+    if (!ownedCell(x + 1, y)) decor.push({ kind: 'border', a: [x + 1, y], b: [x + 1, y + 1], io: io(x + 1, y), z: x + y + 1.6 });
+    if (!ownedCell(x, y + 1) && y + 1 < ROAD) decor.push({ kind: 'border', a: [x, y + 1], b: [x + 1, y + 1], io: io(x, y + 1), z: x + y + 1.6 });
+  }
+}
 let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 const treeSpots = [[17, 11], [14, 8 + 2]];   // пара деревьев посреди фермы — для тени и воздуха
 // в верхнем ряду деревьев нет — там изгородь (лес начинается сразу за ней)
@@ -1260,7 +1283,7 @@ const PAN_X1 = Math.max(...FUTURE.map(Z => (Z.x1 + 1 - Z.y0) * TW / 2)) + 60;   
 const zoneOpen = Z => { try { return !!(Z.key && S.up[Z.key] > 0); } catch { return false; } };   // при загрузке карты состояния ещё нет — зона закрыта
 const zoneIn = (x, y) => FUTURE.find(Z => x >= Z.x0 && x <= Z.x1 && y >= Z.y0 && y <= Z.y1);
 // дорога к складу: от главной дороги вдоль левого края фермы и за её верхним рядом деревьев
-const laneAt = (x, y) => S.up.store > 0 && ((x === -1 && y >= -1 && y < ROAD) || (y === -1 && x >= -1 && x <= 17));
+const laneAt = (x, y) => S.up.store > 0 && ((x === -3 && y >= -1 && y < ROAD) || (y === -1 && x >= -3 && x <= 17));   // грузовик едет по садовой дорожке
 const zoneEdge = (x, y) => FUTURE.some(Z => !zoneOpen(Z) && x >= Z.x0 && x <= Z.x1 && y >= Z.y0 && y <= Z.y1 && (x === Z.x0 || x === Z.x1 || y === Z.y0 || y === Z.y1));
 decor.push({ kind: 'farmArch', x: 7, y: 13.02, z: 7.5 + 13 });   // ворота фермы
 decor.push({ kind: 'storeBarn', x: 12, y: -5, z: 12 - 2.4 - 1.2 });   // раньше грузовика на дорожке перед ним (ящики у стены не перекрывают машину)   // амбар склада
@@ -1405,7 +1428,7 @@ for (const c of S.helpers) if (!c.zones) {   // участки: раньше б�
   const z = c.zone === undefined && c.stations.includes('field') ? freeZone() : null;
   delete c.zone; if (z != null) c.zones.push(z);
 }
-for (const c of S.helpers) { c.feed ??= false; c.ghReplant ??= false; c.ghSeed ??= 'same'; c.fold ??= false; }
+for (const c of S.helpers) { c.feed ??= false; c.ghReplant ??= false; c.ghSeed ??= 'same'; c.fold ??= false; c.flSeed ??= 'same'; }
 if (!S.xpv) { S.xp = Math.round((S.xp || 0) * 3); S.xpv = 2; }   // уровни стали в 3 раза «длиннее»: старый опыт ×3 — уровень и полоска до следующего остаются как были
 S.up.store ??= 0; S.up.grove ??= 0; S.fl ??= []; S.up.orchard ??= 0; S.up.coop ??= 0; S.up.greenhouse ??= 0;
 S.gh ??= [];
@@ -1431,7 +1454,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-24.198';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-24.199';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -2194,7 +2217,7 @@ function updateTruck(dt) {
   const c = S.truck.c;
   if (!truckCar && c && S.day === c.due && S.started) {
     truckCar = { x: W + 16, y: TRUCK_Y, f: 'back', mir: false, loaded: false, wait: 0,
-      wps: [{ x: -.5, y: TRUCK_Y }, { x: -.5, y: -.5 }, { x: TRUCK_PARK, y: -.5, park: 1 }, { x: -.5, y: -.5 }, { x: -.5, y: TRUCK_Y }, { x: -26, y: TRUCK_Y, end: true }] };
+      wps: [{ x: -2.5, y: TRUCK_Y }, { x: -2.5, y: -.5 }, { x: TRUCK_PARK, y: -.5, park: 1 }, { x: -2.5, y: -.5 }, { x: -2.5, y: TRUCK_Y }, { x: -26, y: TRUCK_Y, end: true }] };
     for (const f of ['front', 'back']) for (const l of [false, true]) { const im = TRUCK_SPR[f + (l ? '_loaded' : '_empty')]; if (im.complete && im.width) truckCanvas(f + l, im, 118, im.height * 118 / im.width); }
     toast('🚚 Едет грузовик за заказом!');
   }
@@ -3052,7 +3075,8 @@ function holdPick(list, can, cap = 99) {   // по очереди: из того
   if (c.length > 1) { const fair = c.filter(g => work(g) < cap / 2); if (fair.length) c = fair; }   // пока не хватает и другого — одному товару не больше половины очереди
   return c.sort((a, b) => work(a) - work(b) || holdGap(b) / S.hold[b] - holdGap(a) / S.hold[a])[0] || null;
 }
-const bakeWant = () => holdPick(Object.keys(BAKE), r => canMake(r) && bakeHave(r) > 0 && bakeRoom(r, 1) > 0, BAKE_CAP + OVENS * trayN());
+const bakeOk = r => recipeShown(r) && canMake(r, true);   // сезонное — только в свой сезон и при сезонной пристройке
+const bakeWant = () => holdPick(Object.keys(BAKE), r => bakeOk(r) && bakeHave(r) > 0 && bakeRoom(r, 1) > 0, BAKE_CAP + OVENS * trayN());
 function setHold(g, d) { S.hold[g] = Math.max(0, Math.min(99, (S.hold[g] || 0) + d)); save(); refreshSheet(); }
 function holdBlock(list, helper, place) {   // список рецептов со счётчиком «держать на складе»
   if (!helper.length) return '';
@@ -3168,7 +3192,7 @@ function openBakery() {
       <b>${GOODS[r].name}</b><small>${sellPrice(r)}💰 · ${fmtSec(BAKE[r].time / sp)}</small><div class="rc-ing">${ing}</div><small class="rc-f">${foot}</small></button>`;
   }
   h += `</div><div class="pfacts" style="margin-top:10px"><span>${OVENS} отделения</span><span>по ${trayN()} шт. за раз</span><span>~${perDay(sel)} ${GOODS[sel].e} в день</span></div>`;
-  h += holdBlock(Object.keys(BAKE).filter(g => canMake(g)), helper, 'печёт то, чего меньше нормы, и забирает готовое');
+  h += holdBlock(Object.keys(BAKE).filter(bakeOk), helper, 'печёт то, чего меньше нормы, и забирает готовое');
   if (!helper.length) h += `<div class="phelp">${helper.length ? '' : `👷 Помощник не назначен — ${S.up.helper ? '<a href="#" onclick="event.preventDefault();openHelpers()">назначить в «Команде»</a>' : 'наймёшь — поставь его на станцию 🏤'}`}</div>`;
   // улучшения пекарни: «сейчас → будет»
   const row = (u, title, now, next, ico) => {
@@ -3940,7 +3964,7 @@ const STATIONS = {
   field:   { ico: '🚜', name: 'Поле',     idle: at('path', 5, 3),   hint: 'Собирает созревшее на грядках' },
   gh:      { ico: '🏡', name: 'Теплица',  idle: at('gh', 13, 7),    hint: 'Собирает 🍅 и 🍓 в теплице' },
   orchard: { ico: '🍎', name: 'Сад',      idle: at('orchard', 2, 6), hint: 'Собирает фрукты' },
-  flowers: { ico: '🌷', name: 'Цветы',    idle: { x: -3, y: 12 },      hint: 'Собирает цветы и сажает те же снова, пока их сезон' },
+  flowers: { ico: '🌷', name: 'Цветы',    idle: { x: -3, y: 12 },      hint: 'Собирает цветы и сажает новые — какие, выбираешь в Команде' },
   coop:    { ico: '🐔', name: 'Курятник', idle: at('coop', 8, 8),   hint: 'Собирает яйца' },
   barn:    { ico: '🐄', name: 'Коровник', idle: at('barn', 14, 7),  hint: 'Собирает молоко' },
   mill:    { ico: '🌬️', name: 'Мельница', idle: at('mill', 19, 7),  hint: 'Мелет пшеницу в муку (оставляет 🌾 коровам)' },
@@ -3955,10 +3979,10 @@ const REST = { ico: '😴', idle: at('home', 3, 4) };
 let helpers = [];
 const indoors = h => S.night && !h.moving && !h.path.length && !h.target && h.work <= 0 && Math.floor(h.x) === REST.idle.x && Math.floor(h.y) === REST.idle.y;   // ночью дошёл до двери — ушёл в дом (не рисуем)
 // работа недоступна, пока нет здания (сада, кур, коров, теплицы…)
-const stationOff = k => (k === 'hive' && !S.up.hive) || (k === 'floral' && !S.up.floral) || (k === 'press' && !S.up.press) || (k === 'flowers' && !S.up.grove) || (k === 'orchard' && !S.up.orchard && !S.up.grove) || (k === 'coop' && !hens()) || (k === 'barn' && !cows()) || (k === 'gh' && !S.up.greenhouse) || (k === 'mill' && !S.up.mill) || (k === 'dairy' && !S.up.dairy) || (k === 'bakery' && !S.up.bakery);
+const stationOff = k => (k === 'hive' && !S.up.hive) || (k === 'floral' && !S.up.floral) || (k === 'press' && !S.up.press) || (k === 'flowers' && (!S.up.grove || flWinter())) || (k === 'orchard' && !S.up.orchard && !S.up.grove) || (k === 'coop' && !hens()) || (k === 'barn' && !cows()) || (k === 'gh' && !S.up.greenhouse) || (k === 'mill' && !S.up.mill) || (k === 'dairy' && !S.up.dairy) || (k === 'bakery' && !S.up.bakery);
 function syncHelpers() {
   while (S.helpers.length < S.up.helper) {
-    S.helpers.push({ stations: [], replant: false, seed: 'same', zones: [], feed: false, ghReplant: false, ghSeed: 'same', fold: false });   // новый — отдыхает, работу даёшь ты
+    S.helpers.push({ stations: [], replant: false, seed: 'same', zones: [], feed: false, ghReplant: false, ghSeed: 'same', fold: false, flSeed: 'same' });   // новый — отдыхает, работу даёшь ты
   }
   while (helpers.length < S.up.helper) {
     const i = helpers.length;
@@ -4023,6 +4047,15 @@ function helperGh(i, cfg) {
   if (cfg.ghReplant) { const id = ghHelperSeed(cfg, p); if (id) { paySeed(CROP[id].seed); p.crop = id; p.prog = 0; if (!S.night) beginClock(); } }
   save(); renderUI(); return true;
 }
+// цветы: что посадит помощник (только в сезон этого цветка)
+const FL_BY_SEASON = { spring: 'tulip', summer: 'glad', autumn: 'dahlia', winter: null };
+// зимой цветочные грядки отдыхают: когда собрано последнее — роль «Цветы» снимается (другие места остаются), весной назначаешь заново
+const flWinter = () => season().id === 'winter' && !S.fl.some(p => p.crop);
+function flWinterOff() { if (!flWinter()) return; for (const c of S.helpers) if (c.stations.includes('flowers')) { c.stations = c.stations.filter(k => k !== 'flowers'); save(); } }
+function flHelperSeed(cfg, p) {
+  const k = cfg.flSeed ?? 'same', id = k === 'none' ? null : k === 'same' ? p.last : k === 'season' ? FL_BY_SEASON[season().id] : k;
+  return id && CROP[id]?.fl && flSeason(id) && S.coins >= CROP[id].seed ? id : null;
+}
 // порядок обхода грядок «змейкой»: ряд слева направо, следующий — справа налево
 const snakeOrd = q => q.y * 20 + (q.y % 2 ? 19 - q.x : q.x);
 // работа для станции помощника
@@ -4048,7 +4081,10 @@ function helperJobs(cfg) {
   if (has('floral') && S.up.floral && ((floralOut() > 0 && floralFits()) || floralWant())) jobs.push({ ...FLORAL_SPOT, k: 'floral', act: () => floralAct(true) });
   if (has('press') && S.up.press && ((pressOut() > 0 && pressFits()) || pressWant())) jobs.push({ ...PRESS_SPOT, k: 'press', act: () => pressAct(true) });
   if (has('orchard')) S.trees.forEach((t, i) => { if (treeReady(t) && fits(TREES[t.kind].fruit, TREES[t.kind].yield)) jobs.push({ x: ORCHARD_SLOTS[i].x, y: ORCHARD_SLOTS[i].y, k: 'orchard', act: () => treeAct(i, 'harvest') }); });
-  if (has('flowers')) S.fl.forEach((p, i) => { if (p.crop && p.prog >= 1 && fits(p.crop)) jobs.push({ x: FL_SLOTS[i].x, y: FL_SLOTS[i].y, k: 'flowers', act: () => { const was = p.crop; plotAct(i, 'harvest', 'fl'); if (!p.crop && flSeason(was) && S.coins >= CROP[was].seed) plotAct(i, 'plant', 'fl', was); return true; } }); });
+  if (has('flowers')) S.fl.forEach((p, i) => {
+    const ready = p.crop && p.prog >= 1 && fits(p.crop), empty = !p.crop && flHelperSeed(cfg, p);
+    if (ready || empty) jobs.push({ x: FL_SLOTS[i].x, y: FL_SLOTS[i].y, k: 'flowers', act: () => { if (p.crop) plotAct(i, 'harvest', 'fl'); const id = !p.crop && flHelperSeed(cfg, p); if (id) plotAct(i, 'plant', 'fl', id); return true; } });
+  });
   if (has('coop')) {
     if ((S.coop.gold || 0) + (S.coop.eggs && fits('egg')) > 0) jobs.push({ ...COOP_SPOT, k: 'coop', act: collectEggs });
     if (cfg.feed && S.night && hens() && fedTomorrow() < hens() && feedStock() >= FEED_PER_HEN) jobs.push({ ...COOP_SPOT, k: 'coop', act: () => { feedHens(true); refreshSheet(); } });
@@ -4189,6 +4225,7 @@ function clearField() {   // снять всех помощников с пол�
   save(); renderUI(); openHelpers();
 }
 function foldHelper(i) { S.helpers[i].fold = !S.helpers[i].fold; save(); openHelpers(); }
+function setFl(i, seed) { setHelper(i, 'flSeed', seed); }
 function setGh(i, seed) { Object.assign(S.helpers[i], seed ? { ghReplant: true, ghSeed: seed } : { ghReplant: false }); setHelper(i, 'ghReplant', !!seed); }
 function setField(i, seed) { Object.assign(S.helpers[i], seed ? { replant: true, seed } : { replant: false }); setHelper(i, 'replant', !!seed); }
 function setHelper(i, field, val) {
@@ -4227,6 +4264,11 @@ function openHelpers() {
       if (S.up.greenhouse >= 3) h += sec(stI('gh'), 'Какие теплицы', `<div class="hz-two">${[0, 1].map(z => `<button class="hz-b${Z.includes(z) ? ' on' : ''}" onclick="setGhZone(${i},${z})">Теплица ${z + 1}</button>`).join('')}</div>`);
       h += sec(stI('gh'), 'Теплица — что сажать', `<div class="hz-r">${[[!c.ghReplant, '🧺', 'ничего', `setGh(${i},null)`], [c.ghReplant && c.ghSeed === 'same', '🔁', 'то же', `setGh(${i},'same')`],
         ...GH_CROPS.filter(id => S.unlocked.includes(id)).map(id => [c.ghReplant && c.ghSeed === id, CROP[id].e, CROP[id].seed + '💰', `setGh(${i},'${id}')`])].map(([on, e, t, js]) => tile(on, e, t, js)).join('')}</div>`);
+    }
+    if (c.stations.includes('flowers')) { const fs = c.flSeed ?? 'same';
+      h += sec(stI('flowers'), 'Цветы — что сажать', `<div class="hz-r">${[['none', '🧺', 'ничего'], ['same', '🔁', 'то же'], ['season', '📅', 'по сезону'],
+        ...FLOWERS.map(f => [f.id, f.e, flSeason(f.id) ? f.seed + '💰' : 'не сезон', !flSeason(f.id)])].map(([id, e, t, off]) => tile(fs === id, e, t, `setFl(${i},'${id}')`, off ? ' dim' : '')).join('')}</div>
+        <div class="hy-note">${fs === 'season' ? `Весной 💮, летом 🌺, осенью 🪻` : fs === 'same' ? 'После сбора сажает тот же цветок, пока его сезон' : fs === 'none' ? 'Только собирает' : flSeason(fs) ? '' : `${CROP[fs].e} сейчас не сезон — грядки ждут`}</div>`);
     }
     if (c.stations.includes('coop') || c.stations.includes('barn'))
       h += sec(c.stations.includes('coop') ? stI('coop') : stI('barn'), 'Кто кормит животных ночью', `<div class="hz-two"><button class="hy-who2${c.feed ? ' on' : ''}" onclick="setHelper(${i},'feed',true)"><img src="${lookImg(hLook(i), 'head')}" alt=""><b>${esc(hName(i))}</b></button><button class="hy-who2${c.feed ? '' : ' on'}" onclick="setHelper(${i},'feed',false)"><img src="${lookImg(PLAYER_LOOK, 'head')}" alt=""><b>Я сам</b></button></div>`);
@@ -4289,6 +4331,7 @@ function step(dt) {
   updateVisitors(dt);
   updateFair(dt);
   updateTruck(dt);
+  flWinterOff();   // зима и всё собрано — снимаем роль «Цветы»
   helpers.forEach(h => updateHelper(h, dt));
   updateHens(dt);
   updateCows(dt);
@@ -5666,6 +5709,7 @@ const bg = { cv: document.createElement('canvas'), key: '', r: null, ox: 0, oy: 
 let bakedTrees = null, bakedFor = -1, liftedKeys = new Set(), liftedOut = [];
 // дерево леса за краем фермы (то же правило, что в drawOutside): размер или 0
 function outTreeAt(x, y) {
+  if (S.up?.store > 0 && ((x === -2 && y === 0) || (x === -1 && y === 1))) return x === -1 ? 0.8 + hash(0, -2) * 0.45 : 0;   // дерево у поворота грузовика — на клетку вглубь угла, чтобы кузов его не задевал
   if (x >= 0 && y >= 0 && x < W && y < H) return 0;
   if ((y === ROAD || y === ROAD + 1) && (x >= W || x < 0)) return 0;
   const behind = x < 0 || y < 0 || (x >= W && y < ROAD);
@@ -5684,7 +5728,7 @@ function bakeTreeSet() {
   bakedFor = treeKey();   // нерасчищенный участок — обычный лес; расчистили — пересчитываем; в ветер ближние деревья — живые
   const sw = swayOn();
   for (const d of decor) if (d.kind === 'tree') trees.set(d.x + ',' + d.y, { d, lot: (d.lot != null && lotCleared(d.lot)) || (sw && nearFarm(d)) || pressGap(d) || floralGap(d) });
-  for (let y = -14; y < ROAD; y++) for (let x = -14; x < W + 16; x++) { const k = x + ',' + y, sz = outTreeAt(x, y); if (sz && !trees.has(k)) trees.set(k, { x, y, s: sz, lot: sw && fenceNear(x, y) }); }
+  for (let y = -14; y < ROAD; y++) for (let x = -14; x < W + 16; x++) { const k = x + ',' + y, sz = outTreeAt(x, y); if (sz && !trees.has(k)) trees.set(k, { x, y, s: sz, sway: sw && fenceNear(x, y), lot: (sw && fenceNear(x, y)) || ownedCell(x, y) }); }   // дерево внутри изгороди — не в фон, а по глубине: иначе забор рисуется поверх него
   const ok = new Set([...trees.keys()].filter(k => !trees.get(k).lot));
   for (let changed = true; changed;) {
     changed = false;
@@ -5698,7 +5742,7 @@ function bakeTreeSet() {
     }
   }
   liftedKeys = new Set(); liftedOut = [];
-  for (const [k, t] of trees) if (!t.d && !ok.has(k)) { liftedKeys.add(k); liftedOut.push({ kind: 'tree', x: t.x, y: t.y, s: t.s, z: t.x + t.y + 1, sway: !!t.lot }); }
+  for (const [k, t] of trees) if (!t.d && !ok.has(k)) { liftedKeys.add(k); liftedOut.push({ kind: 'tree', x: t.x, y: t.y, s: t.s, z: t.x + t.y + 1, sway: !!t.sway }); }
   return new Set([...trees.values()].filter(t => t.d && ok.has(t.d.x + ',' + t.d.y)).map(t => t.d));
 }
 function groundSig() {   // всё, от чего зависит земля (кроме мигания)
@@ -5890,7 +5934,7 @@ function drawSprite(d, fn, key, now, o, raw) {
 }
 let upKey = '';   // улучшения одной строкой — считаем раз за кадр, а не для каждой постройки
 function draw(t) {
-  upKey = JSON.stringify(S.up);
+  upKey = JSON.stringify(S.up); rebuildBorder();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   if (!zoomSettled(t) || !bg.r || !inside(viewRect(), bg.r)) { ctx.fillStyle = look().bg; ctx.fillRect(0, 0, cv.width, cv.height); }   // фон и так закроет весь экран
   setWorld();
@@ -7055,26 +7099,29 @@ function drawPress(d, t) {
   gface(front, '#f0c283', '#cf9555');   // фасад с фронтоном
   ctx.save(); shape(fX(X, y0, Y, 0, h)); ctx.clip(); for (let z = 4; z < h; z += 4) seg(lift(X, y0, z), lift(X, Y, z), 'rgba(120,70,30,.35)', 1.1); ctx.restore();   // брёвна
   ctx.save(); shape(front); ctx.clip(); for (let z = 4; z < top; z += 4) seg(lift(x0, Y, z), lift(X, Y, z), 'rgba(120,70,30,.32)', 1.1); ctx.restore();
-  for (const [a, b] of [[x0, Y], [X, Y], [X, y0]]) toonPost(a, b, 0, h, .09, ['#c08a50', '#8e5e30']);   // угловые столбы
-  gface(fY(x0 + .28, x0 + .8, Y, 0, 25), '#a8733e', '#7a4f28', '#5b3a22', 2.2);   // дверь
+  for (const [a, b] of [[x0, Y], [X, Y], [X, y0]]) toonPost(a, b, 0, h - 2, .09, ['#c08a50', '#8e5e30']);   // угловые столбы — под свесом крыши
+  gface(fY(x0 + .28, x0 + .8, Y, 0, 18.5), '#a8733e', '#7a4f28', '#5b3a22', 2.2);   // дверь
   for (const zz of [8, 17]) seg(lift(x0 + .33, Y, zz), lift(x0 + .75, Y, zz), 'rgba(60,35,15,.4)', 1.2);
   const dk = lift(x0 + .72, Y, 12); circle(dk.x, dk.y, 1.5, '#ffd54a');
   toonWin('y', Y, x0 + 1.06, x0 + 1.56, 10, 24, false);
   const busy = pressBusy() && S.started && !S.night;
-  toonWin('x', X, y0 + .5, y0 + 1.36, 8, 22, false, busy ? ['#fff0c0', '#ffb060'] : null);
-  for (let i = 0; i < 4; i++) { const c = lift(X + .02, y0 + .62 + i * .2, 9.6); ctx.beginPath(); ctx.ellipse(c.x, c.y - 2, 2.2, 2.8, 0, 0, 7); ctx.fillStyle = ['#d8344a', '#f0a030', '#8a1c40', '#f6d040'][i]; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = .8; ctx.stroke(); }   // баночки на подоконнике
+  toonWin('x', X, y0 + .5, y0 + 1.36, 4, 14, false, busy ? ['#fff0c0', '#ffb060'] : null);
+  for (let i = 0; i < 4; i++) { const c = lift(X + .02, y0 + .62 + i * .2, 6.6); ctx.beginPath(); ctx.ellipse(c.x, c.y - 2, 2.2, 2.8, 0, 0, 7); ctx.fillStyle = ['#d8344a', '#f0a030', '#8a1c40', '#f6d040'][i]; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = .8; ctx.stroke(); }   // баночки на подоконнике
+
   for (let i = 0; i < 7; i++) {   // полосатый козырёк над окном — вишнёвый
     const a = y0 + .37 + i * .16, b = a + .16;
-    shape([lift(X, a, 28), lift(X, b, 28), lift(X + .28, b, 23.5), lift(X + .28, a, 23.5)]); ctx.fillStyle = i % 2 ? '#fff6ea' : '#d8344a'; ctx.fill();
+    shape([lift(X, a, 18.5), lift(X, b, 18.5), lift(X + .2, b, 15.5), lift(X + .2, a, 15.5)]); ctx.fillStyle = i % 2 ? '#fff6ea' : '#d8344a'; ctx.fill();
   }
-  shape([lift(X, y0 + .37, 28), lift(X, y0 + 1.49, 28), lift(X + .28, y0 + 1.49, 23.5), lift(X + .28, y0 + .37, 23.5)]); ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke();
+  shape([lift(X, y0 + .37, 18.5), lift(X, y0 + 1.49, 18.5), lift(X + .2, y0 + 1.49, 15.5), lift(X + .2, y0 + .37, 15.5)]); ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke();   // козырёк — ниже свеса крыши
   // крыша: два ската, конёк вдоль y; черепица вишнёвая
-  const e = .1, L = [lift(x0 - e, y0 - .1, h - 1), lift(xm, y0 - .1, top + 1), lift(xm, Y + .14, top + 1), lift(x0 - e, Y + .14, h - 1)];
-  const Rr = [lift(xm, y0 - .1, top + 1), lift(X + e, y0 - .1, h - 1), lift(X + e, Y + .14, h - 1), lift(xm, Y + .14, top + 1)];
+  const e = .06, er = .22, dz = (top + 1 - (h - 1)) / (X - xm) * (er - e), yb = y0 - .26;   // оба ската нависают над стенами, конёк — над задней стеной
+  const L = [lift(x0 - er, yb, h - 1 - dz), lift(xm, yb, top + 1), lift(xm, Y + .14, top + 1), lift(x0 - er, Y + .14, h - 1 - dz)];
+  const Rr = [lift(xm, yb, top + 1), lift(X + er, yb, h - 1 - dz), lift(X + er, Y + .14, h - 1 - dz), lift(xm, Y + .14, top + 1)];
   gface(L, '#c8485a', '#9a2c3e', INK, 1.5); gface(Rr, '#e0606e', '#b23a4a', INK, 1.5);
   for (let k = 1; k < 6; k++) { const f = k / 6; seg(mix(Rr[0], Rr[1], f), mix(Rr[3], Rr[2], f), 'rgba(90,20,30,.35)', 1.2); seg(mix(L[1], L[0], f), mix(L[2], L[3], f), 'rgba(90,20,30,.3)', 1.2); }
   gface([L[3], L[2], { x: L[2].x, y: L[2].y + 3.5 }, { x: L[3].x, y: L[3].y + 3.5 }], '#8a2a38', '#6a1e2a', INK, 1.1);   // торцы ската
   gface([Rr[3], Rr[2], { x: Rr[2].x, y: Rr[2].y + 3.5 }, { x: Rr[3].x, y: Rr[3].y + 3.5 }], '#8a2a38', '#6a1e2a', INK, 1.1);
+  gface([Rr[1], Rr[2], { x: Rr[2].x, y: Rr[2].y + 3.5 }, { x: Rr[1].x, y: Rr[1].y + 3.5 }], '#9a3242', '#7a2432', INK, 1.1);   // край правого ската — доска по свесу
   seg(L[1], L[2], 'rgba(255,220,220,.6)', 1.6);
   const sg = lift(xm, Y + .02, h + 9);   // круглая вывеска на фронтоне — баночка варенья
   circle(sg.x, sg.y, 7.5, INK); circle(sg.x, sg.y, 6.4, '#f6e2b8'); emoji('🍯🍓', sg.x, sg.y, 9);
@@ -9268,6 +9315,13 @@ if (S.toSpawn === 0 && !S.night) startDay(); else renderUI();
 if (!S.night) S.toSpawn = Math.max(S.toSpawn, visitorsPerDay());   // старые сохранения получают новый поток покупателей сразу
 // ✨ Что нового: после обновления вместо итогов ночи — список новинок, которых игрок ещё не видел
 const WHATSNEW = [   // новое — сверху; v — версия, с которой это появилось
+  { v: '2026-11-24.199', t: 'Исправления ошибок', items: [
+    ['🥞', 'Сезонная выпечка у помощника', 'В пекарне помощник держит на складе и сезонное — блины, торты, пироги своего сезона'],
+    ['🌷', 'Помощник сажает цветы', 'В Команде выбери, что сажать: то же, по сезону или конкретный цветок — засевает и пустые грядки'],
+    ['🌿', 'Папоротник — весной, летом и осенью', 'Зимой цветочные грядки отдыхают: когда всё собрано, у помощника снимается роль «Цветы»'],
+    ['🪵', 'Изгородь вокруг открытых участков', 'Забор идёт по краю всех открытых зон, а дорога к складу — внутри: грузовик больше не едет по забору'],
+    ['🚚', 'Одна дорога в сад', 'Грузовик ездит по садовой дорожке, к дверям домиков ведут дорожки'],
+    ['🧃', 'Домик соков', 'Ровная крыша со свесами, навес и углы больше не торчат'] ] },
   { v: '2026-11-24.198', t: 'Новое меню', items: [
     ['☰', 'Меню по-новому', 'Сверху карточка фермы, главное — крупными плитками, настройки — переключателями, служебное — в самом низу'] ] },
   { v: '2026-11-24.197', t: 'Поправки', items: [
