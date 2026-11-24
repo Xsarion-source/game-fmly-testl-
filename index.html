@@ -223,6 +223,9 @@
   .hz-zz.lock { opacity: .45; border-style: dashed; }
   .hz-two { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .hz-b { height: 40px; border-radius: 13px; border: 2px solid #ead9b5; background: #fffaf0; font: inherit; font-size: 14px; font-weight: 800; color: #4a2e18; }
+  .wn-v { font-size: 13px; font-weight: 800; color: #a07a4c; margin: 2px 2px 0; }
+  .rlock { margin: 10px 0 4px; padding: 10px 12px; border-radius: 14px; background: #f6ecd6; border: 1.5px dashed #dcc79c; color: #8a6a48; font-size: 13px; }
+  .rl-t { font-weight: 800; color: #6b4a2a; margin-bottom: 4px; } .rl-r { display: flex; gap: 8px; padding: 3px 0; } .rl-r b { flex: none; color: #6b4a2a; } .rl-r i { font-style: normal; margin-right: 2px; }
   .hz-t.dim:not(.on) { opacity: .5; } .hy-note { margin-top: 6px; font-size: 12px; color: #8a6a48; }
   .hz-t { position: relative; } .hz-free { position: absolute; top: -6px; right: -5px; width: 20px; height: 20px; border-radius: 10px; background: #f4a92b; color: #fff; font: 900 13px/20px system-ui, sans-serif; font-style: normal; text-align: center; box-shadow: 0 0 0 2px #fff; }   /* на месте никто не работает */
   .hm-n { display: inline-block; min-width: 17px; height: 17px; padding: 0 3px; box-sizing: border-box; border-radius: 9px; color: #fff; font: 900 11px/17px system-ui, sans-serif; text-align: center; font-style: normal; box-shadow: 0 0 0 1.5px #fff, 0 1px 2px rgba(0,0,0,.3); text-shadow: 0 1px 1px rgba(0,0,0,.35); } .hm-n.more { background: #a8957a; }
@@ -739,7 +742,7 @@ const CROPS = [
   { id: 'tomato',     name: 'Помидор',  e: '🍅', seed: 6,  grow: 24, price: 16, unlockCost: 160, lvl: 5 },
   { id: 'strawberry', name: 'Клубника', e: '🍓', seed: 15, grow: 42, price: 40, unlockCost: 300, lvl: 7 },
   { id: 'beet',       name: 'Свёкла',   e: '🫜', seed: 5,  grow: 30, price: 14, unlockCost: 800, lvl: 11 },   // из неё на мельнице делают сахар (мельница — 12, пекарня — 15: свёкла успевает раньше)
-  { id: 'pumpkin',    name: 'Тыква',    e: '🎃', seed: 25, grow: 60, price: 70, unlockCost: 600, lvl: 9 },
+  { id: 'pumpkin',    name: 'Тыква',    e: '🎃', seed: 25, grow: 60, price: 55, unlockCost: 600, lvl: 9 },
 ];
 // 🌷 цветы — только на цветочных грядках зоны «Сад и цветы», каждый в свой сезон
 const FLOWERS = [
@@ -851,6 +854,28 @@ const FLORAL = {
   gfBasket: { in: { rose: 3, glad: 3, dahlia: 3, fern: 3 }, time: 90, n: 1, kind: 'gift' },
 };
 const FLORAL_CAP = 6;
+// Рецепты открываются уровнем своего здания (а улучшение здания — уровнем фермы, см. UP_LVLS).
+// Чем больше в рецепте составляющих, тем позже он открывается
+const RECIPE_LV = {
+  bakery: { bread: 1, blini: 2, pie: 2, pizza: 3, croissant: 3, cherrypie: 3, cake: 4, pumpkinpie: 4, carrotcake: 4, peachtart: 4, ginger: 5, xmascake: 5, medovik: 5 },
+  dhouse: { sour: 1, butter: 1, icecream: 2, shake: 2, cherryyog: 2, caramelapple: 3, peachmousse: 3 },
+  press:  { juiceApple: 1, jamApple: 1, juiceCherry: 2, juicePear: 2, juiceStraw: 2, jamCherry: 2, jamPear: 2, juicePeach: 3, jamPeach: 3, jamStraw: 3 },
+  floral: { bqTulip: 1, bqGlad: 1, bqDahlia: 1, bqRose: 2, bqMix: 2, bqBasket: 3, gfTulip: 1, gfGlad: 1, gfDahlia: 1, gfRose: 2, gfMix: 2, gfBasket: 3 },
+};
+const recipeBld = r => Object.keys(RECIPE_LV).find(k => RECIPE_LV[k][r] != null);
+const recipeLv = r => { const k = recipeBld(r); return k ? RECIPE_LV[k][r] : 0; };
+const recipeOpen = r => { const k = recipeBld(r); return !k || (S.up[k] || 0) >= RECIPE_LV[k][r]; };
+const BLD_NAME = { bakery: 'Пекарня', dhouse: 'Молочный дом', press: 'Соки и варенье', floral: 'Букетная мастерская' };
+const recipesAt = (k, l) => Object.keys(RECIPE_LV[k]).filter(r => RECIPE_LV[k][r] === l);
+const nextRecipes = k => { const l = (S.up[k] || 0) + 1, list = RECIPE_LV[k] ? recipesAt(k, l) : []; return list.map(r => GOODS[r].e).join(' '); };
+// закрытые рецепты здания — компактно, по уровням: «🔒 2 ур. — 🥞 Блины, 🥧 Яблочный пирог»
+function lockedBlock(k, only) {
+  const l0 = S.up[k] || 0, max = Math.max(...Object.values(RECIPE_LV[k])); let h = '';
+  for (let l = l0 + 1; l <= max; l++) { const list = recipesAt(k, l).filter(r => !only || only(r)); if (!list.length) continue;
+    h += `<div class="rl-r"><b>🔒 ${l} ур.</b><span>${list.map(r => `<i>${GOODS[r].e}</i>${GOODS[r].name}`).join(', ')}</span></div>`; }
+  return h ? `<div class="rlock"><div class="rl-t">Откроются на следующих уровнях здания</div>${h}</div>` : '';
+}
+const recipeLock = r => `🔒 ${BLD_NAME[recipeBld(r)]} ${recipeLv(r)} ур.`;
 const dIn = r => ({ milk: DAIRY[r].n, ...(DAIRY[r].in || {}) });
 const dHave = r => Math.min(...Object.entries(dIn(r)).map(([g, n]) => Math.floor((S.inv[g] || 0) / n)));
 const seasonal = g => !!GOODS[g]?.season;
@@ -877,6 +902,12 @@ for (const c of [...CROPS, ...FLOWERS]) c.grow /= PACE;
 for (const t of Object.values(TREES)) { t.mature /= PACE; t.regrow /= PACE; }
 for (const P of Object.values(PROD)) P.time /= PACE;
 for (const D of [...Object.values(DAIRY), ...Object.values(BAKE)]) D.time /= PACE;
+// Баланс: переработка дороже сырья примерно в 1,3 раза (было 1,4–4,5) — составное не должно быть сильно выгоднее, чем продать по отдельности
+const PRICE_BAL = { cheese: 65, sour: 65, butter: 95, icecream: 160, shake: 215, caramelapple: 185, cherryyog: 105, peachmousse: 155,
+  bread: 90, pie: 150, pizza: 225, cake: 445, croissant: 165, cherrypie: 160, peachtart: 210, medovik: 275, blini: 120, carrotcake: 230, pumpkinpie: 190, ginger: 175, xmascake: 350,
+  juiceApple: 60, juiceCherry: 95, juiceStraw: 155, juicePear: 85, juicePeach: 150, jamApple: 80, jamCherry: 100, jamStraw: 145, jamPear: 95, jamPeach: 140,
+  bqTulip: 230, bqGlad: 170, bqDahlia: 220, bqRose: 490, bqMix: 365, bqBasket: 560, gfTulip: 280, gfGlad: 215, gfDahlia: 270, gfRose: 560, gfMix: 425, gfBasket: 650 };
+for (const k in PRICE_BAL) GOODS[k].price = PRICE_BAL[k];
 const BAKE_CAP = 6, BAKE_SPOT = at('home', 4, 4);   // BAKE_CAP — мест в очереди (ждут, пока освободится отделение)
 const OVENS = 2, trayN = () => 1 + (S.up.trays || 0);   // в печи два отделения; противни — по 2–3 штуки в отделение
 const MAIL = at('mail', 4, 5), MAIL_SPOT = at('mail', 3, 5);   // почтовый ящик через тропинку от пекарни; фермер встаёт на тропинку
@@ -906,10 +937,10 @@ const UPGRADES = {
             get max() { return 3 + 2 * (S.up.pasture || 0); } },
   milker: { name: 'Доильный аппарат',  ico: '🥛', desc: l => `Каждая корова даёт больше молока: ${Math.round(4 * (1 + l / 3))} → ${Math.round(4 * (1 + (l + 1) / 3))} бутылок в день`, cost: l => [500, 1000, 1800, 2800, 4000][l], max: 5, need: () => cows() > 0, needText: 'Откроется, когда построишь коровник 🐄' },
   clover: { name: 'Клевер на пастбище', ico: '🍀', desc: l => `Коровы едят меньше: ${feedPerCow()} → ${feedPerCow() - 1} 🌻/🌾 на корову`, cost: l => [700, 1400][l], max: 2, need: () => cows() > 0, needText: 'Откроется, когда построишь коровник 🐄' },
-  tank:   { name: 'Молочный танк',     ico: '🛢', desc: l => 'Коровник хранит до 120 бутылок молока вместо 40 — молоко не пропадает, даже если долго не забирать', cost: l => [3000][l], max: 1, need: () => S.up.hay >= 1, needText: 'Откроется, когда построишь сеновал 🟨' },
+  tank:   { name: 'Молочный танк',     ico: '🛢', desc: l => 'Коровник хранит до 120 бутылок молока вместо 40 — молоко не пропадает, даже если долго не забирать', cost: l => [12000][l], max: 1, need: () => S.up.hay >= 1, needText: 'Откроется, когда построишь сеновал 🟨' },
   hay:    { name: 'Сеновал',           ico: '🟨', desc: l => 'Каждую ночь сам кормит коров 🌻/🌾 со склада — не нужно ходить и не нужен помощник', cost: l => [1200][l], max: 1, need: () => S.up.milker >= 1, needText: 'Откроется после доильного аппарата 🥛' },
-  pasture:{ name: 'Большое пастбище',  ico: '🐄', desc: l => `+2 места для коров (сейчас ${3 + 2 * l}). Новых коров покупай в «Коровнике»`, cost: l => [2000, 4000, 7000][l], max: 3, need: () => S.up.barn >= 3, needText: 'Откроется, когда в коровнике будет 3 коровы 🐄' },
-  grove: { name: 'Сад и цветы', ico: '🌸', desc: l => ['Новая зона слева от фермы: ряд вишен 🍒 и 12 цветочных грядок 🌷. Деревья и цветы плодоносят каждый в свой сезон', 'Ряд груш 🍐 и ещё 6 цветочных грядок', 'Ряд персиков 🍑 и ещё 6 цветочных грядок'][l], cost: l => [15000, 22000, 30000][l], max: 3 },
+  pasture:{ name: 'Большое пастбище',  ico: '🐄', desc: l => `+2 места для коров (сейчас ${3 + 2 * l}). Новых коров покупай в «Коровнике»`, cost: l => [6000, 15000, 30000][l], max: 3, need: () => S.up.barn >= 3, needText: 'Откроется, когда в коровнике будет 3 коровы 🐄' },
+  grove: { name: 'Сад и цветы', ico: '🌸', desc: l => ['Новая зона слева от фермы: ряд вишен 🍒 и 12 цветочных грядок 🌷. Деревья и цветы плодоносят каждый в свой сезон', 'Ряд груш 🍐 и ещё 6 цветочных грядок', 'Ряд персиков 🍑 и ещё 6 цветочных грядок'][l], cost: l => [40000, 60000, 90000][l], max: 3 },
   store: { name: 'Склад', ico: '📦', desc: () => 'Красный амбар за полем: лес расчистят, к нему проложат дорогу. Раз в месяц, в последнее воскресенье, приезжает грузовик 🚚 с заказом — погрузи товар заранее, заплатят дороже обычного', cost: () => 6000, max: 1 },
   greenhouse: { name: 'Теплица',      ico: '🏡', desc: l => l === 0 ? 'Стеклянная теплица на 3 грядки. Только в ней растут 🍅 помидоры и 🍓 клубника — медленнее, зато гроздью по 6' : l === 2 ? 'Вторая теплица рядом с первой — на месте старого пруда: 3 грядки' : '+3 грядки в теплице', cost: l => [260, 380, 2400, 3200][l], max: 4,
                 need: () => S.up.greenhouse < 2 || farmLevel() >= GH2_LVL, needText: `Вторая теплица откроется на ⭐ ${18} уровне фермы` },
@@ -918,33 +949,35 @@ const UPGRADES = {
   dairy:  { get name() { return S.up?.dhouse ? 'Котлы' : 'Сыроварня'; },         ico: '🧀', desc: l => l === 0 ? `Варит сыр: 2 🥛 → 1 🧀, ~${prodPerDay('dairy', 1)} в день` : `Котлы быстрее: ${prodPerDay('dairy', l)} → ${prodPerDay('dairy', l + 1)} 🧀 в день`, cost: l => [5000, 8000][l], max: 2, need: () => S.up.clear >= 2, needText: 'Откроется, когда расчистишь второй участок леса 🪓' },
   house:  { name: 'Дом фермера',       ico: '🏠', desc: l => l === 0 ? 'Веранда и кухня: помощники сыты и работают на 20% быстрее' : 'Второй этаж: помощники работают ещё на 20% быстрее (всего +40%)', cost: l => [3000, 7000][l], max: 2 },
   millBin:  { name: 'Бункер мельницы',   ico: '📦', desc: l => `Очередь на помол длиннее: ${PROD.mill.cap * (1 + l)} → ${PROD.mill.cap * (2 + l)} мешков — загрузил утром, мелет до вечера`, cost: l => [2500][l], max: 1, need: () => S.up.mill >= 1, needText: 'Откроется, когда построишь мельницу 🌬️' },
-  dairyBin: { name: 'Чаны сыроварни',    ico: '🪣', desc: l => `Очередь каждого котла длиннее: ${4 + 2 * l} → ${6 + 2 * l} порций`, cost: l => [3500][l], max: 1, need: () => S.up.dairy >= 1, needText: 'Откроется, когда построишь сыроварню 🧀' },
-  dhouse: { name: 'Молочный дом',      ico: '🏦', desc: l => 'Сыроварня перестраивается: второй котёл, а ещё 🫙 сметана и 🧈 масло. Из масла в пекарне пекут 🥐 круассаны', cost: l => [7000][l], max: 1, need: () => S.up.dairy >= 1, needText: 'Откроется, когда построишь сыроварню 🧀' },
-  churn:  { name: 'Маслобойка',        ico: '🥄', desc: l => `Масло сбивается в 1,5 раза быстрее: 🧈 за ${fmtMs(DAIRY.butter.time / dairyRate('butter'))} → ${fmtMs(DAIRY.butter.time / ((S.up.dairy || 1) * 1.5))}`, cost: l => [4000][l], max: 1, need: () => S.up.dhouse >= 1, needText: 'Откроется в Молочном доме 🧈' },
+  dairyBin: { name: 'Чаны сыроварни',    ico: '🪣', desc: l => `Очередь каждого котла длиннее: ${4 + 2 * l} → ${6 + 2 * l} порций`, cost: l => [8000][l], max: 1, need: () => S.up.dairy >= 1, needText: 'Откроется, когда построишь сыроварню 🧀' },
+  dhouse: { name: 'Молочный дом',      ico: '🏦', desc: l => l === 0 ? 'Сыроварня перестраивается: второй котёл, а ещё 🫙 сметана и 🧈 масло' : `${l + 1} уровень: новые рецепты — ${recipesAt('dhouse', l + 1).map(r => GOODS[r].e + ' ' + GOODS[r].name.toLowerCase()).join(', ')}`, cost: l => [12000, 30000, 50000][l], max: 3, need: () => S.up.dairy >= 1, needText: 'Откроется, когда построишь сыроварню 🧀' },
+  churn:  { name: 'Маслобойка',        ico: '🥄', desc: l => `Масло сбивается в 1,5 раза быстрее: 🧈 за ${fmtMs(DAIRY.butter.time / dairyRate('butter'))} → ${fmtMs(DAIRY.butter.time / ((S.up.dairy || 1) * 1.5))}`, cost: l => [15000][l], max: 1, need: () => S.up.dhouse >= 1, needText: 'Откроется в Молочном доме 🧈' },
   stones: { name: 'Жернова',           ico: '🪨', desc: l => `Новые жернова мелют чище — муки больше с той же пшеницы: +${l * 25}% → +${(l + 1) * 25}% 🍚`, cost: l => [3000, 6000][l], max: 2, need: () => S.up.mill >= 1, needText: 'Откроется, когда построишь мельницу 🌬️' },
-  trays:  { name: 'Противни',          ico: '🥘', desc: l => `Больше места в печи: за раз печётся ${OVENS * (l + 2)} шт. вместо ${OVENS * (l + 1)} — выпечки в день в ${((l + 2) / (l + 1)).toFixed(1).replace('.0', '').replace('.', ',')} раза больше`, cost: l => [3000, 6000][l], max: 2, need: () => S.up.bakery >= 1, needText: 'Откроется, когда пристроишь пекарню 🏤' },
-  floral: { name: 'Букетная мастерская', ico: '💐🌹', desc: l => l === 0 ? 'Светлый домик в саду: из цветов собираются букеты 💐 и корзинки цветов — они дороже, чем цветы поштучно' : `Флорист собирает букеты в ${[1, 1, 1.5, 2][l]} раза быстрее`, cost: l => [8000, 14000, 20000][l], max: 3, need: () => S.up.grove >= 1, needText: 'Откроется, когда построишь сад 🌸' },
-  giftwrap: { name: 'Подарочная упаковка', ico: '🎁', desc: () => 'Атласные ленты, открытки и зелень: в мастерской появятся подарочные букеты 🎁 — из тех же цветов и папоротника 🌿, они на 40% дороже', cost: () => 10000, max: 1, need: () => S.up.floral >= 1, needText: 'Откроется после букетной мастерской 💐' },
-  hive: { name: 'Пасека', ico: '🐝', desc: l => l === 0 ? 'Два улья на западном краю сада. Пчёлы сами носят мёд 🍯 днём — чем больше цветёт цветочных грядок, тем быстрее. Иногда попадаются соты. Ночью, зимой и в дождь пчёлы в улье' : `Ещё 2 улья — всего ${[2, 4, 6, 8][l]}`, cost: l => [8000, 12000, 16000, 22000][l], max: 4, need: () => S.up.grove >= 1, needText: 'Откроется, когда построишь сад 🌸' },
-  press: { name: 'Соки и варенье', ico: '🧃🍎', desc: l => l === 0 ? 'Домик в саду: пресс давит соки 🧃🍎 из фруктов и клубники, котёл варит варенье 🍯🍓 с сахаром 🧂 — по 2 банки за раз' : `Пресс и котёл работают в ${[1, 1.5, 2][l]} раза быстрее`, cost: l => [10000, 16000, 24000][l], max: 3, need: () => S.up.grove >= 1, needText: 'Откроется, когда построишь сад 🌸' },
-  bakery: { name: 'Пекарня',           ico: '🏤', desc: l => l === 0 ? 'Пристройка к дому. Печёт из 🍚 муки и продуктов фермы: 🍞 хлеб, 🥧 пирог, 🍕 пиццу и 🎂 торт' : 'Печёт вдвое быстрее', cost: l => [6000, 9000][l], max: 2, need: () => S.up.mill >= 1, needText: 'Откроется после новой постройки в лесу 🪓' },
-  cozy:   { name: 'Уют',               ico: '🌷', desc: l => `${COZY[l]}. Покупателям нравится — платят на 2% больше (+${l * 2}% → +${(l + 1) * 2}%)`, cost: l => [600, 1200, 2000, 3200, 5000][l],
+  trays:  { name: 'Противни',          ico: '🥘', desc: l => `Больше места в печи: за раз печётся ${OVENS * (l + 2)} шт. вместо ${OVENS * (l + 1)} — выпечки в день в ${((l + 2) / (l + 1)).toFixed(1).replace('.0', '').replace('.', ',')} раза больше`, cost: l => [8000, 20000][l], max: 2, need: () => S.up.bakery >= 1, needText: 'Откроется, когда пристроишь пекарню 🏤' },
+  floral: { name: 'Букетная мастерская', ico: '💐🌹', desc: l => l === 0 ? 'Светлый домик в саду: из тюльпанов, гладиолусов и георгинов собираются букеты 💐. Розы и корзинки — на следующих уровнях' : `${l + 1} уровень: ${recipesAt('floral', l + 1).filter(r => FLORAL[r].kind !== 'gift').map(r => GOODS[r].name.toLowerCase()).join(', ')}. Флорист собирает в ${[1, 1, 1.5, 2][l]} раза быстрее`, cost: l => [40000, 70000, 100000][l], max: 3, need: () => S.up.grove >= 1, needText: 'Откроется, когда построишь сад 🌸' },
+  giftwrap: { name: 'Подарочная упаковка', ico: '🎁', desc: () => 'Атласные ленты, открытки и зелень: в мастерской появятся подарочные букеты 🎁 — из тех же цветов и папоротника 🌿, они на 40% дороже', cost: () => 40000, max: 1, need: () => S.up.floral >= 1, needText: 'Откроется после букетной мастерской 💐' },
+  hive: { name: 'Пасека', ico: '🐝', desc: l => l === 0 ? 'Два улья на западном краю сада. Пчёлы сами носят мёд 🍯 днём — чем больше цветёт цветочных грядок, тем быстрее. Иногда попадаются соты. Ночью, зимой и в дождь пчёлы в улье' : `Ещё 2 улья — всего ${[2, 4, 6, 8][l]}`, cost: l => [30000, 45000, 60000, 80000][l], max: 4, need: () => S.up.grove >= 1, needText: 'Откроется, когда построишь сад 🌸' },
+  press: { name: 'Соки и варенье', ico: '🧃🍎', desc: l => l === 0 ? 'Домик в саду: пресс давит яблочный сок 🧃, котёл варит яблочное варенье с сахаром — по 2 банки за раз. Другие соки и варенья — на следующих уровнях' : `${l + 1} уровень: ${recipesAt('press', l + 1).map(r => GOODS[r].name.toLowerCase()).join(', ')}. Пресс и котёл работают в ${[1, 1.5, 2][l]} раза быстрее`, cost: l => [40000, 70000, 100000][l], max: 3, need: () => S.up.grove >= 1, needText: 'Откроется, когда построишь сад 🌸' },
+  bakery: { name: 'Пекарня',           ico: '🏤', desc: l => l === 0 ? 'Пристройка к дому. Печёт 🍞 хлеб из 🍚 муки и 🥚 яиц. Новые рецепты — на следующих уровнях пекарни' : `${l + 1} уровень: новые рецепты — ${recipesAt('bakery', l + 1).map(r => GOODS[r].e + ' ' + GOODS[r].name.toLowerCase()).join(', ')}. Печь работает в ${String(BAKE_SPEED[l]).replace('.', ',')} раза быстрее`, cost: l => [6000, 15000, 30000, 50000, 80000][l], max: 5, need: () => S.up.mill >= 1, needText: 'Откроется после новой постройки в лесу 🪓' },
+  cozy:   { name: 'Уют',               ico: '🌷', desc: l => `${COZY[l]}. На уютную ферму заходит больше покупателей`, cost: l => [600, 1200, 2000, 3200, 5000][l],
             get max() { return Math.max(S.up.cozy || 0, S.up.house ? 5 : 4); } },   // фонарики висят на веранде — последний уровень после «Дома фермера»
   ads:    { name: 'Реклама',           ico: '📣', desc: l => `Больше покупателей в лавке: каждые 2 уровня рекламы — +1 покупатель в день (а ещё больше людей приводит уровень фермы ⭐)`, cost: l => [80, 160, 280, 450, 650, 900, 1200, 1600, 2100, 2700][l], max: 10 },
   fert:   { name: 'Удобрения',         ico: '🧪', desc: l => `Рост быстрее (+${l*20}% → +${(l+1)*20}%)`, cost: l => 50 + l*60, max: 5 },
   slots:  { name: 'Место на прилавке',  ico: '🧺', desc: l => `Ещё одно место для товара на прилавке: ${3 + l} → ${4 + l}`, cost: l => [150, 450, 1000][l], max: 3 },
-  stall2: { name: 'Вторая лавка',      ico: '🏪', desc: l => 'Ещё одна лавка слева от первой: 6 мест под товар и своя очередь. Торгуют фермер и помощники со станцией «Лавка»', cost: l => [3000][l], max: 1, need: () => S.up.slots >= 3, needText: 'Откроется, когда на прилавке будет 6 мест 🧺' },
-  seasonstand: { name: 'Сезонная пристройка', ico: '🍦', desc: l => `Пристройка к лавке на 2 места: в каждом сезоне свои 2 товара — их пекут в пекарне и варят в Молочном доме. Продаются только здесь и дорого`, cost: l => [3000][l], max: 1, need: () => S.up.bakery > 0 && S.up.dhouse > 0, needText: 'Откроется, когда будут пекарня 🏤 и Молочный дом 🏦' },
-  sign:   { name: 'Красивая вывеска',  ico: '🪧', desc: l => `Цены на лотке выше (+${l*3}% → +${(l+1)*3}%)`, cost: l => [150, 300, 550, 900, 1400, 2000][l], max: 6 },
-  helper: { name: 'Помощник',         ico: '👷', desc: l => `Работает на одной или нескольких станциях: поле, сад, курятник, коровник, лавка (помощников: ${l} → ${l+1})`, cost: l => [120, 280, 520, 800, 1150, 1600, 2100, 2700, 3400, 4200][l], max: 10 },
-  fairbake:  { name: 'Хлебный лоток',     ico: '🥐', desc: l => `Свой лоток для выпечки на ярмарке: ещё ${BAKE_CRATES} ящика — только под ${Object.keys(BAKE).filter(r => !seasonal(r)).map(r => GOODS[r].e).join('')}`, cost: l => [2500][l], max: 1, need: () => S.up.bakery >= 1, needText: 'Откроется, когда пристроишь пекарню 🏤' },
+  stall2: { name: 'Вторая лавка',      ico: '🏪', desc: l => 'Ещё одна лавка слева от первой: 6 мест под товар и своя очередь. Торгуют фермер и помощники со станцией «Лавка»', cost: l => [10000][l], max: 1, need: () => S.up.slots >= 3, needText: 'Откроется, когда на прилавке будет 6 мест 🧺' },
+  seasonstand: { name: 'Сезонная пристройка', ico: '🍦', desc: l => `Пристройка к лавке на 2 места: в каждом сезоне свои 2 товара — их пекут в пекарне и варят в Молочном доме. Продаются только здесь и дорого`, cost: l => [8000][l], max: 1, need: () => S.up.bakery > 0 && S.up.dhouse > 0, needText: 'Откроется, когда будут пекарня 🏤 и Молочный дом 🏦' },
+  sign:   { name: 'Красивая вывеска',  ico: '🪧', desc: l => `Лавку видно издалека — заходит больше покупателей`, cost: l => [150, 300, 550, 900, 1400, 2000][l], max: 6 },
+  helper: { name: 'Помощник',         ico: '👷', desc: l => `Работает на одной или нескольких станциях: поле, сад, курятник, коровник, лавка (помощников: ${l} → ${l+1})`, cost: l => [300, 1500, 4000, 8000, 12000, 16000, 20000, 25000, 30000, 40000][l], max: 10 },
+  fairbake:  { name: 'Хлебный лоток',     ico: '🥐', desc: l => `Свой лоток для выпечки на ярмарке: ещё ${BAKE_CRATES} ящика — только под ${Object.keys(BAKE).filter(r => !seasonal(r)).map(r => GOODS[r].e).join('')}`, cost: l => [6000][l], max: 1, need: () => S.up.bakery >= 1, needText: 'Откроется, когда пристроишь пекарню 🏤' },
   fairstall: { name: 'Место на ярмарке', ico: '🎪', desc: l => `Ещё один лоток рядом с шатром фермы: +${CRATES_PER} ящика товара на ярмарку (сейчас ${fairCrates()})`, cost: l => [600, 1500][l], max: 2 },
   bench:  { name: 'Скамейка',          ico: '🪑', desc: l => `Покупатели ждут дольше (+8 сек)`, cost: l => 25 + l*30, max: 5 },
 };
 
 // с какого уровня фермы ⭐ открывается улучшение (уже купленное не закрывается никогда)
-const UP_LVL = { hive: 20, giftwrap: 20, floral: 20, press: 20, grove: 20, store: 19, land: 1, fert: 1, ads: 1, sign: 1, bench: 1, slots: 2, orchard: 3, coop: 4, helper: 4, nests: 5, fairstall: 7, cozy: 6, greenhouse: 5, barn: 7, rooster: 8, milker: 8, clover: 9, yard: 10, house: 10, clear: 11, hay: 11, tank: 18, pasture: 12, mill: 12, stall2: 13, millBin: 13, stones: 13, dairy: 14, dairyBin: 15, bakery: 15, dhouse: 16, churn: 17, fairbake: 16, trays: 16, seasonstand: 12 };
-const upLvl = key => S.up[key] ? 0 : UP_LVL[key] || 1;
+const UP_LVL = { land: 1, fert: 1, ads: 1, bench: 1, sign: 2, slots: 2, orchard: 2, coop: 3, helper: 4, barn: 4, nests: 5, cozy: 5, greenhouse: 6, fairstall: 6, rooster: 6, milker: 6, clear: 6, mill: 6, hay: 8, clover: 8, store: 8, yard: 9, house: 9, millBin: 9, dairy: 8, bakery: 9, stones: 10, fairbake: 11, dairyBin: 12, trays: 12, pasture: 12, seasonstand: 12, stall2: 13, dhouse: 13, tank: 14, churn: 14, grove: 21, hive: 22, press: 22, floral: 23, giftwrap: 25 };   // 1-й год: 1–11, 2-й: 12–20, 3-й: 21–28
+// уровень фермы для следующего уровня здания: [для 1-го, 2-го, …] (у остальных улучшений — только для первой покупки)
+const UP_LVLS = { bakery: [9, 12, 14, 16, 18], dhouse: [13, 16, 19], press: [22, 24, 26], floral: [23, 25, 27], helper: [4, 10, 13, 16, 19, 22, 25, 28, 31, 34] };
+const upLvl = key => UP_LVLS[key] ? (UP_LVLS[key][S.up[key]] ?? 0) : S.up[key] ? 0 : UP_LVL[key] || 1;
 const lvlLocked = key => farmLevel() < upLvl(key);
 const upLocked = key => lvlLocked(key) || !!(UPGRADES[key].need && !UPGRADES[key].need());   // ещё не открыто
 const needTxt = key => lvlLocked(key) ? `Откроется на ⭐ ${upLvl(key)} уровне фермы` : UPGRADES[key].needText;
@@ -1021,7 +1054,7 @@ const fairAnyStock = () => Object.keys(S.fair.stock).length > 0 || rivals().some
 const CRATE = 20, CRATES_PER = 4;
 const BAKE_CRATE0 = 12, BAKE_CRATES = 4;   // хлебный лоток: ящики 12–15, только для выпечки
 // престиж фермы: очки за кубки (🥇3 🥈2 🥉1) + уровни уюта → наценка на ярмарке
-const prestigePts = () => S.trophies.reduce((a, t) => a + (4 - t.p), 0);   // только кубки (уют даёт свои +2% на лотке)
+const prestigePts = () => S.trophies.reduce((a, t) => a + (4 - t.p), 0);   // только кубки
 const FAIR_BUY = 3.5;   // на ярмарку приезжают за покупками: каждый берёт в несколько раз больше, чем в лавке
 const fairBase = (g, d) => GOODS[g].price * priceMult() * seasonPrice(g) * fairMult() * themeMul(g, d);   // «обычная» ярмарочная цена (без нашей скидки/наценки)
 const fairMult = () => 1 + Math.min(.5, .05 + prestigePts() * .03);
@@ -1386,6 +1419,7 @@ S.life.milk ??= 0; S.hist ??= [];
 S.xp ??= Math.round((S.life.earned || 0) * 0.8);   // уровень фермы для старых сохранений — по всему, что заработано S.life.flour ??= 0; S.life.cheese ??= 0;
 S.up.clear ??= 0; S.up.mill ??= 0; S.up.dairy ??= 0;
 S.up.house ??= 0; S.up.bakery ??= 0; S.up.cozy ??= 0;
+S.mig ??= {}; if (!S.mig.rlv) { S.mig.rlv = 1; if (S.up.bakery) S.up.bakery = 5; if (S.up.dhouse) S.up.dhouse = 3; if (S.up.press) S.up.press = 3; if (S.up.floral) S.up.floral = 3; }   // рецепты по уровню здания: старым фермам — всё, что уже пекли и варили
 S.stallOff ??= []; S.up.slots ??= 0; S.up.seasonstand ??= 0; S.up.stall2 ??= 0;
 if (!S.shop) {   // прилавок со слотами: раньше продавалось всё, что не снято, — кладём это на места (самое ходовое первым)
   const cand = Object.keys(GOODS).filter(id => !GOODS[id].sp && !S.stallOff.includes(id) && (S.inv[id] > 0 || S.unlocked.includes(id) || (S.life?.sold || {})[id])).sort((a, b) => ((S.life?.sold || {})[b] || 0) - ((S.life?.sold || {})[a] || 0) || (S.inv[b] || 0) - (S.inv[a] || 0));
@@ -1454,7 +1488,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-24.199';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-24.200';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1551,7 +1585,10 @@ let floats = [];
 // ---------- Уровень фермы ⭐: опыт дают только продажи, отнять его нельзя ----------
 const LVL_XP = L => Math.round(120 * Math.pow(L - 1, 2.4));   // сколько опыта всего нужно для уровня L: 2 → 120, 5 → ~3300, 10 → ~23400 (темп ×3 медленнее, чем было)
 const farmLevel = () => { let L = 1; while (S.xp >= LVL_XP(L + 1)) L++; return L; };
+// баланс: опыта меньше, чем раньше, — уровни растут по годам, а не по неделям; новичку щедрее, дальше строже
+const XP_K = (L = farmLevel()) => Math.max(.12, .7 - L * .035);
 function gainXp(n) {
+  n = Math.round(n * XP_K());
   const L0 = farmLevel(); S.xp += n; const L = farmLevel(); if (S.stats) S.stats.xp = (S.stats.xp || 0) + n;
   if (L > L0) setTimeout(() => showLevelUp(L0, L), 300);
 }
@@ -1622,7 +1659,7 @@ function yearEv(k, n = 1) {
 }
 // виды целей: что считаем, как пишем, можно ли сейчас (по тому, что открыто на ферме)
 const GOAL_KINDS = {
-  harvest: { can: () => true, make: (L, r) => { const c = S.unlocked.filter(id => !GH_CROPS.includes(id) || S.up.greenhouse); const id = c[Math.floor(r() * c.length)]; return { id, target: 40 + L * 6 + Math.floor(r() * 15) }; }, text: g => `Собери урожай: ${g.target} ${GOODS[g.id].e}` },
+  harvest: { can: () => !isWinter() || (S.up.greenhouse > 0 && GH_CROPS.some(id => S.unlocked.includes(id))), make: (L, r) => { const c = S.unlocked.filter(id => isWinter() ? GH_CROPS.includes(id) && S.up.greenhouse : !GH_CROPS.includes(id) || S.up.greenhouse); const id = c[Math.floor(r() * c.length)]; return { id, target: 40 + L * 6 + Math.floor(r() * 15) }; }, text: g => `Собери урожай: ${g.target} ${GOODS[g.id].e}` },
   sell: { can: () => true, make: (L, r) => { const c = Object.keys(GOODS).filter(id => !GOODS[id].sp && id !== 'sunflower' && id !== 'chick' && id !== 'goldegg' && canAsk(id)); const id = c[Math.floor(r() * c.length)]; return { id, target: 30 + L * 5 }; }, text: g => `Продай ${g.target} ${GOODS[g.id].e}` },
   eggs: { can: () => hens() > 0, make: L => ({ id: 'egg', target: 45 + L * 5 }), text: g => `Собери ${g.target} 🥚 яиц`, ev: 'collect' },
   milk: { can: () => cows() > 0, make: L => ({ id: 'milk', target: 36 + L * 5 }), text: g => `Надои ${g.target} 🥛 молока`, ev: 'collect' },
@@ -1835,11 +1872,11 @@ function drawDecor(id) {
 const DECOR_OBJ = Object.fromEntries(Object.keys(DECOR_SPOT).map(id => [id, { id }]));
 // покупателей в день растёт с уровнем, но не бесконечно; зато корзинка у каждого больше
 // Спрос — сколько «покупок» в день; людей меньше, зато каждый берёт больше (на дороге спокойнее, выручка та же)
-const demandAt = L => Math.min(30, 8 + Math.min(14, L) + (S.up.ads || 0) * .5 + prestigeGuests());
-const peopleFor = D => Math.round(Math.min(17, 4 + D * .42));
+const demandAt = L => Math.min(32, 8 + Math.min(14, L) + (S.up.ads || 0) * .5 + (S.up.sign || 0) * .5 + (S.up.cozy || 0) * .5 + prestigeGuests());
+const peopleFor = D => Math.round(Math.min(19, 5 + D * .5));
 const visitorsBase = () => peopleFor(demandAt(farmLevel())) + truckGuests();   // + покупатели от поставок грузовику
-const basketMul = () => { const D = demandAt(farmLevel()); return D / Math.min(17, 4 + D * .42); };   // во сколько раз больше штук берёт каждый
-const basketMax = (L = farmLevel()) => L < 3 ? 1 : L < 6 ? 2 : L < 10 ? 3 : L < 15 ? 4 : 5;   // сколько разных товаров берёт один покупатель
+const basketMul = () => { const D = demandAt(farmLevel()); return Math.max(1, D / (peopleFor(D) * 1.3)); };   // во сколько раз больше штук берёт каждый
+const basketMax = (L = farmLevel()) => L < 5 ? 1 : L < 12 ? 2 : 3;   // не больше 3 разных товаров: дорогие корзинки раздували доход   // сколько разных товаров берёт один покупатель
 const visitorsPerDay = (d = S.day) => cal(d).dow === 6 ? 0 : Math.round(visitorsBase() * (isFair(d) ? (isFinale(d) ? 3 : 2.4) : 1) * (weather(d) === 'heat' ? 1.2 : 1));   // на ярмарке народу много — часть идёт к соседям   // суббота — ярмарка, воскресенье — выходной   // день 1 → 11 покупателей (~1 каждые 14 сек)
 const growMult = () => 1 + S.up.fert * 0.2;
 // ---------- Календарь: неделя из 7 дней, месяц (он же сезон) — 3 недели (21 день), год — 4 сезона ----------
@@ -1849,7 +1886,7 @@ const SEASONS = [
   { id: 'spring', name: 'Весна', e: '🌸', grow: { wheat: 1.25, carrot: 1.25, sunflower: 1.25 }, price: {}, text: '🌾 пшеница, 🥕 морковь и 🌻 подсолнухи растут на 25% быстрее' },
   { id: 'summer', name: 'Лето',  e: '☀️', grow: { tomato: 1.25, strawberry: 1.25 }, price: { strawberry: 1.2, milk: 1.15 }, text: '🍅 помидоры и 🍓 клубника растут на 25% быстрее, 🍓 и 🥛 в цене' },
   { id: 'autumn', name: 'Осень', e: '🍂', grow: {}, price: { pumpkin: 1.3, corn: 1.25, apple: 1.25, pie: 1.15 }, text: '🎃 тыквы, 🌽 кукуруза, 🍎 яблоки и 🥧 пироги дороже' },
-  { id: 'winter', name: 'Зима',  e: '❄️', grow: { field: .8 }, price: { milk: 1.2, cheese: 1.2, sour: 1.2, butter: 1.2, bread: 1.2, pie: 1.2, pizza: 1.2, cake: 1.2, croissant: 1.2 }, text: 'на грядках всё растёт на 20% медленнее (теплица — как обычно), молоко, сыр и выпечка дороже' },
+  { id: 'winter', name: 'Зима',  e: '❄️', grow: {}, price: { milk: 1.2, cheese: 1.2, sour: 1.2, butter: 1.2, bread: 1.2, pie: 1.2, pizza: 1.2, cake: 1.2, croissant: 1.2 }, text: 'Зимой поля под снегом. Семена растут только в теплице. Урожай из запасов продается на 40% дороже. Изделия из молока и выпечка продаются на 20% дороже.' },
 ];
 const cal = (d = S.day) => { const i = d - 1; return { dow: i % 7, week: Math.floor(i / 7) % 3 + 1, sday: i % SEASON_LEN + 1, si: Math.floor(i / SEASON_LEN) % 4, year: Math.floor(i / (SEASON_LEN * 4)) + 1 }; };
 const season = (d = S.day) => SEASONS[cal(d).si];
@@ -1878,7 +1915,13 @@ const WX_SNOW = new Set(['milk', 'cheese', 'sour', 'butter', 'bread', 'pie', 'pi
 const wxGrow = () => weather() === 'rain' ? 1.3 : 1, wxMill = () => weather() === 'wind' ? 1.5 : 1;
 const wxPrice = c => weather() === 'snow' && WX_SNOW.has(c) ? 1.1 : 1;
 const seasonGrow = (id, gh) => (season().grow[id] || 1) * (gh ? 1 : season().grow.field || 1);
-const seasonPrice = id => season().price[id] || 1;
+const isWinter = () => season().id === 'winter';
+// зимой поле под снегом: полевые культуры не сажают и не растят (теплица и цветы — свои правила)
+const noSow = id => isWinter() && !!CROP[id] && !CROP[id].fl && !GH_CROPS.includes(id);
+// урожай поля и сада из запасов зимой на 40% дороже (теплица растёт и зимой — ей надбавки нет)
+const WINTER_STOCK = 1.4;
+const winterStock = id => isWinter() && ((!!CROP[id] && !CROP[id].fl && !GH_CROPS.includes(id)) || Object.values(TREES).some(T => T.fruit === id));
+const seasonPrice = id => winterStock(id) ? WINTER_STOCK : season().price[id] || 1;
 // ярмарка и почта открываются не сразу — новичку хватает своей фермы
 const FAIR_LVL = 6, MAIL_LVL = 4;
 const fairUnlocked = () => farmLevel() >= FAIR_LVL;
@@ -1937,7 +1980,7 @@ const MEADOW = {   // пастбище: g — трава, c — с клевер�
   autumn: { g: ['#b4c35f', '#acbb59'], c: ['#a2bd57', '#9ab551'] },
 };
 function applySeasonBg() { const c = look().bg; document.body.style.background = c; $('app').style.background = c; }
-const priceMult = () => 1 + S.up.sign * 0.03 + (S.up.cozy || 0) * 0.02 + prestige();
+const priceMult = () => 1 + prestige();   // вывеска и уют больше не поднимают цены — они приводят покупателей (см. demandAt)
 const homeMult = () => 1 + (S.up.house || 0) * 0.2 + (picnicOn() ? 0.15 : 0);   // дом: помощники сыты и работают быстрее
 const patience = (n = 1) => 50 + S.up.bench * 8 + (n - 1) * 6;   // терпение тикает только в очереди; большая корзинка — ждут чуть дольше
 // свежие цветы: цветы своего сезона и букеты, где все цветы сейчас растут, — на 20% дороже (папоротник растёт всегда — ему бонуса нет)
@@ -2116,7 +2159,7 @@ const truckDone = () => !!S.truck.c && Object.keys(S.truck.c.items).every(id => 
 const truckFrac = () => { const c = S.truck.c; if (!c) return 0; const a = Object.keys(c.items).reduce((s, id) => s + c.items[id] * c.pay[id], 0); return a ? Object.keys(c.items).reduce((s, id) => s + Math.min(c.got[id] || 0, c.items[id]) * c.pay[id], 0) / a : 0; };   // доля по стоимости: 100 яиц не равны 100 пирогам
 const truckValue = () => { const c = S.truck.c; return c ? Object.keys(c.items).reduce((s, id) => s + Math.min(c.got[id] || 0, c.items[id]) * c.pay[id], 0) : 0; };
 // сколько ферма зарабатывает в день — чтобы заказ был по силам
-const truckDayIncome = () => { const h = (S.hist || []).slice(-7).map(x => x.e || 0); return h.length ? h.reduce((a, b) => a + b, 0) / h.length : 60 + Math.min(farmLevel(), 15) * 30; };
+const truckDayIncome = () => 60 + Math.min(farmLevel(), 40) ** 2 * 6;   // от уровня фермы (раньше — от дохода: заказы раздувались до невыполнимых)
 function truckMake() {
   const si = seasonIdx(), r = seeded(S.farmId.length * 613 + si * 97 + S.truck.n * 7), T = TRUCK.tiers[truckTierIdx()];
   const pool = Object.keys(GOODS).filter(id => !GOODS[id].sp && !TRUCK.skip.includes(id) && canAsk(id));
@@ -2494,6 +2537,7 @@ function plotAct(i, mode, gh, crop) {
     if (!c) { toast(gh === 'fl' ? FL_WRONG() : GH_WRONG()); return; }
     if (gh !== 'fl' && c.fl) { toast(`${c.e} ${c.name} растут на цветочных грядках в саду 🌸`); return; }
     if (c.fl && !flSeason(id)) { toast(`${c.e} ${c.name} сейчас не сажают — не их сезон`); return; }
+    if (!gh && noSow(id)) { toast(WINTER_FIELD()); return; }
     if (!gh && GH_CROPS.includes(id)) { toast(`${c.e} ${c.name} растёт только в теплице 🏡`); return; }
     if (S.coins < c.seed && !(S.truck.seeds > 0)) { toast(gh ? `Семена ${c.e} стоят ${c.seed}💰` : 'Не хватает монет — посади подсолнух 🌻, он бесплатный'); return; }
     paySeed(c.seed); p.crop = c.id; p.prog = 0;
@@ -2772,7 +2816,7 @@ function initProd() {
 
 // ---------- 🧈 Молочный дом: у каждого котла своя очередь порций (как печь, но две дорожки) ----------
 const kettles = () => S.up.dhouse ? 2 : 1;
-const dairyOk = r => r === 'cheese' || S.up.dhouse > 0;
+const dairyOk = r => r === 'cheese' || (S.up.dhouse > 0 && recipeOpen(r));
 const dairyRate = (r, lvl = S.up.dairy || 1) => lvl * (r === 'butter' ? 1 + .5 * (S.up.churn || 0) : 1);
 const kCap = () => 4 + 2 * (S.up.dairyBin || 0);   // мест в очереди котла (кроме той порции, что уже в котле)
 let kSel = -1;   // открытый котёл (его очередь и рецепты видны)
@@ -2837,7 +2881,7 @@ function upList(keys, rows) {
 }
 function upRow(u, title, now, next, ico) {   // строка улучшения в окне здания: «сейчас → будет»
   const U = UPGRADES[u], l = S.up[u], maxed = l >= U.max, cost = U.cost(l), lock = upLocked(u);
-  return `<div class="up" data-why="${maxed ? 'Улучшено до максимума' : lock ? '🔒 ' + needTxt(u) : S.night ? 'Недостаточно средств' : '🌙 Улучшения покупаются ночью'}"><div class="ico">${ico || U.ico}</div><div class="txt"><b>${title} <small>ур. ${l}/${U.max}</small></b><small>${maxed ? now + ' · максимум' : lock ? needTxt(u) : `${now} → <b>${next}</b>`}</small></div>
+  return `<div class="up" data-why="${maxed ? 'Улучшено до максимума' : lock ? '🔒 ' + needTxt(u) : S.night ? 'Недостаточно средств' : '🌙 Улучшения покупаются ночью'}"><div class="ico">${ico || U.ico}</div><div class="txt"><b>${title} <small>ур. ${l}/${U.max}</small></b><small>${maxed ? now + ' · максимум' : lock ? (lvlLocked(u) && S.up[u] ? `${needTxt(u)}<br>дальше: ${next}` : needTxt(u)) : `${now} → <b>${next}</b>`}</small></div>
     <button ${maxed || lock || !S.night || S.coins < cost ? 'disabled' : ''} onclick="buyUpgrade('${u}')">${maxed ? '✔' : lock ? (lvlLocked(u) ? '⭐' + upLvl(u) : '🔒') : cost + '💰'}</button></div>`;
 }
 const kLeft = o => o.cur ? Math.max(0, DAIRY[o.cur.r].time - o.cur.t) / dairyRate(o.cur.r) : 0;
@@ -2893,13 +2937,14 @@ function openDairy() {
     for (let j = 0; j < cap; j++) h += o.q[j] ? `<button class="bq-s" onclick="unKq(${kSel}, ${j})"><span>${GOODS[o.q[j]].e}</span><small>${j + 1}-й</small><i>✕</i></button>` : `<div class="bq-s empty">${j === o.q.length ? '+' : ''}</div>`;
     h += `</div><div class="rcp r3">`;
     for (const r in DAIRY) {
-      if (!recipeShown(r)) continue;
+      if (!recipeShown(r) || (S.up.dhouse && !recipeOpen(r))) continue;
       const D = DAIRY[r], ok = dairyOk(r) && (!D.in || canMake(r, true)), hv = dHave(r), can = ok && hv >= 1 && o.q.length < cap;
       const ing = Object.entries(dIn(r)).map(([g, n]) => `<span class="${(S.inv[g] || 0) >= n ? '' : 'no'}">${n}<i>${GOODS[g].e}</i></span>`).join('');
-      h += `<button class="rc${can ? '' : ' off'}${seasonal(r) ? ' s-' + GOODS[r].season : ''}" onclick="addKettle('${r}')"><span class="rc-e">${GOODS[r].e}</span>${seasonal(r) ? `<i class="rc-season">${season().e}</i>` : ''}<b>${GOODS[r].name}</b><small>${sellPrice(r)}💰 · ${fmtMs(D.time / dairyRate(r))}</small><div class="rc-ing">${ing}</div><small class="rc-f">${!ok ? (D.in ? 'нужен ' + Object.keys(D.in).filter(g => !canMake(g)).map(g => GOODS[g].e).join(' ') : '🔒 Молочный дом') : !hv ? 'не хватает продуктов' : o.q.length >= cap ? 'очередь полная' : `хватит на ${hv}`}</small></button>`;
+      h += `<button class="rc${can ? '' : ' off'}${seasonal(r) ? ' s-' + GOODS[r].season : ''}" onclick="addKettle('${r}')"><span class="rc-e">${GOODS[r].e}</span>${seasonal(r) ? `<i class="rc-season">${season().e}</i>` : ''}<b>${GOODS[r].name}</b><small>${sellPrice(r)}💰 · ${fmtMs(D.time / dairyRate(r))}</small><div class="rc-ing">${ing}</div><small class="rc-f">${!recipeOpen(r) ? recipeLock(r) : !ok ? (D.in ? 'нужен ' + Object.keys(D.in).filter(g => !canMake(g)).map(g => GOODS[g].e).join(' ') : '🔒 Молочный дом') : !hv ? 'не хватает продуктов' : o.q.length >= cap ? 'очередь полная' : `хватит на ${hv}`}</small></button>`;
     }
     h += `</div></div>`;
   }
+  if (S.up.dhouse) h += lockedBlock('dhouse', r => !seasonal(r) || recipeShown(r));
   h += `<div class="dh-plan"><span>🥛 молока на складе: <b>${milk}</b></span></div></div>`;
   const outs = Object.entries(st.out).filter(([, n]) => n);
   h += `<div class="bshelf${outs.length ? ' has' : ''}"><div class="bsh-t">🧺 Готово</div>${outs.length
@@ -2914,7 +2959,7 @@ function openDairy() {
   h += upList(['dairy', 'dairyBin', 'dhouse', 'churn'],
     upRow('dairy', S.up.dhouse ? 'Котлы' : 'Сыроварня', `🧀 за ${fmtMs(DAIRY.cheese.time / dairyRate('cheese'))}`, `за ${fmtMs(DAIRY.cheese.time / dairyRate('cheese', S.up.dairy + 1))}`, '🔥')
     + upRow('dairyBin', 'Чаны', `очередь котла ${cap} мест`, `${4 + 2 * (S.up.dairyBin + 1)} мест`)
-    + upRow('dhouse', 'Молочный дом', S.up.dhouse ? '2 котла · 🧀 🫙 🧈' : '1 котёл, только 🧀', `2 котла · 🫙 🧈 и 🥐 в пекарне`)
+    + upRow('dhouse', 'Молочный дом', S.up.dhouse ? `2 котла · рецептов: ${Object.keys(DAIRY).filter(r => dairyOk(r)).length}` : '1 котёл, только 🧀', S.up.dhouse ? `новые рецепты: ${nextRecipes('dhouse')}` : '2 котла · 🫙 🧈')
     + (S.up.dhouse ? upRow('churn', 'Маслобойка', `🧈 за ${fmtMs(DAIRY.butter.time / dairyRate('butter'))}`, `за ${fmtMs(DAIRY.butter.time / ((S.up.dairy || 1) * 1.5))}`) : ''));
   $('sheet').dataset.view = 'prod:' + k; $('sheet').dataset.sig = dairySig(); $('sheet').innerHTML = h; $('overlay').classList.add('show');
 }
@@ -2936,7 +2981,7 @@ const bakeUses = g => Object.keys(BAKE).filter(r => BAKE[r].in[g]);
 function bakeNeedDay(g) {
   if (!S.up.bakery) return 0;
   const r = BAKE[S.bake.sel]?.in[g] ? S.bake.sel : bakeUses(g)[0]; if (!r) return 0;
-  return Math.round(OVENS * DAY_LEN / (BAKE[r].time / S.up.bakery) * trayN() * BAKE[r].in[g]);
+  return Math.round(OVENS * DAY_LEN / (BAKE[r].time / bakeSp()) * trayN() * BAKE[r].in[g]);
 }
 const fmtMs = s => { if (s > 0 && s < 10 && Math.abs(s - Math.round(s)) > .05) return s.toFixed(1).replace('.', ',') + ' с'; s = Math.max(0, Math.round(s)); return s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : `${s} с`; };
 let prodOpen = null;
@@ -2976,7 +3021,7 @@ function openProd(k) {
     const U = UPGRADES[u], l = S.up[u], maxed = l >= U.max, cost = U.cost(l), lock = upLocked(u);
     const now = u === 'stones' ? `+${l * 25}% ${outE}` : u === k ? `${prodPerDay(k)} ${outE} в день` : `очередь ${prodCap(k)}`;
     const next = maxed ? 'максимум' : u === 'stones' ? `+${(l + 1) * 25}% ${outE} · ~${Math.floor(DAY_LEN / P.time * S.up[k] * stonesMul(l + 1))} в день` : u === k ? `${prodPerDay(k, l + 1)} ${outE} в день` : `очередь ${PROD[k].cap * (2 + l)}`;
-    ur += `<div class="up" data-why="${maxed ? 'Улучшено до максимума' : lock ? '🔒 ' + needTxt(u) : S.night ? 'Недостаточно средств' : '🌙 Улучшения покупаются ночью'}"><div class="ico">${U.ico}</div><div class="txt"><b>${u === k ? 'Привод' : U.name} <small>ур. ${l}/${U.max}</small></b><small>${maxed ? now + ' · максимум' : lock ? needTxt(u) : `${now} → <b>${next}</b>`}</small></div>
+    ur += `<div class="up" data-why="${maxed ? 'Улучшено до максимума' : lock ? '🔒 ' + needTxt(u) : S.night ? 'Недостаточно средств' : '🌙 Улучшения покупаются ночью'}"><div class="ico">${U.ico}</div><div class="txt"><b>${u === k ? 'Привод' : U.name} <small>ур. ${l}/${U.max}</small></b><small>${maxed ? now + ' · максимум' : lock ? (lvlLocked(u) && S.up[u] ? `${needTxt(u)}<br>дальше: ${next}` : needTxt(u)) : `${now} → <b>${next}</b>`}</small></div>
       <button ${maxed || lock || !S.night || S.coins < cost ? 'disabled' : ''} onclick="buyUpgrade('${u}')">${maxed ? '✔' : lock ? (lvlLocked(u) ? '⭐' + upLvl(u) : '🔒') : cost + '💰'}</button></div>`;
   }
   h += upList(ups, ur);
@@ -2997,12 +3042,13 @@ setInterval(() => {
 // можно ли вообще получить товар на ферме (для покупателей, рецептов и заказов)
 function canMake(g, any) {
   if (seasonal(g) && !any) return false;   // сезонное — только своя пристройка: не в заказах, целях, ящиках, норме помощника
+  if (DAIRY[g] && !recipeOpen(g)) return false;
   if (DAIRY[g]?.in) return S.up.dhouse > 0 && Object.keys(dIn(g)).every(x => canMake(x));
   if (CROP[g]?.fl) return (S.up.grove || 0) > 0;   // цветы — из сада (их не «открывают» в лавке семян)
   if (CROP[g]) return S.unlocked.includes(g) && (!GH_CROPS.includes(g) || S.up.greenhouse > 0);
-  if (BAKE[g]) return S.up.bakery > 0 && Object.keys(BAKE[g].in).every(x => canMake(x));
-  if (PRESS[g]) return S.up.press > 0 && Object.keys(PRESS[g].in).every(x => canMake(x));
-  if (FLORAL[g]) return S.up.floral > 0 && (FLORAL[g].kind !== 'gift' || S.up.giftwrap > 0) && Object.keys(FLORAL[g].in).every(x => canMake(x));
+  if (BAKE[g]) return S.up.bakery > 0 && recipeOpen(g) && Object.keys(BAKE[g].in).every(x => canMake(x));
+  if (PRESS[g]) return S.up.press > 0 && recipeOpen(g) && Object.keys(PRESS[g].in).every(x => canMake(x));
+  if (FLORAL[g]) return S.up.floral > 0 && recipeOpen(g) && (FLORAL[g].kind !== 'gift' || S.up.giftwrap > 0) && Object.keys(FLORAL[g].in).every(x => canMake(x));
   return { cherry: S.trees.some(t => t.kind === 'cherry'), pear: S.trees.some(t => t.kind === 'pear'), peach: S.trees.some(t => t.kind === 'peach'), apple: S.trees.some(t => t.kind === 'apple'), egg: hens() > 0, milk: cows() > 0, flour: S.up.mill > 0, sugar: sugarOn(), honey: S.up.hive > 0, comb: S.up.hive > 0, cheese: S.up.dairy > 0, sour: S.up.dhouse > 0, butter: S.up.dhouse > 0, chick: S.up.rooster > 0 }[g] || false;
 }
 const bakeOut = () => Object.values(S.bake.out).reduce((a, b) => a + b, 0);
@@ -3106,7 +3152,7 @@ function updateBake(dt) {
   if (bakeOut() >= 20) return;   // полки заставлены — ждёт, пока заберут
   st.ov.forEach((o, i) => {
     if (!o) return;
-    o.t += dt * S.up.bakery * (S.day > (S.truck.ovenFrom || 0) && S.day <= S.truck.oven ? 2 : 1);   // подарок ресторана — печь вдвое быстрее
+    o.t += dt * bakeSp() * (S.day > (S.truck.ovenFrom || 0) && S.day <= S.truck.oven ? 2 : 1);   // подарок ресторана — печь вдвое быстрее
     if (o.t >= BAKE[o.r].time) { st.out[o.r] = (st.out[o.r] || 0) + o.n; st.ov[i] = null; }
   });
   fillOven();
@@ -3118,7 +3164,9 @@ function tapBakery() {
 function setBake(r) { S.bake.sel = r; save(); openBakery(); }
 // ---- окно пекарни: в центре печь, под ней очередь и рецепты ----
 const fmtSec = s => s >= 60 ? `${Math.floor(s / 60)} мин ${String(Math.ceil(s % 60)).padStart(2, '0')} сек` : `${Math.ceil(s)} сек`;
-const ovLeft = o => Math.max(0, BAKE[o.r].time - o.t) / (S.up.bakery || 1);
+const BAKE_SPEED = [1, 1.25, 1.5, 1.75, 2];   // каждый уровень пекарни — новые рецепты и печь быстрее (на 5-м — вдвое)
+const bakeSp = (l = S.up.bakery) => BAKE_SPEED[Math.max(0, Math.min(4, (l || 1) - 1))];
+const ovLeft = o => Math.max(0, BAKE[o.r].time - o.t) / bakeSp();
 const bakeHelper = () => S.helpers.some(c => c.stations.includes('bakery'));
 function bakeState() {   // что сейчас с печью — одной фразой
   if (!bakeBusy()) return { hot: false, t: 'Печь пустая', s: 'Добавь рецепт из списка ниже — он сразу ляжет в свободное отделение' };
@@ -3162,7 +3210,7 @@ function bakeLive() {   // окно открыто — двигаем полос
 }
 function openBakery() {
   fillOven();
-  const st = S.bake, q = st.q, ov = bakeState(), sp = S.up.bakery || 1, busy = st.ov.filter(Boolean).length;
+  const st = S.bake, q = st.q, ov = bakeState(), sp = bakeSp(), busy = st.ov.filter(Boolean).length;
   const cnt = o => Object.entries(o).filter(([, k]) => k).map(([g, k]) => `${k} ${GOODS[g].e}`).join('  ');
   const sel = BAKE[st.sel] ? st.sel : 'bread', perDay = r => Math.floor(OVENS * DAY_LEN / (BAKE[r].time / sp) * trayN());
   const helper = S.helpers.map((c, i) => c.stations.includes('bakery') ? hName(i) : '').filter(Boolean);
@@ -3184,24 +3232,24 @@ function openBakery() {
     : `<div class="bsh-empty">пока ничего не готово</div>`}</div>`;
   h += `<h3 class="bk-h">Добавить в печь <small>тап — 1 шт. в очередь</small></h3><div class="rcp">`;
   for (const r in BAKE) {
-    if (!recipeShown(r)) continue;
+    if (!recipeShown(r) || !recipeOpen(r)) continue;
     const ok = canMake(r, true), have = bakeHave(r), room = ok ? bakeRoom(r, 1) : 0, inQ = q.filter(x => x === r).length;
     const ing = Object.entries(BAKE[r].in).map(([g, k]) => `<span class="${(S.inv[g] || 0) >= k ? '' : 'no'}">${k}<i>${GOODS[g].e}</i></span>`).join('');
-    const foot = !ok ? (Object.keys(BAKE[r].in).filter(g => !canMake(g)).join() === 'sugar' ? `нужен ${GOODS.sugar.e}: открой свёклу ${GOODS.beet.e}` : `нужен ${Object.keys(BAKE[r].in).filter(g => !canMake(g)).map(g => GOODS[g].e).join(' ')}`) : !have ? 'не хватает продуктов' : !room ? 'очередь полная' : `хватит на ${have}`;
+    const foot = !recipeOpen(r) ? recipeLock(r) : !ok ? (Object.keys(BAKE[r].in).filter(g => !canMake(g)).join() === 'sugar' ? `нужен ${GOODS.sugar.e}: открой свёклу ${GOODS.beet.e}` : `нужен ${Object.keys(BAKE[r].in).filter(g => !canMake(g)).map(g => GOODS[g].e).join(' ')}`) : !have ? 'не хватает продуктов' : !room ? 'очередь полная' : `хватит на ${have}`;
     h += `<button class="rc${ok && have && room ? '' : ' off'}${seasonal(r) ? ' s-' + GOODS[r].season : ''}" onclick="addBake('${r}',1)"><span class="rc-e">${GOODS[r].e}</span>${seasonal(r) ? `<i class="rc-season">${season().e}</i>` : ''}${inQ ? `<i class="rc-q">${inQ}</i>` : ''}
       <b>${GOODS[r].name}</b><small>${sellPrice(r)}💰 · ${fmtSec(BAKE[r].time / sp)}</small><div class="rc-ing">${ing}</div><small class="rc-f">${foot}</small></button>`;
   }
-  h += `</div><div class="pfacts" style="margin-top:10px"><span>${OVENS} отделения</span><span>по ${trayN()} шт. за раз</span><span>~${perDay(sel)} ${GOODS[sel].e} в день</span></div>`;
+  h += `</div>${lockedBlock('bakery', r => !seasonal(r) || recipeShown(r))}<div class="pfacts" style="margin-top:10px"><span>${OVENS} отделения</span><span>по ${trayN()} шт. за раз</span><span>~${perDay(sel)} ${GOODS[sel].e} в день</span></div>`;
   h += holdBlock(Object.keys(BAKE).filter(bakeOk), helper, 'печёт то, чего меньше нормы, и забирает готовое');
   if (!helper.length) h += `<div class="phelp">${helper.length ? '' : `👷 Помощник не назначен — ${S.up.helper ? '<a href="#" onclick="event.preventDefault();openHelpers()">назначить в «Команде»</a>' : 'наймёшь — поставь его на станцию 🏤'}`}</div>`;
   // улучшения пекарни: «сейчас → будет»
   const row = (u, title, now, next, ico) => {
     const U = UPGRADES[u], l = S.up[u], maxed = l >= U.max, cost = U.cost(l), lock = upLocked(u);
-    return `<div class="up" data-why="${maxed ? 'Улучшено до максимума' : lock ? '🔒 ' + needTxt(u) : S.night ? 'Недостаточно средств' : '🌙 Улучшения покупаются ночью'}"><div class="ico">${ico || U.ico}</div><div class="txt"><b>${title} <small>ур. ${l}/${U.max}</small></b><small>${maxed ? now + ' · максимум' : lock ? needTxt(u) : `${now} → <b>${next}</b>`}</small></div>
+    return `<div class="up" data-why="${maxed ? 'Улучшено до максимума' : lock ? '🔒 ' + needTxt(u) : S.night ? 'Недостаточно средств' : '🌙 Улучшения покупаются ночью'}"><div class="ico">${ico || U.ico}</div><div class="txt"><b>${title} <small>ур. ${l}/${U.max}</small></b><small>${maxed ? now + ' · максимум' : lock ? (lvlLocked(u) && S.up[u] ? `${needTxt(u)}<br>дальше: ${next}` : needTxt(u)) : `${now} → <b>${next}</b>`}</small></div>
       <button ${maxed || lock || !S.night || S.coins < cost ? 'disabled' : ''} onclick="buyUpgrade('${u}')">${maxed ? '✔' : lock ? (lvlLocked(u) ? '⭐' + upLvl(u) : '🔒') : cost + '💰'}</button></div>`;
   };
   const pd = (lv, tr) => Math.floor(OVENS * DAY_LEN / (BAKE[sel].time / lv) * tr);
-  h += upList(['bakery', 'trays'], row('bakery', 'Жар печи', `~${pd(sp, trayN())} ${GOODS[sel].e} в день`, `~${pd(sp + 1, trayN())} ${GOODS[sel].e} в день`, '🫕')
+  h += upList(['bakery', 'trays'], row('bakery', 'Пекарня', `рецептов: ${Object.keys(BAKE).filter(r => recipeOpen(r)).length} · печь ×${String(bakeSp()).replace('.', ',')}`, `новые рецепты: ${nextRecipes('bakery')} · печь ×${String(bakeSp(S.up.bakery + 1)).replace('.', ',')}`, '🏤')
     + row('trays', 'Противни', `печёт ${OVENS * trayN()} шт. за раз`, `${OVENS * (trayN() + 1)} шт. за раз · ~${pd(sp, trayN() + 1)} ${GOODS[sel].e} в день`));
   $('sheet').dataset.view = 'bakery'; $('sheet').dataset.sig = bakeSig(); $('sheet').innerHTML = h;
   $('overlay').classList.add('show');
@@ -3305,19 +3353,20 @@ function openPress() {
   for (const [kind, title] of [['juice', '🧃🍎 Соки <small>пресс · тап — 1 бутылка</small>'], ['jam', '🍯🍓 Варенье <small>котёл · тап — 2 банки</small>']]) {
     h += `<h3 class="bk-h">${title}</h3><div class="rcp">`;
     for (const r in PRESS) {
-      if (PRESS[r].kind !== kind) continue;
+      if (PRESS[r].kind !== kind || !recipeOpen(r)) continue;
       const ok = canMake(r, true), have = pressHave(r), room = pressRoom();
       const ing = Object.entries(PRESS[r].in).map(([g, k]) => `<span class="${(S.inv[g] || 0) >= k ? '' : 'no'}">${k}<i>${GOODS[g].e}</i></span>`).join('');
       const miss = Object.keys(PRESS[r].in).filter(g => !canMake(g));
-      const foot = !ok ? (miss.join() === 'sugar' ? `нужен ${GOODS.sugar.e}: открой свёклу ${GOODS.beet.e}` : `нужен ${miss.map(g => GOODS[g].e).join(' ')}`) : !have ? 'не хватает продуктов' : !room ? 'очередь полная' : `хватит на ${have}`;
+      const foot = !recipeOpen(r) ? recipeLock(r) : !ok ? (miss.join() === 'sugar' ? `нужен ${GOODS.sugar.e}: открой свёклу ${GOODS.beet.e}` : `нужен ${miss.map(g => GOODS[g].e).join(' ')}`) : !have ? 'не хватает продуктов' : !room ? 'очередь полная' : `хватит на ${have}`;
       h += `<button class="rc${ok && have && room ? '' : ' off'}" onclick="addPress('${r}')"><span class="rc-e">${GOODS[r].e}</span>
         <b>${GOODS[r].name}</b><small>${PRESS[r].n > 1 ? `${PRESS[r].n} × ` : ''}${sellPrice(r)}💰 · ${fmtSec(PRESS[r].time / sp)}</small><div class="rc-ing">${ing}</div><small class="rc-f">${foot}</small></button>`;
     }
     h += `</div>`;
   }
+  h += lockedBlock('press');
   h += holdBlock(Object.keys(PRESS).filter(g => canMake(g)), helper, 'делает то, чего меньше нормы, и забирает готовое');
   if (!helper.length) h += `<div class="phelp">👷 Помощник не назначен — ${S.up.helper ? '<a href="#" onclick="event.preventDefault();openHelpers()">назначить в «Команде»</a>' : 'наймёшь в доме фермера'}</div>`;
-  h += upList(['press'], upRow('press', 'Пресс и котёл', `работают ×${sp}`, `×${[1, 1, 1.5, 2][S.up.press + 1] || 2}`, '⚙️'));
+  h += upList(['press'], upRow('press', 'Соки и варенье', `работают ×${sp}`, `×${[1, 1, 1.5, 2][S.up.press + 1] || 2} · новые рецепты: ${nextRecipes('press')}`, '⚙️'));
   $('sheet').dataset.view = 'press'; $('sheet').dataset.sig = pressSig(); $('sheet').innerHTML = h;
   $('overlay').classList.add('show');
 }
@@ -3437,18 +3486,19 @@ function openFloral() {
   if (kind === 'gift' && !S.up.giftwrap) continue;
   h += `<h3 class="bk-h">${title}</h3><div class="rcp">`;
   for (const r in FLORAL) {
-    if (FLORAL[r].kind !== kind) continue;
+    if (FLORAL[r].kind !== kind || !recipeOpen(r)) continue;
     const ok = canMake(r, true), have = floralHave(r), room = floralRoom();
     const ing = Object.entries(FLORAL[r].in).map(([g, k]) => `<span class="${(S.inv[g] || 0) >= k ? '' : 'no'}">${k}<i>${GOODS[g].e}</i></span>`).join('');
-    const foot = !ok ? 'нужен сад с этими цветами 🌸' : !have ? 'не хватает цветов' : !room ? 'очередь полная' : `хватит на ${have}`;
+    const foot = !recipeOpen(r) ? recipeLock(r) : !ok ? 'нужен сад с этими цветами 🌸' : !have ? 'не хватает цветов' : !room ? 'очередь полная' : `хватит на ${have}`;
     h += `<button class="rc${ok && have && room ? '' : ' off'}" onclick="addFloral('${r}')"><span class="rc-e">${GOODS[r].e}</span>
       <b>${GOODS[r].name}</b><small>${sellPrice(r)}💰${isFresh(r) ? ' 🌱свежие' : ''} · ${fmtSec(FLORAL[r].time / sp)}</small><div class="rc-ing">${ing}</div><small class="rc-f">${foot}</small></button>`;
   }
   h += `</div>`;
   }
+  h += lockedBlock('floral', r => FLORAL[r].kind !== 'gift' || S.up.giftwrap > 0);
   h += holdBlock(Object.keys(FLORAL).filter(g => canMake(g)), helper, 'собирает то, чего меньше нормы, и забирает готовое');
   if (!helper.length) h += `<div class="phelp">👷 Помощник не назначен — ${S.up.helper ? '<a href="#" onclick="event.preventDefault();openHelpers()">назначить в «Команде»</a>' : 'наймёшь в доме фермера'}</div>`;
-  h += upList(['floral', 'giftwrap'], upRow('floral', 'Стол флориста', `собирает ×${sp}`, `×${[1, 1, 1.5, 2][S.up.floral + 1] || 2}`, '✂️') + upRow('giftwrap', 'Подарочная упаковка', S.up.giftwrap ? 'подарочные букеты открыты' : 'только обычные букеты', '🎁 подарочные букеты +40%', '🎁'));
+  h += upList(['floral', 'giftwrap'], upRow('floral', 'Букетная мастерская', `собирает ×${sp}`, `×${[1, 1, 1.5, 2][S.up.floral + 1] || 2} · новые букеты: ${nextRecipes('floral')}`, '✂️') + upRow('giftwrap', 'Подарочная упаковка', S.up.giftwrap ? 'подарочные букеты открыты' : 'только обычные букеты', '🎁 подарочные букеты +40%', '🎁'));
   $('sheet').dataset.view = 'floral'; $('sheet').dataset.sig = floralSig(); $('sheet').innerHTML = h;
   $('overlay').classList.add('show');
 }
@@ -3466,7 +3516,7 @@ function newOrder() {
     let r = Math.random() * w.reduce((a, [, v]) => a + v, 0);
     goods.push((w.find(([, v]) => (r -= v) < 0) || w[w.length - 1])[0]);
   }
-  const value = Math.min(5000, 120 + S.day * 45) * (0.8 + Math.random() * .4), items = {};
+  const value = Math.min(4000, 100 + farmLevel() ** 2 * 4) * (0.8 + Math.random() * .4), items = {};
   for (const g of goods) items[g] = Math.max(2, Math.min(30, Math.round(value / k / GOODS[g].price)));
   if (items.chick) items.chick = Math.min(items.chick, 2);   // цыплята редкие — просят не больше двух
   return { from: pick(ORDER_FROM), items, due: S.day + 2, seen: false };
@@ -3632,16 +3682,16 @@ function buyUpgrade(key) {
     clear: S.up.clear === 1 ? '🪓 Лес вырублен! Ночью тапни на поляну — построишь мельницу' : '🪓 Ещё одна поляна — место под сыроварню',
     mill: S.up.mill === 1 ? '🌬️ Мельница готова! Тапни на неё — фермер засыплет пшеницу' : '🌬️ Мельница мелет вдвое быстрее',
     dairy: S.up.dairy === 1 ? '🧀 Сыроварня готова! Тапни на неё — фермер принесёт молоко' : '🧀 Сыроварня варит вдвое быстрее',
-    dhouse: '🧈 Молочный дом готов! Два котла, 🫙 сметана и 🧈 масло — а в пекарне теперь 🥐 круассаны',
+    dhouse: S.up.dhouse === 1 ? '🧈 Молочный дом готов! Два котла, 🫙 сметана и 🧈 масло' : `🧈 Молочный дом ${S.up.dhouse} ур.: новые рецепты — ${recipesAt('dhouse', S.up.dhouse).map(r => GOODS[r].e).join(' ')}`,
     churn: '🥄 Маслобойка: масло сбивается в 1,5 раза быстрее',
     house: S.up.house === 1 ? '🏠 У дома веранда и кухня — помощники работают быстрее' : '🏠 Второй этаж готов! Помощники ещё быстрее',
     trays: `🥘 Противни — теперь в каждое отделение печи по ${trayN()} штуки за раз`,
     hive: S.up.hive === 1 ? '🐝 Пасека готова! Пчёлы носят мёд днём — забирай его у ульев' : `🐝 Ещё два улья — теперь их ${hivesN()}`,
     giftwrap: '🎁 Подарочная упаковка! В мастерской теперь собирают подарочные букеты — посади папоротник 🌿 на цветочных грядках',
-    floral: S.up.floral === 1 ? '💐🌹 Букетная мастерская готова! Тапни на неё и выбери букет' : '💐🌹 Флорист собирает букеты быстрее',
-    press: S.up.press === 1 ? '🧃🍎 Домик соков и варенья готов! Тапни на него и выбери, что делать' : '🧃🍎 Пресс и котёл работают быстрее',
-    bakery: S.up.bakery === 1 ? '🏤 Пекарня готова! Тапни на неё и выбери, что печь' : '🏤 Пекарня печёт вдвое быстрее',
-    cozy: `${COZY[S.up.cozy - 1]} — покупатели платят на ${S.up.cozy * 2}% больше`,
+    floral: S.up.floral === 1 ? '💐🌹 Букетная мастерская готова! Тапни на неё и выбери букет' : `💐🌹 Мастерская ${S.up.floral} ур.: новые букеты, и флорист собирает быстрее`,
+    press: S.up.press === 1 ? '🧃🍎 Домик соков и варенья готов! Тапни на него и выбери, что делать' : `🧃🍎 Соки и варенье ${S.up.press} ур.: новые рецепты, и пресс работает быстрее`,
+    bakery: S.up.bakery === 1 ? '🏤 Пекарня готова! Пока печёт 🍞 хлеб — новые рецепты на следующих уровнях' : `🏤 Пекарня ${S.up.bakery} ур.: новые рецепты — ${recipesAt('bakery', S.up.bakery).map(r => GOODS[r].e).join(' ')}, и печь работает быстрее`,
+    cozy: `${COZY[S.up.cozy - 1]} — покупателей станет больше`,
     nests: S.up.nests === 1 ? '🪺 В вольере соломенные гнёзда — куры несутся чаще' : `🪺 Ещё гнёзда — яиц на ${S.up.nests * 20}% больше`,
     rooster: '🐓 Петух в курятнике! Двойные яйца, золотые чаще, а по утрам — цыплята 🐣',
     yard: `🐔 Вольер больше — ${hensCap()} мест для кур${S.coop.chicks ? '. Цыплята со склада переехали туда' : ''}`,
@@ -3979,7 +4029,7 @@ const REST = { ico: '😴', idle: at('home', 3, 4) };
 let helpers = [];
 const indoors = h => S.night && !h.moving && !h.path.length && !h.target && h.work <= 0 && Math.floor(h.x) === REST.idle.x && Math.floor(h.y) === REST.idle.y;   // ночью дошёл до двери — ушёл в дом (не рисуем)
 // работа недоступна, пока нет здания (сада, кур, коров, теплицы…)
-const stationOff = k => (k === 'hive' && !S.up.hive) || (k === 'floral' && !S.up.floral) || (k === 'press' && !S.up.press) || (k === 'flowers' && (!S.up.grove || flWinter())) || (k === 'orchard' && !S.up.orchard && !S.up.grove) || (k === 'coop' && !hens()) || (k === 'barn' && !cows()) || (k === 'gh' && !S.up.greenhouse) || (k === 'mill' && !S.up.mill) || (k === 'dairy' && !S.up.dairy) || (k === 'bakery' && !S.up.bakery);
+const stationOff = k => (k === 'hive' && !S.up.hive) || (k === 'floral' && !S.up.floral) || (k === 'press' && !S.up.press) || (k === 'flowers' && (!S.up.grove || flWinter())) || (k === 'field' && fieldWinter()) || (k === 'orchard' && !S.up.orchard && !S.up.grove) || (k === 'coop' && !hens()) || (k === 'barn' && !cows()) || (k === 'gh' && !S.up.greenhouse) || (k === 'mill' && !S.up.mill) || (k === 'dairy' && !S.up.dairy) || (k === 'bakery' && !S.up.bakery);
 function syncHelpers() {
   while (S.helpers.length < S.up.helper) {
     S.helpers.push({ stations: [], replant: false, seed: 'same', zones: [], feed: false, ghReplant: false, ghSeed: 'same', fold: false, flSeed: 'same' });   // новый — отдыхает, работу даёшь ты
@@ -4028,7 +4078,7 @@ function helperPlot(i, cfg) {
     addFloat(s.x + .5, s.y + .5, `+1 ${CROP[prev].e}`);
     p.last = prev; p.crop = null; p.prog = 0;
   } else if (p.crop || !cfg.replant) return false;
-  if (cfg.replant) {
+  if (cfg.replant && !isWinter()) {
     const id = helperSeed(cfg, prev);
     if (id) { paySeed(CROP[id].seed); p.crop = id; p.prog = 0; if (!S.night) beginClock(); }
   }
@@ -4051,7 +4101,8 @@ function helperGh(i, cfg) {
 const FL_BY_SEASON = { spring: 'tulip', summer: 'glad', autumn: 'dahlia', winter: null };
 // зимой цветочные грядки отдыхают: когда собрано последнее — роль «Цветы» снимается (другие места остаются), весной назначаешь заново
 const flWinter = () => season().id === 'winter' && !S.fl.some(p => p.crop);
-function flWinterOff() { if (!flWinter()) return; for (const c of S.helpers) if (c.stations.includes('flowers')) { c.stations = c.stations.filter(k => k !== 'flowers'); save(); } }
+const fieldWinter = () => isWinter() && !S.plots.some(p => p.crop && p.prog >= 1);   // зима и созревшего на поле нет — помощнику там делать нечего
+function flWinterOff() { for (const [k, off] of [['flowers', flWinter()], ['field', fieldWinter()]]) if (off) for (const c of S.helpers) if (c.stations.includes(k)) { c.stations = c.stations.filter(x => x !== k); if (k === 'field') c.zones = []; save(); } }
 function flHelperSeed(cfg, p) {
   const k = cfg.flSeed ?? 'same', id = k === 'none' ? null : k === 'same' ? p.last : k === 'season' ? FL_BY_SEASON[season().id] : k;
   return id && CROP[id]?.fl && flSeason(id) && S.coins >= CROP[id].seed ? id : null;
@@ -4063,8 +4114,8 @@ function helperJobs(cfg) {
   const jobs = [], has = k => cfg.stations.includes(k);
   if (has('field')) S.plots.forEach((p, i) => {
     if (!cfg.zones.includes(zoneOf(i))) return;   // только свои участки
-    const ready = p.crop && p.prog >= 1 && fits(p.crop), empty = !p.crop && cfg.replant && helperSeed(cfg, plotPrev(p));
-    if (!p.crop && cfg.replant && !empty) jobs.broke = true;   // пустая грядка, но семена не по карману
+    const ready = p.crop && p.prog >= 1 && fits(p.crop), empty = !p.crop && cfg.replant && !isWinter() && helperSeed(cfg, plotPrev(p));
+    if (!p.crop && cfg.replant && !empty && !isWinter()) jobs.broke = true;   // пустая грядка, но семена не по карману
     if (ready || empty) jobs.push({ x: PLOT_SLOTS[i].x, y: PLOT_SLOTS[i].y, ord: snakeOrd(PLOT_SLOTS[i]), act: () => helperPlot(i, cfg) });
   });
   if (has('gh')) S.gh.forEach((p, i) => { if (!(cfg.ghZones ?? [0, 1]).includes(i < 6 ? 0 : 1)) return;   // только свои теплицы
@@ -4239,7 +4290,7 @@ const hmNum = j => `<b class="hm-n" style="background:${hmCol(j)}">${hInit(j)}</
 let helperSel = 0, hmSt = null, hmView = 'list';
 function hmGo(v, i) { hmView = v; if (i != null) helperSel = i; openHelpers(); if (v === 'pick') $('sheet').scrollTop = 0; }
 function selHelper(i) { helperSel = i; openHelpers(); }
-const hmPlaces = () => Object.keys(STATIONS).filter(k => !stationOff(k) || S.helpers.some(c => c.stations.includes(k)));
+const hmPlaces = () => Object.keys(STATIONS).filter(k => !stationOff(k) || S.helpers.some(c => c.stations.includes(k)) || (k === 'field' && fieldWinter()) || (k === 'flowers' && S.up.grove > 0 && flWinter()));   // поле и цветы зимой — бледной плиткой
 function setGhZone(i, z) { const c = S.helpers[i]; const Z = c.ghZones ?? [0, 1]; c.ghZones = Z.includes(z) ? Z.filter(x => x !== z) : [...Z, z]; if (!c.ghZones.length) c.ghZones = [z === 0 ? 1 : 0]; setHelper(i, 'ghZones', c.ghZones); }
 function openHelpers() {
   const P = hmPlaces(), stN = k => STATIONS[k].name, stI = k => STATIONS[k].ico;
@@ -4251,7 +4302,8 @@ function openHelpers() {
     h += `<button class="hy-back" onclick="hmGo('list')">‹ Все помощники</button>`;
     h += `<div class="hy-me"><img class="hy-meimg" src="${lookImg(hLook(i), 'full')}" alt=""><div><button class="hm-name" data-i="${i}" onclick="editHelperName(${i})">${esc(hName(i))} ✏️</button><small>${c.stations.length ? 'отмечай, где работать' : 'сейчас отдыхает'}</small></div></div>`;
     const nobody = k => !S.helpers.some(x => x.stations.includes(k));   // здесь пока никто не работает — оранжевый «!»
-    h += `<div class="hz-g">${P.map(k => tile(c.stations.includes(k), stI(k), stN(k), `toggleStation(${i},'${k}')`, nobody(k) ? ' free' : '')).join('')}</div>`;
+    const wOff = k => (k === 'field' && fieldWinter()) || (k === 'flowers' && flWinter());   // зимой бледные — в конец списка
+    h += `<div class="hz-g">${[...P.filter(k => !wOff(k)), ...P.filter(wOff)].map(k => (k === 'field' && fieldWinter()) || (k === 'flowers' && flWinter()) ? tile(false, stI(k), stN(k), k === 'field' ? 'toast(WINTER_FIELD())' : 'toast(WINTER_FLOWERS)', ' dim') : tile(c.stations.includes(k), stI(k), stN(k), `toggleStation(${i},'${k}')`, nobody(k) ? ' free' : '')).join('')}</div>`;
     const sec = (ico, title, body) => `<div class="hy-sec"><div class="hy-st">${ico} ${title}</div>${body}</div>`;
     if (c.stations.includes('field')) {
       h += sec(stI('field'), 'Поле — участки', `<div class="hz-z">${ZONES.map((z, k) => { const n = S.plots.filter((p, j) => zoneOf(j) === k).length, own = zoneOwner(k), mine = c.zones.includes(k);
@@ -4338,7 +4390,7 @@ function step(dt) {
   if (!S.night && !S.started && shouldAutoStart()) beginClock();
   if (!S.night && S.started) {
     S.t += dt;
-    for (const p of S.plots) if (p.crop && p.prog < 1) p.prog = Math.min(1, p.prog + dt * growMult() * seasonGrow(p.crop) * wxGrow() / CROP[p.crop].grow);   // дождь — только поле
+    if (!isWinter()) for (const p of S.plots) if (p.crop && p.prog < 1) p.prog = Math.min(1, p.prog + dt * growMult() * seasonGrow(p.crop) * wxGrow() / CROP[p.crop].grow);   // дождь — только поле
     for (const p of S.gh) if (p.crop && p.prog < 1) p.prog = Math.min(1, p.prog + dt * growMult() * seasonGrow(p.crop, true) / (CROP[p.crop].grow * GH_SLOW));
     for (const t of S.trees) if (t.kind) {
       const T = TREES[t.kind];
@@ -5753,9 +5805,9 @@ function farmSig() {   // то, что меняется только на сам
 }
 // грядки — поверх фона, из двух готовых картинок (влажная — засеянная, сухая — пустая)
 const PLOT_IMG = { k: 0 };
-function plotImg(wet, k) {
-  if (PLOT_IMG.k !== k) { PLOT_IMG.k = k; PLOT_IMG.w = PLOT_IMG.d = null; }
-  const id = wet ? 'w' : 'd'; if (PLOT_IMG[id]) return PLOT_IMG[id];
+function plotImg(wet, k, snow) {   // snow — зимняя грядка поля: земля под снегом
+  if (PLOT_IMG.k !== k) { PLOT_IMG.k = k; PLOT_IMG.w = PLOT_IMG.d = PLOT_IMG.s = null; }
+  const id = snow ? 's' : wet ? 'w' : 'd'; if (PLOT_IMG[id]) return PLOT_IMG[id];
   const c = document.createElement('canvas'), ax = 33, ay = 6; c.width = Math.ceil(66 * k) + 2; c.height = Math.ceil(40 * k) + 2;
   const g = c.getContext('2d'); g.setTransform(k, 0, 0, k, ax * k + 1, ay * k + 1);
   const main = ctx; ctx = g;
@@ -5764,18 +5816,25 @@ function plotImg(wet, k) {
     const top = [lift(x + e, y + e, hz), lift(X, y + e, hz), lift(X, Y, hz), lift(x + e, Y, hz)];
     gface(fY(x + e, X, Y, 0, hz), wet ? '#5a3720' : '#7a4c2c', wet ? '#4a2c18' : '#653c22', INK, 1);
     gface(fX(X, y + e, Y, 0, hz), wet ? '#4e3019' : '#6b4227', wet ? '#3e2512' : '#57351e', INK, 1);
+    if (snow) {   // снег лежит на грядке: белый верх, бороздки — мягкие голубые ложбинки, контур поверх
+      gface(top, '#f7fafc', '#dbe6ef', null, 0);
+      for (const q of [.3, .55, .8]) { const a = lift(x + q, y + .16, hz), b = lift(x + q, y + .84, hz);
+        seg(a, b, 'rgba(120,150,180,.35)', 2.2); seg({ x: a.x - 1.4, y: a.y - .7 }, { x: b.x - 1.4, y: b.y - .7 }, 'rgba(255,255,255,.9)', 1.2); }
+      poly(top, null, INK, 1.2);
+    } else {
     gface(top, wet ? '#7a4c2c' : '#a06c42', wet ? '#5e3a20' : '#85552f', INK, 1.2);
     for (const q of [.3, .55, .8]) { const a = lift(x + q, y + .14, hz), b = lift(x + q, y + .86, hz);
       seg(a, b, 'rgba(40,20,8,.4)', 1.6); seg({ x: a.x - 1.2, y: a.y - .6 }, { x: b.x - 1.2, y: b.y - .6 }, 'rgba(255,220,180,.22)', 1); }
+    }
   } finally { ctx = main; }
   c.ax = ax; c.ay = ay; return PLOT_IMG[id] = c;
 }
 function drawPlotsLive() {
   const k = dpr * zoom, T = camT(), V = viewRect(40);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  const put = (p, s) => { const c = iso(s.x, s.y); if (c.x < V.x0 || c.x > V.x1 || c.y < V.y0 || c.y > V.y1) return; const im = plotImg(p.crop && p.prog < 1, k);
+  const snow = isWinter(), put = (p, s, fld) => { const c = iso(s.x, s.y); if (c.x < V.x0 || c.x > V.x1 || c.y < V.y0 || c.y > V.y1) return; const im = plotImg(p.crop && p.prog < 1, k, fld && snow);
     ctx.drawImage(im, Math.round(T.x + c.x * k - im.ax * k - 1), Math.round(T.y + c.y * k - im.ay * k - 1)); };
-  S.plots.forEach((p, i) => put(p, PLOT_SLOTS[i]));
+  S.plots.forEach((p, i) => put(p, PLOT_SLOTS[i], true));
   S.gh.forEach((p, i) => { const s = GH_SLOTS[i]; if (ghOn(s.x, s.y)) put(p, s); });
   setWorld();
 }
@@ -7957,11 +8016,13 @@ function drawBubble(v) {
 }
 
 function drawBars() {
-  [...S.plots.map((p, i) => [p, PLOT_SLOTS[i]]), ...S.gh.map((p, i) => [p, GH_SLOTS[i]])].forEach(([p, s]) => {
+  const frz = isWinter();   // зимой посевы на поле замерли: полоска голубая, рядом снежинка
+  [...S.plots.map((p, i) => [p, PLOT_SLOTS[i], frz]), ...S.gh.map((p, i) => [p, GH_SLOTS[i], false])].forEach(([p, s, fz]) => {
     if (!p.crop || p.prog >= 1) return;
     const c = lift(s.x + .5, s.y + .5, 3.5);
     rr(c.x - 15, c.y - 27, 30, 6, 3, INK);
-    rr(c.x - 14, c.y - 26, 28 * p.prog, 4, 2, '#9be15d');
+    rr(c.x - 14, c.y - 26, 28 * p.prog, 4, 2, fz ? '#a9cbe8' : '#9be15d');
+    if (fz) emoji('❄️', c.x + 22, c.y - 24, 11);
   });
   if (S.up.bakery) S.bake.ov.forEach((o, i) => {   // пекарня: по полоске на отделение
     if (!o) return;
@@ -8325,7 +8386,7 @@ function openEconomy() {
     const max = e[0][1];
     return e.map(([k, v]) => `<div class="ebar"><span class="el">${names(k)}</span><span class="et"><i style="width:${Math.max(3, v / max * 100)}%;background:${col}"></i></span><b>${fmt(v)}</b></div>`).join('');
   };
-  const good = k => GOODS[k] ? `${GOODS[k].e} ${GOODS[k].name}` : k === 'order' ? '📬 Заказы по почте' : k, cat = k => SPEND[k] || k;
+  const good = k => GOODS[k] ? `${GOODS[k].e} ${GOODS[k].name}` : k === 'order' ? '📬 Заказы по почте' : k === 'truck' ? '🚚 Грузовик' : k, cat = k => SPEND[k] || k;
   const spentToday = spentSum(st), net = st.earned - spentToday;
   let h = `<h2>💰 Экономика</h2>
     <div class="summary" style="font-size:15px">На счету <b>${fmt(S.coins)}💰</b> · цены на лотке ${Math.round(priceMult() * 100)}% (вывеска${S.up.cozy ? ' и уют' : ''})</div>
@@ -9188,34 +9249,38 @@ let trayRowKey = '', trayTab = null;   // вкладка лотка: 'field' —
 function setTrayTab(t) { trayTab = t; trayRowKey = ''; const first = t === 'fl' ? FLOWERS.find(f => flSeason(f.id)) : null; if (t === 'fl' ? (!CROP[S.sel].fl || !flSeason(S.sel)) && first : CROP[S.sel].fl) S.sel = t === 'fl' ? first.id : (S.unlocked.includes('wheat') ? 'wheat' : 'sunflower'); renderUI(); }
 function renderTray() {
   const T = $('seedTray'), c = CROP[S.sel], gh = GH_CROPS.includes(S.sel), fl = !!c.fl;
-  const n = fl ? (flSeason(S.sel) ? emptyFl() : 0) : gh ? emptyGh() : emptyBeds(), can = c.seed ? Math.min(n, Math.floor(S.coins / c.seed)) : n;
+  const n = fl ? (flSeason(S.sel) ? emptyFl() : 0) : gh ? emptyGh() : noSow(S.sel) ? 0 : emptyBeds(), can = c.seed ? Math.min(n, Math.floor(S.coins / c.seed)) : n;
   if (!T.firstChild) { T.innerHTML = `<div class="grab"></div><div class="th"></div><div class="row"></div><button class="all" onclick="sowAll()"></button>`; trayRowKey = ''; }
   const tab = S.up.grove ? (trayTab || (fl ? 'fl' : 'field')) : 'field';   // в саду — только цветы своего сезона
   const ids = tab === 'fl' ? [...FLOWERS.filter(f => flSeason(f.id)), ...FLOWERS.filter(f => !flSeason(f.id))].map(f => f.id) /* сначала то, что сейчас сажают */ : CROPS.map(c => c.id).filter(id => S.unlocked.includes(id));
-  const key = ids.map(id => id + (S.sel === id ? '*' : '') + (S.coins < CROP[id].seed || (CROP[id].fl && !flSeason(id)) ? '-' : '')).join();
+  const key = ids.map(id => id + (S.sel === id ? '*' : '') + (S.coins < CROP[id].seed || (CROP[id].fl && !flSeason(id)) || noSow(id) ? '-' : '')).join();
   if (key !== trayRowKey) {   // семена — только когда поменялись выбор, доступность или список (иначе прокрутка прыгала бы)
     trayRowKey = key; const row = T.querySelector('.row'), x = row.scrollLeft;
-    row.innerHTML = ids.map(id => { const k = CROP[id]; return `<button class="sd${S.sel === id ? ' sel' : ''}${S.coins < k.seed || (k.fl && !flSeason(id)) ? ' dis' : ''}" onclick="pickSeed('${id}')"><span class="e">${k.e}</span><span class="c">${k.seed}💰</span>${GH_CROPS.includes(id) ? '<span class="gh">🏡</span>' : ''}</button>`; }).join('');
+    row.innerHTML = ids.map(id => { const k = CROP[id]; return `<button class="sd${S.sel === id ? ' sel' : ''}${S.coins < k.seed || (k.fl && !flSeason(id)) || noSow(id) ? ' dis' : ''}" onclick="pickSeed('${id}')"><span class="e">${k.e}</span><span class="c">${k.seed}💰</span>${GH_CROPS.includes(id) ? '<span class="gh">🏡</span>' : ''}</button>`; }).join('');
     row.scrollLeft = x;
   }
-  const th = S.up.grove ? `<button class="tt${tab === 'field' ? ' on' : ''}" onclick="setTrayTab('field')">🌾 Поле <small>🟫 ${emptyBeds()}${S.gh.length ? ` · 🏡 ${emptyGh()}` : ''}</small></button><button class="tt${tab === 'fl' ? ' on' : ''}" onclick="setTrayTab('fl')">🌸 Сад <small>свободно ${emptyFl()}</small></button>`
-    : `<span class="cnt">🟫 ${emptyBeds()}</span>${S.gh.length ? `<span class="cnt">🏡 ${emptyGh()}</span>` : ''}`;
+  const th = S.up.grove ? `<button class="tt${tab === 'field' ? ' on' : ''}" onclick="setTrayTab('field')">🌾 Поле <small>🟫 ${isWinter() ? '❄️' : emptyBeds()}${S.gh.length ? ` · 🏡 ${emptyGh()}` : ''}</small></button><button class="tt${tab === 'fl' ? ' on' : ''}" onclick="setTrayTab('fl')">🌸 Сад <small>свободно ${emptyFl()}</small></button>`
+    : `<span class="cnt">🟫 ${isWinter() ? '❄️' : emptyBeds()}</span>${S.gh.length ? `<span class="cnt">🏡 ${emptyGh()}</span>` : ''}`;
   const all = `🧺 Засеять всё <span class="sub">${c.e} × ${fl ? '🌸' : gh ? '🏡' : '🟫'} ${can}${can < n ? `/${n}` : ''} = ${can * c.seed}💰</span>`;
   const H = T.querySelector('.th'), A = T.querySelector('.all');
   if (H.dataset.k !== th) { H.dataset.k = th; H.innerHTML = th; }
   if (A.dataset.k !== all) { A.dataset.k = all; A.innerHTML = all; }
   A.disabled = !can;
 }
-function openTray() { toggleProdPop(false); trayOpen = true; trayTab = S.up.grove && (groveIn(Math.floor(P.x), Math.floor(P.y)) || CROP[S.sel]?.fl) ? 'fl' : 'field'; trayRowKey = ''; $('seedTray').style.transform = ''; $('seedTray').classList.add('show'); renderSeedBtn(); const row = $('seedTray').querySelector('.row'), r = row.querySelector('.sd.sel'); if (r) row.scrollLeft = r.offsetLeft - row.clientWidth / 2 + r.offsetWidth / 2; }
+function openTray() { toggleProdPop(false); trayOpen = true; if (noSow(S.sel)) { const g = GH_CROPS.find(id => S.unlocked.includes(id)); if (g && S.gh.length) S.sel = g; }   // зимой — сразу теплица
+  trayTab = S.up.grove && (groveIn(Math.floor(P.x), Math.floor(P.y)) || CROP[S.sel]?.fl) ? 'fl' : 'field'; trayRowKey = ''; $('seedTray').style.transform = ''; $('seedTray').classList.add('show'); renderSeedBtn(); const row = $('seedTray').querySelector('.row'), r = row.querySelector('.sd.sel'); if (r) row.scrollLeft = r.offsetLeft - row.clientWidth / 2 + r.offsetWidth / 2; }
 function closeTray() {
   if (!trayOpen) return; trayOpen = false; renderSeedBtn();
   const T = $('seedTray'); T.style.transition = 'transform .18s ease-in, opacity .18s'; T.style.transform = 'translateY(110%)'; T.style.opacity = '0';
   setTimeout(() => { if (!trayOpen) T.classList.remove('show'); T.style.transition = T.style.transform = T.style.opacity = ''; }, 180);
 }
+const WINTER_FLOWERS = '❄️ Зимой цветы не растут. Сажать снова можно весной.';
+const WINTER_FIELD = () => '❄️ Зимой поля под снегом. Сажать снова можно весной. Выращивайте урожай в теплице и производите товары из запасов!';
 const SEASON_WHEN = { spring: 'весной', summer: 'летом', autumn: 'осенью', winter: 'зимой' };
 function pickSeed(id) {
   const c = CROP[id];
   if (c.fl && !flSeason(id)) { toast(`${c.e} ${c.name} сейчас не сажают — не сезон. Сажают ${c.seasons.map(x => SEASON_WHEN[x]).join(', ').replace(/, ([^,]*)$/, ' и $1')}`); return; }
+  if (noSow(id)) { toast(WINTER_FIELD()); return; }
   S.sel = id; renderUI();
 }   // цена и теплица видны на плитке — подсказка не нужна
 function sowAll() {   // засеять все пустые грядки выбранным (🍅 и 🍓 — в теплицу); true — фермер пошёл
@@ -9231,6 +9296,7 @@ function sowAll() {   // засеять все пустые грядки выб�
     S.gh.forEach((p, i) => { if (!p.crop && !sowHelperGh()) list.push({ x: GH_SLOTS[i].x, y: GH_SLOTS[i].y, fn: () => plotAct(i, 'plant', true) }); });
     if (!list.length) { toast(sowHelperGh() && S.gh.some(p => !p.crop) ? '👷 Теплицу засеет помощник' : 'В теплице свободных грядок нет'); return false; }
   } else {
+    if (isWinter()) { toast(WINTER_FIELD()); return false; }
     S.plots.forEach((p, i) => { if (!p.crop && !sowHelperField(i)) list.push({ x: PLOT_SLOTS[i].x, y: PLOT_SLOTS[i].y, fn: () => plotAct(i, 'plant') }); });
     if (!list.length) { toast(S.plots.some(p => !p.crop) ? '👷 Пустые грядки засеют помощники' : 'Свободных грядок нет'); return false; }
   }
@@ -9315,6 +9381,13 @@ if (S.toSpawn === 0 && !S.night) startDay(); else renderUI();
 if (!S.night) S.toSpawn = Math.max(S.toSpawn, visitorsPerDay());   // старые сохранения получают новый поток покупателей сразу
 // ✨ Что нового: после обновления вместо итогов ночи — список новинок, которых игрок ещё не видел
 const WHATSNEW = [   // новое — сверху; v — версия, с которой это появилось
+  { v: '2026-11-24.200', t: 'Зима и новый темп фермы', items: [
+    ['❄️', 'Настоящая зима', 'Поля под снегом — растёт только теплица. Урожай из запасов зимой на 40% дороже, молочное и выпечка — на 20%. Готовь запасы с осени: зерно, корм, сено'],
+    ['🏤', 'Уровни зданий', 'У пекарни 5 уровней, у молочного дома, соков и букетов — по 3. Каждый уровень открывает новые рецепты и ускоряет работу. Улучшения зданий открываются с уровнем фермы'],
+    ['⭐', 'Ферма растёт дольше', 'Опыта за продажи меньше: здания и помощники открываются постепенно, год за годом. Всё, что уже открыто, остаётся'],
+    ['🧺', 'Покупатели', 'Корзинки скромнее — до 3 разных товаров. Вывеска и уют теперь приводят больше покупателей вместо надбавки к ценам'],
+    ['💰', 'Новые цены', 'Выпечка, сыр, соки и букеты дешевле — примерно на треть дороже сырья. Тыква — 55. Новые здания 2–3-го года дороже'],
+    ['🚚', 'Заказы по силам', 'Грузовик и почта теперь просят столько, сколько посильно на твоём уровне фермы'] ] },
   { v: '2026-11-24.199', t: 'Исправления ошибок', items: [
     ['🥞', 'Сезонная выпечка у помощника', 'В пекарне помощник держит на складе и сезонное — блины, торты, пироги своего сезона'],
     ['🌷', 'Помощник сажает цветы', 'В Команде выбери, что сажать: то же, по сезону или конкретный цветок — засевает и пустые грядки'],
@@ -9360,7 +9433,8 @@ const WHATSNEW = [   // новое — сверху; v — версия, с ко
 function openWhatsNew(since) {
   const list = WHATSNEW.filter(r => !since || r.v > since);
   let h = `<h2>✨ Что нового</h2>`;
-  for (const r of list) h += `<div class="wn-rel"><div class="wn-t">${r.t}</div>${r.items.map(([e, b, t]) => `<div class="wn-i"><span class="wn-e">${e}</span><div><b>${b}</b><small>${t}</small></div></div>`).join('')}</div>`;
+  const relHead = v => { const [d, n] = v.split('.'), [y, m, dd] = d.split('-'); return `Новое в обновлении ${n} от ${dd}.${m}.${y}`; };   // у каждой записи — номер и дата
+  for (const r of list) h += `<div class="wn-rel"><div class="wn-v">${relHead(r.v)}</div><div class="wn-t">${r.t}</div>${r.items.map(([e, b, t]) => `<div class="wn-i"><span class="wn-e">${e}</span><div><b>${b}</b><small>${t}</small></div></div>`).join('')}</div>`;
   h += `<button class="wide" style="width:100%;margin-top:10px" onclick="closeNight()">🌙 К ферме</button>`;
   $('sheet').dataset.view = 'whatsnew'; $('sheet').innerHTML = h; $('overlay').classList.add('show');
 }
