@@ -223,7 +223,9 @@
   .hz-zz.lock { opacity: .45; border-style: dashed; }
   .hz-two { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .hz-b { height: 40px; border-radius: 13px; border: 2px solid #ead9b5; background: #fffaf0; font: inherit; font-size: 14px; font-weight: 800; color: #4a2e18; }
-  .wn-v { font-size: 13px; font-weight: 800; color: #a07a4c; margin: 2px 2px 0; }
+  .wn-sec { font: 900 14px system-ui, sans-serif; color: #6b4a2a; margin: 12px 2px 6px; }
+  .wn-v { margin: 22px 0 4px; padding: 14px 2px 0; border-top: 2px dashed #e2cfa6; color: #4a2e18; font: 900 19px system-ui, sans-serif; }
+  .wn-first .wn-v { margin-top: 2px; padding-top: 0; border-top: 0; } .wn-v small { display: block; margin-top: 1px; font: 700 13px system-ui, sans-serif; color: #a07a4c; }
   .rlock { margin: 10px 0 4px; padding: 10px 12px; border-radius: 14px; background: #f6ecd6; border: 1.5px dashed #dcc79c; color: #8a6a48; font-size: 13px; }
   .rl-t { font-weight: 800; color: #6b4a2a; margin-bottom: 4px; } .rl-r { display: flex; gap: 8px; padding: 3px 0; } .rl-r b { flex: none; color: #6b4a2a; } .rl-r i { font-style: normal; margin-right: 2px; }
   .hz-t.dim:not(.on) { opacity: .5; } .hy-note { margin-top: 6px; font-size: 12px; color: #8a6a48; }
@@ -764,7 +766,7 @@ const SPEED = 3.2 * PEOPLE_SLOW;   // клеток в секунду
 // Деревья сада: сажаются один раз и потом плодоносят снова и снова.
 // Чтобы добавить грушу — допиши сюда запись и товар в GOODS.
 const TREES = {
-  apple: { name: 'Яблоня', e: '🍎', fruit: 'apple', sapling: 40, mature: 225, regrow: 75, yield: 3, leaf: '#4f9e45', leafLight: '#6dbb5a', fruitColor: '#e0393e' },
+  apple: { name: 'Яблоня', e: '🍎', fruit: 'apple', sapling: 40, mature: 225, regrow: 75, yield: 3, leaf: '#4f9e45', leafLight: '#6dbb5a', fruitColor: '#e0393e', seasons: ['spring', 'summer', 'autumn'] },   // зимой яблоки не растут
   cherry: { name: 'Вишня', e: '🍒', fruit: 'cherry', sapling: 150, mature: 270, regrow: 90, yield: 6, leaf: '#3f8f3c', leafLight: '#5aae4e', seasons: ['spring', 'summer'] },
   pear:   { name: 'Груша', e: '🍐', fruit: 'pear', sapling: 250, mature: 360, regrow: 90, yield: 3, leaf: '#5aa64a', leafLight: '#7cc65c', seasons: ['summer', 'autumn'] },
   peach:  { name: 'Персик', e: '🍑', fruit: 'peach', sapling: 400, mature: 450, regrow: 120, yield: 3, leaf: '#4c9a44', leafLight: '#6db855', seasons: ['summer', 'autumn'] },
@@ -1488,7 +1490,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-24.200';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-24.201';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -2600,7 +2602,7 @@ const treeSeason = k => !TREES[k].seasons || TREES[k].seasons.includes(season().
 // растёт ли сейчас (и всё, из чего сделано) — заказы, грузовик, цели и соседи на ярмарке просят только сезонное
 function inSeason(g) {
   if (CROP[g]?.fl) return flSeason(g);
-  const t = Object.keys(TREES).find(k => TREES[k].fruit === g); if (t) return treeSeason(t);
+  const t = Object.keys(TREES).find(k => TREES[k].fruit === g); if (t) return t === 'apple' || treeSeason(t);   // яблоки хорошо хранятся — их просят и зимой, из запасов
   const R = BAKE[g]?.in || (DAIRY[g]?.in && dIn(g)) || PRESS[g]?.in || FLORAL[g]?.in;
   return R ? Object.keys(R).every(inSeason) : true;
 }
@@ -9381,13 +9383,16 @@ if (S.toSpawn === 0 && !S.night) startDay(); else renderUI();
 if (!S.night) S.toSpawn = Math.max(S.toSpawn, visitorsPerDay());   // старые сохранения получают новый поток покупателей сразу
 // ✨ Что нового: после обновления вместо итогов ночи — список новинок, которых игрок ещё не видел
 const WHATSNEW = [   // новое — сверху; v — версия, с которой это появилось
-  { v: '2026-11-24.200', t: 'Зима и новый темп фермы', items: [
-    ['❄️', 'Настоящая зима', 'Поля под снегом — растёт только теплица. Урожай из запасов зимой на 40% дороже, молочное и выпечка — на 20%. Готовь запасы с осени: зерно, корм, сено'],
-    ['🏤', 'Уровни зданий', 'У пекарни 5 уровней, у молочного дома, соков и букетов — по 3. Каждый уровень открывает новые рецепты и ускоряет работу. Улучшения зданий открываются с уровнем фермы'],
-    ['⭐', 'Ферма растёт дольше', 'Опыта за продажи меньше: здания и помощники открываются постепенно, год за годом. Всё, что уже открыто, остаётся'],
-    ['🧺', 'Покупатели', 'Корзинки скромнее — до 3 разных товаров. Вывеска и уют теперь приводят больше покупателей вместо надбавки к ценам'],
-    ['💰', 'Новые цены', 'Выпечка, сыр, соки и букеты дешевле — примерно на треть дороже сырья. Тыква — 55. Новые здания 2–3-го года дороже'],
-    ['🚚', 'Заказы по силам', 'Грузовик и почта теперь просят столько, сколько посильно на твоём уровне фермы'] ] },
+  { v: '2026-11-24.201', t: 'Исправления', items: [
+    ['🍎', 'Яблони зимой отдыхают', 'Зимой яблоки больше не растут. Яблоки из запасов можно продавать и печь из них — они хорошо хранятся до весны'] ] },
+  { v: '2026-11-24.200', t: 'Зима и уровни зданий', items: [
+    ['❄️', 'Настоящая зима', 'Зимой поля отдыхают под снегом — растёт только теплица. Зато урожай из запасов зимой продаётся на 40% дороже, а молочное и выпечка — на 20%. Делай запасы с осени!'],
+    ['🏤', 'Здания растут вместе с фермой', 'У пекарни теперь 5 уровней, у молочного дома, соков и букетов — по 3. Каждый уровень открывает новые рецепты и ускоряет работу'],
+    ['§', '⚖️ Изменения баланса'],
+    ['⭐', 'Ферма развивается спокойнее', 'Новые здания и помощники открываются постепенно — впереди всегда есть чего ждать. Всё, что у тебя уже открыто, остаётся с тобой'],
+    ['🧺', 'Покупатели', 'Вывеска и уют теперь приводят на ферму больше покупателей. Корзинки стали поменьше — до 3 разных товаров'],
+    ['💰', 'Цены', 'Выпечка, сыр, соки и букеты стоят честно — немного дороже продуктов, из которых сделаны. Тыква — 55. Здания второго и третьего года дороже'],
+    ['🚚', 'Заказы', 'Грузовик и почта просят столько, сколько ферма может собрать на своём уровне'] ] },
   { v: '2026-11-24.199', t: 'Исправления ошибок', items: [
     ['🥞', 'Сезонная выпечка у помощника', 'В пекарне помощник держит на складе и сезонное — блины, торты, пироги своего сезона'],
     ['🌷', 'Помощник сажает цветы', 'В Команде выбери, что сажать: то же, по сезону или конкретный цветок — засевает и пустые грядки'],
@@ -9433,8 +9438,8 @@ const WHATSNEW = [   // новое — сверху; v — версия, с ко
 function openWhatsNew(since) {
   const list = WHATSNEW.filter(r => !since || r.v > since);
   let h = `<h2>✨ Что нового</h2>`;
-  const relHead = v => { const [d, n] = v.split('.'), [y, m, dd] = d.split('-'); return `Новое в обновлении ${n} от ${dd}.${m}.${y}`; };   // у каждой записи — номер и дата
-  for (const r of list) h += `<div class="wn-rel"><div class="wn-v">${relHead(r.v)}</div><div class="wn-t">${r.t}</div>${r.items.map(([e, b, t]) => `<div class="wn-i"><span class="wn-e">${e}</span><div><b>${b}</b><small>${t}</small></div></div>`).join('')}</div>`;
+  const relHead = v => { const [d, n] = v.split('.'), [y, m, dd] = d.split('-'); return `<span>Новое в обновлении ${n}<small>от ${dd}.${m}.${y}</small></span>`; };   // у каждой записи — номер и дата
+  list.forEach((r, i) => h += `<div class="wn-rel${i ? '' : ' wn-first'}"><div class="wn-v">${relHead(r.v)}</div><div class="wn-t">${r.t}</div>${r.items.map(([e, b, t]) => e === '§' ? `<div class="wn-sec">${b}</div>` : `<div class="wn-i"><span class="wn-e">${e}</span><div><b>${b}</b><small>${t}</small></div></div>`).join('')}</div>`);
   h += `<button class="wide" style="width:100%;margin-top:10px" onclick="closeNight()">🌙 К ферме</button>`;
   $('sheet').dataset.view = 'whatsnew'; $('sheet').innerHTML = h; $('overlay').classList.add('show');
 }
