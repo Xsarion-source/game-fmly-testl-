@@ -226,6 +226,23 @@
   .wn-sec { font: 900 14px system-ui, sans-serif; color: #6b4a2a; margin: 12px 2px 6px; }
   .wn-v { margin: 22px 0 4px; padding: 14px 2px 0; border-top: 2px dashed #e2cfa6; color: #4a2e18; font: 900 19px system-ui, sans-serif; }
   .wn-first .wn-v { margin-top: 2px; padding-top: 0; border-top: 0; } .wn-v small { display: block; margin-top: 1px; font: 700 13px system-ui, sans-serif; color: #a07a4c; }
+  .letter { background: #fffdf6; border: 1.5px solid #ecd9b0; border-radius: 16px; padding: 14px 16px; box-shadow: 0 2px 0 #ecd9b0; background-image: repeating-linear-gradient(#fffdf6 0 25px, #f1e6cc 25px 26px); }
+  .lt-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; } .lt-head img { width: 56px; height: 56px; border-radius: 50%; background: #f3e3c4; border: 2px solid #e2c48a; }
+  .lt-head b { display: block; font-size: 17px; color: #4a2e18; } .lt-head small { color: #a07a4c; }
+  .lt-body p { margin: 0 0 8px; font-size: 15px; line-height: 1.4; color: #4a2e18; } .lt-sign { text-align: right; font-style: italic; color: #8a6a48; }
+  .lt-task { display: flex; gap: 10px; align-items: center; margin-top: 12px; padding: 10px 12px; border-radius: 14px; background: #fff1c9; border: 2px solid #f0b429; }
+  .lt-task span { font-size: 26px; } .lt-task small { display: block; color: #a07a4c; font-weight: 700; } .lt-task b { color: #4a2e18; }
+  #tutBar { display: flex; gap: 8px; align-items: center; margin: 0 6px 6px; padding: 8px 12px; border-radius: 14px; background: #fff8e4; border: 2px solid #f0b429; color: #4a2e18; font-weight: 700; font-size: 14px; box-shadow: 0 3px 0 rgba(0,0,0,.12); }
+  #tutBar.tb-ok { animation: tbok 1.2s ease-out; } @keyframes tbok { 0% { background: #c9f0b0; border-color: #6cbf45; } 100% { background: #fff8e4; border-color: #f0b429; } }
+  .tb-n { flex: none; background: #f0b429; color: #fff; border-radius: 10px; padding: 2px 7px; font-size: 12px; }
+  .tut-pulse { position: relative; animation: tutp 1.2s ease-in-out infinite; } @keyframes tutp { 50% { box-shadow: 0 0 0 4px #f0b429; } }
+  .tut-pulse::after { content: '▼'; position: absolute; left: 50%; top: -24px; transform: translateX(-50%); color: #e08a00; font-size: 20px; animation: tuta .8s ease-in-out infinite alternate; } @keyframes tuta { to { top: -16px; } }
+  .gl-new { display: flex; gap: 10px; align-items: center; width: 100%; margin: 0 0 10px; padding: 10px 12px; border-radius: 16px; border: 2px solid #f0b429; background: #fff1c9; text-align: left; font: inherit; color: #4a2e18; }
+  .gl-new img { width: 44px; height: 44px; border-radius: 50%; background: #f3e3c4; } .gl-new b { display: block; } .gl-new small { color: #a07a4c; }
+  .gl-old button { display: block; width: 100%; margin: 0 0 6px; padding: 8px 10px; border-radius: 12px; border: 1.5px solid #ecd9b0; background: #fffdf6; text-align: left; font: inherit; font-size: 13px; color: #6b4a2a; }
+  .ws { margin: 0 0 10px; padding: 10px 12px; border-radius: 14px; border: 2px solid; } .ws > b { display: block; } .ws span { font-size: 13px; }
+  .ws.ok { background: #e9f7df; border-color: #8cc96a; } .ws.mid { background: #fff4d6; border-color: #f0b429; } .ws.low { background: #fde5df; border-color: #e0806a; }
+  .ws button { display: block; width: 100%; margin-top: 8px; padding: 8px; border-radius: 12px; border: 0; background: #f0b429; color: #4a2e18; font: inherit; font-weight: 800; }
   .rlock { margin: 10px 0 4px; padding: 10px 12px; border-radius: 14px; background: #f6ecd6; border: 1.5px dashed #dcc79c; color: #8a6a48; font-size: 13px; }
   .rl-t { font-weight: 800; color: #6b4a2a; margin-bottom: 4px; } .rl-r { display: flex; gap: 8px; padding: 3px 0; } .rl-r b { flex: none; color: #6b4a2a; } .rl-r i { font-style: normal; margin-right: 2px; }
   .hz-t.dim:not(.on) { opacity: .5; } .hy-note { margin-top: 6px; font-size: 12px; color: #8a6a48; }
@@ -1421,6 +1438,7 @@ S.life.milk ??= 0; S.hist ??= [];
 S.xp ??= Math.round((S.life.earned || 0) * 0.8);   // уровень фермы для старых сохранений — по всему, что заработано S.life.flour ??= 0; S.life.cheese ??= 0;
 S.up.clear ??= 0; S.up.mill ??= 0; S.up.dairy ??= 0;
 S.up.house ??= 0; S.up.bakery ??= 0; S.up.cozy ??= 0;
+if (!S.tut) { S.tut = S.day <= 1 && !S.life?.harvested ? { step: 0 } : { done: 1 }; if (!S.tut.done) S.sel = 'sunflower'; }   // обучение — только для новой фермы
 S.mig ??= {}; if (!S.mig.rlv) { S.mig.rlv = 1; if (S.up.bakery) S.up.bakery = 5; if (S.up.dhouse) S.up.dhouse = 3; if (S.up.press) S.up.press = 3; if (S.up.floral) S.up.floral = 3; }   // рецепты по уровню здания: старым фермам — всё, что уже пекли и варили
 S.stallOff ??= []; S.up.slots ??= 0; S.up.seasonstand ??= 0; S.up.stall2 ??= 0;
 if (!S.shop) {   // прилавок со слотами: раньше продавалось всё, что не снято, — кладём это на места (самое ходовое первым)
@@ -1490,7 +1508,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-24.201';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-24.202';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1738,6 +1756,7 @@ function swapGoal(i) {
   S.goals.list[i] = makeGoal(k, r); if (big) { S.goals.list[i].coins *= 3; S.goals.list[i].xp *= 3; } S.goals.swap = true; save(); openGoals(); renderGoalBtn();
 }
 function openGoals() {
+  if (S.tut && !S.tut.done) { S.tut.nb = 1; }
   ensureGoals();
   const G = S.goals, act = activeGoals(), done = G.list.filter(g => g.done).length, se = season();
   let h = `<h2>📒 Тетрадь фермера</h2><div class="intro">${G.v === 2 ? 'Цели на сезон открываются по неделям: в 1-ю неделю — две, во 2-ю — ещё две, в 3-ю — большая цель сезона (она копится с самого начала).' : 'Цели на сезон: всего пять, одновременно открыты три. Выполнил одну — открывается следующая.'} За каждую — монеты и опыт, за все пять — украшение фермы. Раз в сезон одну цель можно заменить. Невыполненные цели просто сменятся новыми в следующем сезоне.</div>
@@ -2020,12 +2039,13 @@ function startDay() {
   S.stats = { earned: 0, served: 0, missed: 0 };
   { const tr = truckMorning(); if (tr) setTimeout(() => toast(truckResText(tr)), 1500); }   // грузовик не доехал в воскресенье — расчёт утром
   orderMorning();
+  letterMorning();
   const coopMsg = coopMorning();
   closeNight();
   S.started = false;
   if (isRest()) { S.started = true; }   // выходной: покупателей нет, день идёт сам
   else if (shouldAutoStart()) beginClock();
-  else toast('🌅 Рассвет. Посади семечко (или нажми на солнце) — и день начнётся');
+  else if (!S.tut || S.tut.done) toast('🌅 Рассвет. Посади семечко (или нажми на солнце) — и день начнётся');   // в обучении это говорит плашка задания
   if (coopMsg) setTimeout(() => toast(coopMsg), 1700);
   if (cal().sday === 1 && S.day > 1) setTimeout(() => { if ($('lvlUp').classList.contains('show')) toast(`${season().e} ${season().name}: ${season().text}`); else showSeasonCard(); }, 600);
   if (isFair()) { setTimeout(() => { toast(cratesUsed() ? `🎪 Ярмарка! Лавка закрыта — торгуем в шатре фермы. Привезли ${cratesUsed()} ящ.` : '🎪 Ярмарка, а ящики пустые — продавать нечего. Собери товары к следующей субботе'); if (!tasks.length && !path.length) setTasks([{ x: FAIR_SELL.x, y: FAIR_SELL.y }]); }, 900); setTimeout(() => toast(`🏆 Сегодня конкурс ${SPECIAL[contestOf()].what} ${SPECIAL[contestOf()].e} — тапни на доску у входа на ярмарку`), 3600); }
@@ -3040,6 +3060,69 @@ setInterval(() => {
   $('pdEta').textContent = st.q ? `очередь — ещё ${fmtMs(((st.q - 1) * P.time + P.time - st.t) / S.up[k])}` : 'очередь пуста';
 }, 500);
 
+// ---------- ✉️ Письма бабушки Вари и обучение ----------
+// Бабушка Варя — прежняя хозяйка фермы: переехала в город к внукам и пишет письма. Первые дни — обучение по шагам
+const GRANNY = { skin: '#f2c9a0', hair: '#cfc9c1', bun: true, glasses: true, shirt: '#8e5aa8', shirtDark: '#6e4488', pants: '#5a4632', hat: null };
+const grannyHi = () => S.farmer.name?.trim() ? `Здравствуй, ${esc(S.farmer.name.trim())}!` : S.farmer.girl ? 'Здравствуй, внученька!' : 'Здравствуй, внучек!';
+const TUT = [   // шаг: текст подсказки, куда показать, когда выполнен
+  { t: 'Посади подсолнух: нажми «Засеять» и выбери 🌻', el: 'plantAll', done: () => S.plots.some(p => p.crop) || S.life.harvested > 0 },
+  { t: 'Подожди, пока вырастет, и собери урожай: «Собрать»', el: 'harvestAll', done: () => S.life.harvested > 0 },
+  { t: 'Выставь урожай в лавку: «Лавка» → положи 🌻 на прилавок', el: 'stallBtn', done: () => shopGoods().some(id => (S.inv[id] || 0) > 0) || S.life.served > 0 },
+  { t: 'Покупатель ждёт у лавки — нажми на него, чтобы продать', el: null, done: () => S.life.served > 0 },
+  { t: 'Когда стемнеет, купи первое улучшение: «Улучшить»', el: 'nightBtn', done: () => (S.life.spent?.up || 0) > 0 },
+  { t: 'Загляни в Тетрадь фермера — там цели сезона', el: 'goalBtn', done: () => !!S.tut?.nb },
+];
+const LETTERS = {
+  hello: () => ({ text: [grannyHi(), 'Ферма теперь твоя — я перебралась в город к внукам, а хозяйство оставляю тебе. Не бойся, начнём с малого, я подскажу.', 'Посади подсолнухи: семена бесплатные, растут быстро. Нажми «Засеять» внизу и выбери 🌻.'], task: 0 }),
+  autumn: () => ({ text: [grannyHi(), 'Пришла осень — самое время думать о зиме. Через три недели поля укроет снег, и до весны на них ничего не вырастет.', 'Запаси побольше 🌾 пшеницы и 🌻 подсолнухов — это корм курам и коровам на всю зиму. А лишний урожай не спеши продавать: зимой он стоит на 40% дороже.', 'Сколько корма запасено, видно на складе — в строке «Зимний запас».'] }),
+  autumnLate: () => ({ text: [grannyHi(), 'До зимы осталась неделя! Загляни на склад: хватит ли корма животным до весны? Если нет — засей поля пшеницей и подсолнухами, пока не поздно.'] }),
+  winter: () => ({ text: [grannyHi(), 'Вот и зима. Поля отдыхают, но работы хватает: в теплице растёт урожай, мельница мелет муку из запасов, а пекарня и сыроварня делают товар подороже.', 'Корм для кур и коров теперь только со склада. Если не хватит — соседка тётя Шура продаст, но втридорога. Кнопка — на складе.'] }),
+  spring: () => ({ text: [grannyHi(), 'Весна пришла! Снег сошёл — можно снова сажать. Не забудь вернуть помощников на поле и к цветам в «Команде».'] }),
+  b_mill: () => ({ text: [grannyHi(), 'Мельница! Теперь из 🌾 пшеницы можно молоть муку — её покупают дороже зерна, а скоро она понадобится и для выпечки.'] }),
+  b_dairy: () => ({ text: [grannyHi(), 'Своя сыроварня — моя мечта! Из 🥛 молока получается сыр, а зимой молочное продаётся дороже.'] }),
+  b_bakery: () => ({ text: [grannyHi(), 'Пекарня открыта! Пока печём 🍞 хлеб из муки и яиц. Улучшай пекарню — с каждым уровнем откроются новые рецепты.'] }),
+  b_store: () => ({ text: [grannyHi(), 'Склад построен — теперь будет где хранить запасы на зиму. А ещё раз в сезон к складу приезжает грузовик с большим заказом.'] }),
+  b_greenhouse: () => ({ text: [grannyHi(), 'Теплица — это твоё лето круглый год. Зимой, когда поля под снегом, урожай растёт только в ней.'] }),
+  b_dhouse: () => ({ text: [grannyHi(), 'Молочный дом! Сметана, масло, а дальше — и мороженое. Улучшай его, чтобы открыть новые рецепты.'] }),
+  b_grove: () => ({ text: [grannyHi(), 'Сад и цветы — какая красота! Фруктовые деревья плодоносят по своим сезонам, а цветы сажают, пока их время.'] }),
+  done: () => ({ text: [grannyHi(), 'Вот ты и настоящий фермер! Дальше — сама жизнь: сажай, продавай, улучшай ферму. Цели на сезон — в Тетради.', 'И запомни главное: ❄️ зимой поля под снегом. Всё, что вырастишь летом и осенью, — твой запас на зиму. Я буду писать.'] }),
+};
+// письмо приходит в почтовый ящик (над ним — конверт); каждое — один раз
+function sendLetter(id) { S.tut ??= { done: 1 }; S.tut.got ??= []; if (S.tut.got.includes(id)) return; S.tut.got.push(id); (S.tut.inbox ??= []).push(id); save(); setTimeout(() => toast('✉️ Письмо от бабушки Вари — в почтовом ящике'), 1800); }
+function letterMorning() {
+  const c = cal(), si = c.si;
+  if (c.sday === 1 && si === 2) sendLetter('autumn');
+  if (c.sday === 15 && si === 2) sendLetter('autumnLate');
+  if (c.sday === 1 && si === 3) sendLetter('winter');
+  if (c.sday === 1 && si === 0 && S.day > 1) sendLetter('spring');
+}
+function openLetter(id) {
+  const L = LETTERS[id](); S.tut ??= {}; (S.tut.read ??= []).includes(id) || S.tut.read.push(id); S.tut.inbox = (S.tut.inbox || []).filter(x => x !== id); save();
+  const task = L.task != null ? `<div class="lt-task"><span>🧭</span><div><small>Задание ${L.task + 1} из ${TUT.length}</small><b>${TUT[L.task].t}</b></div></div>` : '';
+  $('sheet').dataset.view = 'letter'; $('sheet').innerHTML = `<h2>✉️ Письмо</h2>
+    <div class="letter"><div class="lt-head"><img src="${lookImg(GRANNY, 'head')}" alt=""><div><b>Бабушка Варя</b><small>пишет из города</small></div></div>
+    <div class="lt-body">${L.text.map(p => `<p>${p}</p>`).join('')}</div><div class="lt-sign">Обнимаю, твоя бабушка Варя</div></div>${task}
+    <button class="wide" style="width:100%;margin-top:12px" onclick="closeNight(); tutRender()">Хорошо!</button>`;
+  $('overlay').classList.add('show');
+}
+function tutRender() {   // подсказка над кнопками и подсветка нужной кнопки
+  let b = $('tutBar'); const T = S.tut, st = T && !T.done ? TUT[T.step] : null;
+  document.querySelectorAll('.tut-pulse').forEach(x => x.classList.remove('tut-pulse'));
+  document.body.classList.toggle('tut-on', !!st);
+  if (!st) { b?.remove(); return; }
+  if (!b) { b = document.createElement('div'); b.id = 'tutBar'; $('actions').prepend(b); }
+  b.innerHTML = `<span class="tb-n">${T.step + 1}/${TUT.length}</span><span>${st.t}</span>`;
+  if (st.el) $(st.el)?.classList.add('tut-pulse');
+}
+function tutTick() {
+  const T = S.tut; if (!T || T.done) return;
+  let moved = false; while (!T.done && TUT[T.step].done()) { T.step++; moved = true; if (T.step >= TUT.length) { T.done = 1; setTimeout(() => openLetter('done'), 600); } }
+  if (moved) save();
+  tutRender();
+  if (moved && !T.done) { const b = $('tutBar'); b?.classList.remove('tb-ok'); void b?.offsetWidth; b?.classList.add('tb-ok'); }   // шаг выполнен — плашка мигает зелёным
+}
+setInterval(tutTick, 700);
+
 // ---------- Пекарня ----------
 // можно ли вообще получить товар на ферме (для покупателей, рецептов и заказов)
 function canMake(g, any) {
@@ -3546,7 +3629,8 @@ function deliverOrder() {
 function declineOrder() { S.order = null; S.orderNext = S.day + 1; save(); toast('📭 Новый заказ придёт завтра утром'); openMail(); }
 function openMail() {
   const o = S.order;
-  let h = `<h2>📬 Почта</h2><div class="fpinfo">Соседи присылают письма с заказами. Собери товар до срока и отправь — заплатят больше, чем в лавке. Не успел — ничего страшного, придёт новое письмо.</div>`;
+  const inbox = S.tut?.inbox || [], old = (S.tut?.read || []).filter(id => LETTERS[id]);
+  let h = `<h2>📬 Почта</h2>${inbox.map(id => `<button class="gl-new" onclick="openLetter('${id}')"><img src="${lookImg(GRANNY, 'head')}" alt=""><div><b>✉️ Письмо от бабушки Вари</b><small>нажми, чтобы прочитать</small></div></button>`).join('')}<div class="fpinfo">Соседи присылают письма с заказами. Собери товар до срока и отправь — заплатят больше, чем в лавке. Не успел — ничего страшного, придёт новое письмо.</div>`;
   if (!o) {
     const why = farmLevel() < MAIL_LVL ? `Письма начнут приходить с ⭐ ${MAIL_LVL} уровня фермы` : S.day < 3 ? 'Первое письмо придёт на 3-й день' : 'Новое письмо придёт завтра утром';
     h += `<div class="mbox empty"><span class="mb-ico">📭</span><b>Писем нет</b><small>${why}</small></div>`;
@@ -3564,6 +3648,7 @@ function openMail() {
     h += `<button class="ty-all"${ready ? '' : ' disabled style="opacity:.5"'} onclick="closeNight(); setTasks([{ ...MAIL_SPOT, fn: deliverOrder }])">📦 Отправить заказ</button>`;
     h += `<button class="wide alt" style="width:100%;margin-top:8px" onclick="declineOrder()">Отказаться — пусть придёт другое письмо</button>`;
   }
+  if (old.length) h += `<h3 class="stw-h">📜 Письма бабушки</h3><div class="gl-old">${old.slice().reverse().map(id => `<button onclick="openLetter('${id}')">✉️ ${LETTERS[id]().text[1].slice(0, 46)}…</button>`).join('')}</div>`;
   $('sheet').dataset.view = 'mail'; $('sheet').innerHTML = h; $('overlay').classList.add('show'); decorateSheet();
   save();
 }
@@ -3653,6 +3738,7 @@ function buyUpgrade(key) {
   const u = UPGRADES[key], l = S.up[key], cost = u.cost(l);
   if (l >= u.max || S.coins < cost || upLocked(key)) return;
   spend(cost, 'up'); S.up[key]++; goalEv('upgrade', key, 1);
+  if (S.up[key] === 1 && LETTERS['b_' + key]) sendLetter('b_' + key);
   const before = S.plots.length;
   if (key === 'land') for (let k = 0; k < 4 && S.plots.length < MAX_PLOTS; k++) S.plots.push({ crop: null, prog: 0 });
   if (key === 'helper') syncHelpers();
@@ -5926,7 +6012,7 @@ const SPRITE_KEY = {
   house: () => '', stall: d => ((isRest() || isFair()) && !S.night) + '' + isFair() + (d.b ? 'b' + S.up.stall2 + upLocked('stall2') : shopN()) + (d.b ? S.shop.b : S.shop.a).map(id => id ? id + (S.inv[id] > 0) : '-').join(), season: () => S.up.seasonstand + seasonNow().map(g => g + (S.inv[g] > 0)).join(), bakery: () => bakeLoaded().length + ',' + S.started, dairy: () => (prodQ('dairy') > 0) + ',' + S.started + ',' + S.up.dhouse,
   doghouse: () => '', billboard: () => '', mill: () => (prodQ('mill') > 0) + ',' + S.started,
   tree: () => season().id, flowers: () => '', well: () => '', swing: () => S.up.cozy + '', fence: () => hens() + ',' + cows(), coop: () => S.coop.eggs + ',' + (S.coop.gold || 0) + ',' + hens(), barn: () => cows(),
-  trough: () => cows() + ',' + cowsFedToday(), mailbox: () => JSON.stringify(S.order), trophies: () => S.trophies.map(t => t.p).join(), sack: () => '', bench: () => '', glass: () => '', ghroof: () => '',
+  trough: () => cows() + ',' + cowsFedToday(), mailbox: () => JSON.stringify(S.order) + (S.tut?.inbox?.length || 0), trophies: () => S.trophies.map(t => t.p).join(), sack: () => '', bench: () => '', glass: () => '', ghroof: () => '',
 };
 const mctx = document.createElement('canvas').getContext('2d');
 function syncState(dst, src) {   // перенести настройки линий и шрифта, которые предметы наследуют от основного холста
@@ -6851,7 +6937,8 @@ function drawProdBubbles() {
   if (S.up.press) {   // домик соков: готовое
     const n = pressOut(); if (n) drawBubbleAt(lift(-1, 4, 70), `${GOODS[Object.keys(S.press.out).find(g => S.press.out[g])].e}${n}`, true);
   }
-  if (S.order && (!S.order.seen || orderReady())) drawBubbleAt(liftG('mail', 4.5, 5.5, 50), orderReady() ? '📦✔' : '✉️', orderReady());
+  if (S.tut?.inbox?.length) drawBubbleAt(liftG('mail', 4.5, 5.5, 50), '💌', true);   // письмо от бабушки
+  else if (S.order && (!S.order.seen || orderReady())) drawBubbleAt(liftG('mail', 4.5, 5.5, 50), orderReady() ? '📦✔' : '✉️', orderReady());
   for (const k in PROD) {
     if (!S.up[k]) continue;
     const P = PROD[k];
@@ -7968,12 +8055,14 @@ function drawPerson(p, L, local) {
     O(() => { ctx.moveTo(-8.4, -32); ctx.lineTo(-12.6, -35); ctx.lineTo(-12.2, -29.6); ctx.closePath(); ctx.moveTo(-8.4, -32); ctx.lineTo(-4.6, -35.4); ctx.lineTo(-4.8, -29.8); ctx.closePath(); }, L.bow || '#ff7a9a', 1);   // бантик
     C(-8.4, -32, 1.4, L.bow || '#ff7a9a', 1);
   }
+  if (L.bun) { C(-5.2, -39.2, 3.6, L.hair, 1.3); }   // пучок на затылке (рисуется за головой)
   C(0, -33, 7.5, L.skin, 1.4);   // лицо
   // волосы — одна шапочка с общим контуром: макушка и затылок, спереди чёлка (лицо смотрит вправо)
   O(() => { ctx.arc(0, -33, 8, Math.PI * .8, Math.PI * 1.92); ctx.quadraticCurveTo(3.5, -37.6, .2, -36.6); ctx.quadraticCurveTo(-4.4, -35.2, -5.4, -29.6); ctx.closePath(); }, L.hair, 1.3);
   circle(3.6, -33, 1.3, '#2a1d12'); circle(3.9, -33.4, .45, '#fff');
   if (L.girl) { ctx.strokeStyle = '#2a1d12'; ctx.lineWidth = .8; ctx.beginPath(); ctx.moveTo(4.6, -34.3); ctx.lineTo(5.9, -35.2); ctx.moveTo(4.9, -33.6); ctx.lineTo(6.2, -34); ctx.stroke(); }   // ресницы
   circle(4.5, -30.5, 1.7, 'rgba(230,110,110,.4)');
+  if (L.glasses) { ctx.strokeStyle = '#5a3a22'; ctx.lineWidth = .9; ctx.beginPath(); ctx.arc(3.8, -33.1, 2.5, 0, 7); ctx.moveTo(1.3, -33.4); ctx.lineTo(-2.4, -34.2); ctx.stroke(); }   // круглые очки
   if (L.hat === 'straw') {
     O(() => ctx.ellipse(0, -39, 12.5, 3.5, 0, 0, 7), '#f0cf78');
     R(-6, -46, 12, 8, 3, '#e8c56a'); ctx.fillStyle = '#c0504d'; ctx.fillRect(-5.4, -41.5, 10.8, 2);
@@ -8105,9 +8194,24 @@ function toggleFav(g) {
   if (i >= 0) F.splice(i, 1); else if (F.length >= SHELF_FAV) { toast(`На полке первыми — до ${SHELF_FAV} товаров. Сними звёздочку с другого`); return; } else F.push(g);
   shelfSig = ''; save(); renderShelf(); openStore();
 }
+// ❄️ Зимний запас: на сколько дней хватит корма курам и коровам (осенью и зимой — на складе)
+const feedNeedDay = () => hens() * FEED_PER_HEN + cows() * feedPerCow();
+function winterStockBlock() {
+  const sid = season().id; if ((sid !== 'autumn' && sid !== 'winter') || !feedNeedDay()) return '';
+  const need = feedNeedDay(), days = Math.floor(feedStock() / need), want = sid === 'winter' ? SEASON_LEN - cal().sday + 1 : SEASON_LEN, ok = days >= want, half = days >= want / 2;
+  let h = `<div class="ws ${ok ? 'ok' : half ? 'mid' : 'low'}"><b>❄️ Зимний запас</b><span>корма курам и коровам — на <b>${days}</b> дн. ${sid === 'winter' ? `· до весны ${want} дн.` : `· зима длится ${SEASON_LEN} дн.`}</span>`;
+  if (sid === 'winter' && !ok) h += `<button onclick="buyNeighborFeed()">🧓 Купить у тёти Шуры: 30 🌾 за ${NEIGHBOR_FEED}💰</button>`;
+  return h + '</div>';
+}
+const NEIGHBOR_FEED = 30 * 5 * 3;   // 30 пшеницы втридорога
+function buyNeighborFeed() {
+  if (S.coins < NEIGHBOR_FEED) { toast('Не хватает монет'); return; }
+  spend(NEIGHBOR_FEED, 'seeds'); S.inv.wheat = (S.inv.wheat || 0) + 30; toast('🧓 Тётя Шура привезла 30 🌾 — животные будут сыты'); save(); renderUI(); openStore();
+}
 function openStore() {
   const F = (S.shelfFav ??= []);
   let h = `<h2>🏬 Склад</h2><div class="fpinfo">Всё, что есть на ферме. Серым — закончилось, под замком — ещё не открыто.<br><br>Нажми на товар — он встанет на полку первым и будет выделен. Так можно закрепить до ${SHELF_FAV} товаров. Нажми ещё раз — снимется.</div>`;
+  h += winterStockBlock();
   h += `<div class="stw-favbar">⭐ Мои на полке: ${F.length ? F.filter(g => GOODS[g]).map(g => GOODS[g].e).join(' ') : 'нажми на товар'}<b>${F.length}/${SHELF_FAV}</b></div>`;
   for (const [title, ids] of STORE_GROUPS) {
     const list = ids().filter(g => GOODS[g]); if (!list.length) continue;
@@ -8237,7 +8341,7 @@ function renderHud() {
   else { [, label, sky] = PHASES.find(p => frac < p[0]); }
   box.style.background = sky;
   box.classList.toggle('dark', S.night);
-  $('phase').textContent = `${season().e} День ${cal().sday} · ${WD[cal().dow]}${weather() !== 'sun' ? ' · ' + wxOf().e : ''}` + (timeScale > 1 ? ` ⏩${timeScale}` : ''); box.title = `${dayName()} · ${WEEKDAYS[cal().dow]} · ${label}` + (timeScale > 1 ? ` ⏩${timeScale}` : '');
+  $('phase').textContent = `${season().e} День ${cal().sday} · ${WD[cal().dow]}${weather() !== 'sun' ? ' · ' + wxOf().e : ''}${season().id === 'autumn' ? ` · ❄️ ${SEASON_LEN - cal().sday + 1} дн.` : ''}` + (timeScale > 1 ? ` ⏩${timeScale}` : ''); box.title = `${dayName()} · ${WEEKDAYS[cal().dow]} · ${label}` + (timeScale > 1 ? ` ⏩${timeScale}` : '');
   if (S.night) { icon.textContent = '🌙'; icon.style.left = '50%'; icon.style.top = '16px'; return; }
   const a = Math.PI * (1 - frac);
   icon.textContent = '☀️';
@@ -9124,6 +9228,7 @@ function prestigeInfo() {
 function placeToast() {   // над кнопками; если открыто меню — над его краем, а если меню почти во весь экран — у самого верха
   const t = $('toast');
   let top = [...$('actions').querySelectorAll('button')].filter(b => b.offsetParent).reduce((m, b) => Math.min(m, b.getBoundingClientRect().top), innerHeight);
+  if ($('tutBar')) top = Math.min(top, $('tutBar').getBoundingClientRect().top);   // в обучении — над плашкой задания
   if ($('overlay').classList.contains('show')) top = Math.min(top, $('sheet').offsetTop);   // offsetTop — без учёта анимации выезда меню
   const bottom = innerHeight - top + 10;
   if (top < t.offsetHeight + 70) { t.style.bottom = 'auto'; t.style.top = 'calc(6px + env(safe-area-inset-top))'; }
@@ -9383,6 +9488,11 @@ if (S.toSpawn === 0 && !S.night) startDay(); else renderUI();
 if (!S.night) S.toSpawn = Math.max(S.toSpawn, visitorsPerDay());   // старые сохранения получают новый поток покупателей сразу
 // ✨ Что нового: после обновления вместо итогов ночи — список новинок, которых игрок ещё не видел
 const WHATSNEW = [   // новое — сверху; v — версия, с которой это появилось
+  { v: '2026-11-24.202', t: 'Письма бабушки Вари', items: [
+    ['✉️', 'Бабушка Варя пишет письма', 'Прежняя хозяйка фермы переехала в город и присылает письма с советами: к осени — как готовиться к зиме, зимой — чем заняться, а ещё когда строишь новые здания. Письма приходят в почтовый ящик 💌, прочитанные можно перечитать на почте'],
+    ['🧭', 'Обучение для новой фермы', 'Новичков бабушка проведёт за руку: шесть простых шагов от первого подсолнуха до Тетради фермера'],
+    ['❄️', 'Готовимся к зиме', 'Осенью в шапке видно, сколько дней до зимы, а на складе — «Зимний запас»: на сколько дней хватит корма курам и коровам'],
+    ['🧓', 'Соседка тётя Шура', 'Если зимой корм закончился, тётя Шура продаст пшеницу — но втридорога. Кнопка появится на складе'] ] },
   { v: '2026-11-24.201', t: 'Исправления', items: [
     ['🍎', 'Яблони зимой отдыхают', 'Зимой яблоки больше не растут. Яблоки из запасов можно продавать и печь из них — они хорошо хранятся до весны'] ] },
   { v: '2026-11-24.200', t: 'Зима и уровни зданий', items: [
@@ -9443,6 +9553,8 @@ function openWhatsNew(since) {
   h += `<button class="wide" style="width:100%;margin-top:10px" onclick="closeNight()">🌙 К ферме</button>`;
   $('sheet').dataset.view = 'whatsnew'; $('sheet').innerHTML = h; $('overlay').classList.add('show');
 }
+if (S.tut && !S.tut.done && !(S.tut.read || []).includes('hello')) setTimeout(() => openLetter('hello'), 900);   // новая ферма — первое письмо бабушки
+else setTimeout(tutRender, 300);
 { const seen = S.seenBuild; S.seenBuild = BUILD;
   if (seen !== BUILD && S.started && WHATSNEW.some(r => !seen || r.v > seen)) setTimeout(() => openWhatsNew(seen), 50);   // обновилась игра — показываем новинки
   else if (S.night) openCalendar(); }
