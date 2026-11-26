@@ -1485,7 +1485,8 @@ for (const c of S.helpers) if (!c.zones) {   // участки: раньше б�
 }
 for (const c of S.helpers) { c.feed ??= false; c.ghReplant ??= false; c.ghSeed ??= 'same'; c.fold ??= false; c.flSeed ??= 'same'; }
 if (!S.xpv) { S.xp = Math.round((S.xp || 0) * 3); S.xpv = 2; }   // уровни стали в 3 раза «длиннее»: старый опыт ×3 — уровень и полоска до следующего остаются как были
-S.up.store ??= 0; S.up.grove ??= 0; S.fl ??= []; S.up.orchard ??= 0; S.up.coop ??= 0; S.up.greenhouse ??= 0;
+S.up.store ??= 0; S.up.grove ??= 0; S.fl ??= []; syncFl();   // сад открыт, а грядок меньше, чем положено (например, после чита) — досоздаём
+ S.up.orchard ??= 0; S.up.coop ??= 0; S.up.greenhouse ??= 0;
 S.gh ??= [];
 for (const c of S.helpers) if (['tomato', 'strawberry'].includes(c.seed)) c.seed = 'same';   // помидоры и клубника переехали в теплицу
 S.trees ??= [];
@@ -1509,7 +1510,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-26.205';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-26.206';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -9562,7 +9563,7 @@ const CHEATS = {
   maxup:   ['⭐ Все улучшения', () => {
     for (const [k, u] of Object.entries(UPGRADES)) S.up[k] = u.max;
     while (S.plots.length < MAX_PLOTS) S.plots.push({ crop: null, prog: 0 });
-    syncHelpers(); syncTrees(); syncHens(); syncCows(); syncGh(); applyLots();
+    syncHelpers(); syncTrees(); syncHens(); syncCows(); syncGh(); syncFl(); applyLots(); NEAR = null;   // цветочные грядки сада — тоже
   }],
   feed:    ['🐔🐄 Накормить всех', () => { if (hens()) { S.coop.fedDay = S.night ? S.day + 1 : S.day; S.coop.fedHens = hens(); } if (cows()) { S.barn.fedDay = S.night ? S.day + 1 : S.day; S.barn.fedCows = cows(); } }],
   perf:    ['⏱ Замер скорости (вкл/выкл)', () => togglePerf()],
@@ -9607,6 +9608,8 @@ if (S.toSpawn === 0 && !S.night) startDay(); else renderUI();
 if (!S.night) S.toSpawn = Math.max(S.toSpawn, visitorsPerDay());   // старые сохранения получают новый поток покупателей сразу
 // ✨ Что нового: после обновления вместо итогов ночи — список новинок, которых игрок ещё не видел
 const WHATSNEW = [   // новое — сверху; v — версия, с которой это появилось
+  { v: '2026-11-26.206', t: 'Исправления', items: [
+    ['🌷', 'Цветочные грядки в саду', 'Если сад открыт, а цветочных грядок не хватало, они появятся сами'] ] },
   { v: '2026-11-26.205', t: 'Удобнее торговать', items: [
     ['🧺', 'Товары в лавку — одним тапом', 'Нажми на товар в списке — он встанет в свободный ящик, нажми ещё раз — уберётся. Выбирать ящик больше не нужно'],
     ['🧑‍🌾', 'Фермер ходит по дорожкам', 'Фермер и помощники выбирают тропинки, если это не большой крюк, а к лавке подходят сразу на своё место'],
