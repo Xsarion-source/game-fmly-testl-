@@ -1511,7 +1511,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-26.209';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-26.210';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -9171,11 +9171,11 @@ function openStall(sel, shop) {
   }
   h += `</div>`;
   const cur = A[slotSel], other = S.up.stall2 ? shopArr(1 - shopSel).slice(0, shopCap(1 - shopSel)) : [];
-  const free = A.slice(0, n).filter(x => !x).length;
+  const free = A.slice(0, n).filter(x => !x).length;   // мест нет — невыставленное бледнеет
   h += `<div class="cpanel selp"><div class="cptitle">Тапни по товару, чтобы добавить/убрать его из ящика</div><div class="stallg">`;
   for (const id of known) {
     const j = A.slice(0, n).indexOf(id), g = GOODS[id], o = other.includes(id);
-    h += `<button class="sg${j >= 0 ? ' on' : o ? ' used' : ''}" onclick="tapShopGood('${id}')"><span class="e">${g.e}</span><b>${g.name}</b><span class="q">${S.inv[id] || 0} шт</span><small>${sellPrice(id)}💰 за штуку</small><i>${j === slotSel ? '✔ здесь' : j >= 0 ? '🧺 уже на прилавке' : o ? `🏪 в лавке ${2 - shopSel}` : ''}</i></button>`;
+    h += `<button class="sg${j >= 0 ? ' on' : o || !free ? ' used' : ''}" onclick="tapShopGood('${id}')"><span class="e">${g.e}</span><b>${g.name}</b><span class="q">${S.inv[id] || 0} шт</span><small>${sellPrice(id)}💰 за штуку</small><i>${j >= 0 ? '🧺 на прилавке' : o ? `🏪 в лавке ${2 - shopSel}` : ''}</i></button>`;
   }
   h += `</div></div>`;
   if (S.up.seasonstand) {   // сезонная пристройка: всегда два товара текущего сезона
@@ -9260,8 +9260,9 @@ function openFairPack(sel) {
     // товары: тап — в свободный ящик, ещё тап — обратно на склад (как на прилавке)
     const inCr = id => S.fair.crates.some(x => x && x.id === id), ids = Object.keys(GOODS).filter(id => !GOODS[id].sp && !seasonal(id) && id !== 'chick' && (!BAKE[id] || S.up.fairbake) && ((S.inv[id] || 0) > 0 || inCr(id)));
     h += `<div class="cpanel selp"><div class="cptitle">Тапни по товару, чтобы добавить/убрать его из ящика${S.up.fairbake ? ' · выпечка идёт в хлебные ящики' : ''}</div>`;
+    const freeOf = bk => (bk ? Array.from({ length: S.up.fairbake ? BAKE_CRATES : 0 }, (_, k) => BAKE_CRATE0 + k) : Array.from({ length: fairCrates() }, (_, k) => k)).some(k => !S.fair.crates[k]?.n);   // есть ли свободный ящик нужного вида
     h += ids.length ? `<div class="stallg">${ids.map(id => { const g = GOODS[id], n = S.fair.crates.reduce((a, x) => a + (x && x.id === id ? x.n : 0), 0);
-        return `<button class="sg${n ? ' on' : ''}" onclick="tapFairGood('${id}')"><span class="e">${g.e}</span><b>${g.name}</b><span class="q">${S.inv[id] || 0} шт</span><small>${myFairPrice(id)}💰 за штуку</small><i>${n ? `📦 в ящике ${n}` : ''}</i></button>`; }).join('')}</div>`
+        return `<button class="sg${n ? ' on' : !freeOf(!!BAKE[id]) ? ' used' : ''}" onclick="tapFairGood('${id}')"><span class="e">${g.e}</span><b>${g.name}</b><span class="q">${S.inv[id] || 0} шт</span><small>${myFairPrice(id)}💰 за штуку</small><i>${n ? `📦 в ящике ${n}` : ''}</i></button>`; }).join('')}</div>`
       : `<div class="summary">На складе пусто — сначала собери урожай.</div>`;
     h += `</div>`;
   }
@@ -9660,6 +9661,8 @@ if (S.toSpawn === 0 && !S.night) startDay(); else renderUI();
 if (!S.night) S.toSpawn = Math.max(S.toSpawn, visitorsPerDay());   // старые сохранения получают новый поток покупателей сразу
 // ✨ Что нового: после обновления вместо итогов ночи — список новинок, которых игрок ещё не видел
 const WHATSNEW = [   // новое — сверху; v — версия, с которой это появилось
+  { v: '2026-11-26.210', t: 'Подсказки', items: [
+    ['📦', 'Мест больше нет', 'Когда на прилавке или в ящиках на ярмарку не осталось места, остальные товары в списке бледнеют'] ] },
   { v: '2026-11-26.209', t: 'Ящики на ярмарку — одним тапом', items: [
     ['🎪', 'Сборы на ярмарку', 'Как и на прилавке: нажми на товар — он ляжет в свободный ящик, нажми ещё раз — вернётся на склад. Выпечка сама идёт в хлебный лоток. Нажми на ящик — поменяешь количество и цену'] ] },
   { v: '2026-11-26.208', t: 'Исправления', items: [
