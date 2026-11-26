@@ -978,14 +978,14 @@ const UPGRADES = {
   hive: { name: 'Пасека', ico: '🐝', desc: l => l === 0 ? 'Два улья на западном краю сада. Пчёлы сами носят мёд 🍯 днём — чем больше цветёт цветочных грядок, тем быстрее. Иногда попадаются соты. Ночью, зимой и в дождь пчёлы в улье' : `Ещё 2 улья — всего ${[2, 4, 6, 8][l]}`, cost: l => [30000, 45000, 60000, 80000][l], max: 4, need: () => S.up.grove >= 1, needText: 'Откроется, когда построишь сад 🌸' },
   press: { name: 'Соки и варенье', ico: '🧃🍎', desc: l => l === 0 ? 'Домик в саду: пресс давит яблочный сок 🧃, котёл варит яблочное варенье с сахаром — по 2 банки за раз. Другие соки и варенья — на следующих уровнях' : `${l + 1} уровень: ${recipesAt('press', l + 1).map(r => GOODS[r].name.toLowerCase()).join(', ')}. Пресс и котёл работают в ${[1, 1.5, 2][l]} раза быстрее`, cost: l => [40000, 70000, 100000][l], max: 3, need: () => S.up.grove >= 1, needText: 'Откроется, когда построишь сад 🌸' },
   bakery: { name: 'Пекарня',           ico: '🏤', desc: l => l === 0 ? 'Пристройка к дому. Печёт 🍞 хлеб из 🍚 муки и 🥚 яиц. Новые рецепты — на следующих уровнях пекарни' : `${l + 1} уровень: новые рецепты — ${recipesAt('bakery', l + 1).map(r => GOODS[r].e + ' ' + GOODS[r].name.toLowerCase()).join(', ')}. Печь работает в ${String(BAKE_SPEED[l]).replace('.', ',')} раза быстрее`, cost: l => [6000, 15000, 30000, 50000, 80000][l], max: 5, need: () => S.up.mill >= 1, needText: 'Откроется после новой постройки в лесу 🪓' },
-  cozy:   { name: 'Уют',               ico: '🌷', desc: l => `${COZY[l]}. На уютную ферму заходит больше покупателей`, cost: l => [600, 1200, 2000, 3200, 5000][l],
+  cozy:   { name: 'Уют',               ico: '🌷', desc: l => `${COZY[l]}. На уютной ферме покупатели ждут дольше и чаще оставляют чаевые`, cost: l => [600, 1200, 2000, 3200, 5000][l],
             get max() { return Math.max(S.up.cozy || 0, S.up.house ? 5 : 4); } },   // фонарики висят на веранде — последний уровень после «Дома фермера»
   ads:    { name: 'Реклама',           ico: '📣', desc: l => `Больше покупателей в лавке: каждые 2 уровня рекламы — +1 покупатель в день (а ещё больше людей приводит уровень фермы ⭐)`, cost: l => [80, 160, 280, 450, 650, 900, 1200, 1600, 2100, 2700][l], max: 10 },
   fert:   { name: 'Удобрения',         ico: '🧪', desc: l => `Рост быстрее (+${l*20}% → +${(l+1)*20}%)`, cost: l => 50 + l*60, max: 5 },
   slots:  { name: 'Место на прилавке',  ico: '🧺', desc: l => `Ещё одно место для товара на прилавке: ${3 + l} → ${4 + l}`, cost: l => [150, 450, 1000][l], max: 3 },
   stall2: { name: 'Вторая лавка',      ico: '🏪', desc: l => 'Ещё одна лавка слева от первой: 6 мест под товар и своя очередь. Торгуют фермер и помощники со станцией «Лавка»', cost: l => [10000][l], max: 1, need: () => S.up.slots >= 3, needText: 'Откроется, когда на прилавке будет 6 мест 🧺' },
   seasonstand: { name: 'Сезонная пристройка', ico: '🍦', desc: l => `Пристройка к лавке на 2 места: в каждом сезоне свои 2 товара — их пекут в пекарне и варят в Молочном доме. Продаются только здесь и дорого`, cost: l => [8000][l], max: 1, need: () => S.up.bakery > 0 && S.up.dhouse > 0, needText: 'Откроется, когда будут пекарня 🏤 и Молочный дом 🏦' },
-  sign:   { name: 'Красивая вывеска',  ico: '🪧', desc: l => `Лавку видно издалека — заходит больше покупателей`, cost: l => [150, 300, 550, 900, 1400, 2000][l], max: 6 },
+  sign:   { name: 'Нарядная лавка',    ico: '🪧', desc: l => `${STALL_DECOR[l]}. В нарядной лавке покупатели берут больше: +${l * 5}% → +${(l + 1) * 5}% товара`, cost: l => [150, 300, 550, 900, 1400, 2000][l], max: 6 },
   helper: { name: 'Помощник',         ico: '👷', desc: l => `Работает на одной или нескольких станциях: поле, сад, курятник, коровник, лавка (помощников: ${l} → ${l+1})`, cost: l => [300, 1500, 4000, 8000, 12000, 16000, 20000, 25000, 30000, 40000][l], max: 10 },
   fairbake:  { name: 'Хлебный лоток',     ico: '🥐', desc: l => `Свой лоток для выпечки на ярмарке: ещё ${BAKE_CRATES} ящика — только под ${Object.keys(BAKE).filter(r => !seasonal(r)).map(r => GOODS[r].e).join('')}`, cost: l => [6000][l], max: 1, need: () => S.up.bakery >= 1, needText: 'Откроется, когда пристроишь пекарню 🏤' },
   fairstall: { name: 'Место на ярмарке', ico: '🎪', desc: l => `Ещё один лоток рядом с шатром фермы: +${CRATES_PER} ящика товара на ярмарку (сейчас ${fairCrates()})`, cost: l => [600, 1500][l], max: 2 },
@@ -1508,7 +1508,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-24.203';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-26.204';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -1893,10 +1893,10 @@ function drawDecor(id) {
 const DECOR_OBJ = Object.fromEntries(Object.keys(DECOR_SPOT).map(id => [id, { id }]));
 // покупателей в день растёт с уровнем, но не бесконечно; зато корзинка у каждого больше
 // Спрос — сколько «покупок» в день; людей меньше, зато каждый берёт больше (на дороге спокойнее, выручка та же)
-const demandAt = L => Math.min(32, 8 + Math.min(14, L) + (S.up.ads || 0) * .5 + (S.up.sign || 0) * .5 + (S.up.cozy || 0) * .5 + prestigeGuests());
+const demandAt = L => Math.min(32, 8 + Math.min(14, L) + (S.up.ads || 0) * .5 + prestigeGuests());
 const peopleFor = D => Math.round(Math.min(19, 5 + D * .5));
 const visitorsBase = () => peopleFor(demandAt(farmLevel())) + truckGuests();   // + покупатели от поставок грузовику
-const basketMul = () => { const D = demandAt(farmLevel()); return Math.max(1, D / (peopleFor(D) * 1.3)); };   // во сколько раз больше штук берёт каждый
+const basketMul = () => { const D = demandAt(farmLevel()); return Math.max(1, D / (peopleFor(D) * 1.3)) * (1 + (S.up.sign || 0) * .05); };   // нарядная лавка — берут больше   // во сколько раз больше штук берёт каждый
 const basketMax = (L = farmLevel()) => L < 5 ? 1 : L < 12 ? 2 : 3;   // не больше 3 разных товаров: дорогие корзинки раздували доход   // сколько разных товаров берёт один покупатель
 const visitorsPerDay = (d = S.day) => cal(d).dow === 6 ? 0 : Math.round(visitorsBase() * (isFair(d) ? (isFinale(d) ? 3 : 2.4) : 1) * (weather(d) === 'heat' ? 1.2 : 1));   // на ярмарке народу много — часть идёт к соседям   // суббота — ярмарка, воскресенье — выходной   // день 1 → 11 покупателей (~1 каждые 14 сек)
 const growMult = () => 1 + S.up.fert * 0.2;
@@ -2003,7 +2003,7 @@ const MEADOW = {   // пастбище: g — трава, c — с клевер�
 function applySeasonBg() { const c = look().bg; document.body.style.background = c; $('app').style.background = c; }
 const priceMult = () => 1 + prestige();   // вывеска и уют больше не поднимают цены — они приводят покупателей (см. demandAt)
 const homeMult = () => 1 + (S.up.house || 0) * 0.2 + (picnicOn() ? 0.15 : 0);   // дом: помощники сыты и работают быстрее
-const patience = (n = 1) => 50 + S.up.bench * 8 + (n - 1) * 6;   // терпение тикает только в очереди; большая корзинка — ждут чуть дольше
+const patience = (n = 1) => 50 + S.up.bench * 8 + (S.up.cozy || 0) * 5 + (n - 1) * 6;   // уют — ждут дольше   // терпение тикает только в очереди; большая корзинка — ждут чуть дольше
 // свежие цветы: цветы своего сезона и букеты, где все цветы сейчас растут, — на 20% дороже (папоротник растёт всегда — ему бонуса нет)
 const FRESH = 1.2;
 const isFresh = c => (CROP[c]?.fl && c !== 'fern' && flSeason(c)) || (!!FLORAL[c] && inSeason(c));
@@ -2509,7 +2509,7 @@ function sell(v) {
       syncSpecial(); if (!S.inv[it.id]) S.spOn = S.spOn.filter(x => x !== it.id);
     }
   }
-  const tip = v.pat / v.max > 0.6 ? Math.ceil(money * 0.2) : 0;   // чаевые за скорость
+  const tip = v.pat / v.max > 0.6 - (S.up.cozy || 0) * .07 ? Math.ceil(money * 0.2) : 0;   // чаевые за скорость (на уютной ферме — чаще)
   money += tip;
   if (full) { xp = Math.round(xp * 1.25); if (v.items.length > 1) goalEv('basket', null, 1); }   // вся корзинка нашлась — бонус опыта
   S.coins += money; S.stats.earned += money; S.stats.served++; S.life.earned += money; S.life.served++;
@@ -3791,7 +3791,7 @@ function buyUpgrade(key) {
     floral: S.up.floral === 1 ? '💐🌹 Букетная мастерская готова! Тапни на неё и выбери букет' : `💐🌹 Мастерская ${S.up.floral} ур.: новые букеты, и флорист собирает быстрее`,
     press: S.up.press === 1 ? '🧃🍎 Домик соков и варенья готов! Тапни на него и выбери, что делать' : `🧃🍎 Соки и варенье ${S.up.press} ур.: новые рецепты, и пресс работает быстрее`,
     bakery: S.up.bakery === 1 ? '🏤 Пекарня готова! Пока печёт 🍞 хлеб — новые рецепты на следующих уровнях' : `🏤 Пекарня ${S.up.bakery} ур.: новые рецепты — ${recipesAt('bakery', S.up.bakery).map(r => GOODS[r].e).join(' ')}, и печь работает быстрее`,
-    cozy: `${COZY[S.up.cozy - 1]} — покупателей станет больше`,
+    cozy: `${COZY[S.up.cozy - 1]} — покупатели ждут дольше и чаще оставляют чаевые`,
     nests: S.up.nests === 1 ? '🪺 В вольере соломенные гнёзда — куры несутся чаще' : `🪺 Ещё гнёзда — яиц на ${S.up.nests * 20}% больше`,
     rooster: '🐓 Петух в курятнике! Двойные яйца, золотые чаще, а по утрам — цыплята 🐣',
     yard: `🐔 Вольер больше — ${hensCap()} мест для кур${S.coop.chicks ? '. Цыплята со склада переехали туда' : ''}`,
@@ -3800,7 +3800,7 @@ function buyUpgrade(key) {
     tank: '🛢 Молочный танк — коровник хранит до 120 бутылок молока',
     hay: '🟨 Сеновал построен — каждую ночь сам кормит коров со склада',
     pasture: `🐄 Пастбище больше — места для ${3 + 2 * S.up.pasture} коров. Покупай коров в «Коровнике»`,
-    fert: '🧪 Мешки удобрений у поля', sign: '🪧 Новая вывеска над лотком', bench: '🪑 Скамейка у очереди',
+    fert: '🧪 Мешки удобрений у поля', sign: `🪧 ${STALL_DECOR[S.up.sign - 1]} — покупатели берут больше`, bench: '🪑 Скамейка у очереди',
     stall2: '🏪 Вторая лавка открыта! Выставь на неё товар: «Лавка» → «Лавка 2». Поставь на станцию «Лавка» второго помощника — один встанет за первую лавку, другой за вторую',
     slots: `🧺 На прилавке теперь ${shopN()} мест — выставь ещё товар: «Лавка»`,
     fairbake: `🥐 Хлебный лоток на ярмарке — ещё ${BAKE_CRATES} ящика для выпечки. Собирай их до субботы кнопкой 🎪`,
@@ -7589,45 +7589,131 @@ function drawStall(d, t) {
     ctx.setLineDash([4, 4]); shape([lift(3, 10, 0), lift(5, 10, 0), lift(5, 11, 0), lift(3, 11, 0)]); ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]);
     const q = lift(4, 10.5, 0); ctx.globalAlpha = .8; emoji('🔒', q.x, q.y - 3, 12); ctx.globalAlpha = 1; return;
   }
-  const L = S.up.sign;
-  softShadow(3, 10, 5, 11, .25);
-  // вывеска на двух столбах за прилавком — над головой фермера
-  toonPost(3.12, 10.1, 0, 64, .06); toonPost(4.88, 10.1, 0, 64, .06);
-  const xa = L ? 2.95 : 3.3, xb = L ? 5.05 : 4.7, z0 = 50, z1 = L ? 66 : 60;
-  if (L >= 6) for (let k = 0; k < 8; k++) {   // флажки под вывеской
-    const a = xa + k * (xb - xa) / 8, b = a + (xb - xa) / 8;
-    gface([lift(a, 10.1, z0 - 1), lift(b, 10.1, z0 - 1), lift((a + b) / 2, 10.1, z0 - 7)], LIGHT_COLORS[k % 4], darken(LIGHT_COLORS[k % 4], .8), INK, .8);
+  // «Нарядная лавка»: 0 — простая; 1 — вывеска «ФЕРМА»; 2 — полосатый тент; 3 — ящик с цветами; 4 — гирлянда; 5 — бочка и корзина; 6 — фонари и золотая вывеска
+  const L = S.up.sign, closed = (isRest() || isFair()) && !S.night;
+  const AW = L >= 2, x0 = 2.92, x1 = 5.08, yb = 10.04, yf = 11.2, zb = STALL_AW.zb, zf = STALL_AW.zf;   // тент: задний край над фермером, передний — над покупателем
+  softShadow(3, 10, 5, 11.2, .25);
+  // задние столбы и вывеска
+  const pz = AW ? zb + 16 : 64;
+  toonPost(3.01, 10.01, 0, pz, .06); toonPost(4.99, 10.01, 0, pz, .06);
+  if (!AW) stallSign(d, L, 50);
+  // прилавок
+  if (L >= 6) {   // крашеный прилавок: кремовый, понизу красная полоса — в цвет тента
+    gface(fY(3, 5, 11, 0, 15), '#fff3e0', '#ead6b4'); gface(fX(5, 10, 11, 0, 15), '#e6d2ae', '#cdb48a');
+    gface(fY(3, 5, 11, 0, 4), AW_RED[0], AW_RED[1], null, 0); gface(fX(5, 10, 11, 0, 4), AW_RED[1], darken(AW_RED[1], .85), null, 0);
+    shape(fY(3, 5, 11, 0, 15)); ctx.strokeStyle = INK; ctx.lineWidth = 1.5; ctx.stroke(); shape(fX(5, 10, 11, 0, 15)); ctx.stroke();
+  } else {
+    const front = L >= 1 ? ['#e3ad72', '#b88049'] : ['#d9a066', '#a8743f'];
+    gface(fY(3, 5, 11, 0, 15), front[0], front[1]); gface(fX(5, 10, 11, 0, 15), '#b8834d', '#8f5b2b');
+    for (const x of [3.4, 3.8, 4.2, 4.6]) seg(lift(x, 11, 1), lift(x, 11, 14), 'rgba(110,65,30,.35)', 1);
+    for (const y of [10.33, 10.66]) seg(lift(5, y, 1), lift(5, y, 14), 'rgba(90,50,20,.35)', 1);
   }
-  gface(fY(xa, xb, 10.18, z0 - 1.5, z0), '#8a5a36', '#6b4327', INK, 1);   // толщина доски
-  gface(fY(xa, xb, 10.1, z0, z1), L ? '#fffaf0' : '#d0a26a', L ? '#f0dfb8' : '#a8784a', L >= 4 ? '#c99a1a' : INK, L >= 4 ? 3 : 1.6);
-  textOnX(xa, 10.1, (z0 + z1) / 2 - 1, xb - xa, d.b ? (L ? 'ЛАВКА 2' : 'лавка 2') : L ? 'ФЕРМА' : 'лавка', L ? '#c0392b' : '#3b2416', d.b ? (L ? 9 : 7) : L ? 11 : 8);
-  if (L >= 5) { const a = lift(xa + .12, 10.1, z1 - 4), b = lift(xb - .12, 10.1, z1 - 4); emoji('⭐', a.x, a.y, 7); emoji('⭐', b.x, b.y, 7); }
-  if (L >= 3) for (let k = 0; k <= 8; k++) {   // гирлянда — горит ровно, без мигания
-    const p = lift(xa + k * (xb - xa) / 8, 10.1, z1 + 3);
-    circle(p.x, p.y, 2.6, INK); circle(p.x, p.y, 2, LIGHT_COLORS[k % 4]);
-  }
-  // прилавок: доски, столешница с кромкой
-  gface(fY(3, 5, 11, 0, 15), '#d9a066', '#a8743f'); gface(fX(5, 10, 11, 0, 15), '#b8834d', '#8f5b2b');
-  for (const x of [3.4, 3.8, 4.2, 4.6]) seg(lift(x, 11, 1), lift(x, 11, 14), 'rgba(110,65,30,.35)', 1);
-  for (const y of [10.33, 10.66]) seg(lift(5, y, 1), lift(5, y, 14), 'rgba(90,50,20,.35)', 1);
   toonBox(2.95, 9.95, 2.1, 1.1, 2, ['#c99a62', '#a87a48'], ['#a87a48', '#8f6538'], ['#f0c98e', '#dcae70'], 15, 1.3);
   seg(lift(2.95, 11.05, 17), lift(5.05, 11.05, 17), 'rgba(255,240,210,.7)', 1.2);
-  if (L >= 2) { const a = lift(3.08, 10.9, 17), b = lift(4.92, 10.9, 17); emoji('🌷', a.x, a.y - 6, 13); emoji('🌷', b.x, b.y - 6, 13); }
-  // ящики с товаром: 3 × 2 на столешнице, в каждом — товар и количество
-  if ((isRest() || isFair()) && !S.night) {   // воскресенье — закрыто, суббота — все на ярмарке
+  if (L >= 3) stallFlowerBox();
+  if (L >= 5) { stallBarrel(5.42, 10.28); stallBasket(5.38, 10.86); }
+  // ящики с товаром: 3 × 2 на столешнице; закрыто — табличка
+  if (closed) {
     gface(fY(3.25, 4.75, 10.75, 17, 29), '#fffaf0', '#f0dfb8', '#7a4a2a', 1.6);
-    textOnX(3.25, 10.75, 23, 1.5, isFair() ? 'НА ЯРМАРКЕ' : 'ЗАКРЫТО', '#c0392b', isFair() ? 6.5 : 8); return;
+    textOnX(3.25, 10.75, 23, 1.5, isFair() ? 'НА ЯРМАРКЕ' : 'ЗАКРЫТО', '#c0392b', isFair() ? 6.5 : 8);
+  } else {
+    const cells = [[3.12, 10.06], [3.76, 10.06], [4.4, 10.06], [3.12, 10.52], [3.76, 10.52], [4.4, 10.52]];
+    const arr = d.b ? S.shop.b : S.shop.a;
+    for (let k = 0; k < (d.b ? 6 : shopN()); k++) {   // ящик на каждое место прилавка; кончился товар — ящик бледный
+      const [cx, cy] = cells[k], id = arr[k];
+      toonBox(cx, cy, .5, .4, 5, ['#d9a066', '#b07a45'], ['#b8834d', '#8f5b2b'], ['#6b4327', '#5b3a22'], 17, 1.1);
+      if (!id) continue;
+      const p = lift(cx + .25, cy + .2, 22);
+      if (!(S.inv[id] > 0)) ctx.globalAlpha = .35;
+      emoji(GOODS[id].e, p.x, p.y - 7, 20); ctx.globalAlpha = 1;
+    }
   }
-  const cells = [[3.12, 10.06], [3.76, 10.06], [4.4, 10.06], [3.12, 10.52], [3.76, 10.52], [4.4, 10.52]];
-  const arr = d.b ? S.shop.b : S.shop.a;
-  for (let k = 0; k < (d.b ? 6 : shopN()); k++) {   // ящик на каждое место прилавка; кончился товар — ящик бледный
-    const [cx, cy] = cells[k], id = arr[k];
-    toonBox(cx, cy, .5, .4, 5, ['#d9a066', '#b07a45'], ['#b8834d', '#8f5b2b'], ['#6b4327', '#5b3a22'], 17, 1.1);
-    if (!id) continue;
-    const p = lift(cx + .25, cy + .2, 22);
-    if (!(S.inv[id] > 0)) ctx.globalAlpha = .35;
-    emoji(GOODS[id].e, p.x, p.y - 7, 20); ctx.globalAlpha = 1;
+  if (!AW) return;
+  // передние стойки тента и сам тент
+  // тент держится на задних столбах: косые подпорки снизу (передних стоек нет — товар не заслоняют)
+  for (const x of [3.01, 4.99]) { const a = lift(x, 10.04, zb - 26), b = lift(x, 10.75, zb - 5.5); seg(a, b, INK, 4.2); seg(a, b, '#b98652', 2.4); }
+  stallAwning(L, x0, x1, yb, yf, zb, zf);
+  stallSign(d, L, zb + 1);   // вывеска — над тентом, у заднего края
+}
+const STALL_DECOR = ['Светлая вывеска «ФЕРМА»', 'Полосатый тент над прилавком', 'Ящик с цветами на прилавке', 'Гирлянда огоньков на тенте', 'Бочка яблок и корзина моркови', 'Плющ на вывеске и крашеный прилавок'];
+const STALL_AW = { zb: 94, zf: 84 };   // тент высоко — товар на прилавке под ним виден целиком
+const AW_RED = ['#e0554a', '#b83a31'], AW_CREAM = ['#fff6e6', '#ecdcc0'];
+function stallSign(d, L, z0) {   // вывеска: 0 — дощечка, 1+ — светлая «ФЕРМА», 6 — золотая рамка
+  const xa = 3.01, xb = 4.99, z1 = z0 + (L ? 16 : 11), txt = d.b ? (L ? 'ЛАВКА 2' : 'лавка 2') : L ? 'ФЕРМА' : 'лавка';
+  const z2 = z1;
+  gface(fY(xa, xb, 10.07, z0, z1), L ? '#fffaf0' : '#d0a26a', L ? '#f0dfb8' : '#a8784a', INK, 1.6);
+  if (L >= 6) stallIvy(xa, xb, 10.03, z0, z1);
+  if (!L) for (const x of [xa + .05, xb - .05]) for (const z of [z0 + 3, z1 - 3]) { const q = lift(x, 10.07, z); circle(q.x, q.y, 1.1, '#3b2416'); }   // гвозди
+  textOnX(xa, 10.07, (z0 + z2) / 2 - 1, xb - xa, txt, L ? '#c0392b' : '#3b2416', d.b ? (L ? 9 : 7) : L ? 11 : 8);
+}
+function stallIvy(xa, xb, y, z0, z1) {   // плющ вьётся по рамке вывески: стебель по краю, листочки и пара белых цветков
+  const path = [], N = 60;   // обход рамки: левый край снизу вверх, верх, правый край вниз
+  for (let i = 0; i <= N; i++) { const u = i / N; let x, z;
+    if (u < .2) { x = xa; z = z0 + (z1 - z0) * (u / .2); } else if (u < .8) { x = xa + (xb - xa) * ((u - .2) / .6); z = z1; } else { x = xb; z = z1 - (z1 - z0) * ((u - .8) / .2) * .75; }
+    const w = Math.sin(u * 46) * 1.3; path.push(lift(x, y, z + (u >= .2 && u < .8 ? w : 0)));
+    if (u < .2 || u >= .8) path[path.length - 1].x += w * .8; }
+  ctx.beginPath(); path.forEach((q, i) => i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)); ctx.strokeStyle = '#3c6b2e'; ctx.lineWidth = 1.6; ctx.stroke();
+  for (let i = 1; i < N; i += 2) { const q = path[i], a = i * 2.3, sx = Math.cos(a) * 3, sy = Math.sin(a) * 2;
+    ctx.beginPath(); ctx.ellipse(q.x + sx, q.y + sy, 2.9, 1.8, a, 0, 7); ctx.fillStyle = i % 4 === 1 ? '#5aa64a' : '#78bf5a'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = .8; ctx.stroke(); }
+  for (const i of [8, 27, 41, 55]) { const q = path[i]; for (let j = 0; j < 5; j++) { const a = j / 5 * Math.PI * 2; circle(q.x + Math.cos(a) * 1.6, q.y - 2 + Math.sin(a) * 1.4, 1.5, INK); }
+    for (let j = 0; j < 5; j++) { const a = j / 5 * Math.PI * 2; circle(q.x + Math.cos(a) * 1.6, q.y - 2 + Math.sin(a) * 1.4, 1.05, '#ffffff'); } circle(q.x, q.y - 2, .9, '#ffd84d'); }
+}
+function stallAwning(L, x0, x1, yb, yf, zb, zf) {   // полосатый тент: скат от фермера к покупателю и фестоны по краю
+  const n = 8, P = (x, u) => lift(x, yb + (yf - yb) * u, zb + (zf - zb) * u);
+  for (let k = 0; k < n; k++) { const a = x0 + (x1 - x0) * k / n, b = x0 + (x1 - x0) * (k + 1) / n, C = k % 2 ? AW_CREAM : AW_RED;
+    gface([P(a, 0), P(b, 0), P(b, 1), P(a, 1)], C[0], C[1], null, 0); }
+  shape([P(x0, 0), P(x1, 0), P(x1, 1), P(x0, 1)]); ctx.strokeStyle = INK; ctx.lineWidth = 1.5; ctx.stroke();
+  gface(fX(x1, yb, yf, 0, 0).map((q, i) => i < 2 ? lift(x1, i ? yf : yb, (i ? zf : zb) - 2.5) : lift(x1, i === 2 ? yf : yb, i === 2 ? zf : zb)), AW_RED[1], darken(AW_RED[1], .85), INK, 1);   // толщина правого края
+  // фестоны: полукруги по переднему краю
+  const m = n, h = 6;
+  for (let k = 0; k < m; k++) { const a = x0 + (x1 - x0) * k / m, b = x0 + (x1 - x0) * (k + 1) / m, C = k % 2 ? AW_CREAM : AW_RED, pts = [];
+    for (let j = 0; j <= 10; j++) { const u = j / 10; pts.push(lift(a + (b - a) * u, yf, zf - Math.sin(u * Math.PI) * h)); }
+    poly(pts, C[0], INK, 1.2); }
+  if (L >= 4) {   // гирлянда: шнур на тенте у переднего края, с лёгкими провисами
+    const G = u => { const v = .86 + .05 * Math.abs(Math.sin(u * Math.PI * 4)); return P(x0 + .08 + (x1 - x0 - .16) * u, v); };   // по ткани тента, вдоль переднего края — фестоны открыты
+    ctx.beginPath(); for (let j = 0; j <= 40; j++) { const q = G(j / 40); j ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y); } ctx.strokeStyle = '#4a3020'; ctx.lineWidth = 1; ctx.stroke();
+    for (let k = 0; k <= 12; k++) { const q = G(k / 12 * .999 + .0005); q.y -= 2;
+      if (S.night) { ctx.fillStyle = 'rgba(255,220,120,.4)'; ctx.beginPath(); ctx.arc(q.x, q.y + 2, 5, 0, 7); ctx.fill(); }
+      circle(q.x, q.y + 2, 2.5, INK); circle(q.x, q.y + 2, 1.8, LIGHT_COLORS[k % 4]); circle(q.x - .5, q.y + 1.4, .55, 'rgba(255,255,255,.8)'); }
   }
+}
+function stallFlowerBox() {   // длинный ящик с цветами на фасаде прилавка
+  const xa = 3.15, xb = 4.85, y = 11.05, z0 = 4, z1 = 10;
+  toonBox(xa, y, xb - xa, .14, z1 - z0, ['#7fb05a', '#5d8a3e'], ['#5d8a3e', '#4a7031'], ['#6b4a2a', '#5a3d22'], z0, 1.1);
+  const cols = ['#ff7a9a', '#ffd84d', '#ffffff', '#c58cff'];
+  for (let k = 0; k < 7; k++) { const q = lift(xa + .12 + k * (xb - xa - .24) / 6, y + .07, z1 + 3 + (k % 2) * 2), c = cols[k % 4];
+    for (const [dx, dy] of [[-.4, .1], [.5, .3]]) { const l = { x: q.x + dx * 6, y: q.y + 4 + dy * 4 }; ctx.beginPath(); ctx.ellipse(l.x, l.y, 3, 1.6, dx, 0, 7); ctx.fillStyle = '#5aa64a'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = .8; ctx.stroke(); }
+    for (let j = 0; j < 5; j++) { const a = j / 5 * Math.PI * 2; circle(q.x + Math.cos(a) * 2.3, q.y + Math.sin(a) * 2, 2.1, INK); }
+    for (let j = 0; j < 5; j++) { const a = j / 5 * Math.PI * 2; circle(q.x + Math.cos(a) * 2.3, q.y + Math.sin(a) * 2, 1.5, c); }
+    circle(q.x, q.y, 1.4, c === '#ffd84d' ? '#e08a2a' : '#ffd84d'); }
+}
+function stallBarrel(x, y) {   // бочка с яблоками справа от прилавка
+  const c = lift(x, y, 0), rx = 8, ry = 4, h = 18;
+  const g = ctx.createLinearGradient(c.x - rx, 0, c.x + rx, 0); g.addColorStop(0, '#c98a4e'); g.addColorStop(.5, '#a86d38'); g.addColorStop(1, '#7d4f26');
+  ctx.beginPath(); ctx.moveTo(c.x - rx, c.y); ctx.ellipse(c.x, c.y, rx, ry, 0, Math.PI, 0, true); ctx.bezierCurveTo(c.x + rx + 1.5, c.y - h * .4, c.x + rx + 1.5, c.y - h * .6, c.x + rx, c.y - h);
+  ctx.ellipse(c.x, c.y - h, rx, ry, 0, 0, Math.PI, false); ctx.bezierCurveTo(c.x - rx - 1.5, c.y - h * .6, c.x - rx - 1.5, c.y - h * .4, c.x - rx, c.y); ctx.closePath(); ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.3; ctx.stroke();
+  for (const z of [4, h - 4]) { ctx.beginPath(); ctx.ellipse(c.x, c.y - z, rx + 1, ry, 0, 0, Math.PI); ctx.strokeStyle = '#4a3a2c'; ctx.lineWidth = 1.6; ctx.stroke(); }
+  ctx.beginPath(); ctx.ellipse(c.x, c.y - h, rx, ry, 0, 0, 7); ctx.fillStyle = '#6b4327'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke();
+  for (const [dx, dy] of [[-4, -1], [0, -2.5], [4, -1], [-2, 1], [2.5, .8]]) { circle(c.x + dx, c.y - h + dy - 1.5, 2.9, INK); circle(c.x + dx, c.y - h + dy - 1.5, 2.2, '#e0393e'); circle(c.x + dx - .7, c.y - h + dy - 2.2, .7, 'rgba(255,255,255,.7)'); }
+}
+function stallBasket(x, y) {   // плетёная корзина с морковью
+  const c = lift(x, y, 0), w = 8, h = 9;
+  const body = [{ x: c.x - w, y: c.y - h }, { x: c.x + w, y: c.y - h }, { x: c.x + w - 2, y: c.y }, { x: c.x - w + 2, y: c.y }];
+  gface(body, '#e2b46a', '#b9853f', INK, 1.2);
+  ctx.save(); shape(body); ctx.clip(); ctx.strokeStyle = 'rgba(120,75,30,.5)'; ctx.lineWidth = 1;
+  for (let k = 1; k < 3; k++) seg({ x: c.x - w, y: c.y - h + k * h / 3 }, { x: c.x + w, y: c.y - h + k * h / 3 }, 'rgba(120,75,30,.5)', 1);
+  for (let k = -2; k <= 2; k++) seg({ x: c.x + k * 3.5, y: c.y - h }, { x: c.x + k * 3, y: c.y }, 'rgba(120,75,30,.4)', 1); ctx.restore();
+  for (const dx of [-4, 0, 4]) { ctx.beginPath(); ctx.moveTo(c.x + dx - 1.8, c.y - h); ctx.lineTo(c.x + dx + 1.8, c.y - h); ctx.lineTo(c.x + dx + .5, c.y - h - 8); ctx.closePath(); ctx.fillStyle = '#f08a2c'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = .9; ctx.stroke();
+    seg({ x: c.x + dx + .3, y: c.y - h }, { x: c.x + dx - 1, y: c.y - h + 2.5 }, '#5aa64a', 1.6); }
+  ctx.beginPath(); ctx.ellipse(c.x, c.y - h, w, 2, 0, 0, 7); ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke();
+}
+function stallLantern(x, y, z) {   // фонарик на стойке тента
+  const q = lift(x, y, z);
+  seg({ x: q.x, y: q.y - 9 }, { x: q.x, y: q.y - 2 }, INK, 1);
+  if (S.night) { ctx.fillStyle = 'rgba(255,210,110,.35)'; ctx.beginPath(); ctx.arc(q.x, q.y + 3, 9, 0, 7); ctx.fill(); }
+  rr(q.x - 3.4, q.y - 2.4, 6.8, 1.8, .8, INK);
+  shape([{ x: q.x - 3, y: q.y - 1 }, { x: q.x + 3, y: q.y - 1 }, { x: q.x + 3, y: q.y + 6 }, { x: q.x - 3, y: q.y + 6 }]); ctx.fillStyle = S.night ? '#ffe38a' : '#fff3c4'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.1; ctx.stroke();
+  rr(q.x - 3.4, q.y + 5.6, 6.8, 1.8, .8, INK);
 }
 
 function drawCoop() {
@@ -9503,6 +9589,10 @@ if (S.toSpawn === 0 && !S.night) startDay(); else renderUI();
 if (!S.night) S.toSpawn = Math.max(S.toSpawn, visitorsPerDay());   // старые сохранения получают новый поток покупателей сразу
 // ✨ Что нового: после обновления вместо итогов ночи — список новинок, которых игрок ещё не видел
 const WHATSNEW = [   // новое — сверху; v — версия, с которой это появилось
+  { v: '2026-11-26.204', t: 'Нарядная лавка', items: [
+    ['🪧', 'Лавку можно нарядить', 'Вместо «Красивой вывески» — «Нарядная лавка»: вывеска, полосатый тент, цветы, гирлянда, бочка с яблоками и плющ. Лавка перерисована целиком'],
+    ['§', '⚖️ Изменения баланса'],
+    ['🧺', 'Каждое улучшение — своё', 'Реклама приводит покупателей, в нарядной лавке они берут больше товара, а на уютной ферме ждут дольше и чаще оставляют чаевые'] ] },
   { v: '2026-11-24.203', t: 'Удобная лавка и календарь', items: [
     ['🏪', 'Лавка', 'Покупатели встают в очередь прямо перед прилавком, фермер — за его серединой. А открыть лавку можно, нажав на любую её часть: прилавок, ящики или вывеску'],
     ['📅', 'Бабушка расскажет про время', 'Новичкам — письма о том, как устроены неделя, выходные, сезоны, погода и ярмарка. Воскресенье больше не наступит внезапно'] ] },
