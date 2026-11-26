@@ -1511,7 +1511,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-26.207';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-26.208';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -4007,6 +4007,8 @@ function gridPath(sx, sy, tx, ty) {   // кратчайший путь, но п�
 let autoHarvest = false;   // «Собрать» в работе: после маршрута фермер проверяет, не созрело ли что-то ещё
 function setTasks(list, keepAuto) { if (!keepAuto) { autoHarvest = false; camFree = false; } tasks = list; path = []; nextTask(); }
 function nextTask() {
+  P.hold = false;
+  if (autoHarvest && tasks[0]?.steady && !S.night && soonRipe() && !tasks.some(q => !q.steady)) { path = []; P.hold = true; return; }   // урожай вот-вот — не уходим с поля
   while (tasks.length) {
     const t = tasks[0];
     const p = findPath(Math.floor(P.x), Math.floor(P.y), t.x, t.y);
@@ -4037,7 +4039,12 @@ function updatePlayer(dt) {
   } else {
     P.moving = false;
     if (tasks.length) {
-      const t = tasks.shift(); if (t.fn) { t.fn(); P.work = 0.2 / PEOPLE_SLOW; } nextTask();
+      if (P.hold) {   // ждём, пока на грядке дозреет: созрело — идём собирать, перестало «вот-вот» — дальше по плану
+        if (harvestRefresh() || !soonRipe() || S.night) { P.hold = false; nextTask(); } return;
+      }
+      const t = tasks.shift(); if (t.fn) { t.fn(); P.work = 0.2 / PEOPLE_SLOW; }
+      if (autoHarvest && !S.night) harvestRefresh();
+      nextTask();
       if (!tasks.length && autoHarvest && !S.night && !harvestRoute(true)) autoHarvest = false;
     }
     else if (!S.night && ((Math.floor(P.x) === COOP_SPOT.x && Math.floor(P.y) === COOP_SPOT.y && coopReady()) || (Math.floor(P.x) === BARN_SPOT.x && Math.floor(P.y) === BARN_SPOT.y && S.barn.milk > 0)) && (P.colT = (P.colT || 0) - dt) <= 0) {
@@ -9466,11 +9473,26 @@ function harvestRoute(again) {   // грядки, яблони и гнездо �
   // повторный обход — только за созревшим на грядках и в саду: иначе фермер так и ходил бы к курятнику за каждым новым яйцом
   const all = readyJobs().filter(j => !again || !steady(j)), mine = all.filter(j => kindOf(j) === 'field' ? !zoneTaken(j) : !covered.has(kindOf(j)));
   const list = mine.map(j => ({ x: j.x, y: j.y, steady: steady(j), fn: () => j.act('player') }));
-  if (!list.length) { if (!again) toast(all.length ? '👷 Это уже собирают помощники' : 'Пока нечего собирать'); return false; }
+  if (again === 'list') return list;
+  // уже идёт к цели (нажали «Собрать» ещё раз) — эта цель остаётся первой, остальное — после неё
+  const cur = autoHarvest && tasks[0] ? tasks[0] : null, rest = cur ? list.filter(t => t.x !== cur.x || t.y !== cur.y) : list;
+  if (!rest.length && !cur) { if (!again) toast(all.length ? '👷 Это уже собирают помощники' : 'Пока нечего собирать'); return false; }
   // сначала весь урожай (грядки, теплица, сад), потом — яйца, молоко и мастерские: не бросать поле на полпути
-  const crops = routeThrough(list.filter(t => !t.steady)), last = crops[crops.length - 1];
-  setTasks([...crops, ...routeThrough(list.filter(t => t.steady), last)], true);
+  const crops = routeThrough(rest.filter(t => !t.steady), cur), last = crops[crops.length - 1] || cur;
+  const plan = [...(cur ? [cur] : []), ...crops, ...routeThrough(rest.filter(t => t.steady), last)];
+  if (cur) { tasks = plan; return true; }   // путь к текущей цели не трогаем
+  setTasks(plan, true);
   return true;
+}
+// пока собирает урожай: что-то на его грядках вот-вот созреет — к курятнику и мастерским не уходит, ждёт рядом
+function soonRipe() {
+  const mineField = i => zoneOwner(zoneOf(i)) < 0;
+  return S.plots.some((p, i) => mineField(i) && p.crop && p.prog >= .9 && p.prog < 1 && !isWinter()) || S.gh.some(p => p.crop && p.prog >= .9 && p.prog < 1) || S.fl.some(p => p.crop && p.prog >= .9 && p.prog < 1);
+}
+function harvestRefresh() {   // созрело новое — добавить его перед яйцами и мастерскими
+  const fresh = harvestRoute('list').filter(t => !t.steady && !tasks.some(q => q.x === t.x && q.y === t.y)); if (!fresh.length) return false;
+  const k = tasks.findIndex(q => q.steady), crops = routeThrough(fresh, k > 0 ? tasks[k - 1] : null);
+  tasks.splice(k < 0 ? tasks.length : k, 0, ...crops); return true;
 }
 // ---------- Посев: кнопка «Засеять» с текущим семечком и полоска семян над ней ----------
 // Тап по семечку — только выбрать; тап по пустой грядке сажает выбранное (полоска остаётся открытой);
@@ -9572,11 +9594,12 @@ const CHEATS = {
   special: ['🌟 Особая находка', () => { const k = contestOf() === 'goldegg' ? 'pumpkin' : contestOf(); const q = Math.round(40 + Math.random() * 55); S.special.push({ k, q, d: S.day }); syncSpecial(); specialFound(k, q); }],
   season:  ['🍂 Следующий сезон', () => { S.day = (Math.floor((S.day - 1) / SEASON_LEN) + 1) * SEASON_LEN + 1; toast(`${season().e} ${season().name}: ${season().text}`); }],
   money2:  ['💰 +10 000', () => { S.coins += 10000; }],
-  goods:   ['📦 +10 всего', () => { for (const id of [...S.unlocked, 'apple', 'egg', 'milk', 'flour', 'cheese', ...(S.up.bakery ? Object.keys(BAKE) : [])]) S.inv[id] = (S.inv[id] || 0) + 10; }],
+  goods:   ['📦 +10 всего', () => { for (const id of Object.keys(GOODS)) if (!GOODS[id].sp && id !== 'goldegg' && id !== 'chick') S.inv[id] = (S.inv[id] || 0) + 10; }],   // всё, что ферма умеет получать: урожай, фрукты, цветы, мёд, соки, букеты, выпечка…
   grow:    ['🌱 Всё созрело', () => { [...S.plots, ...S.gh].forEach(p => { if (p.crop) p.prog = 1; }); S.trees.forEach(t => { if (t.kind) { t.grow = 1; t.fruit = 1; } }); if (hens()) S.coop.eggs += 5; if (cows()) S.barn.milk += 3; for (const k in PROD) if (S.up[k]) { if (PROD[k].multi) S.prod[k].out.cheese = (S.prod[k].out.cheese || 0) + 3; else S.prod[k].out += 3; } if (S.up.bakery) S.bake.out[S.bake.sel] = (S.bake.out[S.bake.sel] || 0) + 3; }],
   crops:   ['🔓 Все культуры', () => { S.unlocked = CROPS.map(c => c.id); }],
   maxup:   ['⭐ Все улучшения', () => {
     for (const [k, u] of Object.entries(UPGRADES)) S.up[k] = u.max;
+    for (const c of CROPS) if (!S.unlocked.includes(c.id)) S.unlocked.push(c.id);   // и все культуры в лавке семян
     while (S.plots.length < MAX_PLOTS) S.plots.push({ crop: null, prog: 0 });
     syncHelpers(); syncTrees(); syncHens(); syncCows(); syncGh(); syncFl(); applyLots(); NEAR = null;   // цветочные грядки сада — тоже
   }],
@@ -9623,6 +9646,8 @@ if (S.toSpawn === 0 && !S.night) startDay(); else renderUI();
 if (!S.night) S.toSpawn = Math.max(S.toSpawn, visitorsPerDay());   // старые сохранения получают новый поток покупателей сразу
 // ✨ Что нового: после обновления вместо итогов ночи — список новинок, которых игрок ещё не видел
 const WHATSNEW = [   // новое — сверху; v — версия, с которой это появилось
+  { v: '2026-11-26.208', t: 'Исправления', items: [
+    ['🧺', 'Сбор урожая', 'Фермер больше не бросает поле: если что-то вот-вот созреет, дождётся и соберёт, а яйца и молоко — потом. Повторное «Собрать» не сбивает его с пути'] ] },
   { v: '2026-11-26.207', t: 'Клумбы и поправки', items: [
     ['🌷', 'Клумбы в саду', 'Цветочные грядки теперь в каменных бортиках, с полоской роста — видно, когда цветы созреют'],
     ['🏆', 'Итоги прошлой ярмарки', 'Их можно открыть ещё раз — кнопка в окне ярмарки 🎪. А если ничего не продано, медали больше не дают'],
