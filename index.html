@@ -1236,7 +1236,8 @@ let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 214748364
 const treeSpots = [[17, 11], [14, 8 + 2]];   // пара деревьев посреди фермы — для тени и воздуха
 // в верхнем ряду деревьев нет — там изгородь (лес начинается сразу за ней)
 // по западному краю деревьев нет — там изгородь; на y = 9 — калитка в сад
-ground[9][0] = 'p';
+ground[9][0] = 'p';   // калитка в сад — видна, только когда сад открыт (см. gcell)
+const gcell = (x, y) => x === 0 && y === 9 && !S.up?.grove ? 'g' : ground[y][x];
 const FOREST_X = 23;   // лес справа: в нём участки под мельницу и сыроварню
 // вокруг вырубок — поляна в клетку, иначе деревья заслоняют здания
 const lotFront = (x, y) => LOTS.some(L => x >= L.x0 - 1 && x <= L.x1 + 1 && y >= L.y0 - 1 && y <= L.y1 + 1 && !(x >= L.x0 && x <= L.x1 && y >= L.y0 && y <= L.y1));   // поляна вокруг вырубки
@@ -1510,7 +1511,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-26.206';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-26.207';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -2085,6 +2086,7 @@ function endDay() {
   if (S.up.hay && cows() && cowFoodStock() >= feedPerCow()) setTimeout(() => { if (S.night && cowsFedTomorrow() < cows()) { feedCows('hay'); refreshSheet(); } }, 900);   // сеновал кормит сам
   save(); renderUI();
   if (fairRes && S.goals) { const all = [fairRes.money, ...RIVALS_DEF.map((x, i) => fairRes.rv[i] || 0)].sort((a, b) => b - a); if (all.indexOf(fairRes.money) < 3 && fairRes.money > 0) S.goals.fairTop = (S.goals.fairTop || 0) + 1; goalsCheck(); if (all[0] === fairRes.money && fairRes.money > 0) yearEv('fairWins'); }
+  if (fairRes) { S.fair.lastRes = fairRes; save(); }   // итоги можно открыть ещё раз — из окна ярмарки
   if (fairRes) openFairResult(fairRes); else if (cal().si === 3 && cal().sday === SEASON_LEN) openYearResult(); else openCalendar();
 }
 
@@ -3980,7 +3982,7 @@ function findPath(sx, sy, tx, ty) {
   if (offT) { const p = gridPath(sx, sy, FAIR_GATE, H - 1); return p ? [...p, ...lane(tx), [tx, ty]] : null; }
   const p = gridPath(FAIR_GATE, H - 1, tx, ty); return p ? [...lane(sx).reverse(), ...p] : null;
 }
-const onRoad = (x, y) => x >= 0 && y >= 0 && x < W && y < H ? ground[y][x] === 'p' || ground[y][x] === 'r' : grovePath(x, y);
+const onRoad = (x, y) => x >= 0 && y >= 0 && x < W && y < H ? gcell(x, y) === 'p' || gcell(x, y) === 'r' : grovePath(x, y);
 function gridPath(sx, sy, tx, ty) {   // кратчайший путь, но по дорожкам «дешевле», чем по траве: фермер и помощники ходят по тропинкам, если это не большой крюк
   if (!walkable(tx, ty)) return null;
   const key = (x, y) => (y + 40) * 256 + x + 40, prev = new Map([[key(sx, sy), -1]]), dist = new Map([[key(sx, sy), 0]]), heap = [[0, sx, sy]];
@@ -5916,13 +5918,14 @@ function farmSig() {   // то, что меняется только на сам
 }
 // грядки — поверх фона, из двух готовых картинок (влажная — засеянная, сухая — пустая)
 const PLOT_IMG = { k: 0 };
-function plotImg(wet, k, snow) {   // snow — зимняя грядка поля: земля под снегом
-  if (PLOT_IMG.k !== k) { PLOT_IMG.k = k; PLOT_IMG.w = PLOT_IMG.d = PLOT_IMG.s = null; }
-  const id = snow ? 's' : wet ? 'w' : 'd'; if (PLOT_IMG[id]) return PLOT_IMG[id];
+function plotImg(wet, k, snow, fl) {   // snow — зимняя грядка поля: земля под снегом; fl — клумба сада: каменный бортик
+  if (PLOT_IMG.k !== k) { for (const q in PLOT_IMG) delete PLOT_IMG[q]; PLOT_IMG.k = k; }
+  const id = (fl ? 'f' : '') + (snow ? 's' : wet ? 'w' : 'd'); if (PLOT_IMG[id]) return PLOT_IMG[id];
   const c = document.createElement('canvas'), ax = 33, ay = 6; c.width = Math.ceil(66 * k) + 2; c.height = Math.ceil(40 * k) + 2;
   const g = c.getContext('2d'); g.setTransform(k, 0, 0, k, ax * k + 1, ay * k + 1);
   const main = ctx; ctx = g;
   try { const x = 0, y = 0, e = .07, hz = 3.5, X = 1 - e, Y = 1 - e;
+    if (fl) { flowerBedImg(wet, snow); throw 0; }
     poly(tilePts(0, 0), wet ? '#6b4327' : '#8a5a36', wet ? '#6b4327' : '#8a5a36');
     const top = [lift(x + e, y + e, hz), lift(X, y + e, hz), lift(X, Y, hz), lift(x + e, Y, hz)];
     gface(fY(x + e, X, Y, 0, hz), wet ? '#5a3720' : '#7a4c2c', wet ? '#4a2c18' : '#653c22', INK, 1);
@@ -5937,8 +5940,18 @@ function plotImg(wet, k, snow) {   // snow — зимняя грядка пол�
     for (const q of [.3, .55, .8]) { const a = lift(x + q, y + .14, hz), b = lift(x + q, y + .86, hz);
       seg(a, b, 'rgba(40,20,8,.4)', 1.6); seg({ x: a.x - 1.2, y: a.y - .6 }, { x: b.x - 1.2, y: b.y - .6 }, 'rgba(255,220,180,.22)', 1); }
     }
-  } finally { ctx = main; }
+  } catch (er) { if (er !== 0) throw er; } finally { ctx = main; }
   c.ax = ax; c.ay = ay; return PLOT_IMG[id] = c;
+}
+function flowerBedImg(wet, snow) {   // клумба: низкий бортик из светлого камня, внутри — тёмная рыхлая земля
+  const e = .05, hz = 4.5, X = 1 - e, i = .16;
+  gface(fY(e, X, X, 0, hz), '#e6dccb', '#c9bba3', INK, 1); gface(fX(X, e, X, 0, hz), '#d2c5ad', '#b5a68b', INK, 1);
+  for (const t of [.33, .66]) { seg(lift(e + (X - e) * t, X, .3), lift(e + (X - e) * t, X, hz - .3), 'rgba(110,95,70,.5)', .9); seg(lift(X, e + (X - e) * t, .3), lift(X, e + (X - e) * t, hz - .3), 'rgba(110,95,70,.5)', .9); }
+  const top = [lift(e, e, hz), lift(X, e, hz), lift(X, X, hz), lift(e, X, hz)]; gface(top, '#efe7d8', '#ddd1bb', INK, 1.2);
+  const soil = [lift(i, i, hz), lift(1 - i, i, hz), lift(1 - i, 1 - i, hz), lift(i, 1 - i, hz)];
+  if (snow) gface(soil, '#f7fafc', '#dbe6ef', 'rgba(60,40,20,.5)', .8);
+  else { gface(soil, wet ? '#5a3a24' : '#6e4a30', wet ? '#46291a' : '#583922', 'rgba(60,40,20,.6)', .8); for (const [a, b] of [[.3, .35], [.6, .3], [.45, .62], [.72, .7], [.28, .74]]) circle(lift(a, b, hz).x, lift(a, b, hz).y, .9, 'rgba(30,18,8,.35)'); }
+  for (const t of [.25, .5, .75]) { seg(lift(e + (X - e) * t, e, hz), lift(e + (X - e) * t, i, hz), 'rgba(140,120,90,.45)', .8); seg(lift(e, e + (X - e) * t, hz), lift(i, e + (X - e) * t, hz), 'rgba(140,120,90,.45)', .8); seg(lift(e + (X - e) * t, 1 - i, hz), lift(e + (X - e) * t, X, hz), 'rgba(140,120,90,.45)', .8); seg(lift(1 - i, e + (X - e) * t, hz), lift(X, e + (X - e) * t, hz), 'rgba(140,120,90,.45)', .8); }
 }
 function drawPlotsLive() {
   const k = dpr * zoom, T = camT(), V = viewRect(40);
@@ -5947,6 +5960,8 @@ function drawPlotsLive() {
     ctx.drawImage(im, Math.round(T.x + c.x * k - im.ax * k - 1), Math.round(T.y + c.y * k - im.ay * k - 1)); };
   S.plots.forEach((p, i) => put(p, PLOT_SLOTS[i], true));
   S.gh.forEach((p, i) => { const s = GH_SLOTS[i]; if (ghOn(s.x, s.y)) put(p, s); });
+  S.fl.forEach((p, i) => { const s = FL_SLOTS[i], c = iso(s.x, s.y); if (c.x < V.x0 || c.x > V.x1 || c.y < V.y0 || c.y > V.y1) return; const im = plotImg(p.crop && p.prog < 1, k, snow, true);
+    ctx.drawImage(im, Math.round(T.x + c.x * k - im.ax * k - 1), Math.round(T.y + c.y * k - im.ay * k - 1)); });   // клумбы сада
   setWorld();
 }
 let CULL = null;   // пока рисуется квадрат фона — его прямоугольник: остальное не рисуем
@@ -6000,7 +6015,7 @@ function drawBackdrop(now) {
 function drawGroundGlow(t) {   // мигающая рамка у созревшего — поверх закэшированной земли
   const a = `rgba(255,224,102,${.6 + Math.sin(t * 5) * .35})`;
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    const g = ground[y][x];
+    const g = gcell(x, y);
     if (g === 'o') {
       const i = orchardAt(x, y);
       if (i >= 0 && i < S.trees.length && treeReady(S.trees[i])) { const c = iso(x + .5, y + .5); ctx.strokeStyle = a; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(c.x, c.y, 18, 9, 0, 0, 7); ctx.stroke(); }
@@ -6029,7 +6044,7 @@ const NOOP = (() => {
     measureText: () => ({ width: 0 }), getTransform: () => new DOMMatrix(), getLineDash: () => [], isPointInPath: () => false, isPointInStroke: () => false });
   return o;
 })();
-const SPRITE_ANIM = new Set(['house', 'bakery', 'dairy', 'mill']);   // поверх картинки — только дым и крылья мельницы
+const SPRITE_ANIM = new Set(['house', 'bakery', 'dairy', 'mill', 'hive']);   // поверх картинки — только дым и крылья мельницы
 const SPRITE_KEY = {
   farmArch: () => archStage() + '',
   house: () => '', stall: d => ((isRest() || isFair()) && !S.night) + '' + isFair() + (d.b ? 'b' + S.up.stall2 + upLocked('stall2') : shopN()) + (d.b ? S.shop.b : S.shop.a).map(id => id ? id + (S.inv[id] > 0) : '-').join(), season: () => S.up.seasonstand + seasonNow().map(g => g + (S.inv[g] > 0)).join(), bakery: () => bakeLoaded().length + ',' + S.started, dairy: () => (prodQ('dairy') > 0) + ',' + S.started + ',' + S.up.dhouse,
@@ -6181,7 +6196,7 @@ function groveCell(x, y, c, h) {   // земля открытой зоны са�
   const g = win ? ((x + y) % 2 ? '#eef3f6' : '#e6edf2') : ((x + y) % 2 ? '#6cbf4f' : '#66b84a'); poly(pts, g, g);
   const fi = flAt(x, y);
   if (fi >= 0) {
-    if (fi < FL_OPEN[S.up.grove || 0]) { poly(pts, win ? '#cbb59a' : '#8a5a36', win ? '#cbb59a' : '#8a5a36'); for (const k of [-.25, 0, .25]) seg(iso(x + .15, y + .5 + k), iso(x + .85, y + .5 + k), 'rgba(60,35,15,.35)', 1.2); }
+    if (fi < FL_OPEN[S.up.grove || 0]) { if (fi < S.fl.length) return; poly(pts, win ? '#cbb59a' : '#8a5a36', win ? '#cbb59a' : '#8a5a36'); for (const k of [-.25, 0, .25]) seg(iso(x + .15, y + .5 + k), iso(x + .85, y + .5 + k), 'rgba(60,35,15,.35)', 1.2); }
     else { ctx.setLineDash([4, 4]); poly(pts, null, 'rgba(255,255,255,.4)', 1.2); ctx.setLineDash([]); }
     return;
   }
@@ -6584,9 +6599,9 @@ function openYearResult() {
 }
 function openFairResult(r) {
   const sold = Object.entries(r.sold).sort((a, b) => b[1].m - a[1].m);
-  const all = [{ name: 'Твоя ферма', m: r.money, me: true }, ...RIVALS_DEF.map((x, i) => ({ name: x.name, m: r.rv[i] || 0 }))].sort((a, b) => b.m - a.m);
+  const all = [{ name: 'Твоя ферма', m: r.money, me: true }, ...RIVALS_DEF.map((x, i) => ({ name: x.name, m: r.rv[i] || 0 }))].sort((a, b) => b.m - a.m || !!a.me - !!b.me);   // при равной выручке — соседи выше
   const place = all.findIndex(x => x.me) + 1, top = Math.max(1, all[0].m);
-  const PL = { 1: ['🥇', '1-е место по продажам!', 'gold'], 2: ['🥈', '2-е место по продажам', 'silver'], 3: ['🥉', '3-е место по продажам', 'bronze'], 4: ['🎪', 'Хорошая торговля!', 'plain'] }[place];
+  const PL = !r.money ? ['📦', 'Сегодня без продаж', 'plain'] : { 1: ['🥇', '1-е место по продажам!', 'gold'], 2: ['🥈', '2-е место по продажам', 'silver'], 3: ['🥉', '3-е место по продажам', 'bronze'], 4: ['🎪', 'Хорошая торговля!', 'plain'] }[place];   // ничего не продали — ни медали, ни похвалы
   const prev = r.prev, diff = prev ? r.money - prev.money : null;
   let h = `<h2>🎪 Итоги ярмарки</h2><div class="fpinfo">Как прошла торговля: место среди лотков по выручке, лучший товар и что продали.</div>`;
   h += `<div class="fres2 ${PL[2]}"><div class="fr-top"><div class="fr-medal">${PL[0]}</div><div class="fr-head"><b>${PL[1]}</b>
@@ -6601,9 +6616,9 @@ function openFairResult(r) {
   h += `</div>`;
   h += `<h3 class="fr-h">Что продали</h3>` + (sold.length ? `<div class="fr-grid">${sold.map(([g, q]) => `<div class="fr-t"><span class="rc-e">${GOODS[g].e}</span><b>${q.n} шт</b><small>${q.m}💰</small></div>`).join('')}</div>` : '<div class="fr-empty">Ничего не продали — в следующий раз собери ящики заранее 📦</div>');
   if (r.left.length) h += `<div class="fr-left">↩️ Вернулось на склад: ${r.left.map(([c, n]) => `${GOODS[c].e} ${n}`).join('  ')}</div>`;
-  h += `<h3 class="fr-h">Лотки на ярмарке</h3><div class="fr-rank">${all.map((x, k) => `<div class="fr-row${x.me ? ' me' : ''}"><span class="fr-n">${['🥇', '🥈', '🥉', '4'][k]}</span><span class="fr-nm">${x.me ? '🌾 Твоя ферма' : x.name}</span><div class="fr-bar"><i style="width:${Math.max(4, Math.round(x.m / top * 100))}%"></i></div><b>${x.m}💰</b></div>`).join('')}</div>`;
+  h += `<h3 class="fr-h">Лотки на ярмарке</h3><div class="fr-rank">${all.map((x, k) => `<div class="fr-row${x.me ? ' me' : ''}"><span class="fr-n">${x.m ? ['🥇', '🥈', '🥉', '4'][k] : '—'}</span><span class="fr-nm">${x.me ? '🌾 Твоя ферма' : x.name}</span><div class="fr-bar"><i style="width:${Math.max(4, Math.round(x.m / top * 100))}%"></i></div><b>${x.m}💰</b></div>`).join('')}</div>`;
   if (r.out.length) h += `<div class="fr-left">У соседей кончилось: ${r.out.map(o => `${GOODS[o.g].e} у «${RIVALS_DEF[o.i].name}»`).join(', ')}</div>`;
-  h += `<button class="wide" style="width:100%;margin-top:14px" onclick="openCalendar()">🌙 Дальше</button>`;
+  h += `<button class="wide" style="width:100%;margin-top:14px" onclick="${S.night ? 'openCalendar()' : 'openFairPack()'}">${S.night ? '🌙 Дальше' : '← К ярмарке'}</button>`;
   $('sheet').dataset.view = 'fairres'; $('sheet').innerHTML = h; $('overlay').classList.add('show'); decorateSheet(); $('sheet').scrollTop = 0;
 }
 function rivalSale(i, g) {   // покупатель ушёл к соседу: идёт к его ларьку, стоит у прилавка и уходит
@@ -6687,12 +6702,12 @@ function drawPicnic() {   // плед с корзинкой у пруда в д�
   });
 }
 function drawPaths() {   // вторым проходом — чтобы кромку не перекрыли соседние клетки
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const g = ground[y][x]; if (pathLike(g) && !culled(x, y)) pathDeco(x, y, iso(x + .5, y + .5), g, hash(x, y)); }
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const g = gcell(x, y); if (pathLike(g) && !culled(x, y)) pathDeco(x, y, iso(x + .5, y + .5), g, hash(x, y)); }
 }
 function drawGround(t) {
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     if (culled(x, y)) continue;
-    const g = ground[y][x], pts = tilePts(x, y);
+    const g = gcell(x, y), pts = tilePts(x, y);
     const LK = look().g, grass = (x + y) % 2 ? LK[0] : LK[1];
     let col = grass;
     if (g === 'r') col = (x + y) % 2 ? '#d8bf8a' : '#d3b983';
@@ -7376,7 +7391,7 @@ function drawHive(d, t) {   // улей: два корпуса на подста
   const le = lift(X, y0 + dd * .5, 4.6); ctx.beginPath(); ctx.ellipse(le.x, le.y, 2.4, 1, .46, 0, 7); ctx.fillStyle = '#3a2414'; ctx.fill();   // леток — на южной стороне, к цветам
   const lb = [lift(X, y0 + dd * .2, 3.6), lift(X, y0 + dd * .8, 3.6), lift(X + .07, y0 + dd * .8, 3.6), lift(X + .07, y0 + dd * .2, 3.6)]; poly(lb, '#b8803a', '#7a5228', .8);   // прилётная доска
   if (S.night || season().id === 'winter' || ['rain', 'storm', 'snow'].includes(weather())) return;   // ночью, зимой и в дождь пчёлы в улье
-  const T = t / 1000;
+  const T = t;   // draw() получает время уже в секундах
   for (let k = 0; k < 2; k++) { const a = T * (1.4 + k * .5) + d.i * 2 + k * 2.6, c = lift(x0 + w / 2 + Math.cos(a) * .45, ym + Math.sin(a) * .45, 26 + Math.sin(a * 2.3) * 3);
     anim(() => { ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.beginPath(); ctx.ellipse(c.x - .9, c.y - 1.1, .9, .55, -.5, 0, 7); ctx.ellipse(c.x + .9, c.y - 1.1, .9, .55, .5, 0, 7); ctx.fill();
       ctx.fillStyle = '#ffc928'; ctx.beginPath(); ctx.ellipse(c.x, c.y, 1.4, 1, 0, 0, 7); ctx.fill(); ctx.strokeStyle = '#3a2414'; ctx.lineWidth = .6; ctx.stroke(); }); }
@@ -8218,7 +8233,7 @@ function drawBubble(v) {
 
 function drawBars() {
   const frz = isWinter();   // зимой посевы на поле замерли: полоска голубая, рядом снежинка
-  [...S.plots.map((p, i) => [p, PLOT_SLOTS[i], frz]), ...S.gh.map((p, i) => [p, GH_SLOTS[i], false])].forEach(([p, s, fz]) => {
+  [...S.plots.map((p, i) => [p, PLOT_SLOTS[i], frz]), ...S.gh.map((p, i) => [p, GH_SLOTS[i], false]), ...S.fl.map((p, i) => [p, FL_SLOTS[i], false])].forEach(([p, s, fz]) => {
     if (!p.crop || p.prog >= 1) return;
     const c = lift(s.x + .5, s.y + .5, 3.5);
     rr(c.x - 15, c.y - 27, 30, 6, 3, INK);
@@ -8338,7 +8353,7 @@ function openStore() {
 // погода на карте — поверх мира, в экранных координатах: наклонный дождь, снег, волнистые полоски ветра, тёплый свет жары
 const wxR = (i, k) => { const v = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return v - Math.floor(v); };
 function drawWeather(t) {
-  if (S.night || fairOn()) return;
+  if (S.night) return;   // и на ярмарке — дождь и снег видны тоже
   const w = weather(); if (w === 'sun') return;
   const W = cv.width, H = cv.height, k = dpr, s = t;   // draw() получает время уже в секундах
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -9202,7 +9217,7 @@ function openFairPack(sel) {
   if (lock && (crateSel == null || !S.fair.crates[crateSel])) crateSel = S.fair.crates.findIndex(c => c) >= 0 ? S.fair.crates.findIndex(c => c) : null;
   else if (!lock && (crateSel == null || (crateSel >= tot && !(isBakeCrate(crateSel) && crateSel < BAKE_CRATE0 + bakeCrates())))) crateSel = Math.max(0, Math.min(tot - 1, S.fair.crates.findIndex(c => !c) < 0 ? (S.fair.crates.length < tot ? S.fair.crates.length : 0) : S.fair.crates.findIndex(c => !c)));
   const used = cratesUsed(), when = days === 0 ? 'сегодня' : days === 1 ? 'завтра' : `через ${days} ${days < 5 ? 'дня' : 'дней'}`, pct = Math.round((fairMult() - 1) * 100);
-  let h = `<h2>🎪 Ярмарка ${lock ? 'идёт!' : when}</h2><div class="fpinfo">${lock ? 'Пополнить ящики уже нельзя, но цену менять можно — тапни на ящик. Вечером непроданное вернётся на склад.'
+  let h = `<h2>🎪 Ярмарка ${lock ? 'идёт!' : when}</h2>${S.fair.lastRes && !lock ? `<button class="wide alt" style="width:100%;margin:0 0 10px" onclick="openFairResult(S.fair.lastRes)">🏆 Итоги прошлой ярмарки</button>` : ''}<div class="fpinfo">${lock ? 'Пополнить ящики уже нельзя, но цену менять можно — тапни на ящик. Вечером непроданное вернётся на склад.'
     : `Выбери ящик и положи в него товар — до ${CRATE} шт. одного вида. Рядом торгуют соседи: покупатель идёт туда, где дешевле.`}</div>
     <div class="summary">🏆 Тема ярмарки — конкурс ${SPECIAL[contestOf()].what} ${SPECIAL[contestOf()].e}: ${themeText()} <b>дороже на ${Math.round(THEME_BONUS * 100)}%</b>, и спрашивают их вдвое чаще</div><div class="cgrid">`;
   for (let i = 0; i < 12; i++) {
@@ -9608,6 +9623,12 @@ if (S.toSpawn === 0 && !S.night) startDay(); else renderUI();
 if (!S.night) S.toSpawn = Math.max(S.toSpawn, visitorsPerDay());   // старые сохранения получают новый поток покупателей сразу
 // ✨ Что нового: после обновления вместо итогов ночи — список новинок, которых игрок ещё не видел
 const WHATSNEW = [   // новое — сверху; v — версия, с которой это появилось
+  { v: '2026-11-26.207', t: 'Клумбы и поправки', items: [
+    ['🌷', 'Клумбы в саду', 'Цветочные грядки теперь в каменных бортиках, с полоской роста — видно, когда цветы созреют'],
+    ['🏆', 'Итоги прошлой ярмарки', 'Их можно открыть ещё раз — кнопка в окне ярмарки 🎪. А если ничего не продано, медали больше не дают'],
+    ['🌧️', 'Погода на ярмарке', 'В день ярмарки тоже видно дождь и снег'],
+    ['🐝', 'Пчёлы летают', 'Пчёлы снова кружат над ульями'],
+    ['🚪', 'Проход в сад', 'Тропинка к саду появляется, только когда сад открыт'] ] },
   { v: '2026-11-26.206', t: 'Исправления', items: [
     ['🌷', 'Цветочные грядки в саду', 'Если сад открыт, а цветочных грядок не хватало, они появятся сами'] ] },
   { v: '2026-11-26.205', t: 'Удобнее торговать', items: [
