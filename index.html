@@ -1036,7 +1036,7 @@ function addBox(kind, g, x, y, w, d) {
 }
 addBox('house', 'home', 1, 1, 3, 3);   // дом 3×3
 addBox('stall', 'stall', 3, 10, 2, 1);
-const COUNTER = at('stall', 4, 9);   // где стоит фермер за прилавком
+const COUNTER = at('stall', 4, 9), CNT_OFF = { x: .06, y: .5 };   // где стоит фермер за прилавком — в своей клетке, чуть левее столба тента
 // вторая лавка — слева (клетки 2–3 × 15): свой продавец за ней, своя очередь перед ней
 deco('stall2', { kind: 'stall', b: 1, z: 3 + 2 + 10 + 1 - 1.01 });
 const STALL2 = at('stall', 0, 10), COUNTER2 = at('stall', 0, 9), CLERK2 = at('stall', 1, 9);   // фермер встаёт рядом с продавцом
@@ -1248,6 +1248,7 @@ for (const [x, y] of treeSpots) {
   decor.push({ kind: 'tree', x, y, s: 0.85 + rnd() * 0.35, z: x + y + 1, lot: lot >= 0 ? lot : null });
   blocked[y][x] = true;
 }
+for (const d of decor) if (d.kind === 'tree' && d.x > FOREST_X && d.y > 1 && d.y < ROAD - 1) { const v = Math.sin(d.x * 91.7 + d.y * 37.3) * 43758.5; if (v - Math.floor(v) < .36) d.thin = true; }   // лес справа реже
 for (const d of decor) if (d.kind === 'tree' && d.lot == null) { const a = at('dairy', 16, 12); if (((d.y === a.y || d.y === a.y + 1) && d.x >= a.x && d.x <= a.x + 5) || (d.x === a.x + 5 && d.y >= a.y - 5 && d.y < a.y)) d.lot = 2; }   // два ряда леса перед Молочным домом и ряд перед его дверью
 { const keep = (x, y) => { const v = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return v - Math.floor(v) > .87; };   // редкие деревья остаются для атмосферы
   for (const d of decor) if (d.kind === 'tree' && (d.lot == null || d.lot === 2) && d.x >= FOREST_X && d.x < W && d.y >= 1 && d.y < ROAD && !keep(d.x, d.y)) d.lot = d.y <= 8 ? 0 : 1;   // верх уходит с первой расчисткой, низ — со второй
@@ -1508,7 +1509,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-26.204';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-26.205';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3749,7 +3750,7 @@ function routeThrough(list, from) {   // жадный обход: каждый �
 function buyUpgrade(key) {
   const u = UPGRADES[key], l = S.up[key], cost = u.cost(l);
   if (l >= u.max || S.coins < cost || upLocked(key)) return;
-  spend(cost, 'up'); S.up[key]++; goalEv('upgrade', key, 1);
+  spend(cost, 'up'); S.up[key]++; goalEv('upgrade', key, 1); NEAR = null;
   if (S.up[key] === 1 && LETTERS['b_' + key]) sendLetter('b_' + key);
   const before = S.plots.length;
   if (key === 'land') for (let k = 0; k < 4 && S.plots.length < MAX_PLOTS; k++) S.plots.push({ crop: null, prog: 0 });
@@ -3978,15 +3979,21 @@ function findPath(sx, sy, tx, ty) {
   if (offT) { const p = gridPath(sx, sy, FAIR_GATE, H - 1); return p ? [...p, ...lane(tx), [tx, ty]] : null; }
   const p = gridPath(FAIR_GATE, H - 1, tx, ty); return p ? [...lane(sx).reverse(), ...p] : null;
 }
-function gridPath(sx, sy, tx, ty) {
+const onRoad = (x, y) => x >= 0 && y >= 0 && x < W && y < H ? ground[y][x] === 'p' || ground[y][x] === 'r' : grovePath(x, y);
+function gridPath(sx, sy, tx, ty) {   // кратчайший путь, но по дорожкам «дешевле», чем по траве: фермер и помощники ходят по тропинкам, если это не большой крюк
   if (!walkable(tx, ty)) return null;
-  const key = (x, y) => (y + 40) * 256 + x + 40, prev = new Map([[key(sx, sy), -1]]), q = [[sx, sy]];   // и отрицательные клетки (зона сада)
-  while (q.length) {
-    const [x, y] = q.shift();
+  const key = (x, y) => (y + 40) * 256 + x + 40, prev = new Map([[key(sx, sy), -1]]), dist = new Map([[key(sx, sy), 0]]), heap = [[0, sx, sy]];
+  const push = e => { heap.push(e); let i = heap.length - 1; while (i) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = i * 2 + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+  while (heap.length) {
+    const [d, x, y] = pop();
+    if (d > dist.get(key(x, y))) continue;
     if (x === tx && y === ty) break;
     for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
-      const nx = x + dx, ny = y + dy;
-      if (walkable(nx, ny) && !prev.has(key(nx, ny))) { prev.set(key(nx, ny), key(x, y)); q.push([nx, ny]); }
+      const nx = x + dx, ny = y + dy, k = key(nx, ny);
+      if (!walkable(nx, ny)) continue;
+      const nd = d + (onRoad(nx, ny) ? 1 : 1.8);
+      if (!dist.has(k) || nd < dist.get(k)) { dist.set(k, nd); prev.set(k, key(x, y)); push([nd, nx, ny]); }
     }
   }
   if (!prev.has(key(tx, ty))) return null;
@@ -4021,11 +4028,11 @@ function updatePlayer(dt) {
   if (P.work > 0) { P.work -= dt; P.moving = false; return; }
   if (path.length) {
     const [tx, ty] = path[0];
-    if (stepToward(P, tx + .5, ty + .5, SPEED, dt)) path.shift();
+    const cnt = path.length === 1 && !fairOn() && tx === COUNTER.x && ty === COUNTER.y;   // последний шаг к прилавку — сразу в его середину
+    if (stepToward(P, tx + (cnt ? CNT_OFF.x : .5), ty + (cnt ? CNT_OFF.y : .5), SPEED, dt)) path.shift();
     P.moving = true; P.phase += dt * 13;
   } else {
     P.moving = false;
-    if (!fairOn() && Math.floor(P.x) === COUNTER.x && Math.floor(P.y) === COUNTER.y) P.x += (COUNTER.x + .03 - P.x) * Math.min(1, dt * 8);   // за прилавком — встаём по центру лавки
     if (tasks.length) {
       const t = tasks.shift(); if (t.fn) { t.fn(); P.work = 0.2 / PEOPLE_SLOW; } nextTask();
       if (!tasks.length && autoHarvest && !S.night && !harvestRoute(true)) autoHarvest = false;
@@ -6163,7 +6170,7 @@ const treeKey = () => clearKey() + (swayOn() ? 100 : 0) + (S.up.store ? 1000 : 0
 let NEAR = null;
 function nearFarm(d) {   // дерево фермы в пределах двух клеток от открытой земли фермы
   if (!NEAR) { const tr = new Set(decor.filter(o => o.kind === 'tree').map(o => o.x + ',' + o.y)); NEAR = new Set();
-    for (const o of decor) if (o.kind === 'tree') { let ok = false; for (let dy = -2; dy <= 2 && !ok; dy++) for (let dx = -2; dx <= 2; dx++) { const x = o.x + dx, y = o.y + dy; if (x >= 0 && y >= 0 && x < W && y < H && !tr.has(x + ',' + y)) { ok = true; break; } } if (ok) NEAR.add(o); } }
+    for (const o of decor) if (o.kind === 'tree') { let ok = false; for (let dy = -2; dy <= 2 && !ok; dy++) for (let dx = -2; dx <= 2; dx++) { const x = o.x + dx, y = o.y + dy; if (x >= 0 && y >= 0 && x < W && y < H && !tr.has(x + ',' + y) && (x < FOREST_X || (lotAt(x, y) >= 0 && lotCleared(lotAt(x, y))))) { ok = true; break; } } if (ok) NEAR.add(o); } }
   return NEAR.has(d);
 }
 const outFlat = () => { const [a, b] = look().out, m = i => Math.round((parseInt(a.slice(i, i + 2), 16) + parseInt(b.slice(i, i + 2), 16)) / 2).toString(16).padStart(2, '0'); return '#' + m(1) + m(3) + m(5); };   // земля вне фермы — ровным цветом: шахматка только там, где строим
@@ -7041,8 +7048,8 @@ function drawPickups() {
 }
 function drawMarker(t) {
   if (!tasks.length) return;
-  const tk = tasks[0], r = 0.12 + Math.sin(t * 6) * 0.04;
-  poly([iso(tk.x + r, tk.y + r), iso(tk.x + 1 - r, tk.y + r), iso(tk.x + 1 - r, tk.y + 1 - r), iso(tk.x + r, tk.y + 1 - r)], null, '#ffffff', 2);
+  const tk = tasks[0], r = 0.12 + Math.sin(t * 6) * 0.04, ox = 0, oy = 0;
+  poly([iso(tk.x + ox + r, tk.y + oy + r), iso(tk.x + ox + 1 - r, tk.y + oy + r), iso(tk.x + ox + 1 - r, tk.y + oy + 1 - r), iso(tk.x + ox + r, tk.y + oy + 1 - r)], null, '#ffffff', 2);
   tasks.forEach((q, k) => {   // очередь грядок: рамка и полупрозрачная культура, которую посадят
     if (!q.q) return;
     if (k) { ctx.setLineDash([4, 3]); poly([iso(q.x + .14, q.y + .14), iso(q.x + .86, q.y + .14), iso(q.x + .86, q.y + .86), iso(q.x + .14, q.y + .86)], null, 'rgba(255,255,255,.85)', 1.6); ctx.setLineDash([]); }
@@ -7818,6 +7825,7 @@ function toonTrunk(cx, cy, w, h) {
   shape([{ x: cx + w * .2, y: cy }, { x: cx + w, y: cy }, { x: cx + w * .7, y: cy - h }, { x: cx + w * .1, y: cy - h }]); ctx.fillStyle = '#6b3f22'; ctx.fill();
 }
 function drawTree(d) {
+  if (d.thin) return;   // прореженный лес у мельницы — дерева нет, клетка остаётся лесом
   const c = iso(d.x + .5, d.y + .5), s = d.s;
   ctx.fillStyle = 'rgba(30,50,15,.25)'; ctx.beginPath(); ctx.ellipse(c.x + 3, c.y + 1, 17 * s, 7.5 * s, 0, 0, 7); ctx.fill();
   toonTrunk(c.x, c.y, 3.6 * s, 24 * s);
@@ -9133,17 +9141,18 @@ function openStall(sel, shop) {
       <div class="fpinfo" style="margin-top:-4px">${shopSel ? 'У второй лавки своя очередь. Продаёшь ты или помощник со станцией «Лавка».' : 'Здесь продаёшь ты или помощник со станцией «Лавка».'}</div>` : ''}
     <div class="cgrid">`;
   for (let i = 0; i < 6; i++) {
-    const id = A[i], on = i === slotSel ? ' sel' : '';
+    const id = A[i];
     if (i >= n) { h += `<button class="crate lockd" onclick="toast('🔒 Ещё место — ночью: «Улучшения» → «Ферма» → 🧺 «Место на прилавке»')"><span class="ce">🔒</span><small>место</small></button>`; continue; }
-    h += id ? `<button class="crate full${on}" onclick="openStall(${i})"><span class="ce">${GOODS[id].e}</span><b>${S.inv[id] || 0}<i> шт</i></b></button>`
-      : `<button class="crate${on}" onclick="openStall(${i})"><span class="ce plus">＋</span><small>пусто</small></button>`;
+    h += id ? `<button class="crate full" onclick="tapShopGood('${id}')"><span class="ce">${GOODS[id].e}</span><b>${S.inv[id] || 0}<i> шт</i></b></button>`
+      : `<button class="crate" onclick="toast('Нажми на товар ниже — он встанет в свободный ящик')"><span class="ce plus">＋</span><small>пусто</small></button>`;
   }
   h += `</div>`;
   const cur = A[slotSel], other = S.up.stall2 ? shopArr(1 - shopSel).slice(0, shopCap(1 - shopSel)) : [];
-  h += `<div class="cpanel selp"><div class="cptitle">${cur ? `<button class="cprm" onclick="setSlot(${slotSel}, null)">✕ Убрать</button>` : ''}Место ${slotSel + 1}: ${cur ? `<b>${GOODS[cur].e} ${GOODS[cur].name}</b> · на складе <b>${S.inv[cur] || 0} шт</b> · ${sellPrice(cur)}💰 — нажми другой товар, чтобы заменить` : '<b>пусто</b> — выбери, что здесь продавать'}</div><div class="stallg">`;
+  const free = A.slice(0, n).filter(x => !x).length;
+  h += `<div class="cpanel selp"><div class="cptitle">Тапни по товару, чтобы добавить/убрать его из ящика</div><div class="stallg">`;
   for (const id of known) {
     const j = A.slice(0, n).indexOf(id), g = GOODS[id], o = other.includes(id);
-    h += `<button class="sg${j === slotSel ? ' on' : j >= 0 || o ? ' used' : ''}" onclick="setSlot(${slotSel}, '${id}')"><span class="e">${g.e}</span><b>${g.name}</b><span class="q">${S.inv[id] || 0} шт</span><small>${sellPrice(id)}💰 за штуку</small><i>${j === slotSel ? '✔ здесь' : j >= 0 ? '🧺 уже на прилавке' : o ? `🏪 в лавке ${2 - shopSel}` : ''}</i></button>`;
+    h += `<button class="sg${j >= 0 ? ' on' : o ? ' used' : ''}" onclick="tapShopGood('${id}')"><span class="e">${g.e}</span><b>${g.name}</b><span class="q">${S.inv[id] || 0} шт</span><small>${sellPrice(id)}💰 за штуку</small><i>${j === slotSel ? '✔ здесь' : j >= 0 ? '🧺 уже на прилавке' : o ? `🏪 в лавке ${2 - shopSel}` : ''}</i></button>`;
   }
   h += `</div></div>`;
   if (S.up.seasonstand) {   // сезонная пристройка: всегда два товара текущего сезона
@@ -9159,6 +9168,15 @@ function openStall(sel, shop) {
   h += `<button class="wide" style="width:100%;margin-top:12px" onclick="closeNight()">Готово</button>`;
   const top = $('sheet').dataset.view === 'stall' ? $('sheet').scrollTop : 0;
   $('sheet').dataset.view = 'stall'; $('sheet').innerHTML = h; $('overlay').classList.add('show'); $('sheet').scrollTop = top;
+}
+function tapShopGood(id) {   // тап по товару: стоит в этой лавке — убрать; нет — в первый свободный ящик (из другой лавки — переезжает)
+  const A = shopArr(shopSel), n = shopCap(shopSel); while (A.length < n) A.push(null);
+  const j = A.slice(0, n).indexOf(id);
+  if (j >= 0) { setSlot(j, null); return; }
+  if (S.up.stall2 && shopArr(1 - shopSel).slice(0, shopCap(1 - shopSel)).includes(id)) { toast(`${GOODS[id].e} уже продаётся в ${shopSel ? 'первой' : 'второй'} лавке`); return; }   // один товар — в одной лавке
+  const f = A.slice(0, n).indexOf(null);
+  if (f < 0) { toast('Все ящики заняты — нажми на товар в списке, чтобы убрать его'); return; }
+  setSlot(f, id);
 }
 function setSlot(i, id) {   // поставить товар на место i; уже стоит на другом месте — поменять местами; в другой лавке — перенести сюда
   const A = shopArr(shopSel), n = shopCap(shopSel);
@@ -9589,6 +9607,10 @@ if (S.toSpawn === 0 && !S.night) startDay(); else renderUI();
 if (!S.night) S.toSpawn = Math.max(S.toSpawn, visitorsPerDay());   // старые сохранения получают новый поток покупателей сразу
 // ✨ Что нового: после обновления вместо итогов ночи — список новинок, которых игрок ещё не видел
 const WHATSNEW = [   // новое — сверху; v — версия, с которой это появилось
+  { v: '2026-11-26.205', t: 'Удобнее торговать', items: [
+    ['🧺', 'Товары в лавку — одним тапом', 'Нажми на товар в списке — он встанет в свободный ящик, нажми ещё раз — уберётся. Выбирать ящик больше не нужно'],
+    ['🧑‍🌾', 'Фермер ходит по дорожкам', 'Фермер и помощники выбирают тропинки, если это не большой крюк, а к лавке подходят сразу на своё место'],
+    ['🌳', 'Лес у мельницы', 'Деревьев на месте будущих мельницы и сыроварни стало меньше, а в ветер качаются только деревья у края фермы'] ] },
   { v: '2026-11-26.204', t: 'Нарядная лавка', items: [
     ['🪧', 'Лавку можно нарядить', 'Вместо «Красивой вывески» — «Нарядная лавка»: вывеска, полосатый тент, цветы, гирлянда, бочка с яблоками и плющ. Лавка перерисована целиком'],
     ['§', '⚖️ Изменения баланса'],
