@@ -223,6 +223,7 @@
   .hz-zz.lock { opacity: .45; border-style: dashed; }
   .hz-two { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .hz-b { height: 40px; border-radius: 13px; border: 2px solid #ead9b5; background: #fffaf0; font: inherit; font-size: 14px; font-weight: 800; color: #4a2e18; }
+  .stallg .sg { position: relative; } .sg-x { position: absolute; top: -7px; right: -7px; width: 26px; height: 26px; border-radius: 13px; background: #fff; border: 2px solid #e0a43a; color: #b0503a; font: 900 14px/22px system-ui, sans-serif; box-shadow: 0 2px 0 rgba(0,0,0,.12); }
   .wn-sec { font: 900 14px system-ui, sans-serif; color: #6b4a2a; margin: 12px 2px 6px; }
   .wn-v { margin: 22px 0 4px; padding: 14px 2px 0; border-top: 2px dashed #e2cfa6; color: #4a2e18; font: 900 19px system-ui, sans-serif; }
   .wn-first .wn-v { margin-top: 2px; padding-top: 0; border-top: 0; } .wn-v small { display: block; margin-top: 1px; font: 700 13px system-ui, sans-serif; color: #a07a4c; }
@@ -999,7 +1000,12 @@ const UP_LVLS = { bakery: [9, 12, 14, 16, 18], dhouse: [13, 16, 19], press: [22,
 const upLvl = key => UP_LVLS[key] ? (UP_LVLS[key][S.up[key]] ?? 0) : S.up[key] ? 0 : UP_LVL[key] || 1;
 const lvlLocked = key => farmLevel() < upLvl(key);
 const upLocked = key => lvlLocked(key) || !!(UPGRADES[key].need && !UPGRADES[key].need());   // ещё не открыто
-const needTxt = key => lvlLocked(key) ? `Откроется на ⭐ ${upLvl(key)} уровне фермы` : UPGRADES[key].needText;
+const needMet = key => !UPGRADES[key].need || UPGRADES[key].need();
+const needTxt = key => { const u = UPGRADES[key], lv = lvlLocked(key), nd = !needMet(key);
+  if (!upKnown(key)) return `Откроется ближе к ⭐ ${upLvl(key)} уровню фермы`;   // далёкое — ни названия, ни что нужно
+  return nd && lv ? `${u.needText} · ⭐ ${upLvl(key)} уровень фермы` : lv ? `Откроется на ⭐ ${upLvl(key)} уровне фермы` : u.needText; };
+// закрытое улучшение показываем с названием, если до него недалеко: предыдущее уже открыто или до нужного уровня фермы ≤ 3; дальше — тайна «???»
+const upKnown = key => needMet(key) || farmLevel() >= upLvl(key) - 3;
 
 // ================== КАРТА ==================
 // Изометрия: клетка (x, y) → экран ((x−y)·TW/2, (x+y)·TH/2)
@@ -1511,7 +1517,7 @@ function save() {
 // копия в браузере уступает облачной. Пока сверка не прошла, в облако НИЧЕГО не пишем.
 const CLOUD = { db: null, uid: null, ready: false, dirty: false, busy: false, state: 'wait', cache: {} };
 const APP_URL = 'https://xsarion-source.github.io/game-fmly-testl-/';   // игра как отдельный сайт / приложение на экране «Домой»
-const BUILD = '2026-11-26.210';   // версия игры: приложение сверяет её с сайтом и обновляется само
+const BUILD = '2026-11-28.211';   // версия игры: приложение сверяет её с сайтом и обновляется само
 const EMBED = (() => { try { return window.top !== window; } catch { return true; } })();   // внутри claude.ai — встроенное окно
 if (!EMBED) try { navigator.storage?.persist?.(); } catch {}   // отдельный сайт / приложение: просим не стирать
 const progress = o => o ? (o.day || 0) * 1e7 + (o.life?.earned || 0) : -1;
@@ -3916,7 +3922,7 @@ function openUpGroup(g) {
   if (S.night && g.keys.includes('barn') && cows()) h += feedTiles('cow');
   for (const k of g.keys.slice().sort((a, b) => rank(a) - rank(b))) {
     const u = UPGRADES[k], l = S.up[k], cost = u.cost(l), r = rank(k);
-    const known = r !== 1 || (lvlLocked(k) && !(u.need && !u.need()));
+    const known = r !== 1 || upKnown(k);
     const btn = r === 0 ? `<button ${S.coins < cost ? 'disabled' : ''} onclick="event.stopPropagation(); buyUpgrade('${k}')">${cost}💰</button>`
       : r === 1 ? `<button disabled>${lvlLocked(k) ? '⭐' + upLvl(k) : '🔒'}</button>` : `<button disabled>✔</button>`;
     h += `<div class="up" onclick="openUpgrade('${k}')"><div class="ico"${r === 1 ? ' style="opacity:.55"' : ''}>${known ? u.ico : '❓'}</div><div class="txt"><b>${known ? u.name : '???'} <small>ур. ${l}/${u.max}</small></b><small>${r === 0 ? u.desc(l) : r === 1 ? needTxt(k) : 'Улучшено до максимума'}</small></div>${btn}</div>`;
@@ -3930,7 +3936,7 @@ function openUpGroup(g) {
 function openUpgrade(key) {
   const u = UPGRADES[key], l = S.up[key], maxed = l >= u.max, cost = u.cost(l);
   if (upLocked(key)) {   // ждёт уровня фермы — название видно, чтобы было к чему стремиться
-    const known = lvlLocked(key) && !(u.need && !u.need());
+    const known = upKnown(key);
     $('sheet').dataset.view = ''; $('sheet').innerHTML = `<h2>${known ? u.ico + ' ' + u.name : '❓ ???'}</h2>
       <div class="summary">🔒 ${needTxt(key)}</div><div class="row"><button class="wide alt" onclick="openNight(false)">⬆️ Все улучшения</button><button class="wide alt" onclick="closeNight()">Закрыть</button></div>`;
     $('overlay').classList.add('show'); return;
@@ -8939,7 +8945,7 @@ function shopRows() {
   Object.entries(UPGRADES).forEach(([key, u], i) => {
     const tab = FARM_UPS.includes(key) ? 'farm' : 'build';
     const l = S.up[key], maxed = l >= u.max, cost = u.cost(l), lock = upLocked(key);
-    if (lock) { const known = lvlLocked(key) && !(u.need && !u.need());
+    if (lock) { const known = upKnown(key);
       rows[tab].push({ rank: 2, i, lv: UP_LVL[key] || 1, cost, h: `<div class="up" data-why="🔒 ${needTxt(key)}"><div class="ico"${known ? ' style="opacity:.55"' : ''}>${known ? u.ico : '❓'}</div><div class="txt"><b>${known ? u.name : '???'}</b><small>${needTxt(key)}</small></div><button disabled>${known ? '⭐' + upLvl(key) : '???'}</button></div>` }); return; }
     rows[tab].push({ rank: maxed ? 3 : S.coins >= cost ? 0 : 1, cost, i, h: `<div class="up" data-why="${maxed ? (key === 'cozy' && l < 5 ? 'Фонарики вешать некуда — сначала построй веранду: «Дом фермера»' : key === 'coop' && l < 8 ? 'Вольер полон — расширь его' : key === 'barn' && l < 7 ? 'Пастбище полное — расширь его' : u.max === 1 ? 'Это у вас уже есть' : 'Улучшено на максимум') : 'Недостаточно средств'}"><div class="ico">${u.ico}</div><div class="txt"><b>${u.name} <small>ур. ${l}/${u.max}</small></b><small>${maxed ? 'Максимум' : u.desc(l)}</small></div>
       <button ${maxed || S.coins < cost ? 'disabled' : ''} onclick="buyUpgrade('${key}')">${maxed ? '✔' : cost + '💰'}</button></div>` });
@@ -9226,7 +9232,7 @@ function openFairPack(sel) {
   else if (false && (crateSel == null || (crateSel >= tot && !(isBakeCrate(crateSel) && crateSel < BAKE_CRATE0 + bakeCrates())))) crateSel = Math.max(0, Math.min(tot - 1, S.fair.crates.findIndex(c => !c) < 0 ? (S.fair.crates.length < tot ? S.fair.crates.length : 0) : S.fair.crates.findIndex(c => !c)));
   const used = cratesUsed(), when = days === 0 ? 'сегодня' : days === 1 ? 'завтра' : `через ${days} ${days < 5 ? 'дня' : 'дней'}`, pct = Math.round((fairMult() - 1) * 100);
   let h = `<h2>🎪 Ярмарка ${lock ? 'идёт!' : when}</h2>${S.fair.lastRes && !lock ? `<button class="wide alt" style="width:100%;margin:0 0 10px" onclick="openFairResult(S.fair.lastRes)">🏆 Итоги прошлой ярмарки</button>` : ''}<div class="fpinfo">${lock ? 'Пополнить ящики уже нельзя, но цену менять можно — тапни на ящик. Вечером непроданное вернётся на склад.'
-    : `Тапни по товару — он ляжет в свободный ящик, до ${CRATE} шт. Тапни по ящику — поменять количество и цену. Рядом торгуют соседи: покупатель идёт туда, где дешевле.`}</div>
+    : `Тапни по товару — он ляжет в свободный ящик, до ${CRATE} шт.; тапни ещё раз — займёт ещё один ящик. Тапни по ящику — поменять количество и цену. Рядом торгуют соседи: покупатель идёт туда, где дешевле.`}</div>
     <div class="summary">🏆 Тема ярмарки — конкурс ${SPECIAL[contestOf()].what} ${SPECIAL[contestOf()].e}: ${themeText()} <b>дороже на ${Math.round(THEME_BONUS * 100)}%</b>, и спрашивают их вдвое чаще</div><div class="cgrid">`;
   for (let i = 0; i < 12; i++) {
     const c = S.fair.crates[i], on = i === crateSel ? ' sel' : '';
@@ -9259,10 +9265,11 @@ function openFairPack(sel) {
     }
     // товары: тап — в свободный ящик, ещё тап — обратно на склад (как на прилавке)
     const inCr = id => S.fair.crates.some(x => x && x.id === id), ids = Object.keys(GOODS).filter(id => !GOODS[id].sp && !seasonal(id) && id !== 'chick' && (!BAKE[id] || S.up.fairbake) && ((S.inv[id] || 0) > 0 || inCr(id)));
-    h += `<div class="cpanel selp"><div class="cptitle">Тапни по товару, чтобы добавить/убрать его из ящика${S.up.fairbake ? ' · выпечка идёт в хлебные ящики' : ''}</div>`;
+    h += `<div class="cpanel selp"><div class="cptitle">Тапни по товару — ещё один ящик с ним, ✕ — убрать ящик${S.up.fairbake ? ' · выпечка идёт в хлебные ящики' : ''}</div>`;
     const freeOf = bk => (bk ? Array.from({ length: S.up.fairbake ? BAKE_CRATES : 0 }, (_, k) => BAKE_CRATE0 + k) : Array.from({ length: fairCrates() }, (_, k) => k)).some(k => !S.fair.crates[k]?.n);   // есть ли свободный ящик нужного вида
     h += ids.length ? `<div class="stallg">${ids.map(id => { const g = GOODS[id], n = S.fair.crates.reduce((a, x) => a + (x && x.id === id ? x.n : 0), 0);
-        return `<button class="sg${n ? ' on' : !freeOf(!!BAKE[id]) ? ' used' : ''}" onclick="tapFairGood('${id}')"><span class="e">${g.e}</span><b>${g.name}</b><span class="q">${S.inv[id] || 0} шт</span><small>${myFairPrice(id)}💰 за штуку</small><i>${n ? `📦 в ящике ${n}` : ''}</i></button>`; }).join('')}</div>`
+        const nc = S.fair.crates.filter(x => x && x.id === id).length;
+        return `<button class="sg${n ? ' on' : !freeOf(!!BAKE[id]) ? ' used' : ''}" onclick="tapFairGood('${id}')">${n ? `<span class="sg-x" onclick="event.stopPropagation(); fairUnpack('${id}')">✕</span>` : ''}<span class="e">${g.e}</span><b>${g.name}</b><span class="q">${S.inv[id] || 0} шт</span><small>${myFairPrice(id)}💰 за штуку</small><i>${n ? `📦 ${nc > 1 ? `${nc} ящика · ` : 'в ящике '}${n}` : ''}</i></button>`; }).join('')}</div>`
       : `<div class="summary">На складе пусто — сначала собери урожай.</div>`;
     h += `</div>`;
   }
@@ -9278,14 +9285,18 @@ function priceBlock(id) {   // своя цена и что у соседей
     <div class="cpsub">Твоя цена: <b>${myFairPrice(id)}💰</b> за шт. · ${near.length ? 'у соседей: ' + near.join(', ') : 'у соседей такого нет — покупатели твои'}</div>`;
 }
 function setPm(id, v) { S.fair.pm[id] = v; save(); openFairPack(crateSel ?? undefined); }
-function tapFairGood(id) {   // тап по товару: уже в ящиках — всё обратно на склад; нет — в первый свободный ящик (выпечка — в хлебный)
+function fairUnpack(id) {   // ✕ на плитке — убрать один ящик этого товара (последний) обратно на склад
   if (fairOn()) return;
-  const idx = S.fair.crates.map((x, k) => x && x.id === id ? k : -1).filter(k => k >= 0);
-  if (idx.length) { for (const k of idx) { S.inv[id] = (S.inv[id] || 0) + S.fair.crates[k].n; S.fair.crates[k] = null; } if (idx.includes(crateSel)) crateSel = null; syncFair(); save(); renderUI(); openFairPack(); return; }
-  if (!(S.inv[id] > 0)) { toast(`${GOODS[id].e} на складе нет`); return; }
+  const k = S.fair.crates.map((x, i) => x && x.id === id ? i : -1).filter(i => i >= 0).pop(); if (k == null) return;
+  S.inv[id] = (S.inv[id] || 0) + S.fair.crates[k].n; S.fair.crates[k] = null; if (crateSel === k) crateSel = null;
+  syncFair(); save(); renderUI(); openFairPack();
+}
+function tapFairGood(id) {   // тап по товару: ещё один ящик этого товара (пока есть на складе и свободное место; выпечка — в хлебный)
+  if (fairOn()) return;
+  if (!(S.inv[id] > 0)) { toast(S.fair.crates.some(x => x && x.id === id) ? `${GOODS[id].e} на складе больше нет — всё уже в ящиках` : `${GOODS[id].e} на складе нет`); return; }
   const free = BAKE[id] ? Array.from({ length: S.up.fairbake ? BAKE_CRATES : 0 }, (_, k) => BAKE_CRATE0 + k) : Array.from({ length: fairCrates() }, (_, k) => k);
   const f = free.find(k => !S.fair.crates[k]?.n);
-  if (f == null) { toast(BAKE[id] ? 'Хлебные ящики заняты — нажми на товар в списке, чтобы убрать его' : 'Все ящики заняты — нажми на товар в списке, чтобы убрать его'); return; }
+  if (f == null) { toast(BAKE[id] ? 'Хлебные ящики заняты — убери лишнее кнопкой ✕ на товаре' : 'Все ящики заняты — убери лишнее кнопкой ✕ на товаре'); return; }
   fillCrate(f, id);
 }
 function fillCrate(i, id) {
@@ -9661,6 +9672,9 @@ if (S.toSpawn === 0 && !S.night) startDay(); else renderUI();
 if (!S.night) S.toSpawn = Math.max(S.toSpawn, visitorsPerDay());   // старые сохранения получают новый поток покупателей сразу
 // ✨ Что нового: после обновления вместо итогов ночи — список новинок, которых игрок ещё не видел
 const WHATSNEW = [   // новое — сверху; v — версия, с которой это появилось
+  { v: '2026-11-28.211', t: 'Исправления', items: [
+    ['🎪', 'Несколько ящиков одного товара', 'Каждый тап по товару кладёт ещё один ящик с ним, а ✕ на плитке убирает ящик'],
+    ['⬆️', 'Улучшения видно заранее', 'Если до улучшения недалеко, видно его название и что нужно, чтобы открыть. Далёкие пока остаются под «???»'] ] },
   { v: '2026-11-26.210', t: 'Подсказки', items: [
     ['📦', 'Мест больше нет', 'Когда на прилавке или в ящиках на ярмарку не осталось места, остальные товары в списке бледнеют'] ] },
   { v: '2026-11-26.209', t: 'Ящики на ярмарку — одним тапом', items: [
